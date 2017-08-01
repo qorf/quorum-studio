@@ -1,0 +1,282 @@
+package Libraries.Development.Environment.Projects.Quorum
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Containers.Array
+
+/*
+    This class loads a Quorum project into the Integrated Development Environment.
+    It does so by reading a Javascript Object Notation (JSON) file that contains 
+    properties a out the project. The supported properties approximate the 
+    older project system in previous versions of Quorum.
+*/
+class QuorumProject is Project
+    /* This property represents that this project type is the Quorum programming language.*/
+    public constant text PROJECT_TYPE_NAME = "Quorum Project"
+
+    /* This property represents the name of the executable file that is compiled. */
+    public constant text EXECUTABLE_NAME = "ExecutableName"
+
+    /* This property represents the default name of the executable file that is compiled. */
+    public constant text DEFAULT_EXECUTABLE_NAME = "Default"
+
+
+    /* This property represents the file that Quorum starts a program from. */
+    public constant text PROJECT_MAIN = "Main"
+    /* This property represents the file that Quorum starts a program from. */
+    public constant text PROJECT_MAIN_LOCATION = "/SourceCode/Main.quorum"
+
+    /* This property represents what kind of project in Quorum this is. */
+    public constant text PROJECT_COMPILE_TYPE = "ProjectType"
+    /* This property is set for Project type if it is compiled to Java Bytecode. */
+    public constant text JAVA_COMPILE_TYPE = "JavaType"
+    /* This property is set for Project type if it is compiled to Javascript. */
+    public constant text JAVASCRIPT_COMPILE_TYPE = "JavascriptType"
+    /* This property is set for Project type if it is compiled to a .war file to be used in tomcat or glassfish. */
+    public constant text SERVER_COMPILE_TYPE = "ServerType"
+    /* This property is set for Project type if it is compiled to LEGO and sent to a connected system. */
+    public constant text LEGO_COMPILE_TYPE = "LegoType"
+    /* This property is set for Project type if it is compiled to an iPhone. */
+    public constant text IPHONE_COMPILE_TYPE = "IphoneType"
+    /* This property is set for Project type if it is compiled to Android. */
+    public constant text ANDROID_COMPILE_TYPE = "AndroidType"
+
+
+    /* This property stores all of the dependencies on jar files for the system. */
+    public constant text JAR_DEPENDENCIES = "JarDependencies"
+    /* This property stores all of the dependencies on javascript files for the system. */
+    public constant text JAVASCRIPT_DEPENDENCIES = "JavascriptDependencies"
+    /* This property stores all of the dependencies on java class files for the system. */
+    public constant text JAVA_CLASS_DEPENDENCIES = "JavaClassDependencies"
+
+    /* This flag is used to tell the project to tell the project to store image sheet information */
+    public constant text IMAGE_SHEET_ENABLED = "ImageSheetEnabled"
+    /* This flag is used to tell the project to recompile image sheets after a 
+        successful compile. */
+    public constant text IMAGE_SHEET_REBUILD_ON_COMPILE = "ImageSheetRebuildOnCompile"
+    /* This property tells us the path for the image sheets.*/
+    public constant text IMAGE_SHEET_BUILD_PATH = "ImageSheetBuildPath"
+    /* This property stores the data for the image sheets themselves. */
+    public constant text IMAGESHEETS = "ImageSheets"
+
+    /* This property stores the location of any mobile assets. */
+    public constant text MOBILE_ASSETS = "MobileAssets"
+    public constant text IPHONE_PROVISIONING_KEY = "IphoneProvisioningKey"
+    public constant text IPHONE_SIGNING_IDENTITY = "IphoneSigningIdentity"
+
+    on create
+        SetToDefault()
+    end
+
+    /* This action returns the build path for image sheets. */
+    action GetMobileAssetsPath returns text
+        return GetPropertyValue(MOBILE_ASSETS)
+    end
+
+    /* This action sets the build path for image sheets. */
+    action SetMobileAssetsPath(text path)
+        SetPropertyValue(MOBILE_ASSETS, path)
+    end
+
+    /* This action returns the build path for image sheets. */
+    action GetIphoneProvisioningKey returns text
+        return GetPropertyValue(IPHONE_PROVISIONING_KEY)
+    end
+
+    /* This action sets the build path for image sheets. */
+    action SetIphoneProvisioningKey(text path)
+        SetPropertyValue(IPHONE_PROVISIONING_KEY, path)
+    end
+
+    /* This action returns the build path for image sheets. */
+    action GetIphoneSigningIdentity returns text
+        return GetPropertyValue(IPHONE_SIGNING_IDENTITY)
+    end
+
+    /* This action sets the build path for image sheets. */
+    action SetIphoneSigningIdentity(text path)
+        SetPropertyValue(IPHONE_SIGNING_IDENTITY, path)
+    end
+
+    /* This action gets all image sheets loaded from the properties file. */
+    action GetImageSheets returns ImageSheets
+        text value = GetPropertyValue(IMAGESHEETS)
+        ImageSheets sheets
+        sheets:Load(value)
+        return sheets
+    end
+
+    /* This action sets a property values from an ImageSheets object. */
+    action SetImageSheets(ImageSheets sheets)
+        text value = sheets:Save()
+        SetPropertyValue(IMAGESHEETS, value)
+    end
+    /*
+        This action turns access to image sheets on or off in the project.
+    */
+    action EnableImageSheets(boolean value)
+        AddProperty(IMAGE_SHEET_ENABLED, "" + value)
+    end
+
+    /* This action asks whether image sheets are enabled on the project. */
+    action IsImageSheetsEnabled returns boolean
+        text value = GetPropertyValue(IMAGE_SHEET_ENABLED)
+        if value = "true"
+            return true
+        end
+
+        return false
+    end
+
+    /* This action returns the build path for image sheets. */
+    action GetImageSheetBuildPath returns text
+        return GetPropertyValue(IMAGE_SHEET_BUILD_PATH)
+    end
+
+    /* This action sets the build path for image sheets. */
+    action SetImageSheetBuildPath(text path)
+        SetPropertyValue(IMAGE_SHEET_BUILD_PATH, path)
+    end
+
+    /* This action turns recompiling image sheets after a successful build on or
+        off.
+    */
+    action EnableRecompileImageSheetsOnBuild(boolean value)
+        AddProperty(IMAGE_SHEET_REBUILD_ON_COMPILE, "" + value)
+    end
+
+    /* This action asks whether the project will recompile image sheets
+        after a successful recompile. 
+    */
+    action IsRecompileImageSheetsOnBuild returns boolean
+        text value = GetPropertyValue(IMAGE_SHEET_REBUILD_ON_COMPILE)
+        if value = "true"
+            return true
+        end
+
+        return false
+    end
+
+    /*
+        This action returns an array of all of the jar dependencies on the system.
+        These dependencies are listed as file paths from the root of the project. 
+        For example, a dependency that lives in the folder /dep and named abc.jar
+        would be /dep/abc.jar. 
+    */
+    action GetJarDependencies returns Array<text>
+        return GetMultipleValueProperty(JAR_DEPENDENCIES)
+    end
+
+    /*
+        This action sets an array of all of the jar dependencies in the project.
+        These dependencies are listed as file paths from the root of the project. 
+        For example, a dependency that lives in the folder /dep and named abc.jar
+        would be /dep/abc.jar. 
+    */
+    action SetJarDependencies(Array<text> dependencies)
+        SetMultipleValueProperty(JAR_DEPENDENCIES, dependencies)
+    end
+
+    /*
+        This action returns an array of all of the javascript dependencies in the project.
+        These dependencies are listed as file paths from the root of the project. 
+        For example, a dependency that lives in the folder /dep and named abc.js
+        would be /dep/abc.js.
+    */
+    action SetJavascriptDependencies(Array<text> dependencies)
+        SetMultipleValueProperty(JAVASCRIPT_DEPENDENCIES, dependencies)
+    end
+
+    /*
+        This action gets an array of all of the javascript dependencies in the project.
+        These dependencies are listed as file paths from the root of the project. 
+        For example, a dependency that lives in the folder /dep and named abc.js
+        would be /dep/abc.js.
+    */
+    action GetJavascriptDependencies returns Array<text>
+        return GetMultipleValueProperty(JAVASCRIPT_DEPENDENCIES)
+    end
+
+    /*
+        This action returns an array of all of the java class file dependencies in the project.
+        These dependencies are listed as file paths from the root of the project. 
+        For example, a dependency that lives in the folder /dep 
+        would be /dep and would include all class files in that folder and sub-folders.
+    */
+    action SetJavaClassDependencies(Array<text> dependencies)
+        SetMultipleValueProperty(JAVA_CLASS_DEPENDENCIES, dependencies)
+    end
+
+    /*
+        This action gets an array of all of the java class file dependencies in the project.
+        These dependencies are listed as file paths from the root of the project. 
+        For example, a dependency that lives in the folder /dep 
+        would be /dep and would include all class files in that folder and sub-folders.
+    */
+    action GetJavaClassDependencies returns Array<text>
+        return GetMultipleValueProperty(JAVA_CLASS_DEPENDENCIES)
+    end
+
+    action SetToDefault
+        Empty()
+        AddProperty(parent:Libraries.Development.Environment.Projects.Project:DEVELOPMENT_ENVIRONMENT_VERSION, 
+                    parent:Libraries.Development.Environment.Projects.Project:DEVELOPMENT_ENVIRONMENT_VERSION_NUMBER)
+        AddProperty(PROJECT_COMPILE_TYPE, JAVA_COMPILE_TYPE)
+        AddProperty(PROJECT_MAIN, PROJECT_MAIN_LOCATION)
+        AddProperty(EXECUTABLE_NAME, DEFAULT_EXECUTABLE_NAME)
+        AddProperty(parent:Libraries.Development.Environment.Projects.Project:PROJECT_TYPE, PROJECT_TYPE_NAME)
+    end
+
+    /*
+        This action gets the name of the executable file, regardless of target,
+        for the executable created.
+    */
+    action GetExecutableName returns text
+        return GetPropertyValue(EXECUTABLE_NAME)
+    end
+
+    /*
+        This action sets the name of the executable file, regardless of target,
+        for the executable created.
+    */
+    action SetExecutableName(text value)
+        SetPropertyValue(EXECUTABLE_NAME, value)
+    end
+
+    /* This action returns the type of project this is. */
+    action GetProjectCompileType returns text
+        return GetPropertyValue(PROJECT_COMPILE_TYPE)
+    end
+
+    /*
+        This action checks to see if a particular value is a valid type 
+        that can be compiled by the Quorum compiler.
+    */
+    action IsValidProjectCompileType(text value) returns boolean
+        if  value = JAVA_COMPILE_TYPE or
+            value = JAVASCRIPT_COMPILE_TYPE or
+            value = SERVER_COMPILE_TYPE or
+            value = LEGO_COMPILE_TYPE or
+            value = IPHONE_COMPILE_TYPE or
+            value = ANDROID_COMPILE_TYPE
+            return true
+        end
+
+        return false
+    end
+
+    /*
+        This action attempts to set the type of project to compile to. If an 
+        invalid flag is sent to the system, for example telling the compiler to
+        compile to something it cannot, then an exception is thrown.
+    */
+    action SetProjectCompileType(text value) 
+        if IsValidProjectCompileType(value)
+            SetPropertyValue(PROJECT_COMPILE_TYPE, value)
+        else 
+            alert("The property passed to the project, " + value + " is not a valid type that can be compiled in Quorum.")
+        end
+    end
+
+    action GetProjectType returns text
+        return PROJECT_TYPE_NAME
+    end
+end

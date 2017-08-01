@@ -1,0 +1,174 @@
+package Libraries.Development.Environment.Projects
+use Libraries.Containers.HashTable
+use Libraries.Containers.Iterator
+use Libraries.Containers.Array
+
+/*
+    This class represents a project on the system. It understands project 
+    property files, can read and write them, and can store information in 
+    memory about a project.
+*/
+class Project 
+    /* This hash table stores all properties in the project as key value pairs. */
+    HashTable<text, text> properties
+
+    public constant text PROJECT_NAME = ""
+    public constant text PROJECT_TYPE = ""
+    public constant text DEVELOPMENT_ENVIRONMENT_VERSION = "DevelopmentEnvironmentVersion"
+    public constant text DEVELOPMENT_ENVIRONMENT_VERSION_VALUE = "Quorum Studio 1.0"
+    constant text MULTIPLE_VALUE_SPLITTER = ";"
+
+    /* This action adds a property to the system. If a property of this name 
+        already exists, it is overriden. */
+    action AddProperty(text key, text value) 
+        properties:Add(key, value)
+    end
+
+    /*
+        This action removes all properties from the project.
+    */
+    action Empty
+        properties:Empty()
+    end
+
+    /*
+        This action returns a copy of a property currently stored in the project.
+        Modifying the returned property has no impact on the project. To modify
+        the properties in a project, use AddProperty or SetPropertyValue.
+    */
+    action GetProperty(text key) returns ProjectProperty
+        text value = properties:GetValue(key)
+        ProjectProperty property
+        property:SetKey(key)
+        property:SetValue(value)
+        return property
+    end
+
+    /* This action returns the value of a particular property. */
+    action GetPropertyValue(text key) returns text
+        return properties:GetValue(key)
+    end
+
+    /*
+        This action removes a property from the project.
+    */
+    action RemoveProperty(text key)
+        properties:RemoveAllKeys(key)
+    end
+
+    /* This action sets the value of a particular property. */
+    action SetPropertyValue(text key, text value) 
+        properties:Add(key, value)
+    end
+
+    /* This action returns whether or not the project has a particular property. */
+    action HasProperty(text key) returns boolean
+        return properties:HasKey(key)
+    end
+
+    /*
+        This action returns the number of properties that exist in the project. 
+        It has no relation to the size of a project on disk.
+    */
+    action GetSize returns integer
+        return properties:GetSize()
+    end
+
+    /*
+        This action makes a copy of all properties currently loaded 
+        into the project and returns an iterator to them. Modifying these copies
+        has no impact on the original project.
+    */
+    action GetProperties returns Iterator<ProjectProperty>
+        Array<ProjectProperty> returned
+        Iterator<text> keys = properties:GetKeyIterator()
+        repeat while keys:HasNext()
+            text key = keys:Next()
+            text value = properties:GetValue(key)
+            ProjectProperty property
+            property:SetKey(key)
+            property:SetValue(value)
+            returned:Add(property)
+        end
+
+        return returned:GetIterator()
+    end
+    
+    /* This action loads a properties file from disk, in JavaScript Object Notation (JSON) 
+        format, and puts them into the project in memory.
+    */
+    action LoadProperties
+
+    end
+
+    /*
+        This action saves the project properties to disk. If a file already 
+        exists for this project, the system overrides it.
+    */
+    action SaveProperties
+
+    end
+
+    /*
+        This action sets the project to its default properties. By default, a
+        project has no properties and thus will be cleared. Implementations of this,
+        for example in particular programming languages, should override this 
+        action and set the defaults however is appropriate for that system.
+    */
+    action SetToDefault
+        Empty()
+        AddProperty(DEVELOPMENT_ENVIRONMENT_VERSION, DEVELOPMENT_ENVIRONMENT_VERSION_VALUE)
+    end
+
+    /*
+        This action sets a multiple value property. These values have a default
+        separator of a semi-colon (;).
+    */
+    action SetMultipleValueProperty(text key, Array<text> values)
+        text totalValues = ""
+        if values = undefined
+            RemoveProperty(key)
+        elseif values:IsEmpty()
+            RemoveProperty(key)
+        else 
+            i = 0
+            repeat while i < values:GetSize()
+                text dependency = values:Get(i) + MULTIPLE_VALUE_SPLITTER
+                totalValues = totalValues + dependency
+                i = i + 1
+            end
+            AddProperty(key, totalValues)
+        end
+    end
+        
+    /* This action obtains a property under the assumption that it has 
+        multiple values. If the property does not actually contain multiple
+        values, it either returns an empty array, if the property does 
+        not exist, or one values, if it is not a multiple value property.
+    */
+    action GetMultipleValueProperty(text key) returns Array<text>
+        text value = properties:GetValue(key)
+        Array<text> values = value:Split(MULTIPLE_VALUE_SPLITTER)
+        return values
+    end
+
+
+    /* This action is a helper action for returning the type of project
+        loaded onto the system. Implementations should return a human
+        readable name for the project type being loaded. */
+    blueprint action GetProjectType returns text
+
+    /*
+        This action gets the name of the project itself.
+    */
+    action GetProjectName returns text
+        return GetPropertyValue(PROJECT_NAME)
+    end
+
+    /*
+        This action sets the name of the project itself.
+    */
+    action SetProjectName(text value)
+        SetPropertyValue(PROJECT_NAME, value)
+    end
+end

@@ -1,0 +1,77 @@
+package Libraries.Development.Environment.Projects.Quorum
+use Libraries.Containers.HashTable
+use Libraries.Containers.Array
+use Libraries.Containers.Iterator
+
+/*
+    This class represents all image sheets stored and loaded from a project
+    properties file.
+*/
+class ImageSheets
+    /* This hashtable stores all of the image sheet objects. */
+    HashTable<text, ImageSheet> sheets
+    /* This is the default separator for any saving and loading of project properties. */
+    constant text DEFAULT_SEPARATOR = ";"
+
+    /*
+        This action adds an image sheet to the system. The values are copied
+        before storing them.
+    */
+    action Add(ImageSheet sheet)
+        text name = sheet:GetName()
+        sheets:Add(name, sheet)
+    end
+
+    /* This action gets an image sheet from its name */
+    action Get(text sheet) returns ImageSheet
+        return sheets:GetValue(sheet)
+    end
+
+    /* This action gets an Iterator over all image sheets on the system. */
+    action GetIterator returns Iterator<ImageSheet>
+        return sheets:GetValueIterator()
+    end
+
+    /* This action returns the number of ImageSheet objects loaded. */
+    action GetSize returns integer
+        return sheets:GetSize()
+    end
+
+    /* This action removes an image sheet from the system. */
+    action Remove(text sheet)
+        sheets:RemoveAllKeys(sheet)
+    end
+
+    /* This action loads a set of ImageSheet objects by parsing a string
+        that may have been stored in a project properties file. 
+    */
+    action Load(text sheets)
+        Array<text> values = sheets:Split(DEFAULT_SEPARATOR)
+        if values = undefined 
+            return now
+        else
+            i = 0
+            repeat while i < values:GetSize()
+                ImageSheet sheet
+                text value = values:Get(i)
+                sheet:Load(value)
+                me:sheets:Add(sheet:GetName(), sheet)
+                i = i + 1
+            end
+        end
+    end
+
+    /* 
+        This action takes all of the ImageSheet objects and stores them 
+        into a text value that can be stored in a project properties file.
+    */
+    action Save returns text
+        Iterator<ImageSheet> values = GetIterator()
+        text result = ""
+        repeat while values:HasNext()
+            ImageSheet sheet = values:Next()
+            result = result + sheet:Save() + DEFAULT_SEPARATOR
+        end
+        return result
+    end
+end
