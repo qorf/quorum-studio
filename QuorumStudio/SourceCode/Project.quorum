@@ -2,6 +2,9 @@ package Libraries.Development.Environment.Projects
 use Libraries.Containers.HashTable
 use Libraries.Containers.Iterator
 use Libraries.Containers.Array
+use Libraries.System.File
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Data.Formats.JavaScriptObjectNotationObject
 
 /*
     This class represents a project on the system. It understands project 
@@ -97,15 +100,18 @@ class Project
     /* This action loads a properties file from disk, in JavaScript Object Notation (JSON) 
         format, and puts them into the project in memory.
     */
-    action LoadProperties
-
+    action LoadProperties(File file)
+        JavaScriptObjectNotation notation
+        text value = file:Read()
+        JavaScriptObjectNotationObject json = notation:ReadToObject(value)
+        
     end
 
     /*
         This action saves the project properties to disk. If a file already 
         exists for this project, the system overrides it.
     */
-    action SaveProperties
+    action SaveProperties(File file)
 
     end
 
