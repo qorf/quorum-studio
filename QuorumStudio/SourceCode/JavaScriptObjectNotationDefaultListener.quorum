@@ -1,7 +1,14 @@
 package Libraries.Data.Formats
+use Libraries.Containers.Stack
 
 class JavaScriptObjectNotationDefaultListener is JavaScriptObjectNotationListener
     JavaScriptObjectNotationObject object
+    Stack<JavaScriptObjectNotationObject> objects
+    Stack<integer> opStack
+    constant integer inObject = 0
+    constant integer inArray = 1
+    constant integer inPair = 2
+    constant integer inValue = 3
 
     action GetObject returns JavaScriptObjectNotationObject
         return object
@@ -14,36 +21,50 @@ class JavaScriptObjectNotationDefaultListener is JavaScriptObjectNotationListene
     end
 
     action EnterObject
-        output "object"
+        JavaScriptObjectNotationObject newObject
+        object:Add(newObject)
+        objects:Push(newObject)
+        opStack:Push(inObject)
     end
 
     action ExitObject
-        output "exit object"
+        objects:Pop()
+        opStack:Pop()
     end
 
     action EnterArray
+        opStack:Push(inArray)
     end
 
     action ExitArray
+        opStack:Pop()
     end
 
     action EnterPair
+        opStack:Push(inPair)
     end
 
     action ExitPair
+        opStack:Pop()
     end
 
     action EnterValue
-        output "value"
+        opStack:Push(inValue)
     end
 
     action ExitValue
-        output "exit value"
+        opStack:Pop()
     end
 
     action VisitString(JavaScriptObjectNotationTerminal terminal)
+        integer op = opStack:Peek()
+        JavaScriptObjectNotationObject obj = objects:Peek()
         JavaScriptObjectNotationToken token = terminal:GetToken()
-        output token:value
+        if op = inObject
+            obj:SetKey(token:value)
+        elseif op = inValue
+            obj:SetText(token:value)
+        end
     end
 
     action VisitNumber(JavaScriptObjectNotationTerminal terminal)

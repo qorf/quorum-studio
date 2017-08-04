@@ -15,9 +15,18 @@ class Main is Game
     action Test2
         JavaScriptObjectNotation note
         File file
+        file:SetWorkingDirectory("/Users/andystefik/Repositories/quorumstudio/QuorumStudio/")
         file:SetPath("Tests/ProjectFiles/BasicProject.json")
-        JavaScriptObjectNotationObject object = note:ReadToObject(file)
-        integer a = 5
+        text read = file:Read()
+        JavaScriptObjectNotationObject object = note:ReadToObject(read)
+        i = 0
+        output "{"
+        repeat while i < object:GetSize()
+            JavaScriptObjectNotationObject value = object:Get(i)
+            output value:GetKey() + ", " + value:GetText()
+            i = i + 1
+        end
+        output "}"
     end
 
     action CreateGame
