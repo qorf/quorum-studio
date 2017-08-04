@@ -1,18 +1,134 @@
 package Libraries.Data.Formats
 use Libraries.Containers.HashTable
+use Libraries.Containers.Array
 
 class JavaScriptObjectNotationObject 
-    HashTable<text, JavaScriptObjectNotationObject> hash
+    Array<JavaScriptObjectNotationObject> array
+    text textValue = ""
+    integer integerValue = 0
+    number numberValue = 0.0
+    boolean booleanValue = false
+    integer type = 0
+    constant integer INTEGER = 1
+    constant integer NUMBER = 2
+    constant integer TEXT = 3
+    constant integer BOOLEAN = 4
+    text key = ""
 
-    action Add(text key, JavaScriptObjectNotationObject object)
-        hash:Add(key, object)
+    action GetKey returns text
+        return key
     end
 
-    action Remove(text key)
-        hash:RemoveAllKeys(key)
+    action SetKey(text key)
+        me:key = key
+    end
+
+    action Add(JavaScriptObjectNotationObject object)
+        array:Add(object)
+    end
+
+    action Add(text key, text value) 
+        JavaScriptObjectNotationObject object
+        object:SetText(value)
+        object:SetKey(key)
+        array:Add(object)
+    end
+
+    action Add(text key, integer value) 
+        JavaScriptObjectNotationObject object
+        object:SetInteger(value)
+        object:SetKey(key)
+        array:Add(object)
+    end
+
+    action Add(text key, boolean value) 
+        JavaScriptObjectNotationObject object
+        object:SetBoolean(value)
+        object:SetKey(key)
+        array:Add(object)
+    end
+
+    action Add(text key, number value) 
+        JavaScriptObjectNotationObject object
+        object:SetNumber(value)
+        object:SetKey(key)
+        array:Add(object)
+    end
+
+    action GetText returns text
+        return textValue
+    end
+
+    action GetInteger returns integer
+        return integerValue
+    end
+
+    action GetNumber returns number
+        return numberValue
+    end
+
+    action GetBoolean returns boolean
+        return booleanValue
+    end
+
+    action SetText(text value)
+        textValue = value
+        type = TEXT
+    end
+
+    action SetInteger(integer value)
+        integerValue = value
+        type = INTEGER
+    end
+
+    action SetNumber(number value)
+        numberValue = value
+        type = NUMBER
+    end
+
+    action SetBoolean(boolean value)
+        booleanValue = value
+        type = BOOLEAN
+    end
+
+    action IsBoolean returns boolean
+        if type = BOOLEAN
+           return true
+        end
+        return false
+    end
+
+    action IsInteger returns boolean
+        if type = INTEGER
+           return true
+        end
+        return false
+    end
+
+    action IsText returns boolean
+        if type = TEXT
+           return true
+        end
+        return false
+    end
+
+    action IsNumber returns boolean
+        if type = NUMBER
+           return true
+        end
+        return false
+    end
+
+    action Get(integer index) returns JavaScriptObjectNotationObject
+        JavaScriptObjectNotationObject value = array:Get(index)
+        return value
+    end
+
+    action Remove(integer index)
+        array:RemoveAt(index)
     end
 
     action GetSize returns integer
-        return hash:GetSize()
+        return array:GetSize()
     end
 end

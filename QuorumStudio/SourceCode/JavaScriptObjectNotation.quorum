@@ -22,11 +22,12 @@ class JavaScriptObjectNotation
     end
 
     action Read(text value)
-
+        lexer:Read(value)
+        parser:Parse(lexer)
     end
 
     action ReadToObject(File file) returns JavaScriptObjectNotationObject
-        if file not= undefined
+        if file not= undefined and file:Exists() and file:IsFile()
             text value = file:Read()
             return ReadToObject(value)
         end
@@ -34,6 +35,17 @@ class JavaScriptObjectNotation
     end
 
     action ReadToObject(text value) returns JavaScriptObjectNotationObject
-        return undefined
+        if value = undefined
+            return undefined
+        end
+        JavaScriptObjectNotationDefaultListener listen
+        JavaScriptObjectNotationLexer lex
+        JavaScriptObjectNotationParser parse
+
+        lex:SetListener(listen)
+        parse:SetListener(listen)
+        lex:Read(value)
+        parse:Parse(lex)
+        return listen:GetObject()
     end
 end

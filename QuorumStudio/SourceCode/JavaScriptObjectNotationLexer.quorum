@@ -2,6 +2,10 @@ package Libraries.Data.Formats
 use Libraries.System.File
 use Libraries.Containers.Array
 
+/*
+    Provides a basic lexer for JavaScript Object Notation formatted text values
+    or files (JSON). 
+*/
 class JavaScriptObjectNotationLexer 
     public constant integer STRING = 0
     public constant integer LEFT_BRACKET = 1
@@ -15,31 +19,44 @@ class JavaScriptObjectNotationLexer
     public constant integer FALSE = 9
     public constant integer NULL = 10
 
+    /* The raw tokens from the lex. */
     Array<JavaScriptObjectNotationToken> tokens
+
+    /* An optional listener that can be set to listen to events while lexing. */
     JavaScriptObjectNotationListener listener = undefined
 
+    /* Returns the listener on the lex. */
     action GetListener returns JavaScriptObjectNotationListener
         return listener
     end
 
+    /* Sets the listener on the lex. */
     action SetListener(JavaScriptObjectNotationListener listener)
         me:listener = listener
     end
 
+    /* Returns a token at a particular position in the lex. */
     action GetToken(integer i) returns JavaScriptObjectNotationToken
         return tokens:Get(i)
     end
 
+    /* Returns the number of tokens in the token stream. */
     action GetSize returns integer
         return tokens:GetSize()
     end
 
+    /* Empties the list of tokens. */
+    action Empty
+        tokens:Empty()
+    end
+
+    /* Returns whether or not there are tokens in the token stream. */
     action IsEmpty returns boolean
         return tokens:IsEmpty()
     end
 
-    action Read(File file)
-        text value = file:Read()
+    /* Reads a text value and converts into a token stream. */
+    action Read(text value)
         text quote = value:GetDoubleQuote()
         text line = value:GetCarriageReturn() + value:GetLineFeed()
         integer currentLine = 0
@@ -283,6 +300,13 @@ class JavaScriptObjectNotationLexer
         end
     end
 
+    /* Reads a file and converts it into a token stream. */
+    action Read(File file)
+        text value = file:Read()
+        Read(value)
+    end
+
+    /* Private helper action for determining if a value is a digit. */
     private action IsDigit(text char) returns boolean
         if  char = "0" or char = "1" or char = "2" or char = "3" or char = "4" or
             char = "5" or char = "6" or char = "7" or char = "8" or char = "9"
@@ -291,6 +315,7 @@ class JavaScriptObjectNotationLexer
         return false
     end
 
+    /* An action that handles error message throwing if something goes wrong. */
     action ThrowError(integer line, integer column, integer index, text message)
         if listener not= undefined
             JavaScriptObjectNotationError error
