@@ -2,7 +2,7 @@ package Libraries.Data.Formats
 use Libraries.Containers.Stack
 
 class JavaScriptObjectNotationDefaultListener is JavaScriptObjectNotationListener
-    JavaScriptObjectNotationObject object
+    JavaScriptObjectNotationObject object = undefined
     Stack<JavaScriptObjectNotationObject> objects
     Stack<integer> opStack
     constant integer inObject = 0
@@ -22,9 +22,14 @@ class JavaScriptObjectNotationDefaultListener is JavaScriptObjectNotationListene
 
     action EnterObject
         JavaScriptObjectNotationObject newObject
-        object:Add(newObject)
+        
         objects:Push(newObject)
         opStack:Push(inObject)
+        if object = undefined
+            object = newObject
+        else 
+            object:Add(newObject)
+        end
     end
 
     action ExitObject
@@ -41,11 +46,15 @@ class JavaScriptObjectNotationDefaultListener is JavaScriptObjectNotationListene
     end
 
     action EnterPair
+        JavaScriptObjectNotationObject newObject
         opStack:Push(inPair)
+        objects:Push(newObject)
+        object:Add(newObject)
     end
 
     action ExitPair
         opStack:Pop()
+        objects:Pop()
     end
 
     action EnterValue
@@ -60,7 +69,7 @@ class JavaScriptObjectNotationDefaultListener is JavaScriptObjectNotationListene
         integer op = opStack:Peek()
         JavaScriptObjectNotationObject obj = objects:Peek()
         JavaScriptObjectNotationToken token = terminal:GetToken()
-        if op = inObject
+        if op = inPair
             obj:SetKey(token:value)
         elseif op = inValue
             obj:SetText(token:value)
@@ -68,23 +77,49 @@ class JavaScriptObjectNotationDefaultListener is JavaScriptObjectNotationListene
     end
 
     action VisitNumber(JavaScriptObjectNotationTerminal terminal)
+        integer op = opStack:Peek()
+        JavaScriptObjectNotationObject obj = objects:Peek()
         JavaScriptObjectNotationToken token = terminal:GetToken()
-        output token:value
+        if op = inPair
+            obj:SetKey(token:value)
+        elseif op = inValue
+            number val = cast(number, token:value)
+            obj:SetNumber(val)
+        end
     end
 
     action VisitTrue(JavaScriptObjectNotationTerminal terminal)
+        integer op = opStack:Peek()
+        JavaScriptObjectNotationObject obj = objects:Peek()
         JavaScriptObjectNotationToken token = terminal:GetToken()
-        output token:value
+        if op = inPair
+            obj:SetKey(token:value)
+        elseif op = inValue
+            obj:SetBoolean(true)
+        end
     end
 
     action VisitFalse(JavaScriptObjectNotationTerminal terminal)
+        integer op = opStack:Peek()
+        JavaScriptObjectNotationObject obj = objects:Peek()
         JavaScriptObjectNotationToken token = terminal:GetToken()
-        output token:value
+        if op = inPair
+            obj:SetKey(token:value)
+        elseif op = inValue
+            obj:SetBoolean(false)
+        end
     end
 
     action VisitNull(JavaScriptObjectNotationTerminal terminal)
+        integer op = opStack:Peek()
+        JavaScriptObjectNotationObject obj = objects:Peek()
         JavaScriptObjectNotationToken token = terminal:GetToken()
-        output token:value
+        if op = inPair
+            obj:SetKey(token:value)
+        elseif op = inValue
+            boolean val = cast(boolean, token:value)
+            obj:SetBoolean(val)
+        end
     end
 
     action VisitError(JavaScriptObjectNotationError error)
