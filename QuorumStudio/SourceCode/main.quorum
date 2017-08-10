@@ -15,38 +15,13 @@ class Main is Game
     action Test2
         JavaScriptObjectNotation note
         File file
-        file:SetWorkingDirectory("/Users/andreasstefik/Repositories/quorumstudio/QuorumStudio/")
+        file:SetWorkingDirectory("/Users/stefika/Repositories/quorumstudio/QuorumStudio/")
         //file:SetPath("Tests/ProjectFiles/BasicProject.json")
         file:SetPath("Tests/ProjectFiles/ImageSheetsProject.json")
         text read = file:Read()
         JavaScriptObjectNotationObject object = note:ReadToObject(read)
-        i = 0
-        output "{"
-        repeat while i < object:GetSize()
-            JavaScriptObjectNotationObject value = object:Get(i)
-
-            if value:IsText()
-                output value:GetKey() + ", " + value:GetText()
-            elseif value:IsBoolean()
-                output value:GetKey() + ", " + value:GetBoolean()
-            elseif value:IsInteger()
-                output value:GetKey() + ", " + value:GetInteger()
-            elseif value:IsNumber()
-                output value:GetKey() + ", " + value:GetNumber()
-            elseif value:IsArray()
-                text key = value:GetKey()
-                j = 0 
-                repeat while j < value:GetSize()
-                    JavaScriptObjectNotationObject arrayValue = value:Get(j)
-                    if arrayValue:IsText()
-                        key = key + ", " + arrayValue:GetText()
-                    end
-                    j = j + 1
-                end
-            end
-            i = i + 1
-        end
-        output "}"
+        text value = object:ToText()
+        output value
     end
 
     action CreateGame

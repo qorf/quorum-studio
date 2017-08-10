@@ -15,7 +15,27 @@ class JavaScriptObjectNotationObject
     constant integer BOOLEAN = 4
     constant integer NULL = 5
     constant integer ARRAY = 6
+    constant integer OBJECT = 7
     text key = ""
+    boolean object = false
+    integer spaces = 4
+    boolean prettyPrint = true
+
+    action IsPrettyPrint returns boolean
+        return prettyPrint
+    end
+
+    action SetPrettyPrint(boolean print)
+        prettyPrint = print
+    end
+
+    action IsObject returns boolean
+        return type = OBJECT
+    end
+
+    action SetObject
+        type = OBJECT
+    end
 
     action GetKey returns text
         return key
@@ -154,5 +174,79 @@ class JavaScriptObjectNotationObject
 
     action GetSize returns integer
         return array:GetSize()
+    end
+
+    private action GetSpaces(integer level) returns text
+        text space = ""
+        repeat spaces * level times
+            space = space + " "
+        end
+        return space
+    end
+
+    private action ToText(integer level) returns text
+        text result = ""
+        text dq = result:GetDoubleQuote()
+        text line = result:GetCarriageReturn()
+        text space = ""
+        if IsPrettyPrint()
+            space = GetSpaces(level)
+        end
+
+        if key not= undefined and not key:IsEmpty()
+            result = result + space + dq + key + dq + ": " 
+        end
+
+        if IsObject()
+            if level > 0
+                result = result + line + space + "{" + line
+            else
+                result = result + "{" + line
+            end
+        elseif IsArray() 
+            result = result + "["
+        end
+            
+        if IsText()
+            result = result + dq + textValue + dq
+        elseif IsBoolean()
+            result = result + booleanValue
+        elseif IsInteger()
+            result = result + integerValue
+        elseif IsNumber()
+            result = result + numberValue
+        end
+        
+        //get all children
+        i = 0
+        repeat while i < array:GetSize()
+            JavaScriptObjectNotationObject value = array:Get(i)
+            if IsArray()
+                result = result + value:ToText(level)
+            else
+                result = result + value:ToText(level + 1)
+            end
+
+            if i not= array:GetSize() - 1
+                text isNext = ", "
+                if not IsArray()
+                    isNext = isNext + line
+                end
+                result = result + isNext
+            end
+            i = i + 1
+        end
+
+        if IsObject()
+            result = result + line + space + "}"
+        elseif IsArray() 
+            result = result + "]"
+        end
+
+        return result
+    end
+
+    action ToText returns text
+        return ToText(0)
     end
 end

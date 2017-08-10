@@ -23,14 +23,21 @@ class JavaScriptObjectNotationDefaultListener is JavaScriptObjectNotationListene
 
     action EnterObject
         JavaScriptObjectNotationObject newObject
-        
-        objects:Push(newObject)
-        opStack:Push(inObject)
+        newObject:SetObject()
+        //this is the root, which is a special object
         if object = undefined
             object = newObject
+            
+        //this is a new object being pushed on. This object is the 
+        //value of another JSON element, so make the "parent" the object
         else 
-            object:Add(newObject)
+            JavaScriptObjectNotationObject value = objects:Peek()
+            //value:SetObject()
+            value:Add(newObject)
         end
+
+        objects:Push(newObject)
+        opStack:Push(inObject)
     end
 
     action ExitObject
@@ -48,9 +55,10 @@ class JavaScriptObjectNotationDefaultListener is JavaScriptObjectNotationListene
 
     action EnterPair
         JavaScriptObjectNotationObject newObject
+        JavaScriptObjectNotationObject peek = objects:Peek()
         opStack:Push(inPair)
         objects:Push(newObject)
-        object:Add(newObject)
+        peek:Add(newObject)
     end
 
     action ExitPair
