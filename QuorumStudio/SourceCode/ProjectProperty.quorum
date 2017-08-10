@@ -1,11 +1,13 @@
 package Libraries.Development.Environment.Projects
+use Libraries.Containers.Array
+use Libraries.Containers.Iterator
 
 /*
     This class provides a property for a particular project.
 */
 class ProjectProperty 
     text key = ""
-    text value = ""
+    Array<text> values
 
     /* Returns the name of the property */
     action GetKey returns text
@@ -13,8 +15,16 @@ class ProjectProperty
     end
 
     /* Returns the value of the property */
-    action GetValue returns text
-        return value
+    action GetValueIterator returns Iterator<text>
+        return values:GetIterator()
+    end
+
+    action GetFirstValue returns text
+        if values:IsEmpty()
+            return undefined
+        else
+            return values:Get(0)
+        end
     end
 
     /* Sets the name of the property */
@@ -22,8 +32,26 @@ class ProjectProperty
         me:key = key
     end
 
-    /* Sets the value of the property */
-    action SetValue(text value)
-        me:value = value
+    action Add(text value)
+        values:Add(value)
+    end
+
+    action Get(integer index) returns text
+        return values:Get(index)
+    end
+
+    action GetSize returns integer
+        return values:GetSize()
+    end
+
+    action Copy returns ProjectProperty
+        ProjectProperty property
+        property:SetKey(me:key)
+        i = 0
+        repeat while i < values:GetSize()
+            property:Add(values:Get(i))
+            i = i + 1
+        end
+        return property
     end
 end

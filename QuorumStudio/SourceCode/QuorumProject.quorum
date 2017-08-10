@@ -1,6 +1,12 @@
 package Libraries.Development.Environment.Projects.Quorum
 use Libraries.Development.Environment.Projects.Project
 use Libraries.Containers.Array
+use Libraries.Development.Environment.Projects.ProjectProperty
+use Libraries.Containers.Iterator
+use Libraries.System.File
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Data.Formats.JavaScriptObjectNotationObject
+use Libraries.System.Logger
 
 /*
     This class loads a Quorum project into the Integrated Development Environment.
@@ -25,7 +31,7 @@ class QuorumProject is Project
     public constant text PROJECT_MAIN_LOCATION = "/SourceCode/Main.quorum"
 
     /* This property represents what kind of project in Quorum this is. */
-    public constant text PROJECT_COMPILE_TYPE = "ProjectType"
+    public constant text PROJECT_TYPE = "ProjectType"
     /* This property is set for Project type if it is compiled to Java Bytecode. */
     public constant text JAVA_COMPILE_TYPE = "JavaType"
     /* This property is set for Project type if it is compiled to Javascript. */
@@ -55,20 +61,22 @@ class QuorumProject is Project
     /* This property tells us the path for the image sheets.*/
     public constant text IMAGE_SHEET_BUILD_PATH = "ImageSheetBuildPath"
     /* This property stores the data for the image sheets themselves. */
-    public constant text IMAGESHEETS = "ImageSheets"
+    public constant text IMAGE_SHEETS = "ImageSheets"
 
     /* This property stores the location of any mobile assets. */
     public constant text MOBILE_ASSETS = "MobileAssets"
     public constant text IPHONE_PROVISIONING_KEY = "IphoneProvisioningKey"
     public constant text IPHONE_SIGNING_IDENTITY = "IphoneSigningIdentity"
+    Logger logger
 
-    on create
-        SetToDefault()
-    end
+    /* This is an in memory representation of the image sheets class. */
+    ImageSheets sheets
 
     /* This action returns the build path for image sheets. */
     action GetMobileAssetsPath returns text
-        return GetPropertyValue(MOBILE_ASSETS)
+        ProjectProperty property = GetProperty(MOBILE_ASSETS)
+        text value = property:GetFirstValue()
+        return value
     end
 
     /* This action sets the build path for image sheets. */
@@ -78,7 +86,9 @@ class QuorumProject is Project
 
     /* This action returns the build path for image sheets. */
     action GetIphoneProvisioningKey returns text
-        return GetPropertyValue(IPHONE_PROVISIONING_KEY)
+        ProjectProperty property = GetProperty(IPHONE_PROVISIONING_KEY)
+        text value = property:GetFirstValue()
+        return value
     end
 
     /* This action sets the build path for image sheets. */
@@ -88,7 +98,9 @@ class QuorumProject is Project
 
     /* This action returns the build path for image sheets. */
     action GetIphoneSigningIdentity returns text
-        return GetPropertyValue(IPHONE_SIGNING_IDENTITY)
+        ProjectProperty property = GetProperty(IPHONE_SIGNING_IDENTITY)
+        text value = property:GetFirstValue()
+        return value
     end
 
     /* This action sets the build path for image sheets. */
@@ -98,16 +110,12 @@ class QuorumProject is Project
 
     /* This action gets all image sheets loaded from the properties file. */
     action GetImageSheets returns ImageSheets
-        text value = GetPropertyValue(IMAGESHEETS)
-        ImageSheets sheets
-        sheets:Load(value)
         return sheets
     end
 
     /* This action sets a property values from an ImageSheets object. */
     action SetImageSheets(ImageSheets sheets)
-        text value = sheets:Save()
-        SetPropertyValue(IMAGESHEETS, value)
+        me:sheets = sheets
     end
     /*
         This action turns access to image sheets on or off in the project.
@@ -118,7 +126,8 @@ class QuorumProject is Project
 
     /* This action asks whether image sheets are enabled on the project. */
     action IsImageSheetsEnabled returns boolean
-        text value = GetPropertyValue(IMAGE_SHEET_ENABLED)
+        ProjectProperty property = GetProperty(IMAGE_SHEET_ENABLED)
+        text value = property:GetFirstValue()
         if value = "true"
             return true
         end
@@ -128,7 +137,9 @@ class QuorumProject is Project
 
     /* This action returns the build path for image sheets. */
     action GetImageSheetBuildPath returns text
-        return GetPropertyValue(IMAGE_SHEET_BUILD_PATH)
+        ProjectProperty property = GetProperty(IMAGE_SHEET_BUILD_PATH)
+        text value = property:GetFirstValue()
+        return value
     end
 
     /* This action sets the build path for image sheets. */
@@ -147,7 +158,8 @@ class QuorumProject is Project
         after a successful recompile. 
     */
     action IsRecompileImageSheetsOnBuild returns boolean
-        text value = GetPropertyValue(IMAGE_SHEET_REBUILD_ON_COMPILE)
+        ProjectProperty property = GetProperty(IMAGE_SHEET_REBUILD_ON_COMPILE)
+        text value = property:GetFirstValue()
         if value = "true"
             return true
         end
@@ -161,8 +173,11 @@ class QuorumProject is Project
         For example, a dependency that lives in the folder /dep and named abc.jar
         would be /dep/abc.jar. 
     */
-    action GetJarDependencies returns Array<text>
-        return GetMultipleValueProperty(JAR_DEPENDENCIES)
+    action GetJarDependencies returns Iterator<text>
+        ProjectProperty property = GetProperty(JAR_DEPENDENCIES)
+        property = property:Copy()
+        Iterator<text> iterator = property:GetValueIterator()
+        return iterator
     end
 
     /*
@@ -191,8 +206,11 @@ class QuorumProject is Project
         For example, a dependency that lives in the folder /dep and named abc.js
         would be /dep/abc.js.
     */
-    action GetJavascriptDependencies returns Array<text>
-        return GetMultipleValueProperty(JAVASCRIPT_DEPENDENCIES)
+    action GetJavascriptDependencies returns Iterator<text>
+        ProjectProperty property = GetProperty(JAVASCRIPT_DEPENDENCIES)
+        property = property:Copy()
+        Iterator<text> iterator = property:GetValueIterator()
+        return iterator
     end
 
     /*
@@ -211,18 +229,21 @@ class QuorumProject is Project
         For example, a dependency that lives in the folder /dep 
         would be /dep and would include all class files in that folder and sub-folders.
     */
-    action GetJavaClassDependencies returns Array<text>
-        return GetMultipleValueProperty(JAVA_CLASS_DEPENDENCIES)
+    action GetJavaClassDependencies returns Iterator<text>
+        ProjectProperty property = GetProperty(JAVA_CLASS_DEPENDENCIES)
+        property = property:Copy()
+        Iterator<text> iterator = property:GetValueIterator()
+        return iterator
     end
 
     action SetToDefault
         Empty()
         AddProperty(parent:Libraries.Development.Environment.Projects.Project:DEVELOPMENT_ENVIRONMENT_VERSION, 
                     parent:Libraries.Development.Environment.Projects.Project:DEVELOPMENT_ENVIRONMENT_VERSION_VALUE)
-        AddProperty(PROJECT_COMPILE_TYPE, JAVA_COMPILE_TYPE)
+        AddProperty(PROJECT_TYPE, JAVA_COMPILE_TYPE)
         AddProperty(PROJECT_MAIN, PROJECT_MAIN_LOCATION)
         AddProperty(EXECUTABLE_NAME, DEFAULT_EXECUTABLE_NAME)
-        AddProperty(parent:Libraries.Development.Environment.Projects.Project:PROJECT_TYPE, PROJECT_TYPE_NAME)
+        AddProperty(PROJECT_TYPE, PROJECT_TYPE_NAME)
     end
 
     /*
@@ -230,7 +251,9 @@ class QuorumProject is Project
         for the executable created.
     */
     action GetExecutableName returns text
-        return GetPropertyValue(EXECUTABLE_NAME)
+        ProjectProperty property = GetProperty(EXECUTABLE_NAME)
+        text value = property:GetFirstValue()
+        return value
     end
 
     /*
@@ -243,7 +266,9 @@ class QuorumProject is Project
 
     /* This action returns the type of project this is. */
     action GetProjectCompileType returns text
-        return GetPropertyValue(PROJECT_COMPILE_TYPE)
+        ProjectProperty property = GetProperty(PROJECT_TYPE)
+        text value = property:GetFirstValue()
+        return value
     end
 
     /*
@@ -270,7 +295,7 @@ class QuorumProject is Project
     */
     action SetProjectCompileType(text value) 
         if IsValidProjectCompileType(value)
-            SetPropertyValue(PROJECT_COMPILE_TYPE, value)
+            SetPropertyValue(PROJECT_TYPE, value)
         else 
             alert("The property passed to the project, " + value + " is not a valid type that can be compiled in Quorum.")
         end
@@ -278,5 +303,154 @@ class QuorumProject is Project
 
     action GetProjectType returns text
         return PROJECT_TYPE_NAME
+    end
+
+    /* This action loads a properties file from disk, in JavaScript Object Notation (JSON) 
+        format, and puts them into the project in memory.
+    */
+    action LoadProperties(File file)
+        JavaScriptObjectNotation notation
+        text value = file:Read()
+        JavaScriptObjectNotationObject json = notation:ReadToObject(value)
+        //get all the properties from JSON
+        i = 0
+        repeat while i < json:GetSize()
+            JavaScriptObjectNotationObject obj = json:Get(i)
+            
+            ProcessKey(obj)
+            i = i + 1
+        end
+    end
+
+    private action ProcessKey(JavaScriptObjectNotationObject object)
+        text key = object:GetKey()
+        text textMessage = "Could not load property " + key + ", as its value was not of type text."
+        text booleanMessage = "Could not load property " + key + ", as its value was not of type boolean."
+        if key = parent:Libraries.Development.Environment.Projects.Project:PROJECT_NAME
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = parent:Libraries.Development.Environment.Projects.Project:DEVELOPMENT_ENVIRONMENT_VERSION
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = PROJECT_TYPE
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+
+            text type = object:GetText()
+            if not IsValidProjectType(type)
+                logger:Log("A project type of " + type + " is listed in the project properties file, but this is invalid.")
+                return now
+            end
+
+            AddProperty(key, object:GetText())
+        elseif key = EXECUTABLE_NAME
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = PROJECT_MAIN
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = JAR_DEPENDENCIES
+            AddMultivalueTextProperty(object)
+        elseif key = JAVASCRIPT_DEPENDENCIES
+            AddMultivalueTextProperty(object)
+        elseif key = JAVA_CLASS_DEPENDENCIES
+            AddMultivalueTextProperty(object)
+        elseif key = IMAGE_SHEETS
+        elseif key = IMAGE_SHEET_ENABLED
+            if not object:IsBoolean()
+                logger:Log(booleanMessage)
+                return now
+            end
+            AddProperty(key, "" + object:GetBoolean())
+        elseif key = IMAGE_SHEET_REBUILD_ON_COMPILE
+            if not object:IsBoolean()
+                logger:Log(booleanMessage)
+                return now
+            end
+            AddProperty(key, "" + object:GetBoolean())
+        elseif key = IMAGE_SHEET_BUILD_PATH
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = MOBILE_ASSETS
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = IPHONE_PROVISIONING_KEY
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = IPHONE_SIGNING_IDENTITY
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        end
+    end
+
+    private action AddMultivalueTextProperty(JavaScriptObjectNotationObject object)
+        text key = object:GetKey()
+        Array<text> dependencies
+        if not object:IsArray()
+            logger:Log("Could not load property " + key + ", as its value was not of type array.")
+            return now
+        end
+
+        i = 0
+        repeat while i < object:GetSize()
+            JavaScriptObjectNotationObject value = object:Get(i)
+            if not value:IsText()
+                logger:Log("Could not load property " + key + ", as its value was not of type text.")
+                return now
+            end
+
+            text dependency = value:GetText()
+            dependencies:Add(dependency)
+            i = i + 1
+        end
+        AddProperty(key, dependencies)
+    end
+    /*
+        This value returns true if the project type in the properties 
+        file is a valid type.
+    */
+    private action IsValidProjectType(text type) returns boolean
+        if type = JAVASCRIPT_COMPILE_TYPE or 
+           type = SERVER_COMPILE_TYPE or
+           type = LEGO_COMPILE_TYPE or
+           type = IPHONE_COMPILE_TYPE or
+           type = ANDROID_COMPILE_TYPE 
+           return true
+        end
+
+        return false
+    end
+    /*
+        This action saves the project properties to disk. If a file already 
+        exists for this project, the system overrides it.
+    */
+    action SaveProperties(File file)
+
     end
 end

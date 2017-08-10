@@ -13,10 +13,9 @@ use Libraries.Data.Formats.JavaScriptObjectNotationObject
 */
 class Project 
     /* This hash table stores all properties in the project as key value pairs. */
-    HashTable<text, text> properties
+    HashTable<text, ProjectProperty> properties
 
-    public constant text PROJECT_NAME = ""
-    public constant text PROJECT_TYPE = ""
+    public constant text PROJECT_NAME = "ProjectName"
     public constant text DEVELOPMENT_ENVIRONMENT_VERSION = "DevelopmentEnvironmentVersion"
     public constant text DEVELOPMENT_ENVIRONMENT_VERSION_VALUE = "Quorum Studio 1.0"
     constant text MULTIPLE_VALUE_SPLITTER = ";"
@@ -24,7 +23,41 @@ class Project
     /* This action adds a property to the system. If a property of this name 
         already exists, it is overriden. */
     action AddProperty(text key, text value) 
-        properties:Add(key, value)
+        ProjectProperty property
+        property:SetKey(key)
+        property:Add(value)
+        properties:Add(key, property)
+    end
+
+    /* This action adds a property to the system. If a property of this name 
+        already exists, it is overriden. Undefined or empty arrays cause
+        this action to not add the property.
+    */
+    action AddProperty(text key, Array<text> values) 
+        ProjectProperty property
+        property:SetKey(key)
+
+        if values not= undefined and not values:IsEmpty()
+            i = 0
+            repeat while i < values:GetSize()
+                property:Add(values:Get(i))
+                i = i + 1
+            end
+        end
+        properties:Add(key, property)
+    end
+
+    /* This action adds a property to the system. If a property of this name 
+        already exists, it is overriden. Undefined or empty arrays cause
+        this action to not add the property.
+    */
+    action SetPropertyValues(text key, Array<text> values) 
+        AddProperty(key, values)
+    end
+
+    /* This action sets the value of a particular property. */
+    action SetPropertyValue(text key, text value) 
+        AddProperty(key, value)
     end
 
     /*
@@ -40,16 +73,14 @@ class Project
         the properties in a project, use AddProperty or SetPropertyValue.
     */
     action GetProperty(text key) returns ProjectProperty
-        text value = properties:GetValue(key)
-        ProjectProperty property
-        property:SetKey(key)
-        property:SetValue(value)
-        return property
-    end
+        ProjectProperty value = properties:GetValue(key)
+        if value not= undefined
+            ProjectProperty copy = value:Copy()
+            return copy
+        end
 
-    /* This action returns the value of a particular property. */
-    action GetPropertyValue(text key) returns text
-        return properties:GetValue(key)
+        return undefined
+        
     end
 
     /*
@@ -57,11 +88,6 @@ class Project
     */
     action RemoveProperty(text key)
         properties:RemoveAllKeys(key)
-    end
-
-    /* This action sets the value of a particular property. */
-    action SetPropertyValue(text key, text value) 
-        properties:Add(key, value)
     end
 
     /* This action returns whether or not the project has a particular property. */
@@ -87,11 +113,8 @@ class Project
         Iterator<text> keys = properties:GetKeyIterator()
         repeat while keys:HasNext()
             text key = keys:Next()
-            text value = properties:GetValue(key)
-            ProjectProperty property
-            property:SetKey(key)
-            property:SetValue(value)
-            returned:Add(property)
+            ProjectProperty property = properties:GetValue(key)
+            returned:Add(property:Copy())
         end
 
         return returned:GetIterator()
@@ -100,20 +123,13 @@ class Project
     /* This action loads a properties file from disk, in JavaScript Object Notation (JSON) 
         format, and puts them into the project in memory.
     */
-    action LoadProperties(File file)
-        JavaScriptObjectNotation notation
-        text value = file:Read()
-        JavaScriptObjectNotationObject json = notation:ReadToObject(value)
-        
-    end
+    blueprint action LoadProperties(File file)
 
     /*
         This action saves the project properties to disk. If a file already 
         exists for this project, the system overrides it.
     */
-    action SaveProperties(File file)
-
-    end
+    blueprint action SaveProperties(File file)
 
     /*
         This action sets the project to its default properties. By default, a
@@ -146,29 +162,21 @@ class Project
             AddProperty(key, totalValues)
         end
     end
-        
-    /* This action obtains a property under the assumption that it has 
-        multiple values. If the property does not actually contain multiple
-        values, it either returns an empty array, if the property does 
-        not exist, or one values, if it is not a multiple value property.
-    */
-    action GetMultipleValueProperty(text key) returns Array<text>
-        text value = properties:GetValue(key)
-        Array<text> values = value:Split(MULTIPLE_VALUE_SPLITTER)
-        return values
-    end
-
 
     /* This action is a helper action for returning the type of project
         loaded onto the system. Implementations should return a human
-        readable name for the project type being loaded. */
+        readable name for the project type being loaded.  For example, the name 
+        might be "Quorum" or "Java."
+    */
     blueprint action GetProjectType returns text
 
     /*
         This action gets the name of the project itself.
     */
     action GetProjectName returns text
-        return GetPropertyValue(PROJECT_NAME)
+        ProjectProperty property = GetProperty(PROJECT_NAME)
+        text value = property:GetFirstValue()
+        return value
     end
 
     /*
