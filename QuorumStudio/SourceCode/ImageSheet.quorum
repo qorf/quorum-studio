@@ -15,10 +15,6 @@ class ImageSheet
         image files. */
     Array<text> values
 
-    /* This is the default character used for parsing image sheet project 
-        property values. */
-    constant text DEFAULT_SEPARATOR = ":"
-
     /* This action returns the name of the image sheet. */
     action GetName returns text
         return name
@@ -27,44 +23,6 @@ class ImageSheet
     /* This action sets the name of the image sheet. */
     action SetName(text name)
         me:name = name
-    end
-
-    /* This action Loads the image sheet from a project property text value. */
-    action Load(text value)
-        Array<text> newValues
-        Array<text> row = value:Split(DEFAULT_SEPARATOR)
-        if row = undefined or row:IsEmpty()
-            values = newValues
-            return now
-        else 
-            text newName = row:Get(0)
-            name = newName
-
-            i = 1
-            repeat while i < row:GetSize()
-                text path = row:Get(i)
-                newValues:Add(path)
-                i = i + 1
-            end
-            values = newValues
-        end
-    end
-
-    /* This action looks at the information inside of the image sheet 
-        and writes it to a project property text value for storage. */
-    action Save returns text
-        text value = name + DEFAULT_SEPARATOR
-        if values = undefined or values:IsEmpty()
-            return value
-        else
-            i = 0 
-            repeat while i < values:GetSize()
-                text path = values:Get(i) + DEFAULT_SEPARATOR
-                value = value + path
-                i = i + 1
-            end
-        end
-        return value
     end
 
     /* This action gets the individual values, normally images, in the image sheet. */

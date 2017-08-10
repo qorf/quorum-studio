@@ -316,7 +316,6 @@ class QuorumProject is Project
         i = 0
         repeat while i < json:GetSize()
             JavaScriptObjectNotationObject obj = json:Get(i)
-            
             ProcessKey(obj)
             i = i + 1
         end
@@ -370,6 +369,7 @@ class QuorumProject is Project
         elseif key = JAVA_CLASS_DEPENDENCIES
             AddMultivalueTextProperty(object)
         elseif key = IMAGE_SHEETS
+            CreateImageSheets(object)
         elseif key = IMAGE_SHEET_ENABLED
             if not object:IsBoolean()
                 logger:Log(booleanMessage)
@@ -406,6 +406,51 @@ class QuorumProject is Project
                 return now
             end
             AddProperty(key, object:GetText())
+        end
+    end
+
+    private action CreateImageSheets(JavaScriptObjectNotationObject object)
+        ImageSheets sheets
+        me:sheets = sheets
+        
+        if object:IsEmpty()
+            logger:Log("An Image Sheet is specified in the project properties file, but is empty.")
+            return now
+        end
+        //there should be one object in this, which contains the image sheet arrays
+        JavaScriptObjectNotationObject value = object:Get(0)
+        if value:IsEmpty()
+            logger:Log("An Image Sheet is specified in the project properties file, but is empty.")
+            return now
+        end
+
+        i = 0
+        
+        repeat while i < value:GetSize()
+            JavaScriptObjectNotationObject sheetJSON = value:Get(i)
+            if not sheetJSON:IsArray()
+                logger:Log("An Image Sheet named " + sheetJSON:GetKey() +" is specified in the project properties file, but it is not an array.")
+                return now
+            end
+            text name = sheetJSON:GetKey()
+
+            ImageSheet sheet
+            sheet:SetName(name)
+            Array<text> values
+            j = 0
+            repeat while j < sheetJSON:GetSize()
+                JavaScriptObjectNotationObject image = sheetJSON:Get(j)
+                if not image:IsText()
+                    logger:Log("An Image Sheet named " + sheetJSON:GetKey() +" is specified in the project properties file, it references images that are not specified in text")
+                    return now
+                end
+                text location = image:GetText()
+                values:Add(location)
+                j = j + 1
+            end
+            sheet:SetValues(values)
+            sheets:Add(sheet)
+            i = i + 1
         end
     end
 
