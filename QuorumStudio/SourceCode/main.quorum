@@ -6,6 +6,7 @@ use Libraries.Data.Formats.JavaScriptObjectNotationObject
 use Libraries.System.DateTime
 
 class Main is Game
+    text tempHack = "/Users/stefika/Repositories/quorumstudio/QuorumStudio/"
 
     action Main
         Test()
@@ -16,8 +17,7 @@ class Main is Game
     action Test2
         JavaScriptObjectNotation note
         File file
-        file:SetWorkingDirectory("/Users/stefika/Repositories/quorumstudio/QuorumStudio/")
-        //file:SetPath("Tests/ProjectFiles/BasicProject.json")
+        file:SetWorkingDirectory(tempHack)
         file:SetPath("Tests/ProjectFiles/ImageSheetsProject.json")
         text read = file:Read()
         JavaScriptObjectNotationObject object = note:ReadToObject(read)
@@ -35,10 +35,16 @@ class Main is Game
         DateTime time
         number start = time:GetEpochTime()
         QuorumProject project
-        File file
-        file:SetWorkingDirectory("/Users/stefika/Repositories/quorumstudio/QuorumStudio/")
-        file:SetPath("Tests/ProjectFiles/All.json")
-        project:LoadProperties(file)
+        File load
+        load:SetWorkingDirectory(tempHack)
+        load:SetPath("Tests/ProjectFiles/All.json")
+        project:LoadProperties(load)
+
+        File save
+        save:SetWorkingDirectory(tempHack)
+        save:SetPath("Tests/ProjectFiles/All.json")
+        
+        project:SaveProperties(save)
 
         number finish = time:GetEpochTime()
         output "Opened project in " + (finish - start) / 1000.0 + " seconds."
