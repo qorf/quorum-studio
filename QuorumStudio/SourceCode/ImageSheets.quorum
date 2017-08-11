@@ -30,6 +30,20 @@ class ImageSheets
         return sheets:GetValueIterator()
     end
 
+    action GetSheets(boolean sorted) returns Array<ImageSheet>
+        Iterator<ImageSheet> iterator = sheets:GetValueIterator()
+        Array<ImageSheet> array
+        repeat while iterator:HasNext()
+            ImageSheet sheet = iterator:Next()
+            array:Add(sheet)
+        end
+        if sorted
+            array:Sort()
+        end
+
+        return array
+    end
+
     /* This action returns the number of ImageSheet objects loaded. */
     action GetSize returns integer
         return sheets:GetSize()
