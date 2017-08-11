@@ -119,17 +119,34 @@ class Project
 
         return returned:GetIterator()
     end
+
+    /*
+        This action makes a copy of all properties currently loaded 
+        into the project and returns an iterator to them. Modifying these copies
+        has no impact on the original project. Items returned are sorted.
+    */
+    action GetProperties(boolean sort) returns Iterator<ProjectProperty>
+        Array<ProjectProperty> returned
+        Iterator<text> keys = properties:GetKeyIterator()
+        repeat while keys:HasNext()
+            text key = keys:Next()
+            ProjectProperty property = properties:GetValue(key)
+            returned:Add(property:Copy())
+        end
+        returned:Sort()
+        return returned:GetIterator()
+    end
     
     /* This action loads a properties file from disk, in JavaScript Object Notation (JSON) 
         format, and puts them into the project in memory.
     */
-    blueprint action LoadProperties(File file)
+    blueprint action Load(File file)
 
     /*
         This action saves the project properties to disk. If a file already 
         exists for this project, the system overrides it.
     */
-    blueprint action SaveProperties(File file)
+    blueprint action Save(File file)
 
     /*
         This action sets the project to its default properties. By default, a

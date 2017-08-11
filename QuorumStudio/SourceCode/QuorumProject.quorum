@@ -308,7 +308,7 @@ class QuorumProject is Project
     /* This action loads a properties file from disk, in JavaScript Object Notation (JSON) 
         format, and puts them into the project in memory.
     */
-    action LoadProperties(File file)
+    action Load(File file)
         JavaScriptObjectNotation notation
         text value = file:Read()
         JavaScriptObjectNotationObject json = notation:ReadToObject(value)
@@ -495,7 +495,75 @@ class QuorumProject is Project
         This action saves the project properties to disk. If a file already 
         exists for this project, the system overrides it.
     */
-    action SaveProperties(File file)
+    action Save(File file)
+        text result = ""
+        text dq = result:GetDoubleQuote()
+        text line = result:GetCarriageReturn()
+        result = "{" + line
+        text space = "    "
 
+        //first get all the properties, sort them
+        //and translate them to JSON
+        Iterator<ProjectProperty> iterator = GetProperties(true)
+        repeat while iterator:HasNext()
+            ProjectProperty property = iterator:Next()
+            result = result + space + dq + property:GetKey() + dq + ": "
+            if property:GetSize() = 1
+                text next = property:GetFirstValue()
+                if next = "true" or next = "false"
+                    result = result + next
+                else 
+                    result = result + dq + next + dq
+                end
+            else
+                i = 0
+                text array = "["
+                repeat while i < property:GetSize()
+                    text value = property:Get(i)
+                    array = array + dq + value + dq
+                    if i not= property:GetSize() - 1
+                        array = array + ", "
+                    end
+                    i = i + 1
+                end
+                array = array + "]"
+                result = result + array
+            end
+
+            if iterator:HasNext()
+                result = result + ","
+            end
+
+            if not iterator:HasNext() and not sheets:IsEmpty()
+                result = result + ","
+            end
+            result = result + line
+        end
+
+        text sheetText = space + dq + IMAGE_SHEETS + dq + ": {" + line
+        //now add the image sheets
+        Iterator<ImageSheet> sheeterator = sheets:GetIterator()
+        repeat while sheeterator:HasNext()
+            ImageSheet sheet = sheeterator:Next()
+            text name = sheet:GetName()
+            sheetText = sheetText + space + space + dq + name + dq + ": ["
+            Iterator<text> imagesIterator = sheet:GetValues()
+            repeat while imagesIterator:HasNext()
+                text image = imagesIterator:Next()
+                sheetText = sheetText + dq + image + dq
+                if imagesIterator:HasNext()
+                    sheetText = sheetText + ","
+                end
+            end
+            sheetText = sheetText + "]"
+            if sheeterator:HasNext()
+                sheetText = sheetText + ","
+            end
+            sheetText = sheetText + line
+        end
+        sheetText = sheetText + space + "}" + line
+
+        result = result + sheetText + "}"
+        file:Write(result)
     end
 end
