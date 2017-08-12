@@ -1,16 +1,115 @@
 package Libraries.Development.Environment.Studio
 use Libraries.Interface.Controls.MenuBar
+use Libraries.Interface.Controls.Menu
+use Libraries.Game.Graphics.Color
 
 class QuorumStudio 
-    
+    MenuBar menuBar
+    Menu fileMenu
+    Menu editMenu
+    Menu viewMenu
+    Menu runMenu
+    Menu windowsMenu
+    Menu helpMenu
+
+    Color background
+    action GetMenuBar returns MenuBar
+        return menuBar
+    end
+
     action CreateMenuBar
-        MenuBar menuBar
+        
         menuBar:Initialize(800, 20, "Menu Bar")
-        //menuBar:SetBackgroundColor(bgColor:White())
+        menuBar:SetBackgroundColor(background:White())
         menuBar:SetAlpha(0.5)
         menuBar:ShowName()
         menuBar:GetLabel():SetPosition(10, 5)
         menuBar:SetPosition(0, 600)
         menuBar:EnableBorder()
+        menuBar:SetX(0)
+        menuBar:SetY(550)
+
+        InitializeMenu(fileMenu)
+        fileMenu:SetText("File")
+
+        InitializeMenu(editMenu)
+        editMenu:SetText("Edit")
+
+        InitializeMenu(viewMenu)
+        viewMenu:SetText("View")
+
+        InitializeMenu(runMenu)
+        runMenu:SetText("Run")
+
+        InitializeMenu(windowsMenu)
+        windowsMenu:SetText("Windows")
+
+        InitializeMenu(helpMenu)
+        helpMenu:SetText("Help")
+
+        menuBar:AddMenu(fileMenu)
+        menuBar:AddMenu(editMenu)
+        menuBar:AddMenu(viewMenu)
+        menuBar:AddMenu(runMenu)
+        menuBar:AddMenu(windowsMenu)
+        menuBar:AddMenu(helpMenu)
+        SetupFileMenu()
+    end
+
+    private action InitializeMenu(Menu menu)
+        menu:Initialize(100, 20, "Menu 1")
+        menu:SetBackgroundColor(background:White())
+        menu:ShowName()
+        menu:EnableBorder()
+        menu:GetLabel():SetPosition(5, 5)
+    end
+
+    private action SetupFileMenu
+        Menu newProject
+        InitializeMenu(newProject)
+        newProject:SetText("New Project")
+
+        Menu openProject
+        InitializeMenu(openProject)
+        openProject:SetText("Open Project")
+
+        Menu closeProject
+        InitializeMenu(closeProject)
+        closeProject:SetText("Close Project")
+
+        Menu newFile
+        InitializeMenu(newFile)
+        newFile:SetText("New File")
+
+        Menu openFile
+        InitializeMenu(openFile)
+        openFile:SetText("Open File")
+
+        Menu save
+        InitializeMenu(save)
+        save:SetText("Save")
+
+        Menu saveAs
+        InitializeMenu(saveAs)
+        saveAs:SetText("Save As...")
+
+        Menu saveAll
+        InitializeMenu(saveAll)
+        saveAll:SetText("Save All")
+
+        Menu exit
+        InitializeMenu(exit)
+        exit:SetText("Exit")
+        
+
+        fileMenu:AddMenu(newProject)
+        fileMenu:AddMenu(openProject)
+        fileMenu:AddMenu(closeProject)
+        fileMenu:AddMenu(newFile)
+        fileMenu:AddMenu(openFile)
+        fileMenu:AddMenu(save)
+        fileMenu:AddMenu(saveAs)
+        fileMenu:AddMenu(saveAll)
+        fileMenu:AddMenu(exit)
     end
 end
