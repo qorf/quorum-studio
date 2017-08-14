@@ -1,0 +1,41 @@
+package Libraries.Development.Environment.Projects
+
+use Libraries.Containers.Array
+use Libraries.System.File
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+
+class ProjectManager
+    Array<QuorumProject> projects
+    public constant text PROJECT = "Project"
+
+    /*
+        This action checks if a particular folder is a Quorum Studio project
+        folder.
+    */
+    action IsProject(File file) returns boolean
+        if file = undefined
+            return false
+        end
+
+        Array<File> value = file:GetDirectoryListing()
+        i = 0
+        repeat while i < value:GetSize()
+            File folder = value:Get(i)
+            //this is a project folder with the right name
+            if folder not= undefined and folder:IsDirectory() and folder:GetFileName() = PROJECT
+                Array<File> files = folder:GetDirectoryListing()
+                j = 0
+                repeat while j < files:GetSize()
+                    File projectFile = files:Get(j)
+                    if projectFile not= undefined and projectFile:IsFile() and projectFile:GetFileName() = PROJECT + ".json"
+                        return true
+                    end
+                    j = j + 1
+                end
+            end
+            i = i + 1
+        end
+
+        return false
+    end
+end
