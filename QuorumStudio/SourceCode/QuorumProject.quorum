@@ -305,6 +305,27 @@ class QuorumProject is Project
         return PROJECT_TYPE_NAME
     end
 
+    /*
+        This action loads a project from its location on disk. To use this action,
+        you must first call SetLocation(File), with a valid project folder. 
+    */
+    action Load
+        File properties = GetPropertiesLocation()
+        LoadProperties(properties)
+    end
+
+    /*
+        This action saves a project to disk. By default, it saves only the 
+        project properties file, not any modified source files. To use this action,
+        you must first call SetLocation(File), with a valid project folder. As a 
+        project only stores properties set to it, saving a blank project 
+        would result in a blank properties file.
+    */
+    action Save
+        File properties = GetPropertiesLocation()
+        SaveProperties(properties)
+    end
+
     /* This action loads a properties file from disk, in JavaScript Object Notation (JSON) 
         format, and puts them into the project in memory.
     */
@@ -481,7 +502,8 @@ class QuorumProject is Project
         file is a valid type.
     */
     private action IsValidProjectType(text type) returns boolean
-        if type = JAVASCRIPT_COMPILE_TYPE or 
+        if type = JAVA_COMPILE_TYPE or
+           type = JAVASCRIPT_COMPILE_TYPE or 
            type = SERVER_COMPILE_TYPE or
            type = LEGO_COMPILE_TYPE or
            type = IPHONE_COMPILE_TYPE or
