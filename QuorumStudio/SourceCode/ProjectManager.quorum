@@ -3,9 +3,12 @@ package Libraries.Development.Environment.Projects
 use Libraries.Containers.Array
 use Libraries.System.File
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Containers.Iterator
+use Libraries.Containers.HashTable
 
 class ProjectManager
-    Array<QuorumProject> projects
+    //This table is hashed by absolute path of the project folder
+    HashTable<text, QuorumProject> projects
     public constant text PROJECT = "Project"
 
     /*
@@ -37,5 +40,56 @@ class ProjectManager
         end
 
         return false
+    end
+
+    /*
+        This action creates a new project in a particular folder.
+    */
+    action New(File file)
+
+    end
+
+    /*
+        This action creates a new project from a template
+        in a particular folder called template.
+    */
+    action New(File file, File template)
+
+    end
+
+    /*
+        This action opens a project in a particular folder.
+    */
+    action Open(File file) returns QuorumProject
+        //first check if it's a valid project location
+        if not IsProject(file)
+            return undefined
+        end
+
+        QuorumProject project
+        project:SetLocation(file)
+
+        return project
+    end
+
+    /* 
+        This action closes a project in a particular folder.
+    */
+    action Close(File file) 
+
+    end
+
+    action Get(File file) returns QuorumProject
+        if file = undefined
+            return undefined
+        end
+        return projects:GetValue(file:GetAbsolutePath())
+    end
+
+    /*
+
+    */
+    action GetIterator returns Iterator<QuorumProject>
+        return projects:GetValueIterator()
     end
 end

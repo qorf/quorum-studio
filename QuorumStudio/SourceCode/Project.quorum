@@ -15,11 +15,46 @@ class Project
     /* This hash table stores all properties in the project as key value pairs. */
     HashTable<text, ProjectProperty> properties
 
+    /*
+        This is the location of the project properties file, based upon
+        the location of the project.
+    */
+    public constant text PROPERTIES_LOCATION = "Project/Project.json"
     public constant text PROJECT_NAME = "ProjectName"
     public constant text DEVELOPMENT_ENVIRONMENT_VERSION = "DevelopmentEnvironmentVersion"
     public constant text DEVELOPMENT_ENVIRONMENT_VERSION_VALUE = "Quorum Studio 1.0"
     constant text MULTIPLE_VALUE_SPLITTER = ";"
+    File location = undefined
+    File propertiesLocation
 
+    /*
+        This action returns the location of the project.
+    */
+    action GetLocation returns File
+        return location
+    end
+
+    /*
+        This action sets the location of the project
+    */
+    action SetLocation(File location)
+        if location = undefined or location:IsFile()
+            alert("The Project file location is a file, not a folder, which is not allowed.")
+        end
+        me:location = location
+
+        propertiesLocation:SetWorkingDirectory(location:GetAbsolutePath())
+        propertiesLocation:SetPath(PROPERTIES_LOCATION)
+    end
+
+    /*
+        This action returns the location of the project properties file
+        based upon the location of the project.
+    */
+    action GetPropertiesLocation returns File
+        return propertiesLocation
+    end
+    
     /* This action adds a property to the system. If a property of this name 
         already exists, it is overriden. */
     action AddProperty(text key, text value) 
@@ -137,16 +172,20 @@ class Project
         return returned:GetIterator()
     end
     
+    //blueprint action Load
+
+    //blueprint action Save
+
     /* This action loads a properties file from disk, in JavaScript Object Notation (JSON) 
         format, and puts them into the project in memory.
     */
-    blueprint action Load(File file)
+    blueprint action LoadProperties(File file)
 
     /*
         This action saves the project properties to disk. If a file already 
         exists for this project, the system overrides it.
     */
-    blueprint action Save(File file)
+    blueprint action SaveProperties(File file)
 
     /*
         This action sets the project to its default properties. By default, a
