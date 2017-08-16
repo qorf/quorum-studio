@@ -6,29 +6,57 @@ use Libraries.System.DateTime
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Controls.MenuBar
 use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Containers.Iterator
 
 class Main
-    text tempHack = "/Users/andreasstefik/Repositories/quorumstudio/QuorumStudio/"
     QuorumStudio studio
+    ProjectManager manager = studio:GetProjectManager()
     action Main
         //studio:Start()
         ProjectTesting()
+        //NewProjectTest()
+    end
+
+    action NewProjectTest
+        File new
+        new:SetWorkingDirectory("/Users/stefika/Desktop/Tests")
+        new:SetPath("MyProject1")
+        manager:New(new)
+
+        File lego
+        lego:SetPath("Templates/New/LEGO")
+
+        File newFromLegoTemplate
+        newFromLegoTemplate:SetWorkingDirectory("/Users/stefika/Desktop/Tests")
+        newFromLegoTemplate:SetPath("MyLegoProject")
+        manager:New(newFromLegoTemplate, lego)
     end
 
     action ProjectTesting
-        ProjectManager manager
         File blank
-        //blank:SetWorkingDirectory(tempHack)
         blank:SetPath("Templates/New/Blank")
-        output blank:GetAbsolutePath()
         QuorumProject blankProject = manager:Open(blank)
+
+
+        File game
+        game:SetPath("Templates/New/Game")
+        QuorumProject gameProject = manager:Open(game)
+
+        File lego
+        lego:SetPath("Templates/New/LEGO")
+        QuorumProject legoProject = manager:Open(lego)
+
+        Iterator<QuorumProject> iterator = manager:GetIterator()
+        repeat while iterator:HasNext()
+            QuorumProject project = iterator:Next()
+            output project:GetProjectName() + ": " + project:GetExecutableName()
+        end
         a = 5
     end
 
     action Test2
         JavaScriptObjectNotation note
         File file
-        file:SetWorkingDirectory(tempHack)
         file:SetPath("Tests/ProjectFiles/ImageSheetsProject.json")
         text read = file:Read()
         JavaScriptObjectNotationObject object = note:ReadToObject(read)
@@ -41,13 +69,11 @@ class Main
         number start = time:GetEpochTime()
         QuorumProject project
         File load
-        load:SetWorkingDirectory(tempHack)
         load:SetPath("Tests/ProjectFiles/All.json")
         project:LoadProperties(load)
         load:Close()
 
         File save
-        save:SetWorkingDirectory(tempHack)
         save:SetPath("Tests/temp")
         save:CreateDirectories()
         save:SetPath("Tests/temp/All.json")

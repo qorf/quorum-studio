@@ -243,7 +243,6 @@ class QuorumProject is Project
         AddProperty(PROJECT_TYPE, JAVA_COMPILE_TYPE)
         AddProperty(PROJECT_MAIN, PROJECT_MAIN_LOCATION)
         AddProperty(EXECUTABLE_NAME, DEFAULT_EXECUTABLE_NAME)
-        AddProperty(PROJECT_TYPE, PROJECT_TYPE_NAME)
     end
 
     /*
@@ -562,30 +561,35 @@ class QuorumProject is Project
             result = result + line
         end
 
-        text sheetText = space + dq + IMAGE_SHEETS + dq + ": {" + line
-        //now add the image sheets
-        Iterator<ImageSheet> sheeterator = sheets:GetSheets(true):GetIterator()
-        repeat while sheeterator:HasNext()
-            ImageSheet sheet = sheeterator:Next()
-            text name = sheet:GetName()
-            sheetText = sheetText + space + space + dq + name + dq + ": ["
-            Iterator<text> imagesIterator = sheet:GetValues()
-            repeat while imagesIterator:HasNext()
-                text image = imagesIterator:Next()
-                sheetText = sheetText + dq + image + dq
-                if imagesIterator:HasNext()
+        if not sheets:IsEmpty()
+            text sheetText = space + dq + IMAGE_SHEETS + dq + ": {" + line
+            //now add the image sheets
+            Iterator<ImageSheet> sheeterator = sheets:GetSheets(true):GetIterator()
+            repeat while sheeterator:HasNext()
+                ImageSheet sheet = sheeterator:Next()
+                text name = sheet:GetName()
+                sheetText = sheetText + space + space + dq + name + dq + ": ["
+                Iterator<text> imagesIterator = sheet:GetValues()
+                repeat while imagesIterator:HasNext()
+                    text image = imagesIterator:Next()
+                    sheetText = sheetText + dq + image + dq
+                    if imagesIterator:HasNext()
+                        sheetText = sheetText + ","
+                    end
+                end
+                sheetText = sheetText + "]"
+                if sheeterator:HasNext()
                     sheetText = sheetText + ","
                 end
+                sheetText = sheetText + line
             end
-            sheetText = sheetText + "]"
-            if sheeterator:HasNext()
-                sheetText = sheetText + ","
-            end
-            sheetText = sheetText + line
-        end
-        sheetText = sheetText + space + "}" + line
+            sheetText = sheetText + space + "}" + line
 
-        result = result + sheetText + "}"
+            result = result + sheetText + "}"
+        else 
+            result = result + "}"
+        end
+        
         file:Write(result)
     end
 end

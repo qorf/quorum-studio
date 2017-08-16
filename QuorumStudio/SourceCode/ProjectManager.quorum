@@ -45,16 +45,59 @@ class ProjectManager
     /*
         This action creates a new project in a particular folder.
     */
-    action New(File file)
+    action New(File file) returns QuorumProject
+        //first create the folders
+        file:CreateDirectories()
 
+        //now create the project folder
+
+        File projectFolder
+        projectFolder:SetWorkingDirectory(file:GetAbsolutePath())
+        projectFolder:SetPath("Project")
+        projectFolder:CreateDirectory()
+
+        QuorumProject project
+        project:SetLocation(file)
+        project:SetToDefault()
+        project:SetProjectName(file:GetFileName())
+        project:Save()
+
+        projects:Add(file:GetAbsolutePath(), project)
+        return project
     end
 
     /*
         This action creates a new project from a template
         in a particular folder called template.
     */
-    action New(File file, File template)
+    action New(File file, File template) returns QuorumProject
+        //now check to ensure the template file really is a project folder
+        //if it is, copy everything in it to the new folder.
+        if not IsProject(template)
+            return undefined
+        end
 
+        //first create the folders
+        file:CreateDirectories()
+
+        //now copy over all of the files from the template folder
+        Array<File> files = template:GetDirectoryListing()
+        i = 0
+        repeat while i < files:GetSize()
+            File sub = files:Get(i)
+            text value = sub:GetFileName()
+            File newSub
+            newSub:SetWorkingDirectory(file:GetAbsolutePath())
+            newSub:SetPath(value)
+
+            File test
+            test:SetWorkingDirectory(sub:GetWorkingDirectory())
+            test:SetPath(sub:GetPath())
+            test:Copy(newSub, true)
+            i = i + 1
+        end
+
+        return Open(file)
     end
 
     /*
@@ -79,7 +122,17 @@ class ProjectManager
         This action closes a project in a particular folder.
     */
     action Close(File file) 
+        if file = undefined
+            return now
+        end
 
+        text key = file:GetAbsolutePath()
+        QuorumProject project = projects:GetValue(key)
+        if project not= undefined
+            //first save the project before we close it
+            project:Save()
+            projects:RemoveKey(key)
+        end
     end
 
     action Get(File file) returns QuorumProject
