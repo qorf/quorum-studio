@@ -7,14 +7,29 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Controls.MenuBar
 use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Containers.Iterator
+use Libraries.Concurrency.ThreadRunner
 
 class Main
     QuorumStudio studio
     ProjectManager manager = studio:GetProjectManager()
     action Main
-        studio:Start()
+        //studio:Start()
         //ProjectTesting()
         //NewProjectTest()
+        TestThreadRunner()
+    end
+
+    action TestThreadRunner
+        ThreadRunner runner
+        
+        i = 1
+        repeat 100 times
+            OutputAction act
+            act:SetI(i)
+            runner:Add(act)
+            i = i + 1
+        end
+        runner:ShutDown()
     end
 
     action NewProjectTest
