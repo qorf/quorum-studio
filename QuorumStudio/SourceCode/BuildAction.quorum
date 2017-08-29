@@ -1,0 +1,57 @@
+package Libraries.Development.Environment.Studio.Actions
+use Libraries.Interface.Events.MouseListener
+use Libraries.Interface.Events.MouseEvent
+use Libraries.System.SystemHelper
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Action
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Language.Compile.Compiler
+use Libraries.System.File
+use Libraries.Containers.Array
+use Libraries.Language.Compile.CompilerErrorManager
+use Libraries.Containers.Iterator
+use Libraries.Language.Compile.CompilerError
+
+class BuildAction is Action
+    QuorumProject project = undefined
+
+    action GetProject returns QuorumProject
+        return project
+    end
+
+    action SetProject(QuorumProject project)
+        me:project = project
+    end
+
+    action Do
+        Compiler compiler = project:GetCompiler()
+        File location = project:GetLocation()
+        File sources = project:GetSources()
+        
+        //get the array of sources and filter them
+        Array<File> sourceFolderFiles = sources:GetDirectoryListing()
+        Array<File> sourcesToCompile
+        i = 0
+        repeat while i < sourceFolderFiles:GetSize()
+            File file = sourceFolderFiles:Get(i)
+            if file:GetFileExtension() = "quorum"
+                sourcesToCompile:Add(file)
+            end
+            i = i + 1
+        end
+
+        compiler:Compile(sourcesToCompile)
+        CompilerErrorManager errors = compiler:GetCompilerErrorManager()
+        Iterator<CompilerError> errorIterator = errors:GetIterator()
+
+        text version = compiler:GetVersion()
+        output version
+
+        repeat while errorIterator:HasNext()
+            CompilerError error = errorIterator:Next()
+            output error:GetErrorMessage()
+        end
+
+        a = 5
+    end
+end

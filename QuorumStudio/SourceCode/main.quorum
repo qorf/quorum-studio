@@ -8,15 +8,25 @@ use Libraries.Interface.Controls.MenuBar
 use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Containers.Iterator
 use Libraries.Concurrency.ThreadRunner
+use Libraries.Development.Environment.Studio.Actions.BuildAction
 
 class Main
     QuorumStudio studio
     ProjectManager manager = studio:GetProjectManager()
     action Main
-        //studio:Start()
+        studio:Start()
         //ProjectTesting()
         //NewProjectTest()
-        TestThreadRunner()
+        //TestThreadRunner()
+        //OpenBuildProject()
+    end
+
+    action OpenBuildProject
+        File game
+        game:SetPath("Templates/New/Game")
+        QuorumProject gameProject = manager:Open(game)
+        BuildAction build = gameProject:GetBuildAction()
+        build:Do()
     end
 
     action TestThreadRunner

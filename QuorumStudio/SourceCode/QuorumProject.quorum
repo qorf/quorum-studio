@@ -7,6 +7,8 @@ use Libraries.System.File
 use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Data.Formats.JavaScriptObjectNotationObject
 use Libraries.System.Logger
+use Libraries.Language.Compile.Compiler
+use Libraries.Development.Environment.Studio.Actions.BuildAction
 
 /*
     This class loads a Quorum project into the Integrated Development Environment.
@@ -29,6 +31,8 @@ class QuorumProject is Project
     public constant text PROJECT_MAIN = "Main"
     /* This property represents the file that Quorum starts a program from. */
     public constant text PROJECT_MAIN_LOCATION = "/SourceCode/Main.quorum"
+    /* This is the path to the sources folder. */
+    public constant text PROJECT_SOURCES = "SourceCode"
 
     /* This property represents what kind of project in Quorum this is. */
     public constant text PROJECT_TYPE = "ProjectType"
@@ -69,8 +73,50 @@ class QuorumProject is Project
     public constant text IPHONE_SIGNING_IDENTITY = "IphoneSigningIdentity"
     Logger logger
 
+    /* This is the file that references the standard library.*/
+    File library
+
+    /* This is a file to the source location. */
+    File sources
+
+    /* This is a file to the source location. */
+    File mainFile
+
     /* This is an in memory representation of the image sheets class. */
     ImageSheets sheets
+    Compiler compiler
+
+    //add all the default actions this project can do
+    BuildAction build
+
+    on create
+        build:SetProject(me)
+        library:SetPath("Library/Standard")
+
+        //temporary location
+        library:SetWorkingDirectory("/Users/stefika/Repositories/quorum-language/Quorum3")
+        compiler:SetStandardLibraryFolder(library)
+    end
+
+    action SetLocation(File location)
+        parent:Libraries.Development.Environment.Projects.Project:SetLocation(location)
+        File loc = GetLocation()
+        sources:SetWorkingDirectory(location:GetAbsolutePath())
+        sources:SetPath(PROJECT_SOURCES)
+        compiler:SetOutputFolder(loc)
+    end
+
+    action GetSources returns File
+        return sources
+    end
+
+    action GetCompiler returns Compiler
+        return compiler
+    end
+
+    action SetCompiler(Compiler compiler)
+        me:compiler = compiler
+    end
 
     /* This action returns the build path for image sheets. */
     action GetMobileAssetsPath returns text
@@ -245,6 +291,11 @@ class QuorumProject is Project
         AddProperty(EXECUTABLE_NAME, DEFAULT_EXECUTABLE_NAME)
     end
 
+
+    action GetBuildAction returns BuildAction
+        return build
+    end
+
     /*
         This action gets the name of the executable file, regardless of target,
         for the executable created.
@@ -382,6 +433,12 @@ class QuorumProject is Project
                 return now
             end
             AddProperty(key, object:GetText())
+            //setup the compiler to use the file
+            File location = GetLocation()
+            ProjectProperty mainProperty = GetProperty(PROJECT_MAIN)
+            mainFile:SetWorkingDirectory(location:GetAbsolutePath())
+            mainFile:SetPath(mainProperty:GetFirstValue())
+            compiler:SetMain(mainFile)
         elseif key = JAR_DEPENDENCIES
             AddMultivalueTextProperty(object)
         elseif key = JAVASCRIPT_DEPENDENCIES
