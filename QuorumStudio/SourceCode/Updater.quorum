@@ -5,6 +5,7 @@ use Libraries.Data.Formats.JavaScriptObjectNotationObject
 use Libraries.System.Logger
 use Libraries.Containers.HashTable
 use Libraries.Containers.Iterator
+use Libraries.Containers.Array
 
 class Updater
     constant text MAJOR_VERSION = "Major Version"
@@ -12,9 +13,7 @@ class Updater
     HashTable<text, Module> modules
     Logger logger
 
-    action Load
-        File file
-        file:SetPath("Configuration/Updates.json")
+    action Load(File file)
         JavaScriptObjectNotation notation
         text value = file:Read()
         JavaScriptObjectNotationObject json = notation:ReadToObject(value)
@@ -61,5 +60,22 @@ class Updater
         end
 
         modules:Add(module:GetName(), module)
+    end
+
+    private action GetSortedModuleList returns Array<Module>
+        Array<Module> mods
+        Iterator<Module> it = modules:GetValueIterator()
+        repeat while it:HasNext()
+            Module module = it:Next()
+            mods:Add(module)
+        end
+
+        mods:Sort()
+        return mods
+    end
+
+    action CheckForNewerVersion(Updater updater)
+        Array<Module> mine = GetSortedModuleList()
+        Array<Module> theirs = updater:GetSortedModuleList()
     end
 end

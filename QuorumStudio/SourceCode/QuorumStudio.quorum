@@ -6,6 +6,7 @@ use Libraries.Development.Environment.Studio.Actions.ExitAction
 use Libraries.Game.Game
 use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Development.Environment.Studio.Updates.Updater
+use Libraries.System.File
 
 class QuorumStudio is Game
     MenuBar menuBar
@@ -345,7 +346,21 @@ class QuorumStudio is Game
     end
 
     action LoadUpdates
-        updater:Load()
+        File defaultUpdateFile
+        defaultUpdateFile:SetPath("Configuration/Updates.json")
+        updater:Load(defaultUpdateFile)
+    end
+
+    action CheckForUpdates
+        //first ping the server and see if the files are there.
         
+        //get the file --- for now let's get one from testing
+        File new
+        new:SetPath("Tests/UpdatesTests/UpdateNewVersion.json")
+
+        Updater up
+        up:Load(new)
+
+        updater:CheckForNewerVersion(up)
     end
 end

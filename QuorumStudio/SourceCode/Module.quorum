@@ -1,4 +1,5 @@
 package Libraries.Development.Environment.Studio.Updates
+use Libraries.Language.Support.CompareResult
 
 class Module 
     text name = ""
@@ -31,5 +32,19 @@ class Module
 
     action SetMinorVersion(integer value)
         minorVersion = value
+    end
+
+    action Compare(Object o) returns CompareResult
+        CompareResult result
+        Module m = cast(Module, o)
+        if name = m:GetName()
+            result:result = result:EQUAL
+        elseif name > m:GetName()
+            result:result = result:LARGER
+        else
+            result:result = result:SMALLER
+        end
+
+        return result
     end
 end
