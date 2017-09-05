@@ -5,11 +5,11 @@ use Libraries.Containers.Array
 class JavaScriptObjectNotationObject 
     Array<JavaScriptObjectNotationObject> array
     text textValue = ""
-    integer integerValue = 0
+//    integer integerValue = 0
     number numberValue = 0.0
     boolean booleanValue = false
     integer type = 0
-    constant integer INTEGER = 1
+//    constant integer INTEGER = 1
     constant integer NUMBER = 2
     constant integer TEXT = 3
     constant integer BOOLEAN = 4
@@ -56,12 +56,12 @@ class JavaScriptObjectNotationObject
         array:Add(object)
     end
 
-    action Add(text key, integer value) 
-        JavaScriptObjectNotationObject object
-        object:SetInteger(value)
-        object:SetKey(key)
-        array:Add(object)
-    end
+//    action Add(text key, integer value) 
+//        JavaScriptObjectNotationObject object
+//        object:SetInteger(value)
+//        object:SetKey(key)
+//        array:Add(object)
+//    end
 
     action Add(text key, boolean value) 
         JavaScriptObjectNotationObject object
@@ -81,8 +81,14 @@ class JavaScriptObjectNotationObject
         return textValue
     end
 
+    /* 
+        Because the JavaScript Object Notation specification only lists numbers
+        as possible inputs, a setter for integer does not exist. This action 
+        takes a number input and casts it to an integer automatically. If the number
+        is not an integer, an error is thrown.
+    */ 
     action GetInteger returns integer
-        return integerValue
+        return cast(integer, numberValue)
     end
 
     action GetNumber returns number
@@ -98,10 +104,10 @@ class JavaScriptObjectNotationObject
         type = TEXT
     end
 
-    action SetInteger(integer value)
-        integerValue = value
-        type = INTEGER
-    end
+//    action SetInteger(integer value)
+//        integerValue = value
+//        type = INTEGER
+//    end
 
     action SetNumber(number value)
         numberValue = value
@@ -142,12 +148,12 @@ class JavaScriptObjectNotationObject
         return false
     end
 
-    action IsInteger returns boolean
-        if type = INTEGER
-           return true
-        end
-        return false
-    end
+//    action IsInteger returns boolean
+//        if type = INTEGER
+//           return true
+//        end
+//        return false
+//    end
 
     action IsText returns boolean
         if type = TEXT
@@ -215,8 +221,8 @@ class JavaScriptObjectNotationObject
             result = result + dq + textValue + dq
         elseif IsBoolean()
             result = result + booleanValue
-        elseif IsInteger()
-            result = result + integerValue
+//        elseif IsInteger()
+//            result = result + integerValue
         elseif IsNumber()
             result = result + numberValue
         end
