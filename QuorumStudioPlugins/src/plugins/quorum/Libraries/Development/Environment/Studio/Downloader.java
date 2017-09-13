@@ -5,10 +5,18 @@
  */
 package plugins.quorum.Libraries.Development.Environment.Studio;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -19,6 +27,7 @@ import javax.net.ssl.X509TrustManager;
  * @author stefika
  */
 public class Downloader {
+
     static {
         //this needs more work, but is a start.
         //more information on how to do this is here:
@@ -28,11 +37,13 @@ public class Downloader {
                 public java.security.cert.X509Certificate[] getAcceptedIssuers() {
                     return null;
                 }
+
                 public void checkClientTrusted(
-                    java.security.cert.X509Certificate[] certs, String authType) {
+                        java.security.cert.X509Certificate[] certs, String authType) {
                 }
+
                 public void checkServerTrusted(
-                    java.security.cert.X509Certificate[] certs, String authType) {
+                        java.security.cert.X509Certificate[] certs, String authType) {
                 }
             }
         };
@@ -45,123 +56,56 @@ public class Downloader {
         } catch (Exception e) {
         }
     }
-    
+
     public java.lang.Object me_ = null;
     String path = "";
     quorum.Libraries.System.File_ file;
-    // Max size of download buffer.
-    private static final int MAX_BUFFER_SIZE = 1024;
-
-    // These are the status names.
-    public static final String STATUSES[] = {"Downloading",
-        "Paused", "Complete", "Cancelled", "Error"};
-    // These are the status codes.
-    public static final int DOWNLOADING = 0;
-    public static final int PAUSED = 1;
-    public static final int COMPLETE = 2;
-    public static final int CANCELLED = 3;
-    public static final int ERROR = 4;
-
     URL url = null;
 
     public boolean Exists() {
         return url != null;
     }
-
-    private int size; // size of download in bytes
     private int downloaded = 0; // number of bytes downloaded
-    private int status; // current status of download
 
     public void Download() {
-        RandomAccessFile file = null;
+        OutputStream outstream = null;
         InputStream stream = null;
-        System.out.println(this.file.GetAbsolutePath());
         try {
-            // Open connection to URL.
+            System.out.println(this.file.GetAbsolutePath());
             HttpsURLConnection connection
                     = (HttpsURLConnection) url.openConnection();
-            System.out.println("Connection opened to " + url.toURI().toString());
-            // Specify what portion of file to download.
-            //connection.set.setRequestProperty("Range",
-            //        "bytes=" + downloaded + "-");
-
-            // Connect to server.
-            //connection.connect();
-            
-            System.out.println("" + connection.getResponseMessage());
-            //System.out.println("Connected with code: " + connection.getResponseCode());
-            // Make sure response code is in the 200 range.
+            connection.setRequestProperty("Range",
+                    "bytes=" + downloaded + "-");
+            connection.connect();
             if (connection.getResponseCode() / 100 != 2) {
-                
-                //error();
             }
-
-            // Check for valid content length.
             int contentLength = connection.getContentLength();
             if (contentLength < 1) {
-                //error();
             }
-            System.out.println(contentLength);
-            /* Set the size for this download if it
-         hasn't been already set. */
-            if (size == -1) {
-                size = contentLength;
-                //stateChanged();
-            }
-
-            // Open file and seek to the end of it.
-            file = new RandomAccessFile(this.file.GetAbsolutePath(), "rw");
-            file.seek(downloaded);
-            status = DOWNLOADING;
+          
+            File targetFile = new File(this.file.GetAbsolutePath());
+            outstream = new FileOutputStream(targetFile);
+            System.out.println(outstream);
+            
             stream = connection.getInputStream();
-            while (status == DOWNLOADING) {
-                /* Size buffer according to how much of the
-           file is left to download. */
-                //System.out.println("...");
-                byte buffer[];
-                if (size - downloaded > MAX_BUFFER_SIZE) {
-                    buffer = new byte[MAX_BUFFER_SIZE];
-                } else {
-                    buffer = new byte[size - downloaded];
+            byte[] buffer = new byte[8 * 1024];
+            int bytesRead;
+            while ((bytesRead = stream.read(buffer)) != -1) {
+                try {
+                    outstream.write(buffer, 0, bytesRead);
+                } catch (IOException ex) {
+                    Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
                 }
-
-                // Read from server into buffer.
-                int read = stream.read(buffer);
-                if (read == -1) {
-                    break;
-                }
-
-                // Write buffer to file.
-                file.write(buffer, 0, read);
-                downloaded += read;
-                //stateChanged();
             }
-
-            /* Change status to complete if this point was
-         reached because downloading has finished. */
-            if (status == DOWNLOADING) {
-                status = COMPLETE;
-                //stateChanged();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            //error();
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
-            System.out.println("sdlfjsdlfkjsd");
-            // Close file.
-            if (file != null) {
-                try {
-                    file.close();
-                } catch (Exception e) {
-                }
-            }
-
-            // Close connection to server.
-            if (stream != null) {
-                try {
-                    stream.close();
-                } catch (Exception e) {
-                }
+            try {
+                outstream.close();
+            } catch (IOException ex) {
+                Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
     }
