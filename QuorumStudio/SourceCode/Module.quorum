@@ -1,10 +1,29 @@
 package Libraries.Development.Environment.Studio.Updates
 use Libraries.Language.Support.CompareResult
+use Libraries.Containers.Array
+use Libraries.Containers.Iterator
 
 class Module 
     text name = ""
     integer majorVersion = 1
     integer minorVersion = 1
+    Array<text> filesInModule
+
+    action AddFile(text file)
+        filesInModule:Add(file)
+    end
+
+    action GetFile(integer index) returns text
+        return filesInModule:Get(index)
+    end
+
+    action GetFiles returns Iterator<text>
+        return filesInModule:GetIterator()
+    end
+
+    action GetFileArraySize returns integer
+        return filesInModule:GetSize()
+    end
 
     action GetName returns text
         return name

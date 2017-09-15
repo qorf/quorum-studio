@@ -6,10 +6,12 @@ use Libraries.System.Logger
 use Libraries.Containers.HashTable
 use Libraries.Containers.Iterator
 use Libraries.Containers.Array
+use Libraries.Development.Environment.Studio.Downloader
 
 class Updater
     constant text MAJOR_VERSION = "Major Version"
     constant text MINOR_VERSION = "Minor Version"
+    constant text FILES = "files"
     HashTable<text, Module> modules
     Array<Module> updates
     Array<Module> deletes
@@ -49,6 +51,14 @@ class Updater
                     module:SetMajorVersion(value:GetInteger())
                 elseif subkey = MINOR_VERSION
                     module:SetMinorVersion(value:GetInteger())
+                elseif subkey = FILES
+                   j = 0
+                    repeat while j < value:GetSize()
+                        JavaScriptObjectNotationObject file = value:Get(j)
+                        text fileName = file:GetText()
+                        module:AddFile(fileName)
+                        j = j + 1
+                    end
                 end
                 i = i + 1
             detect e
@@ -128,6 +138,25 @@ class Updater
     end
 
     action DownloadModules 
+        Iterator<Module> iterator = GetUpdateIterator()
+        repeat while iterator:HasNext()
+            Module module = iterator:Next()
+            output "Downloading updates for the module " + module:GetName() + " " + module:GetVersion() + "."
+            Iterator<text> files = module:GetFiles()
+            repeat while files:HasNext()
+                text file = files:Next()
+                output "Downloading file: " + file
 
+                Downloader download
+                download:SetPath("https://quorumlanguage.com/studio/live/" + file)
+                File downloadHere
+                downloadHere:SetPath("Updates/" + file)
+
+                downloadHere:GetParentDirectory():CreateDirectories()
+                download:SetFile(downloadHere)
+                download:Download()
+                output "File download complete."
+            end
+        end
     end
 end
