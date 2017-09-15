@@ -71,7 +71,6 @@ public class Downloader {
         OutputStream outstream = null;
         InputStream stream = null;
         try {
-            System.out.println(this.file.GetAbsolutePath());
             HttpsURLConnection connection
                     = (HttpsURLConnection) url.openConnection();
             connection.setRequestProperty("Range",
@@ -85,7 +84,6 @@ public class Downloader {
           
             File targetFile = new File(this.file.GetAbsolutePath());
             outstream = new FileOutputStream(targetFile);
-            System.out.println(outstream);
             
             stream = connection.getInputStream();
             byte[] buffer = new byte[8 * 1024];
