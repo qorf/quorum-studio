@@ -11,6 +11,9 @@ class Updater
     constant text MAJOR_VERSION = "Major Version"
     constant text MINOR_VERSION = "Minor Version"
     HashTable<text, Module> modules
+    Array<Module> updates
+    Array<Module> deletes
+
     Logger logger
 
     action Load(File file)
@@ -24,12 +27,6 @@ class Updater
             //output obj:GetKey()
             ProcessKey(obj)
             i = i + 1
-        end
-
-        Iterator<Module> mods = modules:GetValueIterator()
-        repeat while mods:HasNext()
-            Module m = mods:Next()
-            output m:GetName() + " " + m:GetVersion()
         end
     end
 
@@ -74,8 +71,63 @@ class Updater
         return mods
     end
 
+    action GetModule(text name) returns Module
+        return modules:GetValue(name)
+    end
+
+    action HasModule(text name) returns boolean
+        return modules:HasKey(name)
+    end
+
+    action GetSize returns integer
+        return modules:GetSize()
+    end
+
+    action IsEmpty returns boolean
+        return modules:IsEmpty()
+    end
+
+    action GetIterator returns Iterator<Module>
+        return modules:GetValueIterator()
+    end
+
+    action GetModuleNames returns Iterator<text>
+        return modules:GetKeyIterator()
+    end
+
     action CheckForNewerVersion(Updater updater)
-        Array<Module> mine = GetSortedModuleList()
-        Array<Module> theirs = updater:GetSortedModuleList()
+        Iterator<Module> iterator = GetIterator()
+
+        i = 0
+        repeat while iterator:HasNext()
+            Module module = iterator:Next()
+            Module newModule = updater:GetModule(module:GetName())
+            //if newModule is not null, there's a version listed, so see if it's newer
+            //if it is null, however, the module has been deleted, so kill it
+            if newModule = undefined
+                deletes:Add(module)
+            else
+                integer majorOld = module:GetMajorVersion()
+                integer minorOld = module:GetMinorVersion()
+
+                integer majorNew = newModule:GetMajorVersion()
+                integer minorNew = newModule:GetMinorVersion()
+                if majorNew > majorOld or (majorNew = majorOld and minorNew > minorOld)
+                    updates:Add(newModule)
+                end
+            end
+        end
+    end
+
+    action GetUpdateIterator returns Iterator<Module>
+        return updates:GetIterator()
+    end
+
+    action HasUpdates returns boolean
+        return not updates:IsEmpty()
+    end
+
+    action DownloadModules 
+
     end
 end

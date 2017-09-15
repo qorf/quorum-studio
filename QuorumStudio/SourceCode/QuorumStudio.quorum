@@ -353,12 +353,18 @@ class QuorumStudio is Game
         Downloader download
         download:SetPath("https://quorumlanguage.com/studio/live/Updates.json")
         boolean value = download:Exists()
-        output value
 
         File downloadHere
         downloadHere:SetPath("Updates/Updates.json")
         download:SetFile(downloadHere)
         download:Download()
+        
+        Updater newUpdate
+        newUpdate:Load(downloadHere)
+        updater:CheckForNewerVersion(newUpdate)
+        if updater:HasUpdates()
+            updater:DownloadModules()
+        end
     end
 
     action CheckForUpdates
