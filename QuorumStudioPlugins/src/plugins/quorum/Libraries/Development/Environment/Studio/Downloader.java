@@ -101,7 +101,9 @@ public class Downloader {
             Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
         } finally {
             try {
-                outstream.close();
+                if(outstream != null) {
+                    outstream.close();
+                }
             } catch (IOException ex) {
                 Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
             }
