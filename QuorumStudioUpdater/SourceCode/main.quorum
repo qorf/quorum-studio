@@ -1,0 +1,30 @@
+use Libraries.System.File
+use Libraries.Containers.Array
+
+text testWorkingDirectory = "/Users/stefika/Repositories/quorumstudio/QuorumStudioUpdater/Run/"
+text updates = "Updates"
+
+File updateFolder
+updateFolder:SetWorkingDirectory(testWorkingDirectory)
+updateFolder:SetPath("Updates")
+
+
+//Find all of the files in this folder and copy them into the main directory
+Array<File> files = updateFolder:GetDirectoryListing()
+i = 0
+repeat while i < files:GetSize()
+    File file = files:Get(i)
+    text path = file:GetPath()
+    File newFile
+    newFile:SetWorkingDirectory(testWorkingDirectory)
+    newFile:SetPath(path)
+    if file:IsDirectory()
+        file:Copy(newFile, true)
+        output "Directory" + newFile:GetAbsolutePath()
+    else 
+        file:Copy(newFile)
+        output "File" + newFile:GetAbsolutePath()
+    end
+    i = i + 1
+end
+
