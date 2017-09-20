@@ -7,6 +7,10 @@ use Libraries.Game.Game
 use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Development.Environment.Studio.Updates.Updater
 use Libraries.System.File
+use Libraries.Interface.Controls.Panel
+use Libraries.Development.Environment.Studio.Actions.OpenProjectAction
+use Libraries.Interface.Windows.FileChooser
+use Libraries.Game.DesktopConfiguration
 
 class QuorumStudio is Game
     MenuBar menuBar
@@ -20,6 +24,8 @@ class QuorumStudio is Game
     ProjectManager manager
     Updater updater
 
+    Panel projectPanel
+
     action Start
         StartGame()
     end
@@ -32,14 +38,56 @@ class QuorumStudio is Game
         CreateMenuBar()
         MenuBar value = GetMenuBar()
         Add(value)
+
+        CreatePanels()
     end
     
     action GetMenuBar returns MenuBar
         return menuBar
     end
 
-    action CreateMenuBar
+    action OpenProject
+        FileChooser chooser
+        chooser:SetModeToLoad()
+        Add(chooser)
+    end
+
+    action CreatePanels
         
+        projectPanel:Initialize(200, 500)
+        projectPanel:SetBackgroundColor(background:LightGray())
+        projectPanel:SetPosition(0, 0)
+        Add(projectPanel)
+//        Tree tree1
+//        panel:Add(tree1)
+//        tree1:Initialize(180, 480)
+//        tree1:SetPosition(10, 10)
+//        tree1:SetBackgroundColor(bgColor:White())
+//        TreeItem item1
+//        TreeItem item2
+//        TreeItem item3
+//        TreeItem item4
+//        TreeItem item5
+//        item1:Initialize(40, 10, "item1")
+//        item2:Initialize(40, 10, "item2")
+//        item3:Initialize(40, 10, "item3")
+//        item4:Initialize(40, 10, "item4")
+//        item5:Initialize(40, 10, "item5")
+//        item1:SetText("Item 1")
+//        item2:SetText("Item 2")
+//        item3:SetText("Item 3")
+//        item4:SetText("item 4")
+//        item5:SetText("item 5")
+//        tree1:AddRootItem(item1)
+//        item1:AddChildItem(item2)
+//        item2:AddChildItem(item3)
+//        item4:AddChildItem(item5)
+//        tree1:AddRootItem(item4)
+////        tree1:AddRootItem(item5)
+//        tree1:UpdateTree()
+    end
+
+    action CreateMenuBar
         menuBar:Initialize(800, 20, "Menu Bar")
         menuBar:SetBackgroundColor(background:White())
         menuBar:SetAlpha(0.5)
@@ -98,6 +146,10 @@ class QuorumStudio is Game
         Menu openProject
         InitializeMenu(openProject)
         openProject:SetText("Open Project")
+
+        OpenProjectAction openProjectAction
+        openProjectAction:SetMainApplication(me)
+        openProject:AddMouseListener(openProjectAction)
 
         Menu closeProject
         InitializeMenu(closeProject)
