@@ -1,30 +1,39 @@
 package Libraries.Development.Environment.Studio
 use Libraries.Interface.Controls.MenuBar
-use Libraries.Interface.Controls.Menu
+use Libraries.Interface.Controls.MenuItem
 use Libraries.Game.Graphics.Color
 use Libraries.Development.Environment.Studio.Actions.ExitAction
 use Libraries.Game.Game
 use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Development.Environment.Studio.Updates.Updater
 use Libraries.System.File
-use Libraries.Interface.Controls.Panel
+use Libraries.Interface.Windows.Panel
 use Libraries.Development.Environment.Studio.Actions.OpenProjectAction
 use Libraries.Interface.Windows.FileChooser
 use Libraries.Game.DesktopConfiguration
+use Libraries.Interface.Controls.Tree
+use Libraries.Interface.Controls.TextBox
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.TreeItem
 
 class QuorumStudio is Game
-    MenuBar menuBar
-    Menu fileMenu
-    Menu editMenu
-    Menu viewMenu
-    Menu runMenu
-    Menu windowsMenu
-    Menu helpMenu
+    MenuBar menuBar = undefined
+    MenuItem fileMenu = undefined
+    MenuItem editMenu = undefined
+    MenuItem viewMenu = undefined
+    MenuItem runMenu = undefined
+    MenuItem windowsMenu = undefined
+    MenuItem helpMenu = undefined
+    Tree projectTree = undefined
+    Tree navigator = undefined
+    TextBox codeEditor = undefined
+    TextBox outputWindow = undefined
+
     Color background
     ProjectManager manager
     Updater updater
 
-    Panel projectPanel
+    Panel projectPanel = undefined
 
     action Start
         StartGame()
@@ -37,6 +46,10 @@ class QuorumStudio is Game
     action CreateGame
         CreatePanels()
         CreateMenuBar()
+        CreateProjectsWindow()
+        CreateCodeEditor()
+        CreateNavigationWindow()
+        CreateOutputWindow()
         MenuBar value = GetMenuBar()
         Add(value)
     end
@@ -53,10 +66,10 @@ class QuorumStudio is Game
 
     action CreatePanels
         
-        projectPanel:Initialize(200, 500)
-        projectPanel:SetBackgroundColor(background:LightGray())
-        projectPanel:SetPosition(0, 0)
-        Add(projectPanel)
+//        projectPanel:Initialize(200, 500)
+//        projectPanel:SetBackgroundColor(background:LightGray())
+//        projectPanel:SetPosition(0, 0)
+//        Add(projectPanel)
 //        Tree tree1
 //        panel:Add(tree1)
 //        tree1:Initialize(180, 480)
@@ -87,40 +100,17 @@ class QuorumStudio is Game
     end
 
     action CreateMenuBar
-        menuBar:Initialize(800, 20, "Menu Bar")
-        menuBar:SetBackgroundColor(background:White())
-        menuBar:SetAlpha(0.5)
-        menuBar:ShowName()
-        menuBar:GetLabel():SetPosition(10, 5)
-        menuBar:SetPosition(0, 600)
-        menuBar:EnableBorder()
-        menuBar:SetX(0)
-        menuBar:SetY(550)
+        MenuBar bar
+        menuBar = bar
+        menuBar:SetColor(background:White())
+        menuBar:SetDock("top")
+        menuBar:SetDock("left")
+        menuBar:DockToWindow(true)
+        menuBar:SetWidthByPercent(100)
+        menuBar:SetHeightByPercent(menuBar:GetHeight() / GetScreenHeight() * 100)
+        menuBar:SetMaxHeight(cast(integer, menuBar:GetHeight()))
+        menuBar:LockMaxHeight(true)
 
-        InitializeMenu(fileMenu)
-        fileMenu:SetText("File")
-
-        InitializeMenu(editMenu)
-        editMenu:SetText("Edit")
-
-        InitializeMenu(viewMenu)
-        viewMenu:SetText("View")
-
-        InitializeMenu(runMenu)
-        runMenu:SetText("Run")
-
-        InitializeMenu(windowsMenu)
-        windowsMenu:SetText("Windows")
-
-        InitializeMenu(helpMenu)
-        helpMenu:SetText("Help")
-
-        menuBar:AddMenu(fileMenu)
-        menuBar:AddMenu(editMenu)
-        menuBar:AddMenu(viewMenu)
-        menuBar:AddMenu(runMenu)
-        menuBar:AddMenu(windowsMenu)
-        menuBar:AddMenu(helpMenu)
         SetupFileMenu()
         SetupEditMenu()
         SetupViewMenu()
@@ -129,57 +119,46 @@ class QuorumStudio is Game
         SetupHelpMenu()
     end
 
-    private action InitializeMenu(Menu menu)
-        menu:Initialize(100, 20, "Menu 1")
-        menu:SetBackgroundColor(background:White())
-        menu:ShowName()
-        menu:EnableBorder()
-        menu:GetLabel():SetPosition(5, 5)
-    end
-
+    //Adding the mouse listeners will give unintended results for now
     private action SetupFileMenu
-        Menu newProject
-        InitializeMenu(newProject)
+        MenuItem menu
+        fileMenu = menu
+        fileMenu:SetText("File")
+        menuBar:AddMenu(fileMenu)
+
+        MenuItem newProject
         newProject:SetText("New Project")
 
-        Menu openProject
-        InitializeMenu(openProject)
+        MenuItem openProject
         openProject:SetText("Open Project")
 
         OpenProjectAction openProjectAction
         openProjectAction:SetMainApplication(me)
-        openProject:AddMouseListener(openProjectAction)
+//        openProject:AddMouseListener(openProjectAction)
 
-        Menu closeProject
-        InitializeMenu(closeProject)
+        MenuItem closeProject
         closeProject:SetText("Close Project")
 
-        Menu newFile
-        InitializeMenu(newFile)
+        MenuItem newFile
         newFile:SetText("New File")
 
-        Menu openFile
-        InitializeMenu(openFile)
+        MenuItem openFile
         openFile:SetText("Open File")
 
-        Menu save
-        InitializeMenu(save)
+        MenuItem save
         save:SetText("Save")
 
-        Menu saveAs
-        InitializeMenu(saveAs)
+        MenuItem saveAs
         saveAs:SetText("Save As...")
 
-        Menu saveAll
-        InitializeMenu(saveAll)
+        MenuItem saveAll
         saveAll:SetText("Save All")
 
-        Menu exit
-        InitializeMenu(exit)
+        MenuItem exit
         exit:SetText("Exit")
         ExitAction exitAction
         exitAction:SetMainApplication(me)
-        exit:AddMouseListener(exitAction)
+//        exit:AddMouseListener(exitAction)
 
         fileMenu:AddMenu(newProject)
         fileMenu:AddMenu(openProject)
@@ -193,62 +172,52 @@ class QuorumStudio is Game
     end
 
     private action SetupEditMenu
-        Menu undo
-        InitializeMenu(undo)
+        MenuItem menu
+        editMenu = menu
+        editMenu:SetText("Edit")
+        menuBar:AddMenu(editMenu)
+
+        MenuItem undo
         undo:SetText("Undo")
 
-        Menu redo
-        InitializeMenu(redo)
+        MenuItem redo
         redo:SetText("Redo")
 
-        Menu cut
-        InitializeMenu(cut)
+        MenuItem cut
         cut:SetText("Cut")
 
-        Menu copy
-        InitializeMenu(copy)
+        MenuItem copy
         copy:SetText("Copy")
 
-        Menu paste
-        InitializeMenu(paste)
+        MenuItem paste
         paste:SetText("Paste")
 
-        Menu delete
-        InitializeMenu(delete)
+        MenuItem delete
         delete:SetText("Delete")
 
-        Menu selectAll
-        InitializeMenu(selectAll)
+        MenuItem selectAll
         selectAll:SetText("Select All")
 
-        Menu gotoLine
-        InitializeMenu(gotoLine)
+        MenuItem gotoLine
         gotoLine:SetText("Go to Line")
 
-        Menu findSelection
-        InitializeMenu(findSelection)
+        MenuItem findSelection
         findSelection:SetText("Find Selection")
 
-        Menu findNext
-        InitializeMenu(findNext)
+        MenuItem findNext
         findNext:SetText("Find Next")
 
-        Menu findPrevious
-        InitializeMenu(findPrevious)
+        MenuItem findPrevious
         findPrevious:SetText("Find Previous")
 
-        Menu Find
-        InitializeMenu(Find)
+        MenuItem Find
         Find:SetText("Find")
 
-        Menu replace
-        InitializeMenu(replace)
+        MenuItem replace
         replace:SetText("Replace")
 
-        Menu projectProperties
-        InitializeMenu(projectProperties)
+        MenuItem projectProperties
         projectProperties:SetText("Edit Project Properties")
-
 
         editMenu:AddMenu(undo)
         editMenu:AddMenu(redo)
@@ -267,20 +236,21 @@ class QuorumStudio is Game
     end
 
     private action SetupViewMenu
-        Menu quorumStudioErrorLog
-        InitializeMenu(quorumStudioErrorLog)
+        MenuItem menu
+        viewMenu = menu
+        viewMenu:SetText("View")
+        menuBar:AddMenu(viewMenu)
+
+        MenuItem quorumStudioErrorLog
         quorumStudioErrorLog:SetText("Quorum Studio Error Log")
 
-        Menu lineNumbers
-        InitializeMenu(lineNumbers)
+        MenuItem lineNumbers
         lineNumbers:SetText("Line Numbers")
 
-        Menu blocksMode
-        InitializeMenu(blocksMode)
+        MenuItem blocksMode
         blocksMode:SetText("BlocksMode")
 
-        Menu splitMode
-        InitializeMenu(splitMode)
+        MenuItem splitMode
         splitMode:SetText("Split Mode")
 
         viewMenu:AddMenu(quorumStudioErrorLog)
@@ -290,42 +260,37 @@ class QuorumStudio is Game
     end
 
     private action SetupRunMenu
-        Menu build
-        InitializeMenu(build)
+        MenuItem menu
+        runMenu = menu
+        runMenu:SetText("Run")
+        menuBar:AddMenu(runMenu)
+        
+        MenuItem build
         build:SetText("Build")
 
-        Menu cleanAndBuild
-        InitializeMenu(cleanAndBuild)
+        MenuItem cleanAndBuild
         cleanAndBuild:SetText("Clean and Build")
 
-        Menu run
-        InitializeMenu(run)
+        MenuItem run
         run:SetText("Run")
 
-        Menu debug
-        InitializeMenu(debug)
+        MenuItem debug
         debug:SetText("Debug")
 
-        Menu stopDebugging
-        InitializeMenu(stopDebugging)
+        MenuItem stopDebugging
         stopDebugging:SetText("Stop Debugging")
 
-        Menu stepOver
-        InitializeMenu(stepOver)
+        MenuItem stepOver
         stepOver:SetText("Step Over")
 
-        Menu stepInto
-        InitializeMenu(stepInto)
+        MenuItem stepInto
         stepInto:SetText("Step Into")
 
-        Menu stepOut
-        InitializeMenu(stepOut)
+        MenuItem stepOut
         stepOut:SetText("Step Out")
 
-        Menu runToCursor
-        InitializeMenu(runToCursor)
+        MenuItem runToCursor
         runToCursor:SetText("Run to Cursor")
-
 
         runMenu:AddMenu(build)
         runMenu:AddMenu(cleanAndBuild)
@@ -339,34 +304,31 @@ class QuorumStudio is Game
     end
 
     private action SetupWindowsMenu
-        Menu projectWindow
-        InitializeMenu(projectWindow)
+        MenuItem menu
+        windowsMenu = menu
+        windowsMenu:SetText("Windows")
+        menuBar:AddMenu(windowsMenu)
+
+        MenuItem projectWindow
         projectWindow:SetText("Project Window")
 
-        Menu editorWindow
-        InitializeMenu(editorWindow)
+        MenuItem editorWindow
         editorWindow:SetText("Editor Window")
 
-        Menu errorWindow
-        InitializeMenu(errorWindow)
+        MenuItem errorWindow
         errorWindow:SetText("Error Window")
 
-        Menu consoleWindow
-        InitializeMenu(consoleWindow)
+        MenuItem consoleWindow
         consoleWindow:SetText("Console Window")
 
-        Menu variablesWindow
-        InitializeMenu(variablesWindow)
+        MenuItem variablesWindow
         variablesWindow:SetText("Variables Window")
 
-        Menu breakpointsWindow
-        InitializeMenu(breakpointsWindow)
+        MenuItem breakpointsWindow
         breakpointsWindow:SetText("Breakpoints Window")
 
-        Menu optionsWindow
-        InitializeMenu(optionsWindow)
+        MenuItem optionsWindow
         optionsWindow:SetText("Options Window")
-
 
         windowsMenu:AddMenu(projectWindow)
         windowsMenu:AddMenu(editorWindow)
@@ -378,22 +340,144 @@ class QuorumStudio is Game
     end
 
     private action SetupHelpMenu
-        Menu about
-        InitializeMenu(about)
+        MenuItem menu
+        helpMenu = menu
+        helpMenu:SetText("Help")
+        menuBar:AddMenu(helpMenu)
+
+        MenuItem about
         about:SetText("About")
 
-        Menu findHelpOnline
-        InitializeMenu(findHelpOnline)
+        MenuItem findHelpOnline
         findHelpOnline:SetText("Find Help Online")
 
-        Menu checkForUpdates
-        InitializeMenu(checkForUpdates)
+        MenuItem checkForUpdates
         checkForUpdates:SetText("Check for Updates")
-
 
         helpMenu:AddMenu(about)
         helpMenu:AddMenu(findHelpOnline)
         helpMenu:AddMenu(checkForUpdates)
+    end
+
+    action CreateProjectsWindow()
+        Tree tree
+        projectTree = tree
+        projectTree:SetColor(background:Teal())
+        projectTree:SetDock("left")
+        projectTree:DockToWindow(true)
+        projectTree:SetWidthByPercent(25) 
+        projectTree:SetHeightByPercent(60)
+        projectTree:SetY(GetScreenHeight() - menuBar:GetHeight() - projectTree:GetHeight())
+        projectTree:SetBorder(1)
+        Add(projectTree)
+
+        File directory
+        Array<File> directoryFiles = directory:GetDirectoryListing()
+        RemoveHiddenFiles(directoryFiles)
+        
+        i = 0
+        repeat while i < directoryFiles:GetSize()
+           File currentFile = directoryFiles:Get(i)
+           TreeItem toProjectTree
+           toProjectTree:SetText(currentFile:GetFileName())
+           projectTree:AddRootItem(toProjectTree)
+           if(currentFile:IsDirectory())
+                integer j = 0
+                Array<File> childFiles = currentFile:GetDirectoryListing()
+                RemoveHiddenFiles(childFiles)
+                repeat while j < childFiles:GetSize()
+                    AddFileToTree(childFiles:Get(j), toProjectTree)
+                    j = j + 1
+                end
+           end
+           i = i + 1
+        end
+
+        projectTree:UpdateTree()
+    end
+
+    //Crashes on Windows
+    private action AddFileToTree(File fileToAdd, TreeItem targetTree)
+         TreeItem file
+         file:SetText(fileToAdd:GetFileName())
+         targetTree:AddChildItem(file)
+
+        if(fileToAdd:IsDirectory())
+            Array<File> folder = fileToAdd:GetDirectoryListing()
+            RemoveHiddenFiles(folder)
+            integer i = 0
+            repeat while i < folder:GetSize()
+                    //Does not work on Windows, Fails to load native font
+                AddFileToTree(folder:Get(i), file)
+                i = i + 1
+            end
+        end
+    end
+
+    private action RemoveHiddenFiles(Array<File> directory)
+        integer i = 0
+        repeat while i < directory:GetSize()
+            if(directory:Get(i):IsHidden())
+                directory:Remove(directory:Get(i))
+            end
+            i = i + 1
+        end
+    end
+
+    action CreateCodeEditor()
+        TextBox textBox
+        codeEditor = textBox
+        
+        codeEditor:SetColor(background:White()) 
+        codeEditor:SetDock("right")
+        codeEditor:DockToWindow(true)
+        codeEditor:SetWidthByPercent(100 - cast(integer, projectTree:GetWidthPercentage() * 100))
+        codeEditor:SetHeightByPercent(70)
+        codeEditor:Reposition() //Must be called AFTER width and height are set if and only if docks were set before width and height
+        codeEditor:SetY(GetScreenHeight() - menuBar:GetHeight() - codeEditor:GetHeight())
+        codeEditor:SetBorder(1)
+        Add(codeEditor)
+    end
+
+    action CreateNavigationWindow()
+        Tree tree
+        navigator = tree
+        navigator:SetColor(background:Green())
+        navigator:SetDock("left")
+        navigator:SetDock("bottom")
+        navigator:DockToWindow(true)
+        navigator:SetWidthByPercent(projectTree:GetWidthPercentage() * 100)
+        navigator:SetHeightByPercent(100 - cast(integer, (projectTree:GetHeightPercentage() + menuBar:GetHeight() / GetScreenHeight()) * 100))
+        navigator:SetBorder(1)
+        Add(navigator)
+        AddClassMembers()
+    end
+
+    private action AddClassMembers()
+        TreeItem memberFunction
+        memberFunction:SetText("CreateGame()")
+        navigator:AddRootItem(memberFunction)
+        
+        TreeItem memberVariable
+        memberVariable:SetText("projectTree")
+        navigator:AddRootItem(memberVariable)
+        
+        navigator:UpdateTree()
+    end
+
+    action CreateOutputWindow()
+        TextBox textBox
+        outputWindow = textBox
+
+        outputWindow:SetColor(background:Maroon())
+        outputWindow:SetDock("bottom")
+        outputWindow:SetDock("right")
+        outputWindow:DockToWindow(true)
+        outputWindow:SetWidthByPercent(cast(integer, codeEditor:GetWidthPercentage() * 100))
+        outputWindow:SetHeightByPercent(100 - cast(integer, (codeEditor:GetHeightPercentage() + menuBar:GetHeight() / GetScreenHeight()) * 100))
+        outputWindow:Reposition()
+        outputWindow:SetBorder(1)
+        Add(outputWindow)
     end
 
     action LoadUpdates
