@@ -12,7 +12,8 @@ use Libraries.Development.Environment.Studio.Actions.OpenProjectAction
 use Libraries.Interface.Windows.FileChooser
 use Libraries.Game.DesktopConfiguration
 use Libraries.Interface.Controls.Tree
-use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.TextBox
+//use Libraries.Interface.Controls.TextBox
 use Libraries.Containers.Array
 use Libraries.Interface.Controls.TreeItem
 
@@ -428,14 +429,17 @@ class QuorumStudio is Game
         TextBox textBox
         codeEditor = textBox
         
-        codeEditor:SetColor(background:White()) 
-        codeEditor:SetDock("right")
-        codeEditor:DockToWindow(true)
-        codeEditor:SetWidthByPercent(100 - cast(integer, projectTree:GetWidthPercentage() * 100))
-        codeEditor:SetHeightByPercent(70)
-        codeEditor:Reposition() //Must be called AFTER width and height are set if and only if docks were set before width and height
-        codeEditor:SetY(GetScreenHeight() - menuBar:GetHeight() - codeEditor:GetHeight())
-        codeEditor:SetBorder(1)
+        codeEditor:Initialize(GetScreenWidth() - projectTree:GetWidth(), cast(integer, GetScreenHeight() * 0.7), background:White(), "")
+        codeEditor:SetPosition(projectTree:GetWidth(), GetScreenHeight() - menuBar:GetHeight() - codeEditor:GetHeight())
+
+//        codeEditor:SetColor(background:White()) 
+//        codeEditor:SetDock("right")
+//        codeEditor:DockToWindow(true)
+//        codeEditor:SetWidthByPercent(100 - cast(integer, projectTree:GetWidthPercentage() * 100))
+//        codeEditor:SetHeightByPercent(70)
+//        codeEditor:Reposition() //Must be called AFTER width and height are set if and only if docks were set before width and height
+//        codeEditor:SetY(GetScreenHeight() - menuBar:GetHeight() - codeEditor:GetHeight())
+//        codeEditor:SetBorder(1)
         Add(codeEditor)
     end
 
@@ -469,14 +473,17 @@ class QuorumStudio is Game
         TextBox textBox
         outputWindow = textBox
 
-        outputWindow:SetColor(background:Maroon())
-        outputWindow:SetDock("bottom")
-        outputWindow:SetDock("right")
-        outputWindow:DockToWindow(true)
-        outputWindow:SetWidthByPercent(cast(integer, codeEditor:GetWidthPercentage() * 100))
-        outputWindow:SetHeightByPercent(100 - cast(integer, (codeEditor:GetHeightPercentage() + menuBar:GetHeight() / GetScreenHeight()) * 100))
-        outputWindow:Reposition()
-        outputWindow:SetBorder(1)
+        outputWindow:Initialize(codeEditor:GetWidth(), GetScreenHeight() - menuBar:GetHeight() - codeEditor:GetHeight(), background:LightGray(), "This is the output area.")
+        outputWindow:SetPosition(codeEditor:GetX(), 0)
+
+//        outputWindow:SetColor(background:Maroon())
+//        outputWindow:SetDock("bottom")
+//        outputWindow:SetDock("right")
+//        outputWindow:DockToWindow(true)
+//        outputWindow:SetWidthByPercent(cast(integer, codeEditor:GetWidthPercentage() * 100))
+//        outputWindow:SetHeightByPercent(100 - cast(integer, (codeEditor:GetHeightPercentage() + menuBar:GetHeight() / GetScreenHeight()) * 100))
+//        outputWindow:Reposition()
+//        outputWindow:SetBorder(1)
         Add(outputWindow)
     end
 
