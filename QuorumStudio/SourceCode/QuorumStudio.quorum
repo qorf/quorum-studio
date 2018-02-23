@@ -42,7 +42,9 @@ class QuorumStudio is Game
     Color background
     ProjectManager manager
     Updater updater
-//
+    Item2D toolbar
+    text TOOLBAR_RESOURCES = "resources/graphics/toolbar/"
+    number tempXOffset = 0
 //    Panel projectPanel = undefined
 
     action Start
@@ -69,7 +71,7 @@ class QuorumStudio is Game
     end
 
     action CreateToolbar
-        Item2D toolbar
+        
         LabelBoxContent content
         content:Initialize(gradient, color:Black(), "")
         content:SetBorderThickness(0)
@@ -99,35 +101,82 @@ class QuorumStudio is Game
         // Boundary of the last button.
         number endValue = 0
 
-        repeat while counter < 6
-            counter = counter + 1
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "NewProject.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "NewFile.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "OpenProject.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "SaveAll.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Undo.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Redo.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Build.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "CleanAndBuild.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Run.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Debug.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Stop.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Pause.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Continue.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "StepOver.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "StepInto.png")
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "StepOut.png")
+        
+//        repeat while counter < 6
+//            counter = counter + 1
+//
+//            //ImageInterfaceContent buttonContent
+//            //buttonContent:Load("Hues" + counter + ".png")
+//            
+//            Button button
+//            //button:SetVisualContent(buttonContent)
+//            
+//            Layout buttonLayout
+//            // Button's x position is set with pixel position.
+//            buttonLayout:SetOffsetX(endValue + 20)
+//            // Button is always lifted 20% off the bottom of the toolbar.
+//            buttonLayout:SetPercentageY(0.2)
+//            // Height of a button is always 60% of toolbar height.
+//            buttonLayout:SetPercentageHeight(0.6)
+//            // For simplicity's sake I'm locking the width to 60 pixels.
+//            buttonLayout:SetWidthOffset(60)
+//
+//            button:AddLayout(buttonLayout)
+//            toolbar:Add(button)
+//            toolbar:Resize()
+//
+//            //OutputBehavior behavior
+//            //behavior:Set(counter)
+//            //button:SetBehavior(behavior)
+//
+//            endValue = endValue + 100
+//        end
+    end
 
-            //ImageInterfaceContent buttonContent
-            //buttonContent:Load("Hues" + counter + ".png")
-            
-            Button button
-            //button:SetVisualContent(buttonContent)
-            
-            Layout buttonLayout
-            // Button's x position is set with pixel position.
-            buttonLayout:SetOffsetX(endValue + 20)
-            // Button is always lifted 20% off the bottom of the toolbar.
-            buttonLayout:SetPercentageY(0.2)
-            // Height of a button is always 60% of toolbar height.
-            buttonLayout:SetPercentageHeight(0.6)
-            // For simplicity's sake I'm locking the width to 60 pixels.
-            buttonLayout:SetWidthOffset(60)
+    private action AddButtonToToolbar(text image)
 
-            button:AddLayout(buttonLayout)
-            toolbar:Add(button)
-            toolbar:Resize()
+        ImageInterfaceContent buttonContent
+        buttonContent:Load(image)
+        
+        Button button
+        
+        button:SetVisualContent(buttonContent)
 
-            //OutputBehavior behavior
-            //behavior:Set(counter)
-            //button:SetBehavior(behavior)
+        Layout buttonLayout
+        // Button's x position is set with pixel position.
+        buttonLayout:SetOffsetX(tempXOffset)
+        // Button is always lifted 20% off the bottom of the toolbar.
+        buttonLayout:SetPercentageY(0.2)
+        // Height of a button is always 60% of toolbar height.
+        buttonLayout:SetPercentageHeight(0.6)
+        // For simplicity's sake I'm locking the width to 60 pixels.
+        buttonLayout:SetWidthOffset(60)
 
-            endValue = endValue + 100
-        end
+        button:AddLayout(buttonLayout)
+        toolbar:Add(button)
+        toolbar:Resize()
+
+        //OutputBehavior behavior
+        //behavior:Set(counter)
+        //button:SetBehavior(behavior)
+
+        tempXOffset = tempXOffset + 50
     end
     
 //    action GetMenuBar returns MenuBar
