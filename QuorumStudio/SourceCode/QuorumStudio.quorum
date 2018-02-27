@@ -21,6 +21,8 @@ use Libraries.Interface.LabelBoxContent
 use Libraries.Interface.Layout
 use Libraries.Interface.ImageInterfaceContent
 use Libraries.Interface.Button
+use Libraries.Game.Layer2D
+use Libraries.Interface.Toolbar
 //use Libraries.Interface.Controls.TreeItem
 
 class QuorumStudio is Game
@@ -42,7 +44,7 @@ class QuorumStudio is Game
     Color background
     ProjectManager manager
     Updater updater
-    Item2D toolbar
+    Toolbar toolbar
     text TOOLBAR_RESOURCES = "resources/graphics/toolbar/"
     number tempXOffset = 0
 //    Panel projectPanel = undefined
@@ -57,9 +59,11 @@ class QuorumStudio is Game
 
     action CreateGame
         gradient:Set(color:LightGray(), color:LightGray(), color:White(), color:White())
-
+        Layer2D layer = me:GetCurrentLayer2D()
+        layer:SetAutomaticResizing(true)
 
         CreateToolbar()
+        toolbar:Resize()
 //        CreatePanels()
 //        CreateMenuBar()
 //        CreateProjectsWindow()
@@ -84,11 +88,11 @@ class QuorumStudio is Game
         toolbarLayout:SetPercentageWidth(1)
         // Height is fixed to 100 pixels.
         toolbarLayout:SetPercentageHeight(0)
-        toolbarLayout:SetHeightOffset(100)
+        toolbarLayout:SetHeightOffset(50)
 
         // Toolbar is placed at top of screen, minus 100 pixels.
         toolbarLayout:SetPercentageY(1)
-        toolbarLayout:SetOffsetY(-100)
+        toolbarLayout:SetOffsetY(-50)
 
         toolbar:AddLayout(toolbarLayout)
 
@@ -158,19 +162,11 @@ class QuorumStudio is Game
         
         button:SetVisualContent(buttonContent)
 
-        Layout buttonLayout
-        // Button's x position is set with pixel position.
-        buttonLayout:SetOffsetX(tempXOffset)
-        // Button is always lifted 20% off the bottom of the toolbar.
-        buttonLayout:SetPercentageY(0.2)
-        // Height of a button is always 60% of toolbar height.
-        buttonLayout:SetPercentageHeight(0.6)
-        // For simplicity's sake I'm locking the width to 60 pixels.
-        buttonLayout:SetWidthOffset(60)
-
-        button:AddLayout(buttonLayout)
+        button:SetWidth(50)
+        button:SetHeight(50)
+        button:SetX(tempXOffset)
         toolbar:Add(button)
-        toolbar:Resize()
+        //toolbar:Resize()
 
         //OutputBehavior behavior
         //behavior:Set(counter)

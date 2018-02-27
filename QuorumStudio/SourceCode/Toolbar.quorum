@@ -1,0 +1,26 @@
+package Libraries.Interface
+use Libraries.Interface.Layout.InterfaceLayout2D
+use Libraries.Interface.Layout.FlowLayout2D
+
+class Toolbar is Item2D
+    InterfaceLayout2D layout = undefined
+
+    on create
+        FlowLayout2D flow
+        layout = flow
+    end
+
+    action GetInterfaceLayout returns InterfaceLayout2D
+        return layout
+    end
+
+    action SetInterfaceLayout(InterfaceLayout2D layout)
+        me:layout = layout
+    end
+
+
+    action Resize
+        parent:Libraries.Interface.Item2D:Resize()
+        layout:Layout(me)
+    end
+end
