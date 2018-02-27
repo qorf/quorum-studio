@@ -27,6 +27,7 @@ use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Game.Behaviors.Behavior
 use Libraries.Development.Environment.Projects.Project
 use Libraries.Development.Environment.Studio.Behaviors.Build
+use Libraries.Development.Environment.Studio.Behaviors.OpenProject
 //use Libraries.Interface.Controls.TreeItem
 
 class QuorumStudio is Game
@@ -111,10 +112,14 @@ class QuorumStudio is Game
         // Boundary of the last button.
         number endValue = 0
         Build build
+        build:SetQuorumStudio(me)
+
+        OpenProject open
+        open:SetQuorumStudio(me)
 
         AddButtonToToolbar(TOOLBAR_RESOURCES + "NewProject.png", undefined)
         AddButtonToToolbar(TOOLBAR_RESOURCES + "NewFile.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "OpenProject.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "OpenProject.png", open)
         AddButtonToToolbar(TOOLBAR_RESOURCES + "SaveAll.png", undefined)
         AddButtonToToolbar(TOOLBAR_RESOURCES + "Undo.png", undefined)
         AddButtonToToolbar(TOOLBAR_RESOURCES + "Redo.png", undefined)
@@ -147,11 +152,6 @@ class QuorumStudio is Game
             button:SetBehavior(behavior)
         end
         toolbar:Add(button)
-
-        //OutputBehavior behavior
-        //behavior:Set(counter)
-        //button:SetBehavior(behavior)
-
     end
     
     action GetSelectedProject returns Project
