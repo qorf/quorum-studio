@@ -6,21 +6,19 @@ class Toolbar is Item2D
     Layout layout = undefined
 
     on create
-        FlowLayout flow
-        layout = flow
     end
 
-    action GetInterfaceLayout returns Layout
+    action GetLayout returns Layout
         return layout
     end
 
-    action SetInterfaceLayout(Layout layout)
+    action SetLayout(Layout layout)
         me:layout = layout
     end
 
-
-    action Resize
-        parent:Libraries.Interface.Item2D:Resize()
-        layout:Layout(me)
+    action Layout
+        if layout not= undefined
+            layout:Apply(me, me:GetWidth(), me:GetHeight())
+        end
     end
 end

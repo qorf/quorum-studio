@@ -1,4 +1,5 @@
-package Libraries.Development.Environment.Studio.Actions
+package Libraries.Development.Environment.Studio.Behaviors
+
 use Libraries.Interface.Events.MouseListener
 use Libraries.Interface.Events.MouseEvent
 use Libraries.System.SystemHelper
@@ -11,8 +12,10 @@ use Libraries.Containers.Array
 use Libraries.Language.Compile.CompilerErrorManager
 use Libraries.Containers.Iterator
 use Libraries.Language.Compile.CompilerError
+use Libraries.Game.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
 
-class BuildAction is Action
+class BuildQuorumProject is Behavior
     QuorumProject project = undefined
 
     action GetProject returns QuorumProject
@@ -23,7 +26,7 @@ class BuildAction is Action
         me:project = project
     end
 
-    action Do
+    action Run(BehaviorEvent event)
         Compiler compiler = project:GetCompiler()
         File location = project:GetLocation()
         File sources = project:GetSources()
@@ -51,7 +54,5 @@ class BuildAction is Action
             CompilerError error = errorIterator:Next()
             output error:GetErrorMessage()
         end
-
-        a = 5
     end
 end

@@ -23,6 +23,10 @@ use Libraries.Interface.ImageInterfaceContent
 use Libraries.Interface.Button
 use Libraries.Game.Layer2D
 use Libraries.Interface.Toolbar
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Behaviors.Behavior
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Development.Environment.Studio.Behaviors.Build
 //use Libraries.Interface.Controls.TreeItem
 
 class QuorumStudio is Game
@@ -48,6 +52,7 @@ class QuorumStudio is Game
     text TOOLBAR_RESOURCES = "resources/graphics/toolbar/"
     number tempXOffset = 0
 //    Panel projectPanel = undefined
+    Project selectedProject = undefined
 
     action Start
         StartGame()
@@ -62,8 +67,9 @@ class QuorumStudio is Game
         Layer2D layer = me:GetCurrentLayer2D()
         layer:SetAutomaticResizing(true)
 
+        Behavior behave
         CreateToolbar()
-        toolbar:Resize()
+        //toolbar:Resize()
 //        CreatePanels()
 //        CreateMenuBar()
 //        CreateProjectsWindow()
@@ -83,16 +89,16 @@ class QuorumStudio is Game
         toolbar:SetVisualContent(content)
         Add(toolbar)
 
-        Layout toolbarLayout
+        FlowLayout toolbarLayout
         // Width is the full width of the screen.
         toolbarLayout:SetPercentageWidth(1)
         // Height is fixed to 100 pixels.
         toolbarLayout:SetPercentageHeight(0)
-        toolbarLayout:SetHeightOffset(50)
+        toolbarLayout:SetHeightOffset(30)
 
         // Toolbar is placed at top of screen, minus 100 pixels.
         toolbarLayout:SetPercentageY(1)
-        toolbarLayout:SetOffsetY(-50)
+        toolbarLayout:SetOffsetY(-30)
 
         toolbar:AddLayout(toolbarLayout)
 
@@ -104,56 +110,28 @@ class QuorumStudio is Game
 
         // Boundary of the last button.
         number endValue = 0
+        Build build
 
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "NewProject.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "NewFile.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "OpenProject.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "SaveAll.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Undo.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Redo.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Build.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "CleanAndBuild.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Run.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Debug.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Stop.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Pause.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Continue.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "StepOver.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "StepInto.png")
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "StepOut.png")
-        
-//        repeat while counter < 6
-//            counter = counter + 1
-//
-//            //ImageInterfaceContent buttonContent
-//            //buttonContent:Load("Hues" + counter + ".png")
-//            
-//            Button button
-//            //button:SetVisualContent(buttonContent)
-//            
-//            Layout buttonLayout
-//            // Button's x position is set with pixel position.
-//            buttonLayout:SetOffsetX(endValue + 20)
-//            // Button is always lifted 20% off the bottom of the toolbar.
-//            buttonLayout:SetPercentageY(0.2)
-//            // Height of a button is always 60% of toolbar height.
-//            buttonLayout:SetPercentageHeight(0.6)
-//            // For simplicity's sake I'm locking the width to 60 pixels.
-//            buttonLayout:SetWidthOffset(60)
-//
-//            button:AddLayout(buttonLayout)
-//            toolbar:Add(button)
-//            toolbar:Resize()
-//
-//            //OutputBehavior behavior
-//            //behavior:Set(counter)
-//            //button:SetBehavior(behavior)
-//
-//            endValue = endValue + 100
-//        end
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "NewProject.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "NewFile.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "OpenProject.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "SaveAll.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Undo.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Redo.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Build.png", build)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "CleanAndBuild.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Run.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Debug.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Stop.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Pause.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "Continue.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "StepOver.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "StepInto.png", undefined)
+        AddButtonToToolbar(TOOLBAR_RESOURCES + "StepOut.png", undefined)
+        toolbar:Resize()
     end
 
-    private action AddButtonToToolbar(text image)
+    private action AddButtonToToolbar(text image, Behavior behavior)
 
         ImageInterfaceContent buttonContent
         buttonContent:Load(image)
@@ -162,19 +140,24 @@ class QuorumStudio is Game
         
         button:SetVisualContent(buttonContent)
 
-        button:SetWidth(50)
-        button:SetHeight(50)
-        button:SetX(tempXOffset)
+        button:SetWidth(30)
+        button:SetHeight(30)
+
+        if behavior not= undefined
+            button:SetBehavior(behavior)
+        end
         toolbar:Add(button)
-        //toolbar:Resize()
 
         //OutputBehavior behavior
         //behavior:Set(counter)
         //button:SetBehavior(behavior)
 
-        tempXOffset = tempXOffset + 50
     end
     
+    action GetSelectedProject returns Project
+        return selectedProject
+    end
+
 //    action GetMenuBar returns MenuBar
 //        return menuBar
 //    end

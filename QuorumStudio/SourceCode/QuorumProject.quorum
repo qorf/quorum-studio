@@ -8,7 +8,7 @@ use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Data.Formats.JavaScriptObjectNotationObject
 use Libraries.System.Logger
 use Libraries.Language.Compile.Compiler
-use Libraries.Development.Environment.Studio.Actions.BuildAction
+use Libraries.Development.Environment.Studio.Behaviors.BuildQuorumProject
 
 /*
     This class loads a Quorum project into the Integrated Development Environment.
@@ -87,7 +87,7 @@ class QuorumProject is Project
     Compiler compiler
 
     //add all the default actions this project can do
-    BuildAction build
+    BuildQuorumProject build
 
     on create
         build:SetProject(me)
@@ -292,8 +292,10 @@ class QuorumProject is Project
     end
 
 
-    action GetBuildAction returns BuildAction
-        return build
+    action Build
+        if build not= undefined
+            build:Run(undefined)
+        end
     end
 
     /*
