@@ -1,0 +1,67 @@
+package Libraries.Interface.Layouts
+
+use Libraries.Interface.Item2D
+use Libraries.Containers.Array
+
+class FillLayout is Layout
+    
+    public constant integer NONE = 0
+    public constant integer LEFT = 1
+    public constant integer RIGHT = 2
+    public constant integer BOTTOM = 3
+    public constant integer TOP = 4
+
+    integer xFill = NONE
+    integer yFill = NONE
+
+    action Apply(Item2D fillItem, number containerWidth, number containerHeight)
+        Item2D parentItem = fillItem:GetParent()
+        if parentItem = undefined or (xFill = NONE and yFill = NONE)
+            return now
+        end
+        
+        Array<Item2D> array = parentItem:GetChildren()
+        integer counter = 0
+        number xMin = 0
+        number xMax = containerWidth
+        number yMin = 0
+        number yMax = containerHeight
+
+        repeat while counter < array:GetSize()
+            Item2D item = array:Get(counter)
+            if item not= fillItem
+                if xFill = LEFT
+                    if item:GetX() < xMax
+                        xMax = item:GetX()
+                    end
+                elseif xFill = RIGHT
+                    if item:GetX() + item:GetWidth() > xMin
+                        xMin = item:GetX() + item:GetWidth()
+                    end
+                end
+
+                if yFill = BOTTOM
+                    if item:GetY() < yMax
+                        yMax = item:GetY()
+                    end
+                elseif yFill = TOP
+                    if item:GetY() + item:GetHeight() > yMin
+                        yMin = item:GetY() + item:GetHeight()
+                    end
+                end
+            end
+            counter = counter + 1
+        end
+
+        if xFill not= NONE
+            fillItem:SetX(xMin)
+            fillItem:SetWidth(xMax - xMin)
+        end
+
+        if yFill not= NONE
+            fillItem:SetY(yMin)
+            fillItem:SetHeight(yMax - yMin)
+        end
+    end
+
+end

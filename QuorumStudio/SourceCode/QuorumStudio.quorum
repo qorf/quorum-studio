@@ -1,6 +1,7 @@
 package Libraries.Development.Environment.Studio
-//use Libraries.Interface.Controls.MenuBar
-//use Libraries.Interface.Controls.MenuItem
+
+use Libraries.Interface.Controls.MenuBar
+use Libraries.Interface.Controls.MenuItem
 use Libraries.Game.Graphics.Color
 use Libraries.Development.Environment.Studio.Actions.ExitAction
 use Libraries.Game.Game
@@ -32,13 +33,13 @@ use Libraries.Interface.Controls.FileChooser
 //use Libraries.Interface.Controls.TreeItem
 
 class QuorumStudio is Game
-//    MenuBar menuBar = undefined
-//    MenuItem fileMenu = undefined
-//    MenuItem editMenu = undefined
-//    MenuItem viewMenu = undefined
-//    MenuItem runMenu = undefined
-//    MenuItem windowsMenu = undefined
-//    MenuItem helpMenu = undefined
+    MenuBar menuBar
+    MenuItem fileMenu
+    MenuItem editMenu
+    MenuItem viewMenu
+    MenuItem runMenu
+    MenuItem windowsMenu
+    MenuItem helpMenu
 //    Tree projectTree = undefined
 //    Tree navigator = undefined
 //    TextBox codeEditor = undefined
@@ -75,13 +76,12 @@ class QuorumStudio is Game
         
         //toolbar:Resize()
 //        CreatePanels()
-//        CreateMenuBar()
 //        CreateProjectsWindow()
 //        CreateCodeEditor()
 //        CreateNavigationWindow()
 //        CreateOutputWindow()
-//        MenuBar value = GetMenuBar()
-//        Add(value)
+
+        CreateMenuBar()
     end
 
     action CreateToolbar
@@ -91,17 +91,22 @@ class QuorumStudio is Game
         content:SetBorderThickness(0)
         
         toolbar:SetVisualContent(content)
-        Add(toolbar)
+//        Add(toolbar)
+        menuBar:Add(toolbar)
 
         FlowLayout toolbarLayout
+        toolbarLayout:SetWrapping(true)
         // Width is the full width of the screen.
         toolbarLayout:SetPercentageWidth(1)
         // Height is fixed to 100 pixels.
         toolbarLayout:SetPercentageHeight(0)
-        toolbarLayout:SetHeightOffset(30)
+        toolbarLayout:SetHeightOffset(24)
+        toolbarLayout:SetFrontPadding(true)
+        toolbarLayout:SetPadding(6)
 
         // Toolbar is placed at top of screen, minus 100 pixels.
         toolbarLayout:SetPercentageY(1)
+        toolbarLayout:SetPercentageOriginY(1)
         toolbarLayout:SetOffsetY(-30)
 
         toolbar:AddLayout(toolbarLayout)
@@ -137,6 +142,8 @@ class QuorumStudio is Game
         AddButtonToToolbar(TOOLBAR_RESOURCES + "StepInto.png", undefined)
         AddButtonToToolbar(TOOLBAR_RESOURCES + "StepOut.png", undefined)
         toolbar:Resize()
+
+        Add(menuBar)
     end
 
     private action AddButtonToToolbar(text image, Behavior behavior)
@@ -148,8 +155,8 @@ class QuorumStudio is Game
         
         button:SetVisualContent(buttonContent)
 
-        button:SetWidth(30)
-        button:SetHeight(30)
+        button:SetWidth(24)
+        button:SetHeight(24)
 
         if behavior not= undefined
             button:SetBehavior(behavior)
@@ -161,9 +168,9 @@ class QuorumStudio is Game
         return selectedProject
     end
 
-//    action GetMenuBar returns MenuBar
-//        return menuBar
-//    end
+    action GetMenuBar returns MenuBar
+        return menuBar
+    end
 
     action OpenProject
 //        FileChooser chooser
@@ -218,252 +225,334 @@ class QuorumStudio is Game
 //        menuBar:SetMaxHeight(cast(integer, menuBar:GetHeight()))
 //        menuBar:LockMaxHeight(true)
 //
-//        SetupFileMenu()
-//        SetupEditMenu()
-//        SetupViewMenu()
-//        SetupRunMenu()
-//        SetupWindowsMenu()
-//        SetupHelpMenu()
+        SetupFileMenu()
+        SetupEditMenu()
+        SetupViewMenu()
+        SetupRunMenu()
+        SetupWindowsMenu()
+        SetupHelpMenu()
+
+        Array<MenuItem> menuItems
+        menuItems:Add(fileMenu)
+        menuItems:Add(editMenu)
+        menuItems:Add(viewMenu)
+        menuItems:Add(runMenu)
+        menuItems:Add(windowsMenu)
+        menuItems:Add(helpMenu)
+        menuBar:Initialize(menuItems)
     end
 
     //Adding the mouse listeners will give unintended results for now
     private action SetupFileMenu
-//        MenuItem menu
-//        fileMenu = menu
-//        fileMenu:SetText("File")
-//        menuBar:AddMenu(fileMenu)
-//
-//        MenuItem newProject
-//        newProject:SetText("New Project")
-//
-//        MenuItem openProject
-//        openProject:SetText("Open Project")
-//
-//        OpenProjectAction openProjectAction
-//        openProjectAction:SetMainApplication(me)
-////        openProject:AddMouseListener(openProjectAction)
-//
-//        MenuItem closeProject
-//        closeProject:SetText("Close Project")
-//
-//        MenuItem newFile
-//        newFile:SetText("New File")
-//
-//        MenuItem openFile
-//        openFile:SetText("Open File")
-//
-//        MenuItem save
-//        save:SetText("Save")
-//
-//        MenuItem saveAs
-//        saveAs:SetText("Save As...")
-//
-//        MenuItem saveAll
-//        saveAll:SetText("Save All")
-//
-//        MenuItem exit
-//        exit:SetText("Exit")
-//        ExitAction exitAction
-//        exitAction:SetMainApplication(me)
-////        exit:AddMouseListener(exitAction)
-//
-//        fileMenu:AddMenu(newProject)
-//        fileMenu:AddMenu(openProject)
-//        fileMenu:AddMenu(closeProject)
-//        fileMenu:AddMenu(newFile)
-//        fileMenu:AddMenu(openFile)
-//        fileMenu:AddMenu(save)
-//        fileMenu:AddMenu(saveAs)
-//        fileMenu:AddMenu(saveAll)
-//        fileMenu:AddMenu(exit)
+        Array<MenuItem> fileItems
+
+        MenuItem newProject
+        newProject:Initialize("New Project")
+        // Set a behavior to indicate what the menu item does when activated.
+        //newProject:SetBehavior(undefined)
+        fileItems:Add(newProject)
+        
+        MenuItem openProject
+        openProject:Initialize("Open Project")
+        // Set a behavior to indicate what the menu item does when activated.
+        //openProject:SetBehavior(undefined)
+        fileItems:Add(openProject)
+
+        MenuItem closeProject
+        closeProject:Initialize("Close Project")
+        // Set a behavior to indicate what the menu item does when activated.
+        //closeProject:SetBehavior(undefined)
+        fileItems:Add(closeProject)
+
+        MenuItem newFile
+        newFile:Initialize("New File")
+        // Set a behavior to indicate what the menu item does when activated.
+        //newFile:SetBehavior(undefined)
+        fileItems:Add(newFile)
+
+        MenuItem openFile
+        openFile:Initialize("Open File")
+        // Set a behavior to indicate what the menu item does when activated.
+        //openFile:SetBehavior(undefined)
+        fileItems:Add(openFile)
+
+        MenuItem save
+        save:Initialize("Save")
+        // Set a behavior to indicate what the menu item does when activated.
+        //save:SetBehavior(undefined)
+        fileItems:Add(save)
+
+        MenuItem saveAs
+        saveAs:Initialize("Save As...")
+        // Set a behavior to indicate what the menu item does when activated.
+        //saveAs:SetBehavior(undefined)
+        fileItems:Add(saveAs)
+
+        MenuItem saveAll
+        saveAll:Initialize("Save All")
+        // Set a behavior to indicate what the menu item does when activated.
+        //saveAll:SetBehavior(undefined)
+        fileItems:Add(saveAll)
+
+        MenuItem exit
+        exit:Initialize("Exit")
+        // Set a behavior to indicate what the menu item does when activated.
+        //exit:SetBehavior(undefined)
+        fileItems:Add(exit)
+
+        fileMenu:Initialize("File", fileItems)
     end
 
     private action SetupEditMenu
-//        MenuItem menu
-//        editMenu = menu
-//        editMenu:SetText("Edit")
-//        menuBar:AddMenu(editMenu)
-//
-//        MenuItem undo
-//        undo:SetText("Undo")
-//
-//        MenuItem redo
-//        redo:SetText("Redo")
-//
-//        MenuItem cut
-//        cut:SetText("Cut")
-//
-//        MenuItem copy
-//        copy:SetText("Copy")
-//
-//        MenuItem paste
-//        paste:SetText("Paste")
-//
-//        MenuItem delete
-//        delete:SetText("Delete")
-//
-//        MenuItem selectAll
-//        selectAll:SetText("Select All")
-//
-//        MenuItem gotoLine
-//        gotoLine:SetText("Go to Line")
-//
-//        MenuItem findSelection
-//        findSelection:SetText("Find Selection")
-//
-//        MenuItem findNext
-//        findNext:SetText("Find Next")
-//
-//        MenuItem findPrevious
-//        findPrevious:SetText("Find Previous")
-//
-//        MenuItem Find
-//        Find:SetText("Find")
-//
-//        MenuItem replace
-//        replace:SetText("Replace")
-//
-//        MenuItem projectProperties
-//        projectProperties:SetText("Edit Project Properties")
-//
-//        editMenu:AddMenu(undo)
-//        editMenu:AddMenu(redo)
-//        editMenu:AddMenu(cut)
-//        editMenu:AddMenu(copy)
-//        editMenu:AddMenu(paste)
-//        editMenu:AddMenu(delete)
-//        editMenu:AddMenu(selectAll)
-//        editMenu:AddMenu(gotoLine)
-//        editMenu:AddMenu(findSelection)
-//        editMenu:AddMenu(findNext)
-//        editMenu:AddMenu(findPrevious)
-//        editMenu:AddMenu(Find)
-//        editMenu:AddMenu(replace)
-//        editMenu:AddMenu(projectProperties)
+        Array<MenuItem> editItems
+
+        MenuItem undo
+        undo:Initialize("Undo")
+        // Set a behavior to indicate what the menu item does when activated.
+        //undo:SetBehavior(undefined)
+        editItems:Add(undo)
+
+        MenuItem redo
+        redo:Initialize("Redo")
+        // Set a behavior to indicate what the menu item does when activated.
+        //redo:SetBehavior(undefined)
+        editItems:Add(redo)
+
+        MenuItem cut
+        cut:Initialize("Cut")
+        // Set a behavior to indicate what the menu item does when activated.
+        //cut:SetBehavior(undefined)
+        editItems:Add(cut)
+
+        MenuItem copy
+        copy:Initialize("Copy")
+        // Set a behavior to indicate what the menu item does when activated.
+        //copy:SetBehavior(undefined)
+        editItems:Add(copy)
+
+        MenuItem paste
+        paste:Initialize("Paste")
+        // Set a behavior to indicate what the menu item does when activated.
+        //paste:SetBehavior(undefined)
+        editItems:Add(paste)
+
+        MenuItem delete
+        delete:Initialize("Delete")
+        // Set a behavior to indicate what the menu item does when activated.
+        //delete:SetBehavior(undefined)
+        editItems:Add(delete)
+
+        MenuItem selectAll
+        selectAll:Initialize("Select All")
+        // Set a behavior to indicate what the menu item does when activated.
+        //selectAll:SetBehavior(undefined)
+        editItems:Add(selectAll)
+
+        MenuItem goToLine
+        goToLine:Initialize("Go to Line")
+        // Set a behavior to indicate what the menu item does when activated.
+        //goToLine:SetBehavior(undefined)
+        editItems:Add(goToLine)
+
+        MenuItem findSelection
+        findSelection:Initialize("Find Selection")
+        // Set a behavior to indicate what the menu item does when activated.
+        //findSelection:SetBehavior(undefined)
+        editItems:Add(findSelection)
+
+        MenuItem findNext
+        findNext:Initialize("Find Next")
+        // Set a behavior to indicate what the menu item does when activated.
+        //findNext:SetBehavior(undefined)
+        editItems:Add(findNext)
+
+        MenuItem findPrevious
+        findPrevious:Initialize("Find Previous")
+        // Set a behavior to indicate what the menu item does when activated.
+        //findPrevious:SetBehavior(undefined)
+        editItems:Add(findPrevious)
+
+        MenuItem find
+        find:Initialize("Find")
+        // Set a behavior to indicate what the menu item does when activated.
+        //find:SetBehavior(undefined)
+        editItems:Add(find)
+
+        MenuItem replace
+        replace:Initialize("Replace")
+        // Set a behavior to indicate what the menu item does when activated.
+        //replace:SetBehavior(undefined)
+        editItems:Add(replace)
+
+        MenuItem projectProperties
+        projectProperties:Initialize("Edit Project Properties")
+        // Set a behavior to indicate what the menu item does when activated.
+        //projectProperties:SetBehavior(undefined)
+        editItems:Add(projectProperties)
+
+        editMenu:Initialize("Edit", editItems)
     end
 
     private action SetupViewMenu
-//        MenuItem menu
-//        viewMenu = menu
-//        viewMenu:SetText("View")
-//        menuBar:AddMenu(viewMenu)
-//
-//        MenuItem quorumStudioErrorLog
-//        quorumStudioErrorLog:SetText("Quorum Studio Error Log")
-//
-//        MenuItem lineNumbers
-//        lineNumbers:SetText("Line Numbers")
-//
-//        MenuItem blocksMode
-//        blocksMode:SetText("BlocksMode")
-//
-//        MenuItem splitMode
-//        splitMode:SetText("Split Mode")
-//
-//        viewMenu:AddMenu(quorumStudioErrorLog)
-//        viewMenu:AddMenu(lineNumbers)
-//        viewMenu:AddMenu(blocksMode)
-//        viewMenu:AddMenu(splitMode)
+        Array<MenuItem> viewItems
+
+        MenuItem errorLog
+        errorLog:Initialize("Quorum Studio Error Log")
+        // Set a behavior to indicate what the menu item does when activated.
+        //errorLog:SetBehavior(undefined)
+        viewItems:Add(errorLog)
+
+        MenuItem lineNumbers
+        lineNumbers:Initialize("Show Line Numbers")
+        // Set a behavior to indicate what the menu item does when activated.
+        //lineNumbers:SetBehavior(undefined)
+        viewItems:Add(lineNumbers)
+
+        MenuItem blocksMode
+        blocksMode:Initialize("Enable Blocks Mode")
+        // Set a behavior to indicate what the menu item does when activated.
+        //blocksMode:SetBehavior(undefined)
+        viewItems:Add(blocksMode)
+
+        MenuItem splitMode
+        splitMode:Initialize("Enable Split Mode")
+        // Set a behavior to indicate what the menu item does when activated.
+        //splitMode:SetBehavior(undefined)
+        viewItems:Add(splitMode)
+
+        viewMenu:Initialize("View", viewItems)
     end
 
     private action SetupRunMenu
-//        MenuItem menu
-//        runMenu = menu
-//        runMenu:SetText("Run")
-//        menuBar:AddMenu(runMenu)
-//        
-//        MenuItem build
-//        build:SetText("Build")
-//
-//        MenuItem cleanAndBuild
-//        cleanAndBuild:SetText("Clean and Build")
-//
-//        MenuItem run
-//        run:SetText("Run")
-//
-//        MenuItem debug
-//        debug:SetText("Debug")
-//
-//        MenuItem stopDebugging
-//        stopDebugging:SetText("Stop Debugging")
-//
-//        MenuItem stepOver
-//        stepOver:SetText("Step Over")
-//
-//        MenuItem stepInto
-//        stepInto:SetText("Step Into")
-//
-//        MenuItem stepOut
-//        stepOut:SetText("Step Out")
-//
-//        MenuItem runToCursor
-//        runToCursor:SetText("Run to Cursor")
-//
-//        runMenu:AddMenu(build)
-//        runMenu:AddMenu(cleanAndBuild)
-//        runMenu:AddMenu(run)
-//        runMenu:AddMenu(debug)
-//        runMenu:AddMenu(stopDebugging)
-//        runMenu:AddMenu(stepOver)
-//        runMenu:AddMenu(stepInto)
-//        runMenu:AddMenu(stepOut)
-//        runMenu:AddMenu(runToCursor)
+        Array<MenuItem> runItems
+
+        MenuItem build
+        build:Initialize("Build")
+        // Set a behavior to indicate what the menu item does when activated.
+        //build:SetBehavior(undefined)
+        runItems:Add(build)
+
+        MenuItem cleanAndBuild
+        cleanAndBuild:Initialize("Clean and Build")
+        // Set a behavior to indicate what the menu item does when activated.
+        //cleanAndBuild:SetBehavior(undefined)
+        runItems:Add(cleanAndBuild)
+
+        MenuItem run
+        run:Initialize("Run")
+        // Set a behavior to indicate what the menu item does when activated.
+        //run:SetBehavior(undefined)
+        runItems:Add(run)
+
+        MenuItem debug
+        debug:Initialize("Debug")
+        // Set a behavior to indicate what the menu item does when activated.
+        //debug:SetBehavior(undefined)
+        runItems:Add(debug)
+
+        MenuItem stopDebug
+        stopDebug:Initialize("Stop Debugging")
+        // Set a behavior to indicate what the menu item does when activated.
+        //stopDebug:SetBehavior(undefined)
+        runItems:Add(stopDebug)
+
+        MenuItem stepOver
+        stepOver:Initialize("Step Over")
+        // Set a behavior to indicate what the menu item does when activated.
+        //stepOver:SetBehavior(undefined)
+        runItems:Add(stepOver)
+
+        MenuItem stepInto
+        stepInto:Initialize("Step Into")
+        // Set a behavior to indicate what the menu item does when activated.
+        //stepInto:SetBehavior(undefined)
+        runItems:Add(stepInto)
+
+        MenuItem stepOut
+        stepOut:Initialize("Step Out")
+        // Set a behavior to indicate what the menu item does when activated.
+        //stepOut:SetBehavior(undefined)
+        runItems:Add(stepOut)
+
+        MenuItem runToCursor
+        runToCursor:Initialize("Run to Cursor")
+        // Set a behavior to indicate what the menu item does when activated.
+        //runToCursor:SetBehavior(undefined)
+        runItems:Add(runToCursor)
+
+        runMenu:Initialize("Run", runItems)
     end
 
     private action SetupWindowsMenu
-//        MenuItem menu
-//        windowsMenu = menu
-//        windowsMenu:SetText("Windows")
-//        menuBar:AddMenu(windowsMenu)
-//
-//        MenuItem projectWindow
-//        projectWindow:SetText("Project Window")
-//
-//        MenuItem editorWindow
-//        editorWindow:SetText("Editor Window")
-//
-//        MenuItem errorWindow
-//        errorWindow:SetText("Error Window")
-//
-//        MenuItem consoleWindow
-//        consoleWindow:SetText("Console Window")
-//
-//        MenuItem variablesWindow
-//        variablesWindow:SetText("Variables Window")
-//
-//        MenuItem breakpointsWindow
-//        breakpointsWindow:SetText("Breakpoints Window")
-//
-//        MenuItem optionsWindow
-//        optionsWindow:SetText("Options Window")
-//
-//        windowsMenu:AddMenu(projectWindow)
-//        windowsMenu:AddMenu(editorWindow)
-//        windowsMenu:AddMenu(errorWindow)
-//        windowsMenu:AddMenu(consoleWindow)
-//        windowsMenu:AddMenu(variablesWindow)
-//        windowsMenu:AddMenu(breakpointsWindow)
-//        windowsMenu:AddMenu(optionsWindow)
+        Array<MenuItem> windowsItems
+
+        MenuItem projects
+        projects:Initialize("Projects")
+        // Set a behavior to indicate what the menu item does when activated.
+        //projects:SetBehavior(undefined)
+        windowsItems:Add(projects)
+
+        MenuItem editor
+        editor:Initialize("Editor")
+        // Set a behavior to indicate what the menu item does when activated.
+        //editor:SetBehavior(undefined)
+        windowsItems:Add(editor)
+
+        MenuItem errors
+        errors:Initialize("Errors")
+        // Set a behavior to indicate what the menu item does when activated.
+        //projects:SetBehavior(undefined)
+        windowsItems:Add(errors)
+
+        MenuItem console
+        console:Initialize("Console")
+        // Set a behavior to indicate what the menu item does when activated.
+        //console:SetBehavior(undefined)
+        windowsItems:Add(console)
+
+        MenuItem variables
+        variables:Initialize("Variables")
+        // Set a behavior to indicate what the menu item does when activated.
+        //variables:SetBehavior(undefined)
+        windowsItems:Add(variables)
+
+        MenuItem breakpoints
+        breakpoints:Initialize("Breakpoints")
+        // Set a behavior to indicate what the menu item does when activated.
+        //breakpoints:SetBehavior(undefined)
+        windowsItems:Add(breakpoints)
+
+        MenuItem options
+        options:Initialize("Options")
+        // Set a behavior to indicate what the menu item does when activated.
+        //options:SetBehavior(undefined)
+        windowsItems:Add(options)
+
+        windowsMenu:Initialize("Windows", windowsItems)
     end
 
     private action SetupHelpMenu
-//        MenuItem menu
-//        helpMenu = menu
-//        helpMenu:SetText("Help")
-//        menuBar:AddMenu(helpMenu)
-//
-//        MenuItem about
-//        about:SetText("About")
-//
-//        MenuItem findHelpOnline
-//        findHelpOnline:SetText("Find Help Online")
-//
-//        MenuItem checkForUpdates
-//        checkForUpdates:SetText("Check for Updates")
-//
-//        helpMenu:AddMenu(about)
-//        helpMenu:AddMenu(findHelpOnline)
-//        helpMenu:AddMenu(checkForUpdates)
+        Array<MenuItem> helpItems
+
+        MenuItem about
+        about:Initialize("About")
+        // Set a behavior to indicate what the menu item does when activated.
+        //about:SetBehavior(undefined)
+        helpItems:Add(about)
+
+        MenuItem findHelp
+        findHelp:Initialize("Find Help Online")
+        // Set a behavior to indicate what the menu item does when activated.
+        //findHelp:SetBehavior(undefined)
+        helpItems:Add(findHelp)
+
+        MenuItem checkForUpdates
+        checkForUpdates:Initialize("Check for Updates")
+        // Set a behavior to indicate what the menu item does when activated.
+        //checkForUpdates:SetBehavior(undefined)
+        helpItems:Add(checkForUpdates)
+
+        helpMenu:Initialize("Help", helpItems)
     end
 
     action CreateProjectsWindow()
