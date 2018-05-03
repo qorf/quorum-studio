@@ -6,11 +6,17 @@ use Libraries.System.SystemHelper
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Game.Behaviors.Behavior
 use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.FileChooser
+use Libraries.System.File
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Projects.ProjectManager
 
 class OpenProjectBehavior is Behavior
     QuorumStudio studio = undefined
+    ProjectManager manager = undefined
     action SetMainApplication(QuorumStudio studio)
         me:studio = studio
+        manager = studio:GetProjectManager()
     end
 
     action GetMainApplication returns QuorumStudio
@@ -18,6 +24,18 @@ class OpenProjectBehavior is Behavior
     end
 
     action Run(BehaviorEvent event)
+        FileChooser chooser
+        File file
+        File value = chooser:OpenFileDialog(file)
+        if file not= undefined
+            boolean isProject = manager:IsProject(file)
+            if isProject
+                QuorumProject project = manager:Open(file)
+                integer a = 5 //now what do we do with it?
+            else //popup window saying it's not a project? 
+
+            end
+        end
         studio:OpenProject()
     end
 end
