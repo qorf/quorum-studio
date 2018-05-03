@@ -30,6 +30,8 @@ use Libraries.Interface.Controls.TreeItem
 use Libraries.Game.Graphics.Texture
 use Libraries.Interface.Controls.ScrollPane
 use Libraries.Interface.Layouts.FillLayout
+use Libraries.Interface.Controls.TabPane
+use Libraries.Game.Graphics.Drawable
 
 class QuorumStudio is Game
     MenuBar menuBar
@@ -41,9 +43,15 @@ class QuorumStudio is Game
     MenuItem helpMenu
     ScrollPane projectPane
     Tree projectTree
+//    TabPane codeTabs
+    // FOR TESTING PURPOSES ONLY:
+    Drawable codeTabs
+
 //    Tree navigator = undefined
 //    TextBox codeEditor = undefined
-//    TextBox outputWindow = undefined
+    TextBox outputWindow
+
+    Item2D mainContentPane
 
     Color color
     Gradient gradient
@@ -88,12 +96,12 @@ class QuorumStudio is Game
 
         CreateMenuBar()
         CreateToolbar()
-        CreateProjectsWindow()
-        Add(projectPane)
+        CreateMainContentPane()
+        Add(mainContentPane)
         Add(toolbar)
         Add(menuBar)
 
-        projectPane:Resize()
+        mainContentPane:Resize()
     end
 
     action CreateToolbar
@@ -186,53 +194,7 @@ class QuorumStudio is Game
 //        Add(chooser)
     end
 
-    action CreatePanels
-        
-//        projectPanel:Initialize(200, 500)
-//        projectPanel:SetBackgroundColor(background:LightGray())
-//        projectPanel:SetPosition(0, 0)
-//        Add(projectPanel)
-//        Tree tree1
-//        panel:Add(tree1)
-//        tree1:Initialize(180, 480)
-//        tree1:SetPosition(10, 10)
-//        tree1:SetBackgroundColor(bgColor:White())
-//        TreeItem item1
-//        TreeItem item2
-//        TreeItem item3
-//        TreeItem item4
-//        TreeItem item5
-//        item1:Initialize(40, 10, "item1")
-//        item2:Initialize(40, 10, "item2")
-//        item3:Initialize(40, 10, "item3")
-//        item4:Initialize(40, 10, "item4")
-//        item5:Initialize(40, 10, "item5")
-//        item1:SetText("Item 1")
-//        item2:SetText("Item 2")
-//        item3:SetText("Item 3")
-//        item4:SetText("item 4")
-//        item5:SetText("item 5")
-//        tree1:AddRootItem(item1)
-//        item1:AddChildItem(item2)
-//        item2:AddChildItem(item3)
-//        item4:AddChildItem(item5)
-//        tree1:AddRootItem(item4)
-////        tree1:AddRootItem(item5)
-//        tree1:UpdateTree()
-    end
-
     action CreateMenuBar
-//        MenuBar bar
-//        menuBar = bar
-//        menuBar:SetColor(background:White())
-//        menuBar:SetDock("top")
-//        menuBar:SetDock("left")
-//        menuBar:DockToWindow(true)
-//        menuBar:SetWidthByPercent(100)
-//        menuBar:SetHeightByPercent(menuBar:GetHeight() / GetScreenHeight() * 100)
-//        menuBar:SetMaxHeight(cast(integer, menuBar:GetHeight()))
-//        menuBar:LockMaxHeight(true)
-//
         SetupFileMenu()
         SetupEditMenu()
         SetupViewMenu()
@@ -564,6 +526,25 @@ class QuorumStudio is Game
         helpMenu:Initialize("Help", helpItems)
     end
 
+    private action CreateMainContentPane
+        Layout layout
+        layout:SetPercentageX(0)
+        layout:SetPercentageY(0)
+        layout:SetPercentageHeight(1)
+        layout:SetHeightOffset(-menuBar:GetHeight() - toolbar:GetHeight())
+        layout:SetPercentageWidth(1)
+
+        mainContentPane:AddLayout(layout)
+
+        CreateProjectsWindow()
+        CreateCodeEditor()
+        CreateOutputWindow()
+
+        mainContentPane:Add(projectPane)
+        mainContentPane:Add(codeTabs)
+        mainContentPane:Add(outputWindow)
+    end
+
     action CreateProjectsWindow()
 
         Texture testTexture
@@ -594,7 +575,7 @@ class QuorumStudio is Game
 
         TreeItem test1b
         test1b:Initialize("Item 1B", testTexture)
-        subTree:Add(test1a)
+        subTree:Add(test1b)
         TreeItem test2b
         test2b:Initialize("Item 2B", testTexture)
         subTree:Add(test2b)
@@ -610,10 +591,11 @@ class QuorumStudio is Game
 
         Layout scrollLayout
         scrollLayout:SetPercentageX(0)
-        scrollLayout:SetPercentageY(1)
-        scrollLayout:SetPercentageOriginY(1)
+//        scrollLayout:SetPercentageY(1)
+//        scrollLayout:SetPercentageOriginY(1)
+        scrollLayout:SetPercentageY(0)
+        scrollLayout:SetPercentageOriginY(0)
         scrollLayout:SetPercentageHeight(1)
-        scrollLayout:SetHeightOffset(-menuBar:GetHeight() - toolbar:GetHeight())
         scrollLayout:SetWidthOffset(200)
 
         projectPane:Initialize(200, GetScreenHeight() - menuBar:GetHeight() - toolbar:GetHeight(), color:White())
@@ -686,12 +668,41 @@ class QuorumStudio is Game
     end
 
     action CreateCodeEditor()
+        
+        FillLayout fill
+        fill:SetFillSide(fill:RIGHT)
+        fill:SetPercentageY(1)
+        fill:SetPercentageOriginY(1)
+        fill:SetPercentageHeight(0.7)
+
+        codeTabs:SetName("Code Tabs")
+        codeTabs:LoadFilledRectangle(1, 1, color:Teal())
+        codeTabs:AddLayout(fill)
+//        codeTabs:Resize()
+
 //        TextBox textBox
 //        codeEditor = textBox
 //        
 //        codeEditor:Initialize(GetScreenWidth() - projectTree:GetWidth(), cast(integer, GetScreenHeight() * 0.7), background:White(), "")
 //        codeEditor:SetPosition(projectTree:GetWidth(), GetScreenHeight() - menuBar:GetHeight() - codeEditor:GetHeight())
 //        Add(codeEditor)
+    end
+
+    action CreateOutputWindow()
+        FillLayout fill
+        fill:SetFillSide(fill:RIGHT)
+        fill:SetPercentageY(0)
+        fill:SetPercentageHeight(0.3)
+
+        outputWindow:Initialize(20, 20, color:White())
+        outputWindow:AddLayout(fill)
+
+//        TextBox textBox
+//        outputWindow = textBox
+//
+//        outputWindow:Initialize(codeEditor:GetWidth(), GetScreenHeight() - menuBar:GetHeight() - codeEditor:GetHeight(), background:LightGray(), "This is the output area.")
+//        outputWindow:SetPosition(codeEditor:GetX(), 0)
+//        Add(outputWindow)
     end
 
     action CreateNavigationWindow()
@@ -718,15 +729,6 @@ class QuorumStudio is Game
 //        navigator:AddRootItem(memberVariable)
 //        
 //        navigator:UpdateTree()
-    end
-
-    action CreateOutputWindow()
-//        TextBox textBox
-//        outputWindow = textBox
-//
-//        outputWindow:Initialize(codeEditor:GetWidth(), GetScreenHeight() - menuBar:GetHeight() - codeEditor:GetHeight(), background:LightGray(), "This is the output area.")
-//        outputWindow:SetPosition(codeEditor:GetX(), 0)
-//        Add(outputWindow)
     end
 
     action LoadUpdates

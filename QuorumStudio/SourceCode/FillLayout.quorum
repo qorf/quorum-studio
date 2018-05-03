@@ -11,57 +11,77 @@ class FillLayout is Layout
     public constant integer BOTTOM = 3
     public constant integer TOP = 4
 
-    integer xFill = NONE
-    integer yFill = NONE
+//    integer xFill = NONE
+//    integer yFill = NONE
 
-    action Apply(Item2D fillItem, number containerWidth, number containerHeight)
+    integer fillSide = NONE
+
+    action Layout(Item2D fillItem)
+
         Item2D parentItem = fillItem:GetParent()
-        if parentItem = undefined or (xFill = NONE and yFill = NONE)
+        if parentItem = undefined or fillSide = NONE
             return now
         end
         
         Array<Item2D> array = parentItem:GetChildren()
         integer counter = 0
         number xMin = 0
-        number xMax = containerWidth
+        number xMax = parentItem:GetWidth()
         number yMin = 0
-        number yMax = containerHeight
+        number yMax = parentItem:GetHeight()
 
         repeat while counter < array:GetSize()
             Item2D item = array:Get(counter)
             if item not= fillItem
-                if xFill = LEFT
-                    if item:GetX() < xMax
-                        xMax = item:GetX()
+                if fillSide = LEFT
+                    if item:GetY() < fillItem:GetY() + fillItem:GetHeight() and item:GetY() + item:GetHeight() > fillItem:GetY()
+                        if item:GetX() < xMax
+                            xMax = item:GetX()
+                        end
                     end
-                elseif xFill = RIGHT
-                    if item:GetX() + item:GetWidth() > xMin
-                        xMin = item:GetX() + item:GetWidth()
+                elseif fillSide = RIGHT
+                    if item:GetY() < fillItem:GetY() + fillItem:GetHeight() and item:GetY() + item:GetHeight() > fillItem:GetY()
+                        if item:GetX() + item:GetWidth() > xMin
+                            xMin = item:GetX() + item:GetWidth()
+                        end
+                    end
+                elseif fillSide = BOTTOM
+                    if item:GetX() < fillItem:GetX() + fillItem:GetWidth() and item:GetX() + item:GetWidth() > fillItem:GetX()
+                        if item:GetY() < yMax
+                            yMax = item:GetY()
+                        end
+                    end
+                elseif fillSide = TOP
+                    if item:GetX() < fillItem:GetX() + fillItem:GetWidth() and item:GetX() + item:GetWidth() > fillItem:GetX()
+                        if item:GetY() + item:GetHeight() > yMin
+                            yMin = item:GetY() + item:GetHeight()
+                        end
                     end
                 end
-
-                if yFill = BOTTOM
-                    if item:GetY() < yMax
-                        yMax = item:GetY()
-                    end
-                elseif yFill = TOP
-                    if item:GetY() + item:GetHeight() > yMin
-                        yMin = item:GetY() + item:GetHeight()
-                    end
-                end
+            else
+                // End when we've found the fill item. We don't consider the
+                // size and position of later children (as they haven't had a
+                // chance to resize yet.
+                counter = array:GetSize()
             end
             counter = counter + 1
         end
 
-        if xFill not= NONE
+        if fillSide = LEFT or fillSide = RIGHT
             fillItem:SetX(xMin)
             fillItem:SetWidth(xMax - xMin)
-        end
-
-        if yFill not= NONE
+        elseif fillSide = BOTTOM or fillSide = TOP
             fillItem:SetY(yMin)
             fillItem:SetHeight(yMax - yMin)
         end
+    end
+
+    action SetFillSide(integer side)
+        fillSide = side
+    end
+
+    action GetFillSide returns integer
+        return fillSide
     end
 
 end
