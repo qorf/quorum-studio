@@ -1,7 +1,6 @@
 package Libraries.Development.Environment.Studio.Updates
 use Libraries.System.File
 use Libraries.Data.Formats.JavaScriptObjectNotation
-use Libraries.Data.Formats.JavaScriptObjectNotationObject
 use Libraries.System.Logger
 use Libraries.Containers.HashTable
 use Libraries.Containers.Iterator
@@ -21,18 +20,18 @@ class Updater
     action Load(File file)
         JavaScriptObjectNotation notation
         text value = file:Read()
-        JavaScriptObjectNotationObject json = notation:ReadToObject(value)
+        notation:Read(value)
         //get all the properties from JSON
         i = 0
-        repeat while i < json:GetSize()
-            JavaScriptObjectNotationObject obj = json:Get(i)
+        repeat while i < notation:GetSize()
+            JavaScriptObjectNotation obj = notation:Get(i)
             //output obj:GetKey()
             ProcessKey(obj)
             i = i + 1
         end
     end
 
-    private action ProcessKey(JavaScriptObjectNotationObject object)
+    private action ProcessKey(JavaScriptObjectNotation object)
         text key = object:GetKey()
         Module module
         module:SetName(key)
@@ -41,10 +40,10 @@ class Updater
             return now
         end
 
-        JavaScriptObjectNotationObject subobject = object:Get(0)
+        JavaScriptObjectNotation subobject = object:Get(0)
         i = 0
         repeat while i < subobject:GetSize()
-            JavaScriptObjectNotationObject value = subobject:Get(i)
+            JavaScriptObjectNotation value = subobject:Get(i)
             text subkey = value:GetKey()
             check
                 if subkey = MAJOR_VERSION
@@ -54,7 +53,7 @@ class Updater
                 elseif subkey = FILES
                    j = 0
                     repeat while j < value:GetSize()
-                        JavaScriptObjectNotationObject file = value:Get(j)
+                        JavaScriptObjectNotation file = value:Get(j)
                         text fileName = file:GetText()
                         module:AddFile(fileName)
                         j = j + 1

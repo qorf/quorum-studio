@@ -5,7 +5,6 @@ use Libraries.Development.Environment.Projects.ProjectProperty
 use Libraries.Containers.Iterator
 use Libraries.System.File
 use Libraries.Data.Formats.JavaScriptObjectNotation
-use Libraries.Data.Formats.JavaScriptObjectNotationObject
 use Libraries.System.Logger
 use Libraries.Language.Compile.Compiler
 use Libraries.Development.Environment.Studio.Behaviors.BuildQuorumProject
@@ -384,17 +383,17 @@ class QuorumProject is Project
     action LoadProperties(File file)
         JavaScriptObjectNotation notation
         text value = file:Read()
-        JavaScriptObjectNotationObject json = notation:ReadToObject(value)
+        notation:Read(value)
         //get all the properties from JSON
         i = 0
-        repeat while i < json:GetSize()
-            JavaScriptObjectNotationObject obj = json:Get(i)
+        repeat while i < notation:GetSize()
+            JavaScriptObjectNotation obj = notation:Get(i)
             ProcessKey(obj)
             i = i + 1
         end
     end
 
-    private action ProcessKey(JavaScriptObjectNotationObject object)
+    private action ProcessKey(JavaScriptObjectNotation object)
         text key = object:GetKey()
         text textMessage = "Could not load property " + key + ", as its value was not of type text."
         text booleanMessage = "Could not load property " + key + ", as its value was not of type boolean."
@@ -488,7 +487,7 @@ class QuorumProject is Project
         end
     end
 
-    private action CreateImageSheets(JavaScriptObjectNotationObject object)
+    private action CreateImageSheets(JavaScriptObjectNotation object)
         ImageSheets sheets
         me:sheets = sheets
         
@@ -497,7 +496,7 @@ class QuorumProject is Project
             return now
         end
         //there should be one object in this, which contains the image sheet arrays
-        JavaScriptObjectNotationObject value = object:Get(0)
+        JavaScriptObjectNotation value = object:Get(0)
         if value:IsEmpty()
             logger:Log("An Image Sheet is specified in the project properties file, but is empty.")
             return now
@@ -506,7 +505,7 @@ class QuorumProject is Project
         i = 0
         
         repeat while i < value:GetSize()
-            JavaScriptObjectNotationObject sheetJSON = value:Get(i)
+            JavaScriptObjectNotation sheetJSON = value:Get(i)
             if not sheetJSON:IsArray()
                 logger:Log("An Image Sheet named " + sheetJSON:GetKey() +" is specified in the project properties file, but it is not an array.")
                 return now
@@ -518,7 +517,7 @@ class QuorumProject is Project
             Array<text> values
             j = 0
             repeat while j < sheetJSON:GetSize()
-                JavaScriptObjectNotationObject image = sheetJSON:Get(j)
+                JavaScriptObjectNotation image = sheetJSON:Get(j)
                 if not image:IsText()
                     logger:Log("An Image Sheet named " + sheetJSON:GetKey() +" is specified in the project properties file, it references images that are not specified in text")
                     return now
@@ -533,7 +532,7 @@ class QuorumProject is Project
         end
     end
 
-    private action AddMultivalueTextProperty(JavaScriptObjectNotationObject object)
+    private action AddMultivalueTextProperty(JavaScriptObjectNotation object)
         text key = object:GetKey()
         Array<text> dependencies
         if not object:IsArray()
@@ -543,7 +542,7 @@ class QuorumProject is Project
 
         i = 0
         repeat while i < object:GetSize()
-            JavaScriptObjectNotationObject value = object:Get(i)
+            JavaScriptObjectNotation value = object:Get(i)
             if not value:IsText()
                 logger:Log("Could not load property " + key + ", as its value was not of type text.")
                 return now
