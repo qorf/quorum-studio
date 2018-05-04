@@ -30,16 +30,15 @@ class OpenProject is Behavior
         FileChooser chooser
         FileFilter filter
         filter:Add("xml")
-        File value = chooser:SaveFileDialog(filter)
-        if value not= undefined //the user did not cancel
-            output value:GetAbsolutePath()
+        File file = chooser:SaveFileDialog(filter)
+        if file not= undefined //the user did not cancel
+            output file:GetAbsolutePath()
+            ProjectManager manager = studio:GetProjectManager()
+            boolean isProject = manager:IsProject(file)
+            if isProject
+                File mom = file:GetParentDirectory()
+                manager:Open(mom)
+            end
         end
-//        FileChooser chooser
-//        File file = chooser:CreateOpenFileDialog()
-//
-//        ProjectManager projectManager = studio:GetProjectManager()
-//        boolean value = projectManager:IsProject(file)
-//
-//        output "Is a project? " + value
     end
 end
