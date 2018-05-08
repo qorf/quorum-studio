@@ -26,12 +26,14 @@ class OpenProjectBehavior is Behavior
     action Run(BehaviorEvent event)
         output "Opening a project"
         FileChooser chooser
-        File file
-        File value = chooser:OpenFileDialog(file)
+        File location
+        File file = chooser:OpenFileDialog(location)
         if file not= undefined
+            output file:GetAbsolutePath()
             boolean isProject = manager:IsProject(file)
             if isProject
                 QuorumProject project = manager:Open(file)
+                
                 integer a = 5 //now what do we do with it?
             else //popup window saying it's not a project? 
 
