@@ -33,6 +33,8 @@ use Libraries.Interface.Layouts.FillLayout
 use Libraries.Interface.Controls.TabPane
 use Libraries.Game.Graphics.Drawable
 use Libraries.Interface.Controls.Tab
+use Libraries.Language.Errors.FileNotFoundError
+use Libraries.Language.Errors.InputOutputError
 
 class QuorumStudio is Game
     MenuBar menuBar
@@ -44,9 +46,9 @@ class QuorumStudio is Game
     MenuItem helpMenu
     ScrollPane projectPane
     Tree projectTree
-//    TabPane codeTabs
+    TabPane codeTabs
     // FOR TESTING PURPOSES ONLY:
-    Drawable codeTabs
+//    Drawable codeTabs
 
 //    Tree navigator = undefined
 //    TextBox codeEditor = undefined
@@ -679,14 +681,29 @@ class QuorumStudio is Game
         codeTabs:SetName("Code Tabs")
         Array<Tab> array
         TextBox testTextBox
-        testTextBox:Initialize(400, 400, color:Red())
-        Tab testTab
-        testTab:Initialize("TEST", testTextBox, true)
-        array:Add(testTab)
-//        codeTabs:Initialize(100, 100, array)
-        codeTabs:LoadFilledRectangle(1, 1, color:Teal())
+        testTextBox:Initialize(100, 100, color:CustomColor(0.95, 0.95, 1, 1))
+        Layout testTextBoxLayout
+        testTextBoxLayout:SetPercentageX(0)
+        testTextBoxLayout:SetPercentageY(0)
+        testTextBoxLayout:SetPercentageWidth(1)
+        testTextBoxLayout:SetPercentageHeight(1)
+        testTextBox:AddLayout(testTextBoxLayout)
+
+//        codeTabs:LoadFilledRectangle(1, 1, color:Teal())
+
+//        Tab testTab
+//        testTab:Initialize("TEST", testTextBox, true)
+//        array:Add(testTab)
+//        codeTabs:Initialize(200, 200, array)
+        
+        codeTabs:Initialize(200, 200, array)
         codeTabs:AddLayout(fill)
 //        codeTabs:Resize()
+
+        File file
+        file:SetWorkingDirectory("Templates/New/Game/SourceCode")
+        file:SetPath("Main.quorum")
+        OpenNewTab(file)
 
 //        TextBox textBox
 //        codeEditor = textBox
@@ -694,6 +711,47 @@ class QuorumStudio is Game
 //        codeEditor:Initialize(GetScreenWidth() - projectTree:GetWidth(), cast(integer, GetScreenHeight() * 0.7), background:White(), "")
 //        codeEditor:SetPosition(projectTree:GetWidth(), GetScreenHeight() - menuBar:GetHeight() - codeEditor:GetHeight())
 //        Add(codeEditor)
+    end
+
+    action OpenNewTab(File file)
+        text contents = ""
+
+        check
+            contents = file:Read()
+        detect error is FileNotFoundError
+            // File wasn't found, handle the error gracefully.
+            // Output is for testing purposes only.
+            output "Couldn't find file: " + file:GetAbsolutePath()
+            return now
+        detect error is InputOutputError
+            // File couldn't be read for some reason.
+            // Output is for testing purposes only.
+            output "Couldn't read file: " + file:GetAbsolutePath()
+            return now
+        end
+
+        Layout textBoxLayout
+        textBoxLayout:SetPercentageX(0)
+        textBoxLayout:SetPercentageY(0)
+        textBoxLayout:SetPercentageWidth(1)
+        textBoxLayout:SetPercentageHeight(1)
+
+        TextBox textBox
+        textBox:Initialize(400, 400, color:CustomColor(0.95, 0.95, 1, 1), contents)
+        textBox:AddLayout(textBoxLayout)    
+
+        // For testing purposes, just put in a placeholder icon.
+        // Long-term, this should instead check the file extension and load an
+        // appropriate image (e.g., Quorum icon for a .quorum file).
+        Texture icon
+        icon:LoadFilledRectangle(1, 1, color:Cyan())
+
+        Tab newTab
+        newTab:Initialize(file:GetPath(), textBox, icon, true)
+
+        codeTabs:Add(newTab)
+        
+        codeTabs:Resize()
     end
 
     action CreateOutputWindow()
