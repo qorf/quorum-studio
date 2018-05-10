@@ -37,6 +37,7 @@ use Libraries.Language.Errors.FileNotFoundError
 use Libraries.Language.Errors.InputOutputError
 use Libraries.Development.Environment.Projects.ProjectListener
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environmen.Resources
 
 class QuorumStudio is Game, ProjectListener
     MenuBar menuBar
@@ -64,6 +65,7 @@ class QuorumStudio is Game, ProjectListener
     number tempXOffset = 0
     Project selectedProject = undefined
 
+    Resources resources
     //behaviors
     OpenProjectBehavior openProjectBehavior
 
@@ -79,6 +81,7 @@ class QuorumStudio is Game, ProjectListener
 
     action CreateGame
         manager:Add(me)
+        resources:Load()
         gradient:Set(color:LightGray(), color:LightGray(), color:White(), color:White())
         Layer2D layer = me:GetCurrentLayer2D()
         layer:SetAutomaticResizing(true)
@@ -96,7 +99,27 @@ class QuorumStudio is Game, ProjectListener
     end
 
     action OpenedProject(QuorumProject project)
-        
+        Array<TreeItem> sourceCode
+
+        File sources = project:GetSources()
+        TreeItem newProjectRoot
+
+        Array<File> files = sources:GetDirectoryListing()
+        Array<TreeItem> items
+        i = 0
+        repeat while i < files:GetSize()
+            File file = files:Get(i)
+            TreeItem item
+            item:Initialize(file:GetFileName(), resources:GetQuorumFile())
+            items:Add(item)
+            i = i + 1
+        end
+
+        newProjectRoot:Initialize(project:GetName(), resources:GetProjectLogo(), items)
+        projectTree:AddTreeItem(newProjectRoot)
+
+        //treeItem:SetDoubleClickBehavior(Behavior)
+        //projectTree:Resize()
     end
 
     action ClosedProject(QuorumProject project)
@@ -543,103 +566,56 @@ class QuorumStudio is Game, ProjectListener
 
     action CreateProjectsWindow()
 
-        Texture testTexture
-        testTexture:LoadFilledRectangle(1, 1, color:Green())
-
         Layout treeLayout
         treeLayout:SetPercentageOriginY(1)
         treeLayout:SetPercentageY(1)
 
         projectTree:AddLayout(treeLayout)
         
-        Array<TreeItem> subTree
-
-        TreeItem test1a
-        test1a:Initialize("Item 1A", testTexture)
-        subTree:Add(test1a)
-        TreeItem test2a
-        test2a:Initialize("Item 2A", testTexture)
-        subTree:Add(test2a)
-        TreeItem test3a
-        test3a:Initialize("Item 3A", testTexture)
-        subTree:Add(test3a)
-
-        TreeItem test1
-        test1:Initialize("TEST 1", testTexture, subTree)
-
-        subTree:Empty()
-
-        TreeItem test1b
-        test1b:Initialize("Item 1B", testTexture)
-        subTree:Add(test1b)
-        TreeItem test2b
-        test2b:Initialize("Item 2B", testTexture)
-        subTree:Add(test2b)
-        TreeItem test3b
-        test3b:Initialize("Item 3B", testTexture)
-        subTree:Add(test3b)
-
-        TreeItem test2
-        test2:Initialize("TEST 2", testTexture, subTree)
-
-        projectTree:AddTreeItem(test1)
-        projectTree:AddTreeItem(test2)
+//        Array<TreeItem> subTree
+//
+//        TreeItem test1a
+//        test1a:Initialize("Item 1A", testTexture)
+//        subTree:Add(test1a)
+//        TreeItem test2a
+//        test2a:Initialize("Item 2A", testTexture)
+//        subTree:Add(test2a)
+//        TreeItem test3a
+//        test3a:Initialize("Item 3A", testTexture)
+//        subTree:Add(test3a)
+//
+//        TreeItem test1
+//        test1:Initialize("TEST 1", testTexture, subTree)
+//
+//        subTree:Empty()
+//
+//        TreeItem test1b
+//        test1b:Initialize("Item 1B", testTexture)
+//        subTree:Add(test1b)
+//        TreeItem test2b
+//        test2b:Initialize("Item 2B", testTexture)
+//        subTree:Add(test2b)
+//        TreeItem test3b
+//        test3b:Initialize("Item 3B", testTexture)
+//        subTree:Add(test3b)
+//
+//        TreeItem test2
+//        test2:Initialize("TEST 2", testTexture, subTree)
+//
+//        projectTree:AddTreeItem(test1)
+//        projectTree:AddTreeItem(test2)
 
         Layout scrollLayout
         scrollLayout:SetPercentageX(0)
-//        scrollLayout:SetPercentageY(1)
-//        scrollLayout:SetPercentageOriginY(1)
         scrollLayout:SetPercentageY(0)
         scrollLayout:SetPercentageOriginY(0)
         scrollLayout:SetPercentageHeight(1)
         scrollLayout:SetWidthOffset(200)
 
         projectPane:Initialize(1, 1, color:White())
-//        projectPane:Initialize(200, GetScreenHeight() - menuBar:GetHeight() - toolbar:GetHeight(), color:White())
         projectPane:SetRegionSize(200, 1000)
         projectPane:AddLayout(scrollLayout)
         projectPane:Add(projectTree)
-
-        Drawable box
-        box:LoadFilledRectangle(50, 50, color:Red())
-        box:SetX(250)
-        projectPane:Add(box)
-        
-
-//        Tree tree
-//        projectTree = tree
-//        projectTree:SetColor(background:Teal())
-//        projectTree:SetDock("left")
-//        projectTree:DockToWindow(true)
-//        projectTree:SetWidthByPercent(25) 
-//        projectTree:SetHeightByPercent(60)
-//        projectTree:SetY(GetScreenHeight() - menuBar:GetHeight() - projectTree:GetHeight())
-//        projectTree:SetBorder(1)
-//        Add(projectTree)
-//
-//        File directory
-//        Array<File> directoryFiles = directory:GetDirectoryListing()
-//        RemoveHiddenFiles(directoryFiles)
-//        
-//        i = 0
-//        repeat while i < directoryFiles:GetSize()
-//           File currentFile = directoryFiles:Get(i)
-//           TreeItem toProjectTree
-//           toProjectTree:SetText(currentFile:GetFileName())
-//           projectTree:AddRootItem(toProjectTree)
-//           if(currentFile:IsDirectory())
-//                integer j = 0
-//                Array<File> childFiles = currentFile:GetDirectoryListing()
-//                RemoveHiddenFiles(childFiles)
-//                repeat while j < childFiles:GetSize()
-//                    AddFileToTree(childFiles:Get(j), toProjectTree)
-//                    j = j + 1
-//                end
-//           end
-//           i = i + 1
-//        end
-//
-//        projectTree:UpdateTree()
     end
 
     //Crashes on Windows
