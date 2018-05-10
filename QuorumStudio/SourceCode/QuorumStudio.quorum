@@ -35,8 +35,10 @@ use Libraries.Game.Graphics.Drawable
 use Libraries.Interface.Controls.Tab
 use Libraries.Language.Errors.FileNotFoundError
 use Libraries.Language.Errors.InputOutputError
+use Libraries.Development.Environment.Projects.ProjectListener
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 
-class QuorumStudio is Game
+class QuorumStudio is Game, ProjectListener
     MenuBar menuBar
     MenuItem fileMenu
     MenuItem editMenu
@@ -58,7 +60,7 @@ class QuorumStudio is Game
     ProjectManager manager
     Updater updater
     Toolbar toolbar
-    text TOOLBAR_RESOURCES = "resources/graphics/toolbar/"
+    text TOOLBAR_RESOURCES = "Resources/Graphics/Toolbar/"
     number tempXOffset = 0
     Project selectedProject = undefined
 
@@ -76,21 +78,13 @@ class QuorumStudio is Game
     end
 
     action CreateGame
+        manager:Add(me)
         gradient:Set(color:LightGray(), color:LightGray(), color:White(), color:White())
         Layer2D layer = me:GetCurrentLayer2D()
         layer:SetAutomaticResizing(true)
 
         Behavior behave
-//        CreateToolbar()
         openProjectBehavior:SetMainApplication(me)
-        
-        //toolbar:Resize()
-//        CreatePanels()
-//        CreateProjectsWindow()
-//        CreateCodeEditor()
-//        CreateNavigationWindow()
-//        CreateOutputWindow()
-
         CreateMenuBar()
         CreateToolbar()
         CreateMainContentPane()
@@ -101,6 +95,13 @@ class QuorumStudio is Game
         mainContentPane:Resize()
     end
 
+    action OpenedProject(QuorumProject project)
+        
+    end
+
+    action ClosedProject(QuorumProject project)
+    end
+
     action CreateToolbar
         
         LabelBoxContent content
@@ -108,7 +109,6 @@ class QuorumStudio is Game
         content:SetBorderThickness(0)
         
         toolbar:SetVisualContent(content)
-//        Add(toolbar)
 
         FlowLayout toolbarLayout
         toolbarLayout:SetWrapping(true)

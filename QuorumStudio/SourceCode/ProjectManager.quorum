@@ -11,34 +11,37 @@ class ProjectManager
     HashTable<text, QuorumProject> projects
     public constant text PROJECT = "Project"
     public constant text EXTENSION = "qp"
+    Array<ProjectListener> listeners
+
+    action Add(ProjectListener listener)
+        listeners:Add(listener)
+    end
+
+    action Remove(ProjectListener listener)
+        listeners:Remove(listener)
+    end
+
+    private action FireEvent(QuorumProject project, boolean opened)
+        i = 0
+        repeat while i < listeners:GetSize()
+            ProjectListener listener = listeners:Get(i)
+            if opened
+                listener:OpenedProject(project)
+            else
+                listener:ClosedProject(project)
+            end
+            i = i + 1
+        end
+    end
 
     /*
         This action checks if a particular folder is a Quorum Studio project
         folder.
     */
     action IsProject(File file) returns boolean
-        if file not= undefined and file:IsFile() and file:GetFileName() = PROJECT + EXTENSION
+        if file not= undefined and file:IsFile() and file:GetFileName() = PROJECT + "." + EXTENSION
             return true
         end
-
-//        Array<File> value = file:GetDirectoryListing()
-//        i = 0
-//        repeat while i < value:GetSize()
-//            File folder = value:Get(i)
-//            //this is a project folder with the right name
-//            if folder not= undefined and folder:IsDirectory() and folder:GetFileName() = PROJECT
-//                Array<File> files = folder:GetDirectoryListing()
-//                j = 0
-//                repeat while j < files:GetSize()
-//                    File projectFile = files:Get(j)
-//                    if projectFile not= undefined and projectFile:IsFile() and projectFile:GetFileName() = PROJECT + ".json"
-//                        return true
-//                    end
-//                    j = j + 1
-//                end
-//            end
-//            i = i + 1
-//        end
 
         return false
     end
@@ -64,6 +67,7 @@ class ProjectManager
         project:Save()
 
         projects:Add(file:GetAbsolutePath(), project)
+        FireEvent(project, true)
         return project
     end
 
@@ -110,12 +114,15 @@ class ProjectManager
             return undefined
         end
 
+        //get project folder directory
+        File mom = file:GetParentDirectory():GetParentDirectory()
         QuorumProject project
-        project:SetLocation(file)
+        project:SetLocation(mom)
         project:Load()
 
         text path = file:GetAbsolutePath()
         projects:Add(path, project)
+        FireEvent(project, true)
         return project
     end
 
@@ -133,6 +140,7 @@ class ProjectManager
             //first save the project before we close it
             project:Save()
             projects:RemoveKey(key)
+            FireEvent(project, false)
         end
     end
 
@@ -148,5 +156,9 @@ class ProjectManager
     */
     action GetIterator returns Iterator<QuorumProject>
         return projects:GetValueIterator()
+    end
+
+    action GetSize returns integer
+        return projects:GetSize()
     end
 end
