@@ -1,0 +1,55 @@
+package Libraries.Development.Environment.Projects
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Containers.Array
+use Libraries.System.File
+use Libraries.Development.Environmen.Resources
+
+class QuorumProjectView is ProjectView
+    QuorumProject project = undefined
+    Resources resources = undefined
+
+    action GetProject returns Project
+        return project
+    end
+
+    action SetProject(Project project)
+        if project is QuorumProject
+            me:project = cast(QuorumProject, project)
+        end
+    end
+
+    action GetResources returns Resources
+        return resources
+    end
+
+    action SetResources(Resources resources)
+        me:resources = resources
+    end
+
+    action GetLogicalTree returns TreeItem
+        if project = undefined
+            return undefined
+        end
+
+        TreeItem projectItem
+        Array<TreeItem> sourceCode
+
+        File sources = project:GetSources()
+
+        Array<File> files = sources:GetDirectoryListing()
+        Array<TreeItem> items
+        i = 0
+        repeat while i < files:GetSize()
+            File file = files:Get(i)
+            TreeItem item
+            item:Initialize(file:GetFileName(), resources:GetQuorumFile())
+            items:Add(item)
+            i = i + 1
+        end
+
+        projectItem:Initialize(project:GetName(), resources:GetProjectLogo(), items)
+
+        return projectItem
+    end
+end

@@ -8,6 +8,8 @@ use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.System.Logger
 use Libraries.Language.Compile.Compiler
 use Libraries.Development.Environment.Studio.Behaviors.BuildQuorumProject
+use Libraries.Development.Environment.Projects.QuorumProjectView
+use Libraries.Development.Environment.Projects.ProjectView
 
 /*
     This class loads a Quorum project into the Integrated Development Environment.
@@ -81,6 +83,7 @@ class QuorumProject is Project
     /* This is a file to the source location. */
     File mainFile
 
+    QuorumProjectView view
     /* This is an in memory representation of the image sheets class. */
     ImageSheets sheets
     Compiler compiler
@@ -91,10 +94,15 @@ class QuorumProject is Project
     on create
         build:SetProject(me)
         library:SetPath("Library/Standard")
-
+        view:SetProject(me)
         //temporary location
         //library:SetWorkingDirectory("/Users/stefika/Repositories/quorum-language/Quorum3")
         //compiler:SetStandardLibraryFolder(library)
+    end
+
+
+    action GetProjectView returns ProjectView
+        return view
     end
 
     action SetLocation(File location)

@@ -38,6 +38,7 @@ use Libraries.Language.Errors.InputOutputError
 use Libraries.Development.Environment.Projects.ProjectListener
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environmen.Resources
+use Libraries.Development.Environment.Projects.ProjectView
 
 class QuorumStudio is Game, ProjectListener
     MenuBar menuBar
@@ -99,25 +100,11 @@ class QuorumStudio is Game, ProjectListener
     end
 
     action OpenedProject(QuorumProject project)
-        Array<TreeItem> sourceCode
+        ProjectView view = project:GetProjectView()
+        view:SetResources(resources)
+        TreeItem item = view:GetLogicalTree()
 
-        File sources = project:GetSources()
-        TreeItem newProjectRoot
-
-        Array<File> files = sources:GetDirectoryListing()
-        Array<TreeItem> items
-        i = 0
-        repeat while i < files:GetSize()
-            File file = files:Get(i)
-            TreeItem item
-            item:Initialize(file:GetFileName(), resources:GetQuorumFile())
-            items:Add(item)
-            i = i + 1
-        end
-
-        newProjectRoot:Initialize(project:GetName(), resources:GetProjectLogo(), items)
-        projectTree:AddTreeItem(newProjectRoot)
-
+        projectTree:AddTreeItem(item)
         //treeItem:SetDoubleClickBehavior(Behavior)
         //projectTree:Resize()
     end
