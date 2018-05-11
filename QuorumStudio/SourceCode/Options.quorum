@@ -2,16 +2,33 @@ package Libraries.Development.Environment.Configuration
 use Libraries.System.File
 use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Containers.Array
+use Libraries.Development.Environment.Projects.ProjectListener
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Containers.HashTable
+use Libraries.Containers.Iterator
 
-class Options 
+class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
     constant text OPEN_PROJECTS = "Open Projects"
-    Array<text> projects 
+    HashTable<text, text> projects 
 
     action GetProjects returns Array<text>
-        return projects
+        return projects:CopyToValueArray()
     end
 
+    action OpenedProject(QuorumProject project)
+        File file = project:GetPropertiesLocation()
+        if file not= undefined
+            projects:Add(file:GetAbsolutePath(), file:GetAbsolutePath())
+        end
+    end
+
+    action ClosedProject(QuorumProject project)
+        File file = project:GetPropertiesLocation()
+        if file not= undefined
+            projects:RemoveKey(file:GetAbsolutePath())
+        end
+    end
     
     action Read
         File file
@@ -30,6 +47,30 @@ class Options
         end
     end
 
+    action Write
+        File file
+        file:SetPath(OPTIONS_FILE)
+        JavaScriptObjectNotation notation
+        notation:SetPrettyPrint(true)
+        JavaScriptObjectNotation array
+        array:SetArray()
+        
+        notation:Add(OPEN_PROJECTS, array)
+
+        Iterator<text> iterator = projects:GetValueIterator()
+        repeat while iterator:HasNext()
+            text value = iterator:Next()
+            JavaScriptObjectNotation item
+            item:SetText(value)
+            array:Add(item)
+        end
+
+        
+        text value = notation:ToText()
+        //write to disk once this is fixed
+        output value
+    end
+
     private action ProcessKey(JavaScriptObjectNotation object)
         text key = object:GetKey()
         text textMessage = "Could not load property " + key + ", as its value was not of type text."
@@ -39,12 +80,13 @@ class Options
                 return now
             end
             JavaScriptObjectNotation array = object:Get(0)
+
             i = 0
             repeat while i < array:GetSize()
                 JavaScriptObjectNotation value = array:Get(i)
                 if value:IsText()
                     text project = value:GetText()
-                    projects:Add(project)
+                    projects:Add(project, project)
                 end
                 i = i + 1
             end
