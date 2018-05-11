@@ -114,6 +114,11 @@ class ProjectManager
             return undefined
         end
 
+        //now check if this project is already open and return if it is
+        if IsProjectOpen(file)
+            return undefined
+        end
+
         //get project folder directory
         File mom = file:GetParentDirectory():GetParentDirectory()
         QuorumProject project
@@ -124,6 +129,19 @@ class ProjectManager
         projects:Add(path, project)
         FireEvent(project, true)
         return project
+    end
+
+    action IsProjectOpen(File file) returns boolean
+        //first check if it's a valid project location
+        if file = undefined or not IsProject(file)
+            return false
+        end
+
+        if projects:HasKey(file:GetAbsolutePath())
+            return true
+        end
+
+        return false
     end
 
     /* 
