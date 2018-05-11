@@ -39,6 +39,7 @@ use Libraries.Development.Environment.Projects.ProjectListener
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environmen.Resources
 use Libraries.Development.Environment.Projects.ProjectView
+use Libraries.Development.Environment.Configuration.Options
 
 class QuorumStudio is Game, ProjectListener
     MenuBar menuBar
@@ -66,6 +67,7 @@ class QuorumStudio is Game, ProjectListener
     number tempXOffset = 0
     Project selectedProject = undefined
 
+    Options options
     Resources resources
     //behaviors
     OpenProjectBehavior openProjectBehavior
@@ -87,6 +89,8 @@ class QuorumStudio is Game, ProjectListener
         Layer2D layer = me:GetCurrentLayer2D()
         layer:SetAutomaticResizing(true)
 
+        Configure()
+
         Behavior behave
         openProjectBehavior:SetMainApplication(me)
         CreateMenuBar()
@@ -97,6 +101,21 @@ class QuorumStudio is Game, ProjectListener
         Add(menuBar)
 
         mainContentPane:Resize()
+    end
+
+    action Configure
+        //load the user's settings
+        options:Read()
+        Array<text> projects = options:GetProjects()
+
+        i = 0
+        repeat while i < projects:GetSize()
+            text value = projects:Get(i)
+            File file
+            file:SetAbsolutePath(value)
+            manager:Open(file)
+            i = i + 1
+        end
     end
 
     action OpenedProject(QuorumProject project)

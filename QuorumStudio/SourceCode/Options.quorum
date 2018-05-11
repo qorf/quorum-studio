@@ -1,0 +1,53 @@
+package Libraries.Development.Environment.Configuration
+use Libraries.System.File
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Containers.Array
+
+class Options 
+    constant text OPTIONS_FILE = "Configuration/Options.json"
+    constant text OPEN_PROJECTS = "Open Projects"
+    Array<text> projects 
+
+    action GetProjects returns Array<text>
+        return projects
+    end
+
+    
+    action Read
+        File file
+        file:SetPath(OPTIONS_FILE)
+        text value = file:Read()
+
+        JavaScriptObjectNotation notation
+        notation:Read(value)
+
+        //get all the properties from JSON
+        i = 0
+        repeat while i < notation:GetSize()
+            JavaScriptObjectNotation obj = notation:Get(i)
+            ProcessKey(obj)
+            i = i + 1
+        end
+    end
+
+    private action ProcessKey(JavaScriptObjectNotation object)
+        text key = object:GetKey()
+        text textMessage = "Could not load property " + key + ", as its value was not of type text."
+        text booleanMessage = "Could not load property " + key + ", as its value was not of type boolean."
+        if key = OPEN_PROJECTS
+            if object:IsEmpty()
+                return now
+            end
+            JavaScriptObjectNotation array = object:Get(0)
+            i = 0
+            repeat while i < array:GetSize()
+                JavaScriptObjectNotation value = array:Get(i)
+                if value:IsText()
+                    text project = value:GetText()
+                    projects:Add(project)
+                end
+                i = i + 1
+            end
+        end
+    end
+end
