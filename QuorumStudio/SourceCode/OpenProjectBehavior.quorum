@@ -24,7 +24,6 @@ class OpenProjectBehavior is Behavior
     end
 
     action Run(BehaviorEvent event)
-        output "Opening a project"
         FileChooser chooser
         File location
         File file = chooser:OpenFileDialog(location)
@@ -32,13 +31,8 @@ class OpenProjectBehavior is Behavior
             output file:GetAbsolutePath()
             boolean isProject = manager:IsProject(file)
             if isProject
-                QuorumProject project = manager:Open(file)
-                
-                integer a = 5 //now what do we do with it?
-            else //popup window saying it's not a project? 
-
+                manager:Open(file) //no need to track it because listeners are informed automatically
             end
         end
-        studio:OpenProject()
     end
 end
