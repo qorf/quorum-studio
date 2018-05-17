@@ -1,0 +1,41 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Containers.HashTable
+use Libraries.Containers.Iterator
+
+class Behaviors 
+    constant text OPEN_PROJECT = "Open Project"
+    constant text CLOSE_PROJET = "Close Project"
+
+    OpenProjectBehavior openProjectBehavior
+    CloseProjectBehavior closeProjectBehavior
+
+    QuorumStudio studio = undefined
+    HashTable<text, QuorumStudioBehavior> behaviors
+
+    on create
+        behaviors:Add(OPEN_PROJECT, openProjectBehavior)
+        behaviors:Add(CLOSE_PROJET, closeProjectBehavior)
+    end
+
+    action GetOpenProjectBehavior returns OpenProjectBehavior
+        return openProjectBehavior
+    end
+
+    action GetCloseProjectBehavior returns CloseProjectBehavior
+        return closeProjectBehavior
+    end
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+        Iterator<QuorumStudioBehavior> iterator = behaviors:GetValueIterator()
+        repeat while iterator:HasNext()
+            QuorumStudioBehavior behavior = iterator:Next()
+            behavior:SetMainApplication(studio)
+        end 
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
+end

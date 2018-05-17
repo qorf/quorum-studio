@@ -1,11 +1,50 @@
 package Libraries.Interface
 use Libraries.Interface.Layouts.Layout
 use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Views.ImageControlView
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Development.Environmen.Resources
+use Libraries.Game.Graphics.Gradient
+use Libraries.Game.Graphics.Color
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Game.Graphics.Texture
 
 class Toolbar is Item2D
     Layout layout = undefined
+    Resources resources = undefined
+    Gradient gradient
+    Color color
+    number height = 0
+    Behaviors behaviors = undefined
 
     on create
+        gradient:Set(color:LightGray(), color:LightGray(), color:White(), color:White())
+    end
+
+    action SetBehaviors(Behaviors behaviors)
+        me:behaviors = behaviors
+    end
+
+    action GetBehaviors returns Behaviors
+        return behaviors
+    end
+
+    action SetDisplayOffset(number value)
+        height = value
+    end
+
+    action GetDisplayOffset returns number
+        return height
+    end
+
+    action GetResources returns Resources
+        return resources
+    end
+
+    action SetResources(Resources resources)
+        me:resources = resources
     end
 
     action GetLayout returns Layout
@@ -20,5 +59,62 @@ class Toolbar is Item2D
         if layout not= undefined
             layout:Apply(me, me:GetWidth(), me:GetHeight())
         end
+    end
+
+    action Setup
+        LabelBoxView content
+        content:Initialize(gradient, color:Black(), "")
+        content:SetBorderThickness(0)
+        
+        SetView2D(content)
+
+        FlowLayout toolbarLayout
+        toolbarLayout:SetWrapping(true)
+        // Width is the full width of the screen.
+        toolbarLayout:SetPercentageWidth(1)
+        // Height is fixed to 100 pixels.
+        toolbarLayout:SetPercentageHeight(0)
+        toolbarLayout:SetHeightOffset(24)
+        toolbarLayout:SetFrontPadding(true)
+        toolbarLayout:SetPadding(6)
+
+        // Toolbar is placed at top of screen, minus 100 pixels.
+        toolbarLayout:SetPercentageY(1)
+        toolbarLayout:SetPercentageOriginY(1)
+        toolbarLayout:SetOffsetY(height)
+        AddLayout(toolbarLayout)
+
+        AddButtonToToolbar(resources:GetNewProject(), undefined)
+        AddButtonToToolbar(resources:GetNewFile(), undefined)
+        AddButtonToToolbar(resources:GetOpenProject(), behaviors:GetOpenProjectBehavior())
+        AddButtonToToolbar(resources:GetSaveAll(), undefined)
+        AddButtonToToolbar(resources:GetUndo(), undefined)
+        AddButtonToToolbar(resources:GetRedo(), undefined)
+        AddButtonToToolbar(resources:GetBuild(), undefined)
+        AddButtonToToolbar(resources:GetCleanAndBuild(), undefined)
+        AddButtonToToolbar(resources:GetRun(), undefined)
+        AddButtonToToolbar(resources:GetDebug(), undefined)
+        AddButtonToToolbar(resources:GetStop(), undefined)
+        AddButtonToToolbar(resources:GetPause(), undefined)
+        AddButtonToToolbar(resources:GetContinue(), undefined)
+        AddButtonToToolbar(resources:GetStepOver(), undefined)
+        AddButtonToToolbar(resources:GetStepInto(), undefined)
+        AddButtonToToolbar(resources:GetStepOut(), undefined)
+        Resize()
+    end
+
+    private action AddButtonToToolbar(Texture image, Behavior behavior)
+        ImageControlView buttonContent
+        buttonContent:Load(image)
+        
+        Button button
+        button:SetView2D(buttonContent)
+        button:SetWidth(24)
+        button:SetHeight(24)
+
+        if behavior not= undefined
+            button:SetBehavior(behavior)
+        end
+        Add(button)
     end
 end

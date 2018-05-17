@@ -41,6 +41,7 @@ use Libraries.Development.Environment.Projects.ProjectView
 use Libraries.Development.Environment.Configuration.Options
 use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Development.Environment.Studio.Behaviors.CloseProjectBehavior
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 
 class QuorumStudio is Game
     MenuBar menuBar
@@ -58,22 +59,17 @@ class QuorumStudio is Game
     Item2D mainContentPane
 
     Color color
-    Gradient gradient
+    
 
     Color background
     ProjectManager manager
     Updater updater
     Toolbar toolbar
-    text TOOLBAR_RESOURCES = "Resources/Graphics/Toolbar/"
     number tempXOffset = 0
-    Project selectedProject = undefined
 
     Options options
     Resources resources
-    //behaviors
-    OpenProjectBehavior openProjectBehavior
-    CloseProjectBehavior closeProjectBehavior
-
+    Behaviors behaviors
 
     action Start
         StartGame()
@@ -88,33 +84,43 @@ class QuorumStudio is Game
     end
 
     action CreateGame
-        manager:Add(projectTree)
-        projectTree:SetResources(resources)
-        projectTree:SetProjectManager(manager)
-        AddSelectionListener(projectTree)
-        manager:Add(options)
-        resources:Load()
-        gradient:Set(color:LightGray(), color:LightGray(), color:White(), color:White())
+        SetupResources()
         Layer2D layer = me:GetCurrentLayer2D()
         layer:SetAutomaticResizing(true)
+        Load()
+        SetupInterface()
+        mainContentPane:Resize()
+    end
 
-        Configure()
-
-        //Behavior behave
-        openProjectBehavior:SetMainApplication(me)
-        closeProjectBehavior:SetMainApplication(me)
-
+    action SetupInterface
         CreateMenuBar()
-        CreateToolbar()
+        toolbar:SetDisplayOffset(-menuBar:GetHeight())
+        toolbar:Setup()
+
+        //CreateToolbar()
         CreateMainContentPane()
         Add(mainContentPane)
         Add(toolbar)
         Add(menuBar)
-
-        mainContentPane:Resize()
     end
 
-    action Configure
+    action SetupResources
+        manager:Add(projectTree)
+        manager:Add(options)
+
+        resources:Load()
+        projectTree:SetResources(resources)
+        toolbar:SetResources(resources)
+
+        projectTree:SetProjectManager(manager)
+        AddSelectionListener(projectTree)
+        
+        toolbar:SetBehaviors(behaviors)
+        
+        behaviors:SetMainApplication(me)
+    end
+
+    action Load
         //load the user's settings
         options:Read()
         options:Write()
@@ -130,85 +136,10 @@ class QuorumStudio is Game
         end
     end
 
-    action CreateToolbar
-        
-        LabelBoxView content
-        content:Initialize(gradient, color:Black(), "")
-        content:SetBorderThickness(0)
-        
-        toolbar:SetView2D(content)
+    action Save
 
-        FlowLayout toolbarLayout
-        toolbarLayout:SetWrapping(true)
-        // Width is the full width of the screen.
-        toolbarLayout:SetPercentageWidth(1)
-        // Height is fixed to 100 pixels.
-        toolbarLayout:SetPercentageHeight(0)
-        toolbarLayout:SetHeightOffset(24)
-        toolbarLayout:SetFrontPadding(true)
-        toolbarLayout:SetPadding(6)
-
-        // Toolbar is placed at top of screen, minus 100 pixels.
-        toolbarLayout:SetPercentageY(1)
-        toolbarLayout:SetPercentageOriginY(1)
-        toolbarLayout:SetOffsetY(-menuBar:GetHeight())
-
-        toolbar:AddLayout(toolbarLayout)
-
-        // Force the toolbar to resize to the new layout.
-        toolbar:Resize()
-
-        // Load some testing textures into buttons.
-        integer counter = 0
-
-        // Boundary of the last button.
-        number endValue = 0
-        Build build
-        build:SetQuorumStudio(me)
-
-        OpenProjectBehavior open
-        //open:SetQuorumStudio(me)
-
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "NewProject.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "NewFile.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "OpenProject.png", open)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "SaveAll.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Undo.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Redo.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Build.png", build)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "CleanAndBuild.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Run.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Debug.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Stop.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Pause.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "Continue.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "StepOver.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "StepInto.png", undefined)
-        AddButtonToToolbar(TOOLBAR_RESOURCES + "StepOut.png", undefined)
-        toolbar:Resize()
-    end
-
-    private action AddButtonToToolbar(text image, Behavior behavior)
-
-        ImageControlView buttonContent
-        buttonContent:Load(image)
-        
-        Button button
-        
-        button:SetView2D(buttonContent)
-
-        button:SetWidth(24)
-        button:SetHeight(24)
-
-        if behavior not= undefined
-            button:SetBehavior(behavior)
-        end
-        toolbar:Add(button)
     end
     
-    action GetSelectedProject returns Project
-        return selectedProject
-    end
 
     action GetMenuBar returns MenuBar
         return menuBar
@@ -245,13 +176,13 @@ class QuorumStudio is Game
         MenuItem openProject
         openProject:Initialize("Open Project")
         // Set a behavior to indicate what the menu item does when activated.
-        openProject:SetBehavior(openProjectBehavior)
+        openProject:SetBehavior(behaviors:GetOpenProjectBehavior())
         fileItems:Add(openProject)
 
         MenuItem closeProject
         closeProject:Initialize("Close Project")
         // Set a behavior to indicate what the menu item does when activated.
-        closeProject:SetBehavior(closeProjectBehavior)
+        closeProject:SetBehavior(behaviors:GetCloseProjectBehavior())
         fileItems:Add(closeProject)
 
         MenuItem newFile

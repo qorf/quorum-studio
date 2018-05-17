@@ -29,31 +29,7 @@ class ProjectTree is Tree, SelectionListener, ProjectListener
         return manager
     end
 
-    action GetSelection returns TreeSelection
-        return parent:Tree:selection
-    end
-
-    /*
-        TODO: This is a temporary workaround. This should only be added to the tree.
-    */
     action SelectionChanged(Selection selection)
-        text outputText = ""
-        if selection is TreeSelection
-            Item value = selection:GetItem()
-            if value is Tree
-                integer counter = 0
-                TreeSelection pathSelection = cast(TreeSelection, selection)
-                Array<TreeItem> array = pathSelection:GetPath()
-                if not array:IsEmpty()
-                    TreeItem project = array:Get(0)
-                    if project is ProjectTreeItem
-                        ProjectTreeItem i = cast(ProjectTreeItem, project)
-                        QuorumProject qp = i:GetProject()
-                        manager:Close(qp)
-                    end 
-                end
-            end
-        end
     end
 
      action OpenedProject(QuorumProject project)
@@ -62,10 +38,18 @@ class ProjectTree is Tree, SelectionListener, ProjectListener
         TreeItem item = view:GetLogicalTree()
 
         Add(item)
-        //treeItem:SetDoubleClickBehavior(Behavior)
         Resize()
     end
 
     action ClosedProject(QuorumProject project)
+        Iterator<TreeItem> iterator = GetTreeItems()
+        repeat while iterator:HasNext() 
+            TreeItem item = iterator:Next()
+            ProjectTreeItem projectItem = cast(ProjectTreeItem, item)
+            QuorumProject proj = projectItem:GetProject()
+            if project:Equals(proj)
+                Remove(item)
+            end
+        end
     end
 end
