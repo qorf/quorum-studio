@@ -1,10 +1,10 @@
 package Libraries.Development.Environment.Projects
 use Libraries.Interface.Controls.Tree
-use Libraries.Interface.Selection
+use Libraries.Interface.Selections.Selection
 use Libraries.Interface.Events.SelectionListener
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Containers.Iterator
-use Libraries.Interface.TextPathSelection
+use Libraries.Interface.Selections.TreeSelection
 use Libraries.Containers.Array
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environmen.Resources
@@ -29,7 +29,7 @@ class ProjectTree is Tree, SelectionListener, ProjectListener
         return manager
     end
 
-    action GetSelection returns TextPathSelection
+    action GetSelection returns TreeSelection
         return parent:Tree:selection
     end
 
@@ -49,14 +49,14 @@ class ProjectTree is Tree, SelectionListener, ProjectListener
     */
     action SelectionChanged(Selection selection)
         text outputText = ""
-        if selection is TextPathSelection
+        if selection is TreeSelection
             Item value = selection:GetItem()
             if value is Tree
                 integer counter = 0
-                TextPathSelection pathSelection = cast(TextPathSelection, selection)
-                Array<text> array = pathSelection:GetPath()
+                TreeSelection pathSelection = cast(TreeSelection, selection)
+                Array<TreeItem> array = pathSelection:GetPath()
                 if not array:IsEmpty()
-                    text project = array:Get(0)
+                    TreeItem project = array:Get(0)
                     QuorumProject qp = GetProjectFromSelection(project)
                     manager:Close(qp)
                 end
