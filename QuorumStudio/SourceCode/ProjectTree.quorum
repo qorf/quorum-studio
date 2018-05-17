@@ -33,17 +33,6 @@ class ProjectTree is Tree, SelectionListener, ProjectListener
         return parent:Tree:selection
     end
 
-    action GetProjectFromSelection(TreeItem name) returns QuorumProject
-        Iterator<QuorumProject> iterator = manager:GetIterator()
-//        repeat while iterator:HasNext()
-//            QuorumProject next = iterator:Next()
-//            if next:GetName() = name
-//                return next //for now just get the first one
-//            end
-//        end
-        return undefined
-    end
-
     /*
         TODO: This is a temporary workaround. This should only be added to the tree.
     */
@@ -57,8 +46,11 @@ class ProjectTree is Tree, SelectionListener, ProjectListener
                 Array<TreeItem> array = pathSelection:GetPath()
                 if not array:IsEmpty()
                     TreeItem project = array:Get(0)
-                    QuorumProject qp = GetProjectFromSelection(project)
-                    manager:Close(qp)
+                    if project is ProjectTreeItem
+                        ProjectTreeItem i = cast(ProjectTreeItem, project)
+                        QuorumProject qp = i:GetProject()
+                        manager:Close(qp)
+                    end 
                 end
             end
         end
