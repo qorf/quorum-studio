@@ -22,7 +22,6 @@ use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Game.Behaviors.Behavior
 use Libraries.Development.Environment.Projects.Project
 use Libraries.Development.Environment.Studio.Behaviors.Build
-use Libraries.Development.Environment.Studio.Behaviors.OpenProject
 use Libraries.Interface.Controls.FileChooser
 use Libraries.Development.Environment.Studio.Behaviors.OpenProjectBehavior
 use Libraries.Interface.Controls.Tree
@@ -40,8 +39,10 @@ use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environmen.Resources
 use Libraries.Development.Environment.Projects.ProjectView
 use Libraries.Development.Environment.Configuration.Options
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Studio.Behaviors.CloseProjectBehavior
 
-class QuorumStudio is Game, ProjectListener
+class QuorumStudio is Game
     MenuBar menuBar
     MenuItem fileMenu
     MenuItem editMenu
@@ -50,7 +51,7 @@ class QuorumStudio is Game, ProjectListener
     MenuItem windowsMenu
     MenuItem helpMenu
     ScrollPane projectPane
-    Tree projectTree
+    ProjectTree projectTree
     TabPane codeTabs
     TextBox outputWindow
 
@@ -71,7 +72,7 @@ class QuorumStudio is Game, ProjectListener
     Resources resources
     //behaviors
     OpenProjectBehavior openProjectBehavior
-
+    CloseProjectBehavior closeProjectBehavior
 
 
     action Start
@@ -82,8 +83,15 @@ class QuorumStudio is Game, ProjectListener
         return manager
     end
 
+    action GetProjectTree returns ProjectTree
+        return projectTree
+    end
+
     action CreateGame
-        manager:Add(me)
+        manager:Add(projectTree)
+        projectTree:SetResources(resources)
+        projectTree:SetProjectManager(manager)
+        AddSelectionListener(projectTree)
         manager:Add(options)
         resources:Load()
         gradient:Set(color:LightGray(), color:LightGray(), color:White(), color:White())
@@ -92,8 +100,10 @@ class QuorumStudio is Game, ProjectListener
 
         Configure()
 
-        Behavior behave
+        //Behavior behave
         openProjectBehavior:SetMainApplication(me)
+        closeProjectBehavior:SetMainApplication(me)
+
         CreateMenuBar()
         CreateToolbar()
         CreateMainContentPane()
@@ -118,19 +128,6 @@ class QuorumStudio is Game, ProjectListener
             manager:Open(file)
             i = i + 1
         end
-    end
-
-    action OpenedProject(QuorumProject project)
-        ProjectView view = project:GetProjectView()
-        view:SetResources(resources)
-        TreeItem item = view:GetLogicalTree()
-
-        projectTree:AddTreeItem(item)
-        //treeItem:SetDoubleClickBehavior(Behavior)
-        projectTree:Resize()
-    end
-
-    action ClosedProject(QuorumProject project)
     end
 
     action CreateToolbar
@@ -169,8 +166,8 @@ class QuorumStudio is Game, ProjectListener
         Build build
         build:SetQuorumStudio(me)
 
-        OpenProject open
-        open:SetQuorumStudio(me)
+        OpenProjectBehavior open
+        //open:SetQuorumStudio(me)
 
         AddButtonToToolbar(TOOLBAR_RESOURCES + "NewProject.png", undefined)
         AddButtonToToolbar(TOOLBAR_RESOURCES + "NewFile.png", undefined)
@@ -254,7 +251,7 @@ class QuorumStudio is Game, ProjectListener
         MenuItem closeProject
         closeProject:Initialize("Close Project")
         // Set a behavior to indicate what the menu item does when activated.
-        //closeProject:SetBehavior(undefined)
+        closeProject:SetBehavior(closeProjectBehavior)
         fileItems:Add(closeProject)
 
         MenuItem newFile
@@ -568,45 +565,10 @@ class QuorumStudio is Game, ProjectListener
     end
 
     action CreateProjectsWindow()
-
         Layout treeLayout
         treeLayout:SetPercentageOriginY(1)
         treeLayout:SetPercentageY(1)
-
         projectTree:AddLayout(treeLayout)
-        
-//        Array<TreeItem> subTree
-//
-//        TreeItem test1a
-//        test1a:Initialize("Item 1A", testTexture)
-//        subTree:Add(test1a)
-//        TreeItem test2a
-//        test2a:Initialize("Item 2A", testTexture)
-//        subTree:Add(test2a)
-//        TreeItem test3a
-//        test3a:Initialize("Item 3A", testTexture)
-//        subTree:Add(test3a)
-//
-//        TreeItem test1
-//        test1:Initialize("TEST 1", testTexture, subTree)
-//
-//        subTree:Empty()
-//
-//        TreeItem test1b
-//        test1b:Initialize("Item 1B", testTexture)
-//        subTree:Add(test1b)
-//        TreeItem test2b
-//        test2b:Initialize("Item 2B", testTexture)
-//        subTree:Add(test2b)
-//        TreeItem test3b
-//        test3b:Initialize("Item 3B", testTexture)
-//        subTree:Add(test3b)
-//
-//        TreeItem test2
-//        test2:Initialize("TEST 2", testTexture, subTree)
-//
-//        projectTree:AddTreeItem(test1)
-//        projectTree:AddTreeItem(test2)
 
         Layout scrollLayout
         scrollLayout:SetPercentageX(0)
@@ -620,24 +582,6 @@ class QuorumStudio is Game, ProjectListener
         projectPane:AddLayout(scrollLayout)
         projectPane:Add(projectTree)
     end
-
-    //Crashes on Windows
-//    private action AddFileToTree(File fileToAdd, TreeItem targetTree)
-//         TreeItem file
-//         file:SetText(fileToAdd:GetFileName())
-//         targetTree:AddChildItem(file)
-//
-//        if(fileToAdd:IsDirectory())
-//            Array<File> folder = fileToAdd:GetDirectoryListing()
-//            RemoveHiddenFiles(folder)
-//            integer i = 0
-//            repeat while i < folder:GetSize()
-//                    //Does not work on Windows, Fails to load native font
-//                AddFileToTree(folder:Get(i), file)
-//                i = i + 1
-//            end
-//        end
-//    end
 
     private action RemoveHiddenFiles(Array<File> directory)
         integer i = 0

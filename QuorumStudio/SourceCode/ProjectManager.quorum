@@ -162,6 +162,16 @@ class ProjectManager
         end
     end
 
+    action Close(QuorumProject project)
+        File file = project:GetPropertiesLocation()
+        if file not= undefined
+            text key = file:GetAbsolutePath()
+            project:Save()
+            projects:RemoveKey(key)
+            FireEvent(project, false)
+        end
+    end
+
     action Get(File file) returns QuorumProject
         if file = undefined
             return undefined

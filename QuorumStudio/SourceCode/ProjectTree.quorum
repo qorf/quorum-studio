@@ -1,0 +1,79 @@
+package Libraries.Development.Environment.Projects
+use Libraries.Interface.Controls.Tree
+use Libraries.Interface.Selection
+use Libraries.Interface.Events.SelectionListener
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Containers.Iterator
+use Libraries.Interface.TextPathSelection
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environmen.Resources
+
+class ProjectTree is Tree, SelectionListener, ProjectListener
+    ProjectManager manager = undefined
+    Resources resources = undefined
+
+    action GetResources returns Resources
+        return resources
+    end
+
+    action SetResources(Resources resources)
+        me:resources = resources
+    end
+
+    action SetProjectManager(ProjectManager manager)
+        me:manager = manager
+    end
+
+    action GetProjectManager returns ProjectManager
+        return manager
+    end
+
+    action GetSelection returns TextPathSelection
+        return parent:Tree:selection
+    end
+
+    action GetProjectFromSelection(text name) returns QuorumProject
+        Iterator<QuorumProject> iterator = manager:GetIterator()
+        repeat while iterator:HasNext()
+            QuorumProject next = iterator:Next()
+            if next:GetName() = name
+                return next //for now just get the first one
+            end
+        end
+        return undefined
+    end
+
+    /*
+        TODO: This is a temporary workaround. This should only be added to the tree.
+    */
+    action SelectionChanged(Selection selection)
+        text outputText = ""
+        if selection is TextPathSelection
+            Item value = selection:GetItem()
+            if value is Tree
+                integer counter = 0
+                TextPathSelection pathSelection = cast(TextPathSelection, selection)
+                Array<text> array = pathSelection:GetPath()
+                if not array:IsEmpty()
+                    text project = array:Get(0)
+                    QuorumProject qp = GetProjectFromSelection(project)
+                    manager:Close(qp)
+                end
+            end
+        end
+    end
+
+     action OpenedProject(QuorumProject project)
+        ProjectView view = project:GetProjectView()
+        view:SetResources(resources)
+        TreeItem item = view:GetLogicalTree()
+
+        AddTreeItem(item)
+        //treeItem:SetDoubleClickBehavior(Behavior)
+        Resize()
+    end
+
+    action ClosedProject(QuorumProject project)
+    end
+end
