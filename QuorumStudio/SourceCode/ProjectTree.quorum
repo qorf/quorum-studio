@@ -8,10 +8,28 @@ use Libraries.Interface.Selections.TreeSelection
 use Libraries.Containers.Array
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environmen.Resources
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Layouts.Layout
 
 class ProjectTree is Tree, SelectionListener, ProjectListener
     ProjectManager manager = undefined
     Resources resources = undefined
+    QuorumStudio studio = undefined
+
+    action Setup
+        Layout treeLayout
+        treeLayout:SetPercentageOriginY(1)
+        treeLayout:SetPercentageY(1)
+        AddLayout(treeLayout)
+    end
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
 
     action GetResources returns Resources
         return resources
@@ -33,7 +51,9 @@ class ProjectTree is Tree, SelectionListener, ProjectListener
     end
 
      action OpenedProject(QuorumProject project)
-        ProjectView view = project:GetProjectView()
+        QuorumProjectView view = cast(QuorumProjectView, project:GetProjectView())
+        view:SetMainApplication(studio)
+
         view:SetResources(resources)
         TreeItem item = view:GetLogicalTree()
 

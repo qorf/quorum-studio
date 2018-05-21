@@ -1,13 +1,26 @@
 package Libraries.Development.Environment.Projects
 use Libraries.Interface.Controls.TreeItem
-use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Containers.Array
 use Libraries.System.File
 use Libraries.Development.Environmen.Resources
+use Libraries.Development.Environment.Studio.Behaviors.OpenTabBehavior
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.QuorumStudio
 
 class QuorumProjectView is ProjectView
     QuorumProject project = undefined
     Resources resources = undefined
+    CodeEditorTabPane pane = undefined
+    QuorumStudio studio = undefined
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
 
     action GetProject returns Project
         return project
@@ -35,7 +48,6 @@ class QuorumProjectView is ProjectView
         ProjectTreeItem projectItem
         projectItem:SetProject(project)
         Array<ProjectTreeItem> sourceCode
-
         File sources = project:GetSources()
 
         Array<File> files = sources:GetDirectoryListing()
@@ -44,13 +56,16 @@ class QuorumProjectView is ProjectView
         repeat while i < files:GetSize()
             File file = files:Get(i)
             ProjectTreeItem item
+            item:SetFile(file)
+            OpenTabBehavior behavior
+            behavior:SetMainApplication(studio)
+            behavior:SetFile(file)
+            item:SetDoubleClickBehavior(behavior)
             item:Initialize(file:GetFileName(), resources:GetQuorumFile())
             items:Add(item)
             i = i + 1
         end
-
         projectItem:Initialize(project:GetName(), resources:GetProjectLogo(), items)
-
         return projectItem
     end
 end

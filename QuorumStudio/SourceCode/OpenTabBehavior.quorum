@@ -1,0 +1,32 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.QuorumStudio
+
+class OpenTabBehavior is QuorumStudioBehavior
+    File file = undefined
+    CodeEditorTabPane pane = undefined
+    QuorumStudio studio = undefined
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
+
+    action Run(BehaviorEvent event)
+        pane = studio:GetTabPane()
+        pane:OpenNewTab(file)
+    end
+
+    action GetFile returns File
+        return file
+    end
+
+    action SetFile(File file)
+        me:file = file
+    end
+end
