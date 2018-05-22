@@ -12,10 +12,15 @@ use Libraries.Language.Errors.InputOutputError
 use Libraries.Game.Graphics.Color
 use Libraries.Containers.HashTable
 use Libraries.Development.Environmen.Resources
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.Graphics.TextureWrap
+use Libraries.Game.Graphics.TextureRegion
+use Libraries.Containers.Iterator
 
 class CodeEditorTabPane is TabPane
     Color color
     HashTable<text, File> openFiles
+    HashTable<text, Tab> openTabs
     Resources resources = undefined
 
     action GetResources returns Resources
@@ -24,6 +29,10 @@ class CodeEditorTabPane is TabPane
 
     action SetResources(Resources resources)
         me:resources = resources
+    end
+
+    action GetOpenFileIterator returns Iterator<File>
+        return openFiles:GetValueIterator()
     end
 
     action Setup
@@ -73,9 +82,24 @@ class CodeEditorTabPane is TabPane
         textBoxLayout:SetPercentageWidth(1)
         textBoxLayout:SetPercentageHeight(1)
 
-        TextBox textBox
-        
+        TextBox textBox        
         textBox:Initialize(400, 400, color:CustomColor(1, 1, 1, 1), contents)
+        //Experimental section on setting a textured background.
+//        Drawable bg = textBox:GetBackground()
+//        Texture texture
+//        texture:LoadFromFile("Resources/Graphics/Interface/Paper.png")
+//
+//        TextureWrap horizontalWrap
+//        TextureWrap verticalWrap
+//        horizontalWrap:ConstructTextureWrap(horizontalWrap:REPEAT)
+//        verticalWrap:ConstructTextureWrap(verticalWrap:REPEAT)
+//
+//        texture:SetWrap(horizontalWrap, verticalWrap)
+//
+//        TextureRegion region
+//        region:LoadTextureRegion(texture, 0, 0, texture:GetWidth() * 3, texture:GetHeight() * 3)
+//        bg:Load(region)
+
         textBox:AddLayout(textBoxLayout)    
 
         // For testing purposes, just put in a placeholder icon.
@@ -85,8 +109,18 @@ class CodeEditorTabPane is TabPane
 
         Tab newTab
         newTab:Initialize(file:GetPath(), textBox, icon, true)
-        Add(newTab)
-        
+        boolean value = openFiles:HasKey(file:GetAbsolutePath())
+        if value //it's already open
+            Tab tab = openTabs:GetValue(file:GetAbsolutePath())
+            //now we have to give that tab the focus
+            tab:ReleasedMouse()
+        else 
+            openFiles:Add(file:GetAbsolutePath(), file)
+            openTabs:Add(file:GetAbsolutePath(), newTab)
+            Add(newTab)
+            newTab:ReleasedMouse()
+        end
+
         Resize()
     end
 end
