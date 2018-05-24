@@ -14,6 +14,7 @@ class QuorumProjectView is ProjectView
     CodeEditorTabPane pane = undefined
     QuorumStudio studio = undefined
 
+    constant text SOURCE_FOLDER_NAME = "Source Code"
     action SetMainApplication(QuorumStudio studio)
         me:studio = studio
     end
@@ -46,8 +47,11 @@ class QuorumProjectView is ProjectView
         end
 
         ProjectTreeItem projectItem
+        Array<ProjectTreeItem> folders
+        ProjectTreeItem source
+        folders:Add(source)
+
         projectItem:SetProject(project)
-        Array<ProjectTreeItem> sourceCode
         File sources = project:GetSources()
 
         Array<File> files = sources:GetDirectoryListing()
@@ -65,7 +69,9 @@ class QuorumProjectView is ProjectView
             items:Add(item)
             i = i + 1
         end
-        projectItem:Initialize(project:GetName(), resources:GetProjectLogo(), items)
+        source:Initialize(SOURCE_FOLDER_NAME, resources:GetFolder(), items)
+        projectItem:Initialize(project:GetName(), resources:GetProjectLogo(), folders)
+        
         return projectItem
     end
 end
