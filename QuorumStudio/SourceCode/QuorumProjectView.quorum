@@ -48,30 +48,66 @@ class QuorumProjectView is ProjectView
 
         ProjectTreeItem projectItem
         Array<ProjectTreeItem> folders
-        ProjectTreeItem source
-        folders:Add(source)
+        
+        
 
         projectItem:SetProject(project)
         File sources = project:GetSources()
+        ProjectTreeItem source = GetItem(sources)
+        folders:Add(source)
+//        Array<File> files = sources:GetDirectoryListing()
+//        Array<ProjectTreeItem> items
+//        i = 0
+//        repeat while i < files:GetSize()
+//            File file = files:Get(i)
+//            if file:IsDirectory()
+//                
+//            else
+//                ProjectTreeItem item
+//                item:SetFile(file)
+//                OpenTabBehavior behavior
+//                behavior:SetMainApplication(studio)
+//                behavior:SetFile(file)
+//                item:SetDoubleClickBehavior(behavior)
+//                item:Initialize(file:GetFileName(), resources:GetQuorumFile())
+//                items:Add(item)
+//            end
+//            i = i + 1
+//        end
+//        source:Initialize(SOURCE_FOLDER_NAME, resources:GetFolder(), items)
+        projectItem:Initialize(project:GetName(), resources:GetProjectLogo(), folders)
+        
+        return projectItem
+    end
 
-        Array<File> files = sources:GetDirectoryListing()
+    private action GetItem(File source) returns ProjectTreeItem
+        ProjectTreeItem value
+        Array<File> files = source:GetDirectoryListing()
         Array<ProjectTreeItem> items
         i = 0
         repeat while i < files:GetSize()
             File file = files:Get(i)
-            ProjectTreeItem item
-            item:SetFile(file)
-            OpenTabBehavior behavior
-            behavior:SetMainApplication(studio)
-            behavior:SetFile(file)
-            item:SetDoubleClickBehavior(behavior)
-            item:Initialize(file:GetFileName(), resources:GetQuorumFile())
-            items:Add(item)
+            if file:IsDirectory()
+                ProjectTreeItem directory = GetItem(file)
+                items:Add(directory)
+            else
+                ProjectTreeItem item
+                item:SetFile(file)
+                OpenTabBehavior behavior
+                behavior:SetMainApplication(studio)
+                behavior:SetFile(file)
+                item:SetDoubleClickBehavior(behavior)
+                item:Initialize(file:GetFileName(), resources:GetQuorumFile())
+                items:Add(item)
+            end
             i = i + 1
         end
-        source:Initialize(SOURCE_FOLDER_NAME, resources:GetFolder(), items)
-        projectItem:Initialize(project:GetName(), resources:GetProjectLogo(), folders)
+        if source:IsDirectory()
+            value:Initialize(source:GetFileName(), resources:GetFolder(), items)
+        else
+            value:Initialize(source:GetFileName(), resources:GetQuorumFile(), items)
+        end
         
-        return projectItem
+        return value
     end
 end
