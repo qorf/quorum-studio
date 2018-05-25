@@ -20,13 +20,16 @@ use Libraries.Interface.Controls.Tab
 use Libraries.Game.Graphics.Texture
 use Libraries.Game.GameStateManager
 use Libraries.Game.Graphics.GraphicsManager
+use Libraries.Game.DesktopConfiguration
 
 
 class QuorumStudio is Game
+    constant number VERSION = 1.0
+    constant text NAME = "Quorum Studio " + VERSION
     ScrollPane projectPane
     ProjectTree projectTree
     CodeEditorTabPane codeTabs
-    TextBox outputWindow
+    OutputEditorTabPane outputWindow
     Item2D mainContentPane
     Color color
     
@@ -42,10 +45,12 @@ class QuorumStudio is Game
     Behaviors behaviors
 
     action Start
+        DesktopConfiguration config = GetDesktopConfiguration()
+        config:title = NAME
         StartGame()
     end
 
-    action GetOutputPane returns TextBox
+    action GetOutputPane returns OutputEditorTabPane
         return outputWindow
     end
 
@@ -186,15 +191,8 @@ class QuorumStudio is Game
         fill:SetPercentageY(0)
         fill:SetPercentageHeight(0.3)
 
-        outputWindow:Initialize(20, 20, color:White())
+        outputWindow:Setup()
         outputWindow:AddLayout(fill)
-
-//        TextBox textBox
-//        outputWindow = textBox
-//
-//        outputWindow:Initialize(codeEditor:GetWidth(), GetScreenHeight() - menuBar:GetHeight() - codeEditor:GetHeight(), background:LightGray(), "This is the output area.")
-//        outputWindow:SetPosition(codeEditor:GetX(), 0)
-//        Add(outputWindow)
     end
 
     action CreateNavigationWindow()
