@@ -1,4 +1,5 @@
 package Libraries.Development.Environment.Studio
+
 use Libraries.Interface.Controls.TabPane
 use Libraries.Interface.Layouts.FillLayout
 use Libraries.Containers.Array
@@ -16,11 +17,21 @@ use Libraries.Game.Graphics.Drawable
 use Libraries.Game.Graphics.TextureWrap
 use Libraries.Game.Graphics.TextureRegion
 use Libraries.Containers.Iterator
+use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Development.Environment.Studio.Interface.VariablesTab
+use Libraries.Development.Environment.Studio.Interface.BreakpointsTab
+use Libraries.Development.Environment.Studio.Interface.CallStackTab
 
 class OutputEditorTabPane is TabPane
     Color color
-    HashTable<text, File> openFiles
-    HashTable<text, Tab> openTabs
+    OutputTab outputTab
+    VariablesTab variablesTab
+    ErrorTab errorTab
+    BreakpointsTab breakpointsTab
+    CallStackTab callStackTab
+
+    
     Resources resources = undefined
 
     action GetResources returns Resources
@@ -31,70 +42,42 @@ class OutputEditorTabPane is TabPane
         me:resources = resources
     end
 
-    action GetOpenFileIterator returns Iterator<File>
-        return openFiles:GetValueIterator()
-    end
-
     action Setup
-        FillLayout fill
-        fill:SetFillSide(fill:RIGHT)
-        fill:SetPercentageY(1)
-        fill:SetPercentageOriginY(1)
-        fill:SetPercentageHeight(0.7)
-        fill:SetOffsetX(5)
+//        FillLayout fill
+//        fill:SetFillSide(fill:RIGHT)
+//        fill:SetPercentageY(1)
+//        fill:SetPercentageOriginY(1)
+//        fill:SetPercentageHeight(0.7)
+//        fill:SetOffsetX(5)
 
         SetName("Code Tabs")
         Array<Tab> array
-        
+        SetupTabs()
+        array:Add(outputTab)
+        array:Add(errorTab)
+        array:Add(variablesTab)
+        array:Add(breakpointsTab)
+        array:Add(callStackTab)
         Initialize(200, 200, array)
-        AddLayout(fill)
     end
 
-    action OpenNewTab(File file)
-        text contents = ""
-
-        check
-            contents = file:Read()
-        detect error is FileNotFoundError
-            // File wasn't found, handle the error gracefully.
-            // Output is for testing purposes only.
-            output "Couldn't find file: " + file:GetAbsolutePath()
-            return now
-        detect error is InputOutputError
-            // File couldn't be read for some reason.
-            // Output is for testing purposes only.
-            output "Couldn't read file: " + file:GetAbsolutePath()
-            error:OutputStackTrace()
-            return now
-        end
-
+    action SetupTabs
+        
         Layout textBoxLayout
         textBoxLayout:SetPercentageX(0)
         textBoxLayout:SetPercentageY(0)
         textBoxLayout:SetPercentageWidth(1)
         textBoxLayout:SetPercentageHeight(1)
 
-  
+        TextBox textBox        
+        textBox:Initialize(400, 400, color:CustomColor(1, 1, 1, 1), "Welcome to Quorum Studio!")
+        textBox:AddLayout(textBoxLayout)
+        outputTab:Initialize("Output", textBox, true)
 
-        // For testing purposes, just put in a placeholder icon.
-        // Long-term, this should instead check the file extension and load an
-        // appropriate image (e.g., Quorum icon for a .quorum file).
-        Texture icon = resources:GetQuorumFile()
 
-        Tab newTab
-        newTab:Initialize(file:GetPath(), undefined, icon, true)
-        boolean value = openFiles:HasKey(file:GetAbsolutePath())
-        if value //it's already open
-            Tab tab = openTabs:GetValue(file:GetAbsolutePath())
-            //now we have to give that tab the focus
-            tab:ReleasedMouse()
-        else 
-            openFiles:Add(file:GetAbsolutePath(), file)
-            openTabs:Add(file:GetAbsolutePath(), newTab)
-            Add(newTab)
-            newTab:ReleasedMouse()
-        end
-
-        Resize()
+        errorTab:Initialize("Errors", undefined, true)
+        variablesTab:Initialize("Variables", undefined, true)
+        breakpointsTab:Initialize("Breakpoints", undefined, true)
+        callStackTab:Initialize("Call Stack", undefined, true)
     end
 end

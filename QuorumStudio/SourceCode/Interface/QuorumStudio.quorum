@@ -71,6 +71,7 @@ class QuorumStudio is Game
         GraphicsManager graphics = manager:GetGameGraphics()
         graphics:ClearScreenColor(101.0/255.0, 101.0/255.0, 101.0/255.0, 1.0)
         SetupResources()
+
         Layer2D layer = me:GetCurrentLayer2D()
         layer:SetAutomaticResizing(true)
         Load()
@@ -79,36 +80,36 @@ class QuorumStudio is Game
         mainContentPane:Resize()
     end
 
-    action SetupInterface
-        menu:Setup()
-        toolbar:SetDisplayOffset(-menu:GetHeight())
-        toolbar:Setup()
-
-        //CreateToolbar()
-        CreateMainContentPane()
-        Add(mainContentPane)
-        Add(toolbar)
-        Add(menu)
-    end
-
     action SetupResources
         manager:Add(projectTree)
         manager:Add(options)
 
+        //load shared resources for all GUI components
         resources:Load()
         projectTree:SetResources(resources)
         projectTree:SetMainApplication(me)
         toolbar:SetResources(resources)
         menu:SetResources(resources)
         codeTabs:SetResources(resources)
+        outputWindow:SetResources(resources)
 
         projectTree:SetProjectManager(manager)
         AddSelectionListener(projectTree)
         
         toolbar:SetBehaviors(behaviors)
         menu:SetBehaviors(behaviors)
-
         behaviors:SetMainApplication(me)
+    end
+
+    action SetupInterface
+        menu:Setup()
+        toolbar:SetDisplayOffset(-menu:GetHeight())
+        toolbar:Setup()
+
+        CreateMainContentPane()
+        Add(mainContentPane)
+        Add(toolbar)
+        Add(menu)
     end
 
     action Load
