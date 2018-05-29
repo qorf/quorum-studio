@@ -2,10 +2,15 @@ package Libraries.Development.Environment.Studio
 use Libraries.Development.Environmen.Resources
 use Libraries.Game.Graphics.Gradient
 use Libraries.Game.Graphics.Color
+use Libraries.Game.InputTable
+use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Containers.Array
 use Libraries.Interface.Controls.MenuItem
 use Libraries.Interface.Controls.MenuBar
+use Libraries.Development.Environment.Studio.Behaviors.MenuHotkeyBehavior
+use Libraries.Game.InputSet
+use Libraries.Interface.Events.KeyboardEvent
 
 class Menu is MenuBar
     MenuItem fileMenu
@@ -14,6 +19,9 @@ class Menu is MenuBar
     MenuItem runMenu
     MenuItem windowsMenu
     MenuItem helpMenu
+
+    // openProject is declared here so it can be reused in SetupMenuHotkeys().
+    MenuItem openProject
 
     Resources resources = undefined
     Gradient gradient
@@ -65,6 +73,8 @@ class Menu is MenuBar
         menuItems:Add(windowsMenu)
         menuItems:Add(helpMenu)
         Initialize(menuItems)
+
+        SetupMenuHotkeys()
     end
 
     //Adding the mouse listeners will give unintended results for now
@@ -77,7 +87,9 @@ class Menu is MenuBar
         //newProject:SetBehavior(undefined)
         fileItems:Add(newProject)
         
-        MenuItem openProject
+        // The openProject is instead declared as a field so it can be used
+        // later in SetupMenuHotkeys().
+//        MenuItem openProject
         openProject:Initialize("Open Project")
         // Set a behavior to indicate what the menu item does when activated.
         openProject:SetBehavior(behaviors:GetOpenProjectBehavior())
@@ -378,5 +390,36 @@ class Menu is MenuBar
         helpItems:Add(checkForUpdates)
 
         helpMenu:Initialize("Help", helpItems)
+    end
+
+    private action SetupMenuHotkeys
+        GameStateManager manager
+        text os = manager:GetOperatingSystem()
+
+        InputTable defaultTable = manager:GetGame():GetDefaultInputTable()
+        KeyboardEvent keys
+
+        MenuHotkeyBehavior openProjectBehavior
+        openProjectBehavior:SetMenuItem(openProject)
+
+        if os:Contains("Mac OS X")
+            
+            InputSet commandO
+            commandO:SetKeyboardInput(keys:O)
+            commandO:AddModifier(commandO:META)
+
+            defaultTable:Add(commandO, openProjectBehavior)
+
+        elseif os:Contains("Windows")
+
+            InputSet controlO
+            controlO:SetKeyboardInput(keys:O)
+            controlO:AddModifier(controlO:CONTROL)
+
+            defaultTable:Add(controlO, openProjectBehavior)
+
+        else
+            output "SetupMenuHotkeys (Menu.quorum): I couldn't detect the operating system."
+        end
     end
 end
