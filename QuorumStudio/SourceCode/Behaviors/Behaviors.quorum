@@ -6,10 +6,12 @@ use Libraries.Containers.Iterator
 class Behaviors 
     constant text OPEN_PROJECT = "Open Project"
     constant text CLOSE_PROJET = "Close Project"
+    constant text SAVE = "Save"
 
     OpenProjectBehavior openProjectBehavior
     CloseProjectBehavior closeProjectBehavior
     BuildProjectBehavior buildProjectBehavior
+    SaveBehavior saveBehavior
 
     QuorumStudio studio = undefined
     HashTable<text, QuorumStudioBehavior> behaviors
@@ -17,6 +19,7 @@ class Behaviors
     on create
         behaviors:Add(OPEN_PROJECT, openProjectBehavior)
         behaviors:Add(CLOSE_PROJET, closeProjectBehavior)
+        behaviors:Add(SAVE, saveBehavior)
     end
 
     action GetOpenProjectBehavior returns OpenProjectBehavior
@@ -29,6 +32,10 @@ class Behaviors
 
     action GetBuildProjectBehavior returns BuildProjectBehavior
         return buildProjectBehavior
+    end
+
+    action GetSaveBehavior returns SaveBehavior
+        return saveBehavior
     end
 
     action SetMainApplication(QuorumStudio studio)

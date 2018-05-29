@@ -16,6 +16,7 @@ use Libraries.Game.Graphics.Drawable
 use Libraries.Game.Graphics.TextureWrap
 use Libraries.Game.Graphics.TextureRegion
 use Libraries.Containers.Iterator
+use Libraries.Development.Environment.Studio.Interface.EditorTab
 
 class CodeEditorTabPane is TabPane
     Color color
@@ -45,14 +46,6 @@ class CodeEditorTabPane is TabPane
 
         SetName("Code Tabs")
         Array<Tab> array
-        TextBox testTextBox
-        testTextBox:Initialize(100, 100, resources:GetBackgroundColor())
-        Layout testTextBoxLayout
-        testTextBoxLayout:SetPercentageX(0)
-        testTextBoxLayout:SetPercentageY(0)
-        testTextBoxLayout:SetPercentageWidth(1)
-        testTextBoxLayout:SetPercentageHeight(1)
-        testTextBox:AddLayout(testTextBoxLayout)
         
         Initialize(200, 200, array)
         AddLayout(fill)
@@ -107,8 +100,10 @@ class CodeEditorTabPane is TabPane
         // appropriate image (e.g., Quorum icon for a .quorum file).
         Texture icon = resources:GetQuorumFile()
 
-        Tab newTab
+        EditorTab newTab
         newTab:Initialize(file:GetPath(), textBox, icon, true)
+        newTab:SetFile(file)
+        newTab:Setup()
         boolean value = openFiles:HasKey(file:GetAbsolutePath())
         if value //it's already open
             Tab tab = openTabs:GetValue(file:GetAbsolutePath())
@@ -117,7 +112,7 @@ class CodeEditorTabPane is TabPane
         else 
             openFiles:Add(file:GetAbsolutePath(), file)
             openTabs:Add(file:GetAbsolutePath(), newTab)
-            Add(newTab)
+            Add(cast(Tab,newTab))
             newTab:ReleasedMouse()
         end
 

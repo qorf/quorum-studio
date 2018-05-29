@@ -1,0 +1,56 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Tab
+use Libraries.System.File
+use Libraries.Interface.Events.TextChangeListener
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Events.TextChangeEvent
+
+class EditorTab is Tab, TextChangeListener
+    boolean dirty = false
+    File file = undefined
+    action GetFile returns File
+        return file
+    end
+
+    action SetFile(File file)
+        me:file = file
+    end
+
+    action Setup
+        Item2D item = GetRelatedItem()
+        if item not= undefined and item is TextBox
+            TextBox box = cast(TextBox, item)
+            box:AddTextChangeListener(me)
+        end
+    end
+
+    action TextChanged(TextChangeEvent event)
+        dirty = true
+    end
+
+    action IsDirty returns boolean
+        return dirty
+    end
+
+    action SetIsDirty(boolean dirty)
+        me:dirty = dirty
+    end
+
+    action Save
+        if file not= undefined
+            TextBox box = GetTextBox()
+            text value = box:GetText()
+            file:Write(value)
+        end
+    end
+
+    action GetTextBox returns TextBox
+        Item2D item = GetRelatedItem()
+        if item not= undefined and item is TextBox
+            TextBox box = cast(TextBox, item)
+            return box
+        end
+        return undefined
+    end
+end
