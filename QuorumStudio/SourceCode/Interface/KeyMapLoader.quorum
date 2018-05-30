@@ -1,0 +1,34 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Game.InputSet
+use Libraries.System.Properties
+
+class KeyMapLoader is KeyMap
+    KeyMap actualKeyMap = undefined
+    Properties properties
+
+    on create
+        text string = properties:GetOperatingSystemName()
+        if string:Contains("Mac OS X")
+            MacKeyMap map
+            actualKeyMap = map
+        elseif string:Contains("Windows")
+            MacKeyMap map
+            actualKeyMap = map
+        else//for now do nothing, because we support Windows only in the first release, technically
+
+        end
+    end
+
+    action GetSaveKey returns InputSet
+        return actualKeyMap:GetSaveKey()
+    end
+
+    action GetExitKey returns InputSet
+        return actualKeyMap:GetExitKey()
+    end
+
+    action GetOpenProjectKey returns InputSet
+        return actualKeyMap:GetOpenProjectKey()
+    end
+end

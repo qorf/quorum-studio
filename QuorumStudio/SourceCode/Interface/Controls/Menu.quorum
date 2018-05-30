@@ -11,6 +11,7 @@ use Libraries.Interface.Controls.MenuBar
 use Libraries.Development.Environment.Studio.Behaviors.MenuHotkeyBehavior
 use Libraries.Game.InputSet
 use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Development.Environment.Studio.Interface.KeyMap
 
 class Menu is MenuBar
     MenuItem fileMenu
@@ -24,6 +25,7 @@ class Menu is MenuBar
     MenuItem openProject
 
     Resources resources = undefined
+    KeyMap keyMap = undefined
     Gradient gradient
     Color color
     number height = 0
@@ -55,6 +57,7 @@ class Menu is MenuBar
 
     action SetResources(Resources resources)
         me:resources = resources
+        me:keyMap = resources:GetKeyMap()
     end
 
     action Setup
@@ -115,13 +118,8 @@ class Menu is MenuBar
 
         MenuItem save
         save:Initialize("Save")
-        // Set a behavior to indicate what the menu item does when activated.
         save:SetBehavior(behaviors:GetSaveBehavior())
-        KeyboardEvent keys
-        InputSet inputCommandSave
-        inputCommandSave:SetKeyboardInput(keys:S)
-        inputCommandSave:AddModifier(inputCommandSave:META)
-        save:SetShortcut(inputCommandSave)
+        save:SetShortcut(keyMap:GetSaveKey())
         fileItems:Add(save)
 
         MenuItem saveAs
@@ -139,7 +137,8 @@ class Menu is MenuBar
         MenuItem exit
         exit:Initialize("Exit")
         // Set a behavior to indicate what the menu item does when activated.
-        //exit:SetBehavior(undefined)
+        exit:SetBehavior(undefined)
+        save:SetShortcut(keyMap:GetExitKey())
         fileItems:Add(exit)
 
         fileMenu:Initialize("File", fileItems)
