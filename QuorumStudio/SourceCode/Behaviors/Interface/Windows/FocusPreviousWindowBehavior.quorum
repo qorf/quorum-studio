@@ -1,20 +1,13 @@
 package Libraries.Development.Environment.Studio.Behaviors
 
 use Libraries.Interface.Events.BehaviorEvent
-use Libraries.Development.Environment.Studio.CodeEditorTabPane
-use Libraries.Interface.Selections.TabPaneSelection
-use Libraries.Interface.Controls.Tab
-use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Development.Environment.Studio.QuorumStudio
-use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Item
 
 class FocusPreviousWindowBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
         QuorumStudio studio = GetMainApplication()
-        CodeEditorTabPane value = studio:GetTabPane()
-        TabPaneSelection selection = value:GetSelection()
-        EditorTab tab = cast(EditorTab, selection:GetTab())
-        TextBox box = tab:GetTextBox()
-        box:Focus()
+        Item item = studio:NextFocus()
+        item:Focus()
     end
 end

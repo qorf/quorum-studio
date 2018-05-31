@@ -21,6 +21,7 @@ use Libraries.Game.Graphics.Texture
 use Libraries.Game.GameStateManager
 use Libraries.Game.Graphics.GraphicsManager
 use Libraries.Game.DesktopConfiguration
+use Libraries.Interface.Item
 
 
 class QuorumStudio is Game
@@ -43,6 +44,8 @@ class QuorumStudio is Game
     Options options
     Resources resources
     Behaviors behaviors
+    Array<Item> focusList
+    integer focus = -1
 
     action Start
         DesktopConfiguration config = GetDesktopConfiguration()
@@ -66,6 +69,32 @@ class QuorumStudio is Game
         return codeTabs
     end
 
+    action GetFocus returns Item
+        return focusList:Get(focus)
+    end
+
+    action NextFocus returns Item
+        focus = focus + 1
+        if focus >= focusList:GetSize()
+            focus = 0
+        end
+
+        return focusList:Get(focus)
+    end
+
+    action PreviousFocus returns Item
+        focus = focus - 1
+        if focus < 0
+            focus = focusList:GetSize() - 1
+        end
+
+        return focusList:Get(focus)
+    end
+
+    action GetFocusSelection returns integer
+        return focus
+    end
+
     action CreateGame
         GameStateManager manager
         GraphicsManager graphics = manager:GetGameGraphics()
@@ -78,6 +107,15 @@ class QuorumStudio is Game
         SetupInterface()
         SetScreenSize(1500, 1000)
         mainContentPane:Resize()
+        SetupFocusList()
+    end
+
+    action SetupFocusList
+        focusList:Add(menu)
+        focusList:Add(toolbar)
+        focusList:Add(projectTree)
+        focusList:Add(codeTabs)
+        focusList:Add(outputWindow)
     end
 
     action SetupResources

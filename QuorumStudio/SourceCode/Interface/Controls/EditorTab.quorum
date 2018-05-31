@@ -5,6 +5,7 @@ use Libraries.System.File
 use Libraries.Interface.Events.TextChangeListener
 use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Game.GameStateManager
 
 class EditorTab is Tab, TextChangeListener
     boolean dirty = false
@@ -52,5 +53,10 @@ class EditorTab is Tab, TextChangeListener
             return box
         end
         return undefined
+    end
+    
+    action Focus
+        GameStateManager manager
+        manager:GetGame():SetFocus(GetTextBox())
     end
 end

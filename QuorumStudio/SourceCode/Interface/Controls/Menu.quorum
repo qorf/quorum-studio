@@ -12,6 +12,7 @@ use Libraries.Development.Environment.Studio.Behaviors.MenuHotkeyBehavior
 use Libraries.Game.InputSet
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Development.Environment.Studio.Interface.KeyMap
+use Libraries.Interface.Selections.MenuSelection
 
 class Menu is MenuBar
     MenuItem fileMenu
@@ -22,8 +23,10 @@ class Menu is MenuBar
     MenuItem helpMenu
 
     // openProject is declared here so it can be reused in SetupMenuHotkeys().
-    MenuItem openProject
+    //MenuItem openProject
 
+
+    MenuItem defaultMenuItem = undefined
     Resources resources = undefined
     KeyMap keyMap = undefined
     Gradient gradient
@@ -76,15 +79,14 @@ class Menu is MenuBar
         menuItems:Add(windowsMenu)
         menuItems:Add(helpMenu)
         Initialize(menuItems)
-
-        SetupMenuHotkeys()
     end
 
     //Adding the mouse listeners will give unintended results for now
     private action SetupFileMenu
         Array<MenuItem> fileItems
-
+        
         MenuItem newProject
+        defaultMenuItem = newProject
         newProject:Initialize("New Project")
         // Set a behavior to indicate what the menu item does when activated.
         //newProject:SetBehavior(undefined)
@@ -92,7 +94,7 @@ class Menu is MenuBar
         
         // The openProject is instead declared as a field so it can be used
         // later in SetupMenuHotkeys().
-//        MenuItem openProject
+        MenuItem openProject
         openProject:Initialize("Open Project")
         // Set a behavior to indicate what the menu item does when activated.
         openProject:SetBehavior(behaviors:GetOpenProjectBehavior())
@@ -409,34 +411,21 @@ class Menu is MenuBar
         helpMenu:Initialize("Help", helpItems)
     end
 
-    private action SetupMenuHotkeys
+    action Focus
         GameStateManager manager
-        text os = manager:GetOperatingSystem()
-
-        InputTable defaultTable = manager:GetGame():GetDefaultInputTable()
-        KeyboardEvent keys
-
-        MenuHotkeyBehavior openProjectBehavior
-        openProjectBehavior:SetMenuItem(openProject)
-
-        if os:Contains("Mac OS X")
-            
-            InputSet commandO
-            commandO:SetKeyboardInput(keys:O)
-            commandO:AddModifier(commandO:META)
-
-            defaultTable:Add(commandO, openProjectBehavior)
-
-        elseif os:Contains("Windows")
-
-            InputSet controlO
-            controlO:SetKeyboardInput(keys:O)
-            controlO:AddModifier(controlO:CONTROL)
-
-            defaultTable:Add(controlO, openProjectBehavior)
-
-        else
-            output "SetupMenuHotkeys (Menu.quorum): I couldn't detect the operating system."
+        //get my selection
+        MenuSelection selection = GetSelection()
+        if selection:IsEmpty()
+            Array<MenuItem> items
+            items:Add(defaultMenuItem)
+            Select(items)
+            //selection:Set(items)
+            fileMenu:Open()
+            manager:GetGame():SetFocus(me)
+        else 
+            Array<MenuItem> array = selection:GetPath()
+            MenuItem item = array:Get(array:GetSize() - 1)
+            manager:GetGame():SetFocus(me)
         end
     end
 end
