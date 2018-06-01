@@ -13,8 +13,10 @@ use Libraries.Game.InputSet
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Development.Environment.Studio.Interface.KeyMap
 use Libraries.Interface.Selections.MenuSelection
+use Libraries.Development.Environment.Studio.Behaviors.DefaultMenuOpenBehavior
 
 class Menu is MenuBar
+    KeyboardEvent keys
     MenuItem fileMenu
     MenuItem editMenu
     MenuItem viewMenu
@@ -40,6 +42,20 @@ class Menu is MenuBar
 
     action SetBehaviors(Behaviors behaviors)
         me:behaviors = behaviors
+    end
+
+    action SetToDefaultSelection
+        Array<MenuItem> items
+        items:Add(fileMenu)
+        items:Add(defaultMenuItem)
+        Select(items)
+    end
+
+    action SetDefaultPopupShortcut
+        GameStateManager manager
+        InputTable table = manager:GetGame():GetDefaultInputTable()
+        table:Add(keyMap:GetDefaultMenuPopup1(), behaviors:GetDefaultMenuOpenBehavior())
+        table:Add(keyMap:GetDefaultMenuPopup2(), behaviors:GetDefaultMenuOpenBehavior())
     end
 
     action GetBehaviors returns Behaviors
@@ -79,6 +95,7 @@ class Menu is MenuBar
         menuItems:Add(windowsMenu)
         menuItems:Add(helpMenu)
         Initialize(menuItems)
+        SetDefaultPopupShortcut()
     end
 
     //Adding the mouse listeners will give unintended results for now

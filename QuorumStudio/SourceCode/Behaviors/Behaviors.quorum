@@ -6,6 +6,8 @@ use Libraries.Containers.Iterator
 class Behaviors 
 
     //File Menu
+    constant text DEFAULT_MENU_OPEN = "Default Menu Open"
+    constant text DEFAULT_ESCAPE_BEHAVIOR = "Default Escape Behavior"
     constant text OPEN_PROJECT = "Open Project"
     constant text CLOSE_PROJET = "Close Project"
     constant text SAVE = "Save"
@@ -16,6 +18,8 @@ class Behaviors
     SaveBehavior saveBehavior
     ExitBehavior exitBehavior
 
+    DefaultMenuOpenBehavior defaultMenuOpenBehavior
+    DefaultEscapeBehavior defaultEscapeBehavior
     //Run Menu
     constant text BUILD_PROJECT = "Build Project"
     BuildProjectBehavior buildProjectBehavior
@@ -45,6 +49,8 @@ class Behaviors
     HashTable<text, QuorumStudioBehavior> behaviors
 
     on create
+        behaviors:Add(DEFAULT_MENU_OPEN, defaultMenuOpenBehavior)
+        behaviors:Add(DEFAULT_ESCAPE_BEHAVIOR, defaultEscapeBehavior)
         behaviors:Add(OPEN_PROJECT, openProjectBehavior)
         behaviors:Add(CLOSE_PROJET, closeProjectBehavior)
         behaviors:Add(SAVE, saveBehavior)
@@ -61,6 +67,10 @@ class Behaviors
         behaviors:Add(FOCUS_PREVIOUS_WINDOW, focusPreviousWindowBehavior)
         behaviors:Add(FOCUS_PROJECTS_WINDOW, focusProjectsBehavior)
         behaviors:Add(FOCUS_VARIABLES_WINDOW, focusVariablesBehavior)
+    end
+
+    action GetDefaultMenuOpenBehavior returns DefaultMenuOpenBehavior
+        return defaultMenuOpenBehavior
     end
 
     action GetOpenProjectBehavior returns OpenProjectBehavior
@@ -118,6 +128,10 @@ class Behaviors
 
     action GetFocusVariablesBehavior returns FocusVariablesBehavior
         return focusVariablesBehavior
+    end
+
+    action GetDefaultEscapeBehavior returns DefaultEscapeBehavior
+        return defaultEscapeBehavior
     end
 
     action SetMainApplication(QuorumStudio studio)

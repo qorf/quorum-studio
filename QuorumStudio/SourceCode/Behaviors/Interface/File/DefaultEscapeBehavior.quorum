@@ -1,0 +1,36 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Studio.Menu
+use Libraries.Interface.Item
+use Libraries.Interface.Selections.MenuSelection
+
+class DefaultEscapeBehavior is QuorumStudioBehavior
+    QuorumStudio studio = undefined
+    ProjectManager manager = undefined
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+        manager = studio:GetProjectManager()
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
+
+    action Run(BehaviorEvent event)
+        Item value = studio:GetCurrentFocus()
+        if value not= undefined and value is Menu
+            Menu menu = cast(Menu, value)
+            MenuSelection selection = menu:GetSelection()
+            menu:Deselect(selection:GetPath())
+
+            Item value2 = studio:GetPreviousFocus()
+            if value2 not= undefined
+                value2:Focus()
+            end
+        end
+    end
+end

@@ -22,9 +22,13 @@ use Libraries.Game.GameStateManager
 use Libraries.Game.Graphics.GraphicsManager
 use Libraries.Game.DesktopConfiguration
 use Libraries.Interface.Item
+use Libraries.Interface.Events.FocusListener
+use Libraries.Interface.Events.FocusEvent
+use Libraries.Game.InputTable
+use Libraries.Development.Environment.Studio.Interface.KeyMap
 
 
-class QuorumStudio is Game
+class QuorumStudio is Game, FocusListener
     constant number VERSION = 1.0
     constant text NAME = "Quorum Studio " + VERSION
     ScrollPane projectPane
@@ -47,10 +51,31 @@ class QuorumStudio is Game
     Array<Item> focusList
     integer focus = -1
 
+    Item currentFocus = undefined
+    Item previousFocus = undefined
+
     action Start
         DesktopConfiguration config = GetDesktopConfiguration()
         config:title = NAME
         StartGame()
+    end
+
+    action GetCurrentFocus returns Item
+        return currentFocus
+    end
+
+    action GetPreviousFocus returns Item
+        return previousFocus
+    end
+
+
+    action GainedFocus(FocusEvent event)
+        currentFocus = event:GetNewFocus()
+        previousFocus = event:GetLastFocus()
+    end
+
+    action LostFocus(FocusEvent event)
+
     end
 
     action GetOutputPane returns OutputEditorTabPane
@@ -107,15 +132,20 @@ class QuorumStudio is Game
         SetupInterface()
         SetScreenSize(1500, 1000)
         mainContentPane:Resize()
-        SetupFocusList()
+        SetupFocus()
     end
 
-    action SetupFocusList
+    action SetupFocus
         focusList:Add(menu)
         focusList:Add(toolbar)
         focusList:Add(projectTree)
         focusList:Add(codeTabs)
         focusList:Add(outputWindow)
+        KeyMap keyMap = resources:GetKeyMap()
+        
+        InputTable table = GetDefaultInputTable()
+        table:Add(keyMap:GetEscapeKey(), behaviors:GetDefaultEscapeBehavior())
+        AddFocusListener(me)
     end
 
     action SetupResources
