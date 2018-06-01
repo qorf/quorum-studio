@@ -6,6 +6,8 @@ use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Development.Environment.Studio.Menu
 use Libraries.Interface.Item
 use Libraries.Interface.Selections.MenuSelection
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.MenuItem
 
 class DefaultEscapeBehavior is QuorumStudioBehavior
     QuorumStudio studio = undefined
@@ -25,11 +27,20 @@ class DefaultEscapeBehavior is QuorumStudioBehavior
         if value not= undefined and value is Menu
             Menu menu = cast(Menu, value)
             MenuSelection selection = menu:GetSelection()
-            menu:Deselect(selection:GetPath())
-
-            Item value2 = studio:GetPreviousFocus()
-            if value2 not= undefined
-                value2:Focus()
+            Array<MenuItem> menuItems = selection:GetPath()
+            if menuItems not= undefined
+                if menuItems:GetSize() > 1
+                    Array<MenuItem> newSelection
+                    newSelection:Add(menuItems:Get(0))
+                    menu:Select(newSelection)
+                else 
+                    Array<MenuItem> newSelection
+                    menu:Select(newSelection)
+                    Item value2 = studio:GetPreviousFocus()
+                    if value2 not= undefined
+                        value2:Focus()
+                    end
+                end
             end
         end
     end

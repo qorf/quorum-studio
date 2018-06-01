@@ -4,6 +4,10 @@ use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Development.Environment.Studio.Menu
+use Libraries.Interface.Selections.MenuSelection
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Item
 
 class DefaultMenuOpenBehavior is QuorumStudioBehavior
     QuorumStudio studio = undefined
@@ -20,7 +24,17 @@ class DefaultMenuOpenBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
         Menu menu = studio:GetMenu()
-        menu:SetToDefaultSelection()
-        menu:Focus()
+        MenuSelection selection = menu:GetSelection()
+        Array<MenuItem> path = selection:GetPath()
+        if not path:IsEmpty()
+            menu:Deselect()
+            Item value2 = studio:GetPreviousFocus()
+            if value2 not= undefined
+                value2:Focus()
+            end
+        else 
+            menu:SetToDefaultSelection()
+            menu:Focus()
+        end
     end
 end
