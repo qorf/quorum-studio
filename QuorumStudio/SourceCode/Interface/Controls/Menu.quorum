@@ -14,6 +14,7 @@ use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Development.Environment.Studio.Interface.KeyMap
 use Libraries.Interface.Selections.MenuSelection
 use Libraries.Development.Environment.Studio.Behaviors.DefaultMenuOpenBehavior
+use Libraries.Interface.Events.FocusEvent
 
 class Menu is MenuBar
     KeyboardEvent keys
@@ -23,10 +24,6 @@ class Menu is MenuBar
     MenuItem runMenu
     MenuItem windowsMenu
     MenuItem helpMenu
-
-    // openProject is declared here so it can be reused in SetupMenuHotkeys().
-    //MenuItem openProject
-
 
     MenuItem defaultMenuItem = undefined
     Resources resources = undefined
@@ -38,6 +35,7 @@ class Menu is MenuBar
 
     on create
         gradient:Set(color:LightGray(), color:LightGray(), color:White(), color:White())
+        SetName("Menu")
     end
 
     action SetBehaviors(Behaviors behaviors)
@@ -48,6 +46,29 @@ class Menu is MenuBar
         Array<MenuItem> items
         items:Add(fileMenu)
         Select(items)
+    end
+
+    action GainedFocus(FocusEvent event)
+        GameStateManager manager
+        //get my selection
+        MenuSelection selection = GetSelection()
+        if selection:IsEmpty()
+            Array<MenuItem> items
+            items:Add(fileMenu)
+            items:Add(defaultMenuItem)
+            Select(items)
+            //selection:Set(items)
+            fileMenu:Open()
+            manager:GetGame():SetFocus(me)
+        else 
+            Array<MenuItem> array = selection:GetPath()
+            MenuItem item = array:Get(array:GetSize() - 1)
+            manager:GetGame():SetFocus(me)
+        end
+    end
+
+    action LostFocus(FocusEvent event)
+        Deselect()
     end
 
     action SetDefaultPopupShortcut
@@ -425,23 +446,5 @@ class Menu is MenuBar
         helpItems:Add(checkForUpdates)
 
         helpMenu:Initialize("Help", helpItems)
-    end
-
-    action Focus
-        GameStateManager manager
-        //get my selection
-        MenuSelection selection = GetSelection()
-        if selection:IsEmpty()
-            Array<MenuItem> items
-            items:Add(defaultMenuItem)
-            Select(items)
-            //selection:Set(items)
-            fileMenu:Open()
-            manager:GetGame():SetFocus(me)
-        else 
-            Array<MenuItem> array = selection:GetPath()
-            MenuItem item = array:Get(array:GetSize() - 1)
-            manager:GetGame():SetFocus(me)
-        end
     end
 end

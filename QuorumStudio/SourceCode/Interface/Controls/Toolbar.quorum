@@ -12,6 +12,8 @@ use Libraries.Game.Graphics.Color
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Game.Graphics.Texture
 use Libraries.Interface.Item2D
+use Libraries.Interface.Events.FocusEvent
+use Libraries.Containers.Array
 
 class Toolbar is Item2D
     Layout layout = undefined
@@ -20,9 +22,12 @@ class Toolbar is Item2D
     Color color
     number height = 0
     Behaviors behaviors = undefined
+    Array<Button> buttons
 
     on create
         gradient:Set(color:LightGray(), color:LightGray(), color:White(), color:White())
+        SetFocusable(true)
+        SetName("Toolbar")
     end
 
     action SetBehaviors(Behaviors behaviors)
@@ -63,6 +68,11 @@ class Toolbar is Item2D
         end
     end
 
+    action GainedFocus(FocusEvent event)
+        Button button = buttons:Get(0)
+        button:Focus()
+    end
+
     action Setup
         LabelBoxView content
         content:Initialize(gradient, color:Black(), "")
@@ -86,26 +96,46 @@ class Toolbar is Item2D
         toolbarLayout:SetOffsetY(height)
         AddLayout(toolbarLayout)
 
-        AddButtonToToolbar(resources:GetNewProject(), undefined)
-        AddButtonToToolbar(resources:GetNewFile(), undefined)
-        AddButtonToToolbar(resources:GetOpenProject(), behaviors:GetOpenProjectBehavior())
-        AddButtonToToolbar(resources:GetSaveAll(), undefined)
-        AddButtonToToolbar(resources:GetUndo(), undefined)
-        AddButtonToToolbar(resources:GetRedo(), undefined)
-        AddButtonToToolbar(resources:GetBuild(), behaviors:GetBuildProjectBehavior())
-        AddButtonToToolbar(resources:GetCleanAndBuild(), undefined)
-        AddButtonToToolbar(resources:GetRun(), undefined)
-        AddButtonToToolbar(resources:GetDebug(), undefined)
-        AddButtonToToolbar(resources:GetStop(), undefined)
-        AddButtonToToolbar(resources:GetPause(), undefined)
-        AddButtonToToolbar(resources:GetContinue(), undefined)
-        AddButtonToToolbar(resources:GetStepOver(), undefined)
-        AddButtonToToolbar(resources:GetStepInto(), undefined)
-        AddButtonToToolbar(resources:GetStepOut(), undefined)
+        AddButtonToToolbar(resources:GetNewProject(), undefined, "New Project")
+        AddButtonToToolbar(resources:GetNewFile(), undefined, "New File")
+        AddButtonToToolbar(resources:GetOpenProject(), behaviors:GetOpenProjectBehavior(), "Open Project")
+        AddButtonToToolbar(resources:GetSaveAll(), undefined, "Save All")
+        AddButtonToToolbar(resources:GetUndo(), undefined, "Undo")
+        AddButtonToToolbar(resources:GetRedo(), undefined, "Redo")
+        AddButtonToToolbar(resources:GetBuild(), behaviors:GetBuildProjectBehavior(), "Build")
+        AddButtonToToolbar(resources:GetCleanAndBuild(), undefined, "Clean and Build")
+        AddButtonToToolbar(resources:GetRun(), undefined, "Run")
+        AddButtonToToolbar(resources:GetDebug(), undefined, "Debug")
+        AddButtonToToolbar(resources:GetStop(), undefined, "Stop")
+        AddButtonToToolbar(resources:GetPause(), undefined, "Pause")
+        AddButtonToToolbar(resources:GetContinue(), undefined, "Continue")
+        AddButtonToToolbar(resources:GetStepOver(), undefined, "Step Over")
+        AddButtonToToolbar(resources:GetStepInto(), undefined, "Step Into")
+        AddButtonToToolbar(resources:GetStepOut(), undefined, "Step Out")
+        SetupButtonFocus()
+        
         Resize()
     end
 
-    private action AddButtonToToolbar(Texture image, Behavior behavior)
+    action SetupButtonFocus
+        i = 0
+        repeat while i < buttons:GetSize()
+            Button button = buttons:Get(i)
+            if i + 1 < buttons:GetSize()
+                Button next = buttons:Get(i+1)
+                button:SetNextFocus(next)
+                next:SetPreviousFocus(button)
+            end
+            i = i + 1
+        end
+
+        Button first = buttons:Get(0)
+        Button last = buttons:Get(buttons:GetSize() - 1)
+        first:SetPreviousFocus(last)
+        last:SetNextFocus(first)
+    end
+
+    private action AddButtonToToolbar(Texture image, Behavior behavior, text name)
         ImageControlView buttonContent
         buttonContent:Load(image)
         
@@ -113,10 +143,12 @@ class Toolbar is Item2D
         button:SetView2D(buttonContent)
         button:SetWidth(24)
         button:SetHeight(24)
+        button:SetName(name)
 
         if behavior not= undefined
             button:SetBehavior(behavior)
         end
         Add(button)
+        buttons:Add(button)
     end
 end
