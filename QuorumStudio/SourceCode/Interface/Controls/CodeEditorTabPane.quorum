@@ -21,6 +21,8 @@ use Libraries.Game.InputTable
 use Libraries.Game.InputSet
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Interface.Behaviors.Controls.TabPaneForwardTabBehavior
+use Libraries.Interface.Events.FocusEvent
+use Libraries.Interface.Selections.TabPaneSelection
 
 class CodeEditorTabPane is TabPane
     KeyboardEvent keys
@@ -30,6 +32,18 @@ class CodeEditorTabPane is TabPane
     Resources resources = undefined
 
     on create
+    end
+
+    action GainedFocus(FocusEvent event)
+        TabPaneSelection selection = GetSelection()
+        Tab tab = selection:GetTab()
+        if tab not= undefined and tab is EditorTab
+            EditorTab t = cast(EditorTab, tab)
+            TextBox box = t:GetTextBox()
+            if box not= undefined
+                box:Focus()
+            end
+        end
     end
 
     action GetResources returns Resources

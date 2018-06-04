@@ -7,14 +7,15 @@ use Libraries.Interface.Controls.Tab
 use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Controls.TextBox
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.CallStackTab
 
 class FocusCallStackBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
         QuorumStudio studio = GetMainApplication()
-        CodeEditorTabPane value = studio:GetTabPane()
-        TabPaneSelection selection = value:GetSelection()
-        EditorTab tab = cast(EditorTab, selection:GetTab())
-        TextBox box = tab:GetTextBox()
-        box:Focus()
+        OutputEditorTabPane out = studio:GetOutputPane()
+        CallStackTab tab = out:GetCallStackTab()
+        tab:ReleasedMouse()
+        tab:Focus()
     end
 end
