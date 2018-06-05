@@ -6,15 +6,31 @@ use Libraries.Development.Environment.Projects.ProjectListener
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Containers.HashTable
 use Libraries.Containers.Iterator
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
 
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
     constant text OPEN_PROJECTS = "Open Projects"
     constant text OPEN_FILES = "Open Files"
     HashTable<text, text> projects 
+    Array<File> filesOpenAtBoot
+    QuorumStudio studio = undefined
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
 
     action GetProjects returns Array<text>
         return projects:CopyToValueArray()
+    end
+
+    action GetFilesOpenOnStartup returns Iterator<File>
+        return filesOpenAtBoot:GetIterator()
     end
 
     action OpenedProject(QuorumProject project)
@@ -58,15 +74,33 @@ class Options is ProjectListener
         
         notation:Add(OPEN_PROJECTS, array)
 
-        Iterator<text> iterator = projects:GetValueIterator()
-        repeat while iterator:HasNext()
-            text value = iterator:Next()
+        Iterator<text> openProjectIterator = projects:GetValueIterator()
+        repeat while openProjectIterator:HasNext()
+            text next = openProjectIterator:Next()
             JavaScriptObjectNotation item
-            item:SetText(value)
+            item:SetText(next)
             array:Add(item)
         end
 
-        
+        //if Quorum Studio instance is not null, write any other behavior 
+        //we are interested in storing
+
+        JavaScriptObjectNotation openFiles
+        openFiles:SetArray()
+
+        notation:Add(OPEN_FILES, openFiles)
+        CodeEditorTabPane code = studio:GetTabPane()
+        Iterator<File> openFileIterator = code:GetOpenFiles()
+        repeat while openFileIterator:HasNext()
+            File next = openFileIterator:Next()
+            if next not= undefined
+                text path = next:GetAbsolutePath()
+                JavaScriptObjectNotation item
+                item:SetText(path)
+                openFiles:Add(item)
+            end
+        end
+
         text value = notation:ToText()
         //write to disk once this is fixed
         file:Write(value)
@@ -88,6 +122,24 @@ class Options is ProjectListener
                 if value:IsText()
                     text project = value:GetText()
                     projects:Add(project, project)
+                end
+                i = i + 1
+            end
+        elseif key = OPEN_FILES
+            if object:IsEmpty()
+                return now
+            end
+
+            JavaScriptObjectNotation array = object:Get(0)
+
+            i = 0
+            repeat while i < array:GetSize()
+                JavaScriptObjectNotation value = array:Get(i)
+                if value:IsText()
+                    text path = value:GetText()
+                    File file
+                    file:SetAbsolutePath(path)
+                    filesOpenAtBoot:Add(file)
                 end
                 i = i + 1
             end

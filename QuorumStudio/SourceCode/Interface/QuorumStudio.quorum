@@ -26,6 +26,7 @@ use Libraries.Interface.Events.FocusListener
 use Libraries.Interface.Events.FocusEvent
 use Libraries.Game.InputTable
 use Libraries.Development.Environment.Studio.Interface.KeyMap
+use Libraries.Containers.Iterator
 
 
 class QuorumStudio is Game, FocusListener
@@ -125,6 +126,7 @@ class QuorumStudio is Game, FocusListener
     end
 
     action CreateGame
+        options:SetMainApplication(me)
         GameStateManager manager
         GraphicsManager graphics = manager:GetGameGraphics()
         graphics:ClearScreenColor(101.0/255.0, 101.0/255.0, 101.0/255.0, 1.0)
@@ -132,10 +134,12 @@ class QuorumStudio is Game, FocusListener
 
         Layer2D layer = me:GetCurrentLayer2D()
         layer:SetAutomaticResizing(true)
-        Load()
+        
         SetupInterface()
         SetScreenSize(1500, 1000)
         mainContentPane:Resize()
+
+        Load()
         SetupFocus()
     end
 
@@ -197,6 +201,12 @@ class QuorumStudio is Game, FocusListener
             file:SetAbsolutePath(value)
             manager:Open(file)
             i = i + 1
+        end
+
+        Iterator<File> iterator = options:GetFilesOpenOnStartup()
+        repeat while iterator:HasNext()
+            File file = iterator:Next()
+            codeTabs:OpenNewTab(file)
         end
     end
 

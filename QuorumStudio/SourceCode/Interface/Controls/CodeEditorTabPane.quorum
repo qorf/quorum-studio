@@ -23,8 +23,10 @@ use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Interface.Behaviors.Controls.TabPaneForwardTabBehavior
 use Libraries.Interface.Events.FocusEvent
 use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Interface.Events.TabChangeListener
+use Libraries.Interface.Events.TabChangeEvent
 
-class CodeEditorTabPane is TabPane
+class CodeEditorTabPane is TabPane, TabChangeListener
     KeyboardEvent keys
     Color color
     HashTable<text, File> openFiles
@@ -32,6 +34,19 @@ class CodeEditorTabPane is TabPane
     Resources resources = undefined
 
     on create
+        
+    end
+
+    action ClosedTab(TabChangeEvent event)
+        if event:GetTab() is EditorTab
+            EditorTab tab = cast(EditorTab, event:GetTab())
+            File file = tab:GetFile()
+            if file not= undefined
+                text path = file:GetAbsolutePath()
+                openFiles:RemoveKey(path)
+                openTabs:RemoveKey(path)
+            end
+        end
     end
 
     action GainedFocus(FocusEvent event)
@@ -44,6 +59,10 @@ class CodeEditorTabPane is TabPane
                 box:Focus()
             end
         end
+    end
+    
+    action GetOpenFiles returns Iterator<File> 
+        return openFiles:GetValueIterator()
     end
 
     action GetResources returns Resources
@@ -71,6 +90,7 @@ class CodeEditorTabPane is TabPane
         
         Initialize(200, 200, array)
         AddLayout(fill)
+        AddTabChangeListener(me)
     end
 
     action OpenNewTab(File file)
