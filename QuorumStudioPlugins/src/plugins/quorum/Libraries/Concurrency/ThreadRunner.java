@@ -18,8 +18,8 @@ public class ThreadRunner {
     public java.lang.Object me_ = null;
     ExecutorService executor = Executors.newSingleThreadExecutor();
     
-    public void Add(quorum.Libraries.Interface.Action_ action) {
-        RunnableAction act = new RunnableAction(action);
+    public void Add(quorum.Libraries.Interface.Behaviors.Behavior_ action) {
+        RunnableBehavior act = new RunnableBehavior(action);
         Future<?> submit = executor.submit(act);
     }
     
