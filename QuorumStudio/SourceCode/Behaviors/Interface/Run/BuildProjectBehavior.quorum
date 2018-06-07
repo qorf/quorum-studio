@@ -8,6 +8,7 @@ use Libraries.Interface.Behaviors.Behavior
 use Libraries.Interface.Controls.TextBox
 use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.Interface.OutputTab
 
 class BuildProjectBehavior is QuorumStudioBehavior
 
@@ -23,8 +24,11 @@ class BuildProjectBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
         QuorumStudio studio = GetMainApplication()
-        OutputEditorTabPane out = studio:GetOutputPane()
-
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+        OutputTab out = outPane:GetOutputTab()
+        
+        out:Empty()
+        out:Append("Building")
 
 //        Compiler compiler = project:GetCompiler()
 //        File location = project:GetLocation()

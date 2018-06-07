@@ -2,6 +2,7 @@ package Libraries.Development.Environment.Studio.Behaviors
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Containers.HashTable
 use Libraries.Containers.Iterator
+use Libraries.Concurrency.ThreadRunner
 
 class Behaviors 
 
@@ -51,6 +52,10 @@ class Behaviors
     QuorumStudio studio = undefined
     HashTable<text, QuorumStudioBehavior> behaviors
 
+    //threading 
+    ThreadRunner buildSystemRunner
+    ThreadedBehavior threadedBuild
+
     on create
         behaviors:Add(DEFAULT_MENU_OPEN, defaultMenuOpenBehavior)
         behaviors:Add(DEFAULT_ESCAPE_BEHAVIOR, defaultEscapeBehavior)
@@ -60,7 +65,10 @@ class Behaviors
         behaviors:Add(SAVE_ALL, saveAllBehavior)
         behaviors:Add(EXIT, exitBehavior)
 
-        behaviors:Add(BUILD_PROJECT, buildProjectBehavior)
+        threadedBuild:SetNestedBehavior(buildProjectBehavior)
+        threadedBuild:SetThreadRunner(buildSystemRunner)
+
+        behaviors:Add(BUILD_PROJECT, threadedBuild)
 
         behaviors:Add(FOCUS_BREAKPOINTS_WINDOW, focusBreakpointsBehavior)
         behaviors:Add(FOCUS_CALL_STACK_WINDOW, focusCallStackBehavior)
@@ -87,6 +95,10 @@ class Behaviors
 
     action GetSaveAllBehavior returns SaveAllBehavior
         return saveAllBehavior
+    end
+
+    action GetThreadedBuildProjectBehavior returns ThreadedBehavior
+        return threadedBuild
     end
 
     action GetBuildProjectBehavior returns BuildProjectBehavior

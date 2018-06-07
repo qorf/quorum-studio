@@ -1,0 +1,39 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Concurrency.ThreadRunner
+
+
+class ThreadedBehavior is QuorumStudioBehavior
+    QuorumStudioBehavior nestedBehavior = undefined
+    ThreadRunner runner = undefined
+    action GetNestedBehavior returns QuorumStudioBehavior
+        return nestedBehavior
+    end
+
+    action SetNestedBehavior(QuorumStudioBehavior behavior)
+        me:nestedBehavior = behavior
+    end
+
+    action GetThreadRunner returns ThreadRunner
+        return runner
+    end
+
+    action SetThreadRunner(ThreadRunner runner)
+        me:runner = runner
+    end
+
+    action SetMainApplication(QuorumStudio studio)
+        parent:QuorumStudioBehavior:SetMainApplication(studio)
+        if nestedBehavior not= undefined
+            nestedBehavior:SetMainApplication(studio)
+        end
+    end
+
+    action Run(BehaviorEvent event)
+        if nestedBehavior not= undefined and runner not= undefined
+            runner:Add(nestedBehavior)
+        end
+    end
+end
