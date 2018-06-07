@@ -26,6 +26,8 @@ class QuorumProject is Project
     /* This property represents the default name of the executable file that is compiled. */
     public constant text DEFAULT_EXECUTABLE_NAME = "Default"
 
+    public constant text DEFAULT_FILE_EXTENSION = "quorum"
+
 
     /* This property represents the file that Quorum starts a program from. */
     public constant text PROJECT_MAIN = "Main"
@@ -108,8 +110,31 @@ class QuorumProject is Project
         compiler:SetOutputFolder(loc)
     end
 
-    action GetSources returns File
+    action GetSourceLocation returns File
         return sources
+    end
+
+    action GetSources returns Array<File>
+        Array<File> files
+        File root = GetSourceLocation()
+        RecursiveArrayFill(root, files)
+        return files
+    end
+
+    private action RecursiveArrayFill(File root, Array<File> files)
+        Array<File> sub = root:GetDirectoryListing()
+        i = 0
+        repeat while i < sub:GetSize()
+            File file = sub:Get(i)
+            if file:IsDirectory()
+                RecursiveArrayFill(file, files)
+            else
+                if file:GetFileExtension() = DEFAULT_FILE_EXTENSION
+                    files:Add(file)
+                end
+            end
+            i = i + 1
+        end
     end
 
     action GetCompiler returns Compiler
@@ -337,6 +362,16 @@ class QuorumProject is Project
         end
 
         return false
+    end
+
+    action IsBytecodeType returns boolean
+        ProjectProperty property = GetProperty(PROJECT_TYPE)
+        text value = property:GetFirstValue()
+        if value = JAVA_COMPILE_TYPE
+            return true
+        else
+            return false
+        end
     end
 
     /*

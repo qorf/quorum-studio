@@ -3,6 +3,7 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Containers.HashTable
 use Libraries.Containers.Iterator
 use Libraries.Concurrency.ThreadRunner
+use Libraries.Development.Environment.Studio.Build.BuildManager
 
 class Behaviors 
 
@@ -53,6 +54,7 @@ class Behaviors
     HashTable<text, QuorumStudioBehavior> behaviors
 
     //threading 
+    BuildManager builder
     ThreadRunner buildSystemRunner
     ThreadedBehavior threadedBuild
 
@@ -65,6 +67,7 @@ class Behaviors
         behaviors:Add(SAVE_ALL, saveAllBehavior)
         behaviors:Add(EXIT, exitBehavior)
 
+        buildProjectBehavior:SetBuildManager(builder)
         threadedBuild:SetNestedBehavior(buildProjectBehavior)
         threadedBuild:SetThreadRunner(buildSystemRunner)
 

@@ -9,17 +9,22 @@ use Libraries.Interface.Controls.TextBox
 use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.ProjectTreeItem
 
 class BuildProjectBehavior is QuorumStudioBehavior
+    BuildManager builder = undefined
 
-    QuorumProject project = undefined
-
-    action GetProject returns QuorumProject
-        return project
+    action GetBuildManager returns BuildManager
+        return builder
     end
 
-    action SetProject(QuorumProject project)
-        me:project = project
+    action SetBuildManager(BuildManager builder)
+        me:builder = builder
     end
 
     action Run(BehaviorEvent event)
@@ -29,6 +34,16 @@ class BuildProjectBehavior is QuorumStudioBehavior
         
         out:Empty()
         out:Append("Building")
+
+        ProjectTree tree = studio:GetProjectTree()
+        TreeSelection selection = tree:GetSelection()
+        if not selection:IsEmpty()
+            Array<TreeItem> items = selection:GetPath()
+            ProjectTreeItem value = cast(ProjectTreeItem, items:Get(0))
+            QuorumProject project = value:GetProject()
+            builder:Build(project)
+        end
+        
 
 //        Compiler compiler = project:GetCompiler()
 //        File location = project:GetLocation()
