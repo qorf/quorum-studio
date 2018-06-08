@@ -27,6 +27,9 @@ use Libraries.Interface.Events.FocusEvent
 use Libraries.Game.InputTable
 use Libraries.Development.Environment.Studio.Interface.KeyMap
 use Libraries.Containers.Iterator
+use Libraries.Development.Environment.Studio.Behaviors.ScanLibraryBehavior
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Concurrency.ThreadRunner
 
 
 class QuorumStudio is Game, FocusListener
@@ -141,6 +144,12 @@ class QuorumStudio is Game, FocusListener
 
         Load()
         SetupFocus()
+        
+        //now that we're all setup, tell the library scanner to run
+        ScanLibraryBehavior scanner = behaviors:GetScanLibraryBehavior()
+        BuildManager builder = behaviors:GetBuildManager()
+        ThreadRunner buildThreadRunner = behaviors:GetBuildThreadRunner()
+        buildThreadRunner:Add(scanner)
     end
 
     action SetupFocus
