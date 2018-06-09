@@ -58,6 +58,8 @@ class QuorumProject is Project
     public constant text JAVASCRIPT_DEPENDENCIES = "JavascriptDependencies"
     /* This property stores all of the dependencies on java class files for the system. */
     public constant text JAVA_CLASS_DEPENDENCIES = "JavaClassDependencies"
+    /* This stores any dependencies on other Quorum Files. */
+    public constant text QUORUM_DEPENDENCIES = "QuorumDependencies"
 
     /* This flag is used to tell the project to tell the project to store image sheet information */
     public constant text IMAGE_SHEET_ENABLED = "ImageSheetEnabled"
@@ -248,9 +250,41 @@ class QuorumProject is Project
     */
     action GetJarDependencies returns Iterator<text>
         ProjectProperty property = GetProperty(JAR_DEPENDENCIES)
+        if property = undefined
+            Array<text> value
+            return value:GetIterator()
+        end
         property = property:Copy()
         Iterator<text> iterator = property:GetValueIterator()
         return iterator
+    end
+
+    /*
+        This action returns an array of all of the quorum file dependencies on the system.
+        These dependencies are listed as file paths from the root of the project. 
+        For example, a dependency that lives in the folder /dep and named abc.quorum
+        would be /dep/abc.quorum. 
+    */
+    action GetQuorumDependencies returns Iterator<text>
+        ProjectProperty property = GetProperty(QUORUM_DEPENDENCIES)
+        if property = undefined
+            Array<text> value
+            return value:GetIterator()
+        end
+        
+        property = property:Copy()
+        Iterator<text> iterator = property:GetValueIterator()
+        return iterator
+    end
+
+    /*
+        This action sets an array of all of the quorum file dependencies in the project.
+        These dependencies are listed as file paths from the root of the project. 
+        For example, a dependency that lives in the folder /dep and named abc.quorum
+        would be /dep/abc.quorum. 
+    */
+    action SetQuorumDependencies(Array<text> dependencies)
+        SetMultipleValueProperty(QUORUM_DEPENDENCIES, dependencies)
     end
 
     /*
@@ -392,6 +426,13 @@ class QuorumProject is Project
     end
 
     /*
+        Returns the Main file for this project.
+    */
+    action GetMain returns File
+        return mainFile
+    end
+
+    /*
         This action loads a project from its location on disk. To use this action,
         you must first call SetLocation(File), with a valid project folder. 
     */
@@ -425,6 +466,16 @@ class QuorumProject is Project
             JavaScriptObjectNotation obj = notation:Get(i)
             ProcessKey(obj)
             i = i + 1
+        end
+    end
+
+    private action SetPluginFolderToCompiler
+        Iterator<text> iterator = GetJavaClassDependencies()
+        repeat while iterator:HasNext()
+            text value = iterator:Next()
+            File file
+            file:SetPath(value)
+            compiler:AddPluginFolder(file)
         end
     end
 
@@ -480,6 +531,9 @@ class QuorumProject is Project
         elseif key = JAVASCRIPT_DEPENDENCIES
             AddMultivalueTextProperty(object)
         elseif key = JAVA_CLASS_DEPENDENCIES
+            AddMultivalueTextProperty(object)
+            SetPluginFolderToCompiler()
+        elseif key = QUORUM_DEPENDENCIES
             AddMultivalueTextProperty(object)
         elseif key = IMAGE_SHEETS
             CreateImageSheets(object)
@@ -569,15 +623,16 @@ class QuorumProject is Project
 
     private action AddMultivalueTextProperty(JavaScriptObjectNotation object)
         text key = object:GetKey()
+        JavaScriptObjectNotation theArray = object:Get(0)
         Array<text> dependencies
-        if not object:IsArray()
+        if not theArray:IsArray()
             logger:Log("Could not load property " + key + ", as its value was not of type array.")
             return now
         end
 
         i = 0
-        repeat while i < object:GetSize()
-            JavaScriptObjectNotation value = object:Get(i)
+        repeat while i < theArray:GetSize()
+            JavaScriptObjectNotation value = theArray:Get(i)
             if not value:IsText()
                 logger:Log("Could not load property " + key + ", as its value was not of type text.")
                 return now

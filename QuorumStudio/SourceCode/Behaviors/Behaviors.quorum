@@ -27,7 +27,9 @@ class Behaviors
     DefaultEscapeBehavior defaultEscapeBehavior
     //Run Menu
     constant text BUILD_PROJECT = "Build Project"
+    constant text RUN_PROJECT = "Run Project"
     BuildProjectBehavior buildProjectBehavior
+    RunProjectBehavior runProjectBehavior
 
     //Windows Menu
     constant text FOCUS_BREAKPOINTS_WINDOW = "Focus Break Points Window"
@@ -59,6 +61,7 @@ class Behaviors
     BuildManager builder
     ThreadRunner buildSystemRunner
     ThreadedBehavior threadedBuild
+    ThreadedBehavior threadedRun
     ScanLibraryBehavior scanner
 
     on create
@@ -71,11 +74,16 @@ class Behaviors
         behaviors:Add(EXIT, exitBehavior)
 
         buildProjectBehavior:SetBuildManager(builder)
+        runProjectBehavior:SetBuildManager(builder)
         scanner:SetBuildManager(builder)
         threadedBuild:SetNestedBehavior(buildProjectBehavior)
         threadedBuild:SetThreadRunner(buildSystemRunner)
+        
+        threadedRun:SetNestedBehavior(runProjectBehavior)
+        threadedRun:SetThreadRunner(buildSystemRunner)
 
         behaviors:Add(BUILD_PROJECT, threadedBuild)
+        behaviors:Add(RUN_PROJECT, threadedRun)
 
         behaviors:Add(FOCUS_BREAKPOINTS_WINDOW, focusBreakpointsBehavior)
         behaviors:Add(FOCUS_CALL_STACK_WINDOW, focusCallStackBehavior)
@@ -125,6 +133,14 @@ class Behaviors
 
     action GetBuildProjectBehavior returns BuildProjectBehavior
         return buildProjectBehavior
+    end
+
+    action GetThreadedRunProjectBehavior returns ThreadedBehavior
+        return threadedRun
+    end
+
+    action GetRunProjectBehavior returns RunProjectBehavior
+        return runProjectBehavior
     end
 
     action GetSaveBehavior returns SaveBehavior

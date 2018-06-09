@@ -3,15 +3,39 @@ use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Containers.Array
 use Libraries.System.File
 use Libraries.Language.Compile.Library
+use Libraries.Language.Compile.CompilerErrorManager
+use Libraries.Language.Compile.CompilerRequest
+use Libraries.Language.Compile.Compiler
+use Libraries.Language.Compile.CompilerResult
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Containers.Iterator
+use Libraries.Language.Compile.CompilerError
+use Libraries.Concurrency.ProcessRunner
+use Libraries.System.Properties
 
 class BuildManager 
     Library library
+    constant text DEFAULT_LIBRARY_PATH = "Library/Standard"
+    constant text DEFAULT_LIBRARY_OUTPUT_PATH = "Library/Compiled"
 
     action Scan
+        File libraryLocation
+        libraryLocation:SetPath(DEFAULT_LIBRARY_PATH)
+        library:SetLocation(libraryLocation)
+        library:SetCachingLibraryOpcodes(true)
+
+
+        File outputLocation
+        outputLocation:SetPath(DEFAULT_LIBRARY_OUTPUT_PATH)
+        library:SetOutputFolder(outputLocation)
         library:Scan()
     end
 
-    action Build(QuorumProject project)
+    action Build(BuildInformation info)
+        QuorumProject project = info:project
+        OutputTab out = info:outputTab
+        out:Empty()
+
         //do image sheet manipulation here
 
         //do file saving here if necessary
@@ -24,13 +48,76 @@ class BuildManager
         end
         
         Array<File> sources = project:GetSources()
-    end
-
-    action Clean(QuorumProject project)
-
-    end
-
-    action CleanAndBuild(QuorumProject project)
+        Iterator<text> extraSourceIterator = project:GetQuorumDependencies()
+        repeat while extraSourceIterator:HasNext()
+            text value = extraSourceIterator:Next()
+            File file
+            file:SetPath(value)
+            sources:Add(file)
+        end
+        File main = project:GetMain()
         
+        CompilerRequest request
+        request:library = library
+        request:files = sources
+        request:main = main
+        Compiler compiler = project:GetCompiler()
+        CompilerResult result = compiler:Compile(request)
+        info:result = result
+
+        CompilerErrorManager errors = result:compilerErrorManager
+        if errors:IsCompilationErrorFree()
+            out:Append("Build Successful")
+        else
+            Iterator<CompilerError> iterator = errors:GetIterator()
+            repeat while iterator:HasNext()
+                CompilerError error = iterator:Next()
+                text value = error:GetDisplayName()
+                out:Append(value)
+            end
+        end
+    end
+
+    action Clean(BuildInformation info)
+        QuorumProject project = info:project
+
+    end
+
+    action CleanAndBuild(BuildInformation info)
+        QuorumProject project = info:project
+        
+    end
+
+    action Run(BuildInformation info)
+        QuorumProject project = info:project
+        OutputTab out = info:outputTab
+        Build(info)
+        
+        CompilerResult result = info:result
+        CompilerErrorManager errors = result:compilerErrorManager
+        if errors:IsCompilationErrorFree()
+            out:Append("Running")
+            ProcessRunner runner
+
+            Properties properties
+            text os = properties:GetOperatingSystemName()
+            if os:Contains("Mac OS X")
+                text java = properties:GetProperty("java.home")
+                java = java + "/" + "bin" + "/" + "java"
+
+                text run = project:GetLocation():GetAbsolutePath() + "/Run/" + project:GetExecutableName() + ".jar"
+                runner:SetDirectory(project:GetLocation())
+                Array<text> flags
+                flags:Add("-Dsodbeans=1")
+                flags:Add("-XstartOnFirstThread")
+                flags:Add("-jar")
+                flags:Add(run)
+                runner:Run(java, flags)
+            elseif os:Contains("Windows")
+            else//for now do nothing, because we support Windows only in the first release, technically
+
+            end
+
+        end
     end
 end

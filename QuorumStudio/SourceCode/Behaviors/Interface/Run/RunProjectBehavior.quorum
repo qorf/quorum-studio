@@ -17,7 +17,7 @@ use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Studio.Build.BuildInformation
 
-class BuildProjectBehavior is QuorumStudioBehavior
+class RunProjectBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
 
     action GetBuildManager returns BuildManager
@@ -32,6 +32,9 @@ class BuildProjectBehavior is QuorumStudioBehavior
         QuorumStudio studio = GetMainApplication()
         OutputEditorTabPane outPane = studio:GetOutputPane()
         OutputTab out = outPane:GetOutputTab()
+        
+        out:Empty()
+        out:Append("Running")
 
         ProjectTree tree = studio:GetProjectTree()
         TreeSelection selection = tree:GetSelection()
@@ -43,7 +46,7 @@ class BuildProjectBehavior is QuorumStudioBehavior
             BuildInformation info
             info:outputTab = out
             info:project = project
-            builder:Build(info)
+            builder:Run(info)
         end
     end
 end
