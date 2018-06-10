@@ -343,6 +343,48 @@ class QuorumProject is Project
         return iterator
     end
 
+    action ComputeRelativePath(File file, text val) returns File
+        Array<text> values = GetPaths(val)
+        File directory = file
+        integer i = 0
+        repeat while i < values:GetSize()
+            text s = values:Get(i)
+            if s = ".."
+                directory = directory:GetParentDirectory()
+            else
+                File f2
+                if i = values:GetSize() - 1
+                    f2:SetAbsolutePath(directory:GetAbsolutePath() + "/" + s)
+                    f2:SetWorkingDirectory(f2:GetWorkingDirectory() + "/")
+                else 
+                    f2:SetAbsolutePath(directory:GetAbsolutePath() + "/" + s)
+                end
+                directory = f2
+            end
+            i = i + 1
+        end
+        return directory
+    end
+
+    private action GetPaths(text val) returns Array<text>
+        Array<text> values
+        i = 0
+        text currentPath = ""
+        repeat while i < val:GetSize()
+            text c = val:GetCharacter(i)
+            
+            if c = "/" or c = "\"
+                values:Add(currentPath)
+                currentPath = ""
+            else 
+                currentPath = currentPath + c
+            end
+            i = i + 1
+        end
+        values:Add(currentPath)
+        return values
+    end
+
     action SetToDefault
         Empty()
         AddProperty(parent:Libraries.Development.Environment.Projects.Project:DEVELOPMENT_ENVIRONMENT_VERSION, 
@@ -473,8 +515,10 @@ class QuorumProject is Project
         Iterator<text> iterator = GetJavaClassDependencies()
         repeat while iterator:HasNext()
             text value = iterator:Next()
-            File file
-            file:SetPath(value)
+
+            
+            File file = ComputeRelativePath(GetLocation(), value)
+            //file:SetPath(value)
             compiler:AddPluginFolder(file)
         end
     end
