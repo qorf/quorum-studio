@@ -39,18 +39,14 @@ public class ProcessRunner {
         builder = new ProcessBuilder(list);
         builder.directory(new File(directory.GetAbsolutePath()));
         try {
-            System.out.println("Did something");
             Process start = builder.start();
             boolean alive = start.isAlive();
-            System.out.println("Did something 2 " + alive);
             start.waitFor();
             start.destroy();
         } catch (IOException ex) {
             Logger.getLogger(ProcessRunner.class.getName()).log(Level.SEVERE, null, ex);
-            System.out.println("Fail");
         } catch (InterruptedException ex) {
             Logger.getLogger(ProcessRunner.class.getName()).log(Level.SEVERE, null, ex);
-            System.out.println("Fail 2");
         }
     }
     
