@@ -30,6 +30,7 @@ use Libraries.Containers.Iterator
 use Libraries.Development.Environment.Studio.Behaviors.ScanLibraryBehavior
 use Libraries.Development.Environment.Studio.Build.BuildManager
 use Libraries.Concurrency.ThreadRunner
+use Libraries.System.SystemHelper
 
 
 class QuorumStudio is Game, FocusListener
@@ -57,6 +58,7 @@ class QuorumStudio is Game, FocusListener
 
     Item currentFocus = undefined
     Item previousFocus = undefined
+    SystemHelper helper
 
     action Start
         DesktopConfiguration config = GetDesktopConfiguration()
@@ -358,5 +360,9 @@ class QuorumStudio is Game, FocusListener
         up:Load(new)
 
         updater:CheckForNewerVersion(up)
+    end
+
+    action Update(number seconds)
+        helper:Sleep(40) //hard cap at 25 FPS for now.
     end
 end

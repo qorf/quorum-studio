@@ -80,7 +80,16 @@ class BuildManager
 
     action Clean(BuildInformation info)
         QuorumProject project = info:project
+        Compiler compiler = project:GetCompiler()
+        File build = compiler:GetBuildFolder()
+        File run = compiler:GetRunFolder()
+        if build not= undefined and build:Exists() and build:IsDirectory()
+            build:Delete()
+        end
 
+        if run not= undefined and run:Exists() and run:IsDirectory()
+            run:Delete()
+        end
     end
 
     action CleanAndBuild(BuildInformation info)
@@ -114,6 +123,16 @@ class BuildManager
                 flags:Add(run)
                 runner:Run(java, flags)
             elseif os:Contains("Windows")
+                text java = properties:GetProperty("java.home")
+                java = java + "/" + "bin" + "/" + "java"
+
+                text run = project:GetLocation():GetAbsolutePath() + "/Run/" + project:GetExecutableName() + ".jar"
+                runner:SetDirectory(project:GetLocation())
+                Array<text> flags
+                flags:Add("-Dsodbeans=1")
+                flags:Add("-jar")
+                flags:Add(run)
+                runner:Run(java, flags)
             else//for now do nothing, because we support Windows only in the first release, technically
 
             end

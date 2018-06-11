@@ -25,11 +25,29 @@ class Behaviors
 
     DefaultMenuOpenBehavior defaultMenuOpenBehavior
     DefaultEscapeBehavior defaultEscapeBehavior
+
     //Run Menu
     constant text BUILD_PROJECT = "Build Project"
+    constant text CLEAN_AND_BUILD_PROJECT = "Clean and Build Project"
+    constant text CLEAN_PROJECT = "Clean Project"
+    constant text DEBUG_PROJECT = "Debug Project"
     constant text RUN_PROJECT = "Run Project"
+    constant text RUN_TO_CURSOR = "Run to Cursor"
+    constant text STEP_INTO = "Step Into"
+    constant text STEP_OUT = "Step Out"
+    constant text STEP_OVER = "Step Over"
+    constant text STOP = "Stop"
+    
     BuildProjectBehavior buildProjectBehavior
+    CleanBuildProjectBehavior cleanBuildProjectBehavior
+    CleanProjectBehavior cleanProjectBehavior
+    DebugProjectBehavior debugProjectBehavior
     RunProjectBehavior runProjectBehavior
+    RunToCursorBehavior runToCursorBehavior
+    StepIntoBehavior stepIntoBehavior
+    StepOutBehavior stepOutBehavior
+    StepOverBehavior stepOverBehavior
+    StopBehavior stopBehavior
 
     //Windows Menu
     constant text FOCUS_BREAKPOINTS_WINDOW = "Focus Break Points Window"
@@ -61,7 +79,16 @@ class Behaviors
     BuildManager builder
     ThreadRunner buildSystemRunner
     ThreadedBehavior threadedBuild
+    ThreadedBehavior threadedCleanAndBuild
+    ThreadedBehavior threadedClean
+    ThreadedBehavior threadedDebug
     ThreadedBehavior threadedRun
+    ThreadedBehavior threadedRunToCursor
+    ThreadedBehavior threadedStepInto
+    ThreadedBehavior threadedStepOut
+    ThreadedBehavior threadedStepOver
+    ThreadedBehavior threadedStop
+    
     ScanLibraryBehavior scanner
 
     on create
@@ -73,17 +100,52 @@ class Behaviors
         behaviors:Add(SAVE_ALL, saveAllBehavior)
         behaviors:Add(EXIT, exitBehavior)
 
+        //Build Actions
         buildProjectBehavior:SetBuildManager(builder)
+        cleanBuildProjectBehavior:SetBuildManager(builder)
+        cleanProjectBehavior:SetBuildManager(builder)
+        debugProjectBehavior:SetBuildManager(builder)
         runProjectBehavior:SetBuildManager(builder)
+        runToCursorBehavior:SetBuildManager(builder)
+        stepIntoBehavior:SetBuildManager(builder)
+        stepOutBehavior:SetBuildManager(builder)
+        stepOverBehavior:SetBuildManager(builder)
+        stopBehavior:SetBuildManager(builder)
         scanner:SetBuildManager(builder)
+
+        //Threaded redirects for the build system
         threadedBuild:SetNestedBehavior(buildProjectBehavior)
         threadedBuild:SetThreadRunner(buildSystemRunner)
-        
+        threadedCleanAndBuild:SetNestedBehavior(cleanBuildProjectBehavior)
+        threadedCleanAndBuild:SetThreadRunner(buildSystemRunner)
+        threadedClean:SetNestedBehavior(cleanProjectBehavior)
+        threadedClean:SetThreadRunner(buildSystemRunner)
+        threadedDebug:SetNestedBehavior(debugProjectBehavior)
+        threadedDebug:SetThreadRunner(buildSystemRunner)
         threadedRun:SetNestedBehavior(runProjectBehavior)
         threadedRun:SetThreadRunner(buildSystemRunner)
+        threadedRunToCursor:SetNestedBehavior(threadedRunToCursor)
+        threadedRunToCursor:SetThreadRunner(buildSystemRunner)
+        threadedStepInto:SetNestedBehavior(stepIntoBehavior)
+        threadedStepInto:SetThreadRunner(buildSystemRunner)
+        threadedStepOut:SetNestedBehavior(stepOutBehavior)
+        threadedStepOut:SetThreadRunner(buildSystemRunner)
+        threadedStepOver:SetNestedBehavior(stepOverBehavior)
+        threadedStepOver:SetThreadRunner(buildSystemRunner)
+        threadedStop:SetNestedBehavior(stopBehavior)
+        threadedStop:SetThreadRunner(buildSystemRunner)
 
+        //add them to the behaviors system
         behaviors:Add(BUILD_PROJECT, threadedBuild)
+        behaviors:Add(CLEAN_AND_BUILD_PROJECT, threadedCleanAndBuild)
+        behaviors:Add(CLEAN_PROJECT, threadedClean)
+        behaviors:Add(DEBUG_PROJECT, threadedDebug)
         behaviors:Add(RUN_PROJECT, threadedRun)
+        behaviors:Add(RUN_TO_CURSOR, threadedRunToCursor)
+        behaviors:Add(STEP_INTO, threadedStepInto)
+        behaviors:Add(STEP_OUT, threadedStepOut)
+        behaviors:Add(STEP_OVER, threadedStepOver)
+        behaviors:Add(STOP, threadedStop)
 
         behaviors:Add(FOCUS_BREAKPOINTS_WINDOW, focusBreakpointsBehavior)
         behaviors:Add(FOCUS_CALL_STACK_WINDOW, focusCallStackBehavior)
@@ -98,7 +160,8 @@ class Behaviors
         //other behaviors
         behaviors:Add(SCANNER, scanner)
     end
-
+    
+    //general behaviors
     action GetBuildManager returns BuildManager
         return builder
     end
@@ -115,6 +178,7 @@ class Behaviors
         return defaultMenuOpenBehavior
     end
 
+    //File Menu
     action GetOpenProjectBehavior returns OpenProjectBehavior
         return openProjectBehavior
     end
@@ -127,12 +191,41 @@ class Behaviors
         return saveAllBehavior
     end
 
+    action GetExitBehavior returns ExitBehavior
+        return exitBehavior
+    end
+
+    //Run Menu
     action GetThreadedBuildProjectBehavior returns ThreadedBehavior
         return threadedBuild
     end
 
     action GetBuildProjectBehavior returns BuildProjectBehavior
         return buildProjectBehavior
+    end
+
+    action GetThreadedCleanBuildProjectBehavior returns ThreadedBehavior
+        return threadedCleanAndBuild
+    end
+
+    action GetCleanBuildProjectBehavior returns CleanBuildProjectBehavior
+        return cleanBuildProjectBehavior
+    end 
+
+    action GetThreadedCleanProjectBehavior returns ThreadedBehavior
+        return threadedClean
+    end
+
+    action GetCleanProjectBehavior returns CleanProjectBehavior
+        return cleanProjectBehavior
+    end
+
+    action GetThreadedDebugProjectBehavior returns ThreadedBehavior
+        return threadedDebug
+    end
+
+    action GetDebugProjectBehavior returns DebugProjectBehavior
+        return debugProjectBehavior
     end
 
     action GetThreadedRunProjectBehavior returns ThreadedBehavior
@@ -143,12 +236,48 @@ class Behaviors
         return runProjectBehavior
     end
 
-    action GetSaveBehavior returns SaveBehavior
-        return saveBehavior
+    action GetThreadedRunToCursorBehavior returns ThreadedBehavior
+        return threadedRunToCursor
     end
 
-    action GetExitBehavior returns ExitBehavior
-        return exitBehavior
+    action GetRunToCursorBehavior returns RunToCursorBehavior
+        return runToCursorBehavior
+    end
+
+    action GetThreadedStepIntoBehavior returns ThreadedBehavior
+        return threadedStepInto
+    end
+
+    action GetStepIntoBehavior returns StepIntoBehavior
+        return stepIntoBehavior
+    end
+
+    action GetThreadedStepOutBehavior returns ThreadedBehavior
+        return threadedStepOut
+    end
+
+    action GetStepOutBehavior returns StepOutBehavior
+        return stepOutBehavior
+    end
+        
+    action GetThreadedStepOverBehavior returns ThreadedBehavior
+        return threadedStepOver
+    end
+
+    action GetStepOverBehavior returns StepOverBehavior
+        return stepOverBehavior
+    end
+
+    action GetThreadedStopBehavior returns ThreadedBehavior
+        return threadedStop
+    end
+
+    action GetStopBehavior returns StopBehavior
+        return stopBehavior
+    end
+
+    action GetSaveBehavior returns SaveBehavior
+        return saveBehavior
     end
 
     //Windows Menu
