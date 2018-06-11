@@ -12,11 +12,43 @@ use Libraries.Containers.Iterator
 use Libraries.Language.Compile.CompilerError
 use Libraries.Concurrency.ProcessRunner
 use Libraries.System.Properties
+use Libraries.Language.Debug.Debugger
+use Libraries.Language.Debug.DebuggerListener
+use Libraries.Language.Debug.DebuggerStartEvent
+use Libraries.Language.Debug.DebuggerStopEvent
+use Libraries.Language.Debug.DebuggerStepEvent
+use Libraries.Language.Debug.DebuggerErrorEvent
+use Libraries.Language.Debug.BreakpointEvent
 
-class BuildManager 
+class BuildManager is DebuggerListener
     Library library
     constant text DEFAULT_LIBRARY_PATH = "Library/Standard"
     constant text DEFAULT_LIBRARY_OUTPUT_PATH = "Library/Compiled"
+    Debugger debugger
+
+    on create
+        debugger:Add(me)
+    end
+
+    action Run(DebuggerStartEvent event)
+        output "Debugger Started"
+    end
+
+    action Run(DebuggerStopEvent event)
+        output "Debugger stopped"
+    end
+
+    action Run(DebuggerStepEvent event)
+        output "Step"
+    end
+
+    action Run(DebuggerErrorEvent event)
+        output "Error"
+    end
+
+    action Run(BreakpointEvent event)
+        output "Breakpoint"
+    end
 
     action Scan
         File libraryLocation
@@ -62,6 +94,7 @@ class BuildManager
         request:files = sources
         request:main = main
         Compiler compiler = project:GetCompiler()
+        info:request = request
         CompilerResult result = compiler:Compile(request)
         info:result = result
 
@@ -98,7 +131,26 @@ class BuildManager
     end
 
     action Debug(BuildInformation info)
+        QuorumProject project = info:project
+        Build(info)
+        OutputTab out = info:outputTab
 
+        CompilerResult result = info:result
+        CompilerErrorManager errors = result:compilerErrorManager
+        if errors:IsCompilationErrorFree()
+            out:Append("Starting Debugger")
+        end
+
+        CompilerRequest request = info:request
+        Compiler compiler = project:GetCompiler()
+        File exec = compiler:GetExecutable(request)
+        File wd = project:GetLocation()
+        debugger:SetExecutable(exec:GetAbsolutePath())
+        debugger:SetWorkingDirectory(wd:GetAbsolutePath())
+
+        debugger:Start()
+
+        debugger:Continue()
     end
 
     action Run(BuildInformation info)
