@@ -15,7 +15,7 @@ class ToolbarLayout is Layout
 
     action Layout(Item2D item)
         number x = leftPadding
-        number y = -topPadding + bottomPadding
+        number y = bottomPadding
 
         number tallestHeight = 0
         Array<Item2D> kids = item:GetChildren()
@@ -25,7 +25,7 @@ class ToolbarLayout is Layout
 
             if (not ignoreHidden) or kid:IsShowing()
                 if x + kid:GetWidth() > item:GetWidth() and wrapping
-                    y = y - tallestHeight - topPadding - bottomPadding
+                    y = y - tallestHeight - bottomPadding
                     x = leftPadding
                     tallestHeight = 0
                 end
@@ -44,8 +44,8 @@ class ToolbarLayout is Layout
             item:SetWidth(x)
         else
             number oldHeight = item:GetHeight()
-            item:SetHeight(tallestHeight - y + bottomPadding + topPadding)
-            item:MoveY(oldHeight - (tallestHeight - y))
+            item:SetHeight(tallestHeight + bottomPadding + topPadding)
+            item:MoveY(oldHeight - (tallestHeight))
         end
     end
 
