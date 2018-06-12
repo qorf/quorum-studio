@@ -10,6 +10,7 @@ import org.debugger.jdi.JDIDebugger;
 import quorum.Libraries.Containers.Array;
 import quorum.Libraries.Containers.Array_;
 import quorum.Libraries.Containers.Iterator_;
+import quorum.Libraries.Language.Debug.Breakpoint_;
 import quorum.Libraries.Language.Debug.DebuggerListener_;
 
 /**
@@ -22,6 +23,7 @@ public class Debugger {
     String location = "";
     String workingDirectory = "";
     ArrayList<DebuggerListenerWrapper> listeners = new ArrayList<>();
+    ArrayList<BreakpointWrapper> breakpoints = new ArrayList<>();
     
     public void RunToCursor(String className, int line) {
         //TODO
@@ -35,10 +37,60 @@ public class Debugger {
 //        return "quorum/" + newName;
 //    }
     
+    public void Add(Breakpoint_ breakpoint) {
+        BreakpointWrapper wrapper = new BreakpointWrapper();
+        wrapper.setBreakpoint(breakpoint);
+        breakpoints.add(wrapper);
+        if(debugger != null) {
+            debugger.add(wrapper);
+        }
+    }
+    
+    public void Remove(Breakpoint_ breakpoint) {
+        for(int i = 0; i < breakpoints.size(); i++) {
+            BreakpointWrapper item = breakpoints.get(i);
+            if(item.getStaticKey().compareTo(breakpoint.GetStaticKey())==0) {
+                listeners.remove(i);
+                if(debugger != null) {
+                    debugger.remove(item);
+                }
+                i--;
+            }
+        }
+    }
+    
+    public Iterator_ GetBreakpoints() {
+        Array_ array = new Array();
+        for(int i = 0; i < breakpoints.size(); i++) {
+            BreakpointWrapper item = breakpoints.get(i);
+            Breakpoint_ nonwrapped = item.getBreakpoint();
+            array.Add(nonwrapped);
+        }
+        return array.GetIterator();
+    }
+    
+    public Breakpoint_ GetBreakpoint(int index) {
+        return breakpoints.get(index).getBreakpoint();
+    }
+    
+    public int GetBreakpointsSize() {
+        return listeners.size();
+    }
+    
+    public void EmptyBreakpoints() {
+        breakpoints.clear();
+        if(debugger != null) {
+            debugger.clearBreakpoints();
+        }
+    }
+    
     public void Add(DebuggerListener_ listener) {
         DebuggerListenerWrapper wrapper = new DebuggerListenerWrapper();
         wrapper.setListener(listener);
         listeners.add(wrapper);
+        if(debugger != null) {
+            debugger.add(wrapper);
+        }
     }
     
     public void Remove(DebuggerListener_ listener) {
@@ -46,6 +98,7 @@ public class Debugger {
             DebuggerListenerWrapper item = listeners.get(i);
             if(item.getName().compareTo(listener.GetName()) == 0) {
                 listeners.remove(i);
+                debugger.remove(item);
                 i--;
             }
         }
@@ -55,12 +108,15 @@ public class Debugger {
         return listeners.get(index).getListener();
     }
     
-    public int GetSize() {
+    public int GetListenersSize() {
         return listeners.size();
     }
     
-    public void Empty() {
+    public void EmptyListeners() {
         listeners.clear();
+        if(debugger != null) {
+            debugger.clearListeners();
+        }
     }
     
     public Iterator_ GetListeners() {
@@ -89,6 +145,11 @@ public class Debugger {
         debugger = new JDIDebugger();
         for(int i = 0; i < listeners.size(); i++) {
             DebuggerListenerWrapper item = listeners.get(i);
+            debugger.add(item);
+        }
+        
+        for(int i = 0; i < breakpoints.size(); i++) {
+            BreakpointWrapper item = breakpoints.get(i);
             debugger.add(item);
         }
         debugger.setExecutable(location);
