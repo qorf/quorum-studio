@@ -7,17 +7,15 @@ use Libraries.Game.Graphics.Label
 class ToolbarLayout is Layout
     
     boolean wrapping = false
-    boolean padFront = false
     boolean ignoreHidden = false
-    number padding = 0
+    number leftPadding = 0
+    number rightPadding = 0
+    number topPadding = 0
+    number bottomPadding = 0
 
     action Layout(Item2D item)
-        number x = 0
-        number y = 0
-
-        if padFront
-            x = padding
-        end
+        number x = leftPadding
+        number y = -topPadding
 
         number tallestHeight = 0
         Array<Item2D> kids = item:GetChildren()
@@ -27,8 +25,8 @@ class ToolbarLayout is Layout
 
             if (not ignoreHidden) or kid:IsShowing()
                 if x + kid:GetWidth() > item:GetWidth() and wrapping
-                    y = y - tallestHeight
-                    x = 0
+                    y = y - tallestHeight - topPadding - bottomPadding
+                    x = leftPadding
                     tallestHeight = 0
                 end
 
@@ -37,7 +35,7 @@ class ToolbarLayout is Layout
                 end
 
                 kid:SetPosition(x, y)
-                x = x + kid:GetWidth() + padding
+                x = x + kid:GetWidth() + leftPadding + rightPadding
             end
             i = i + 1
         end
@@ -46,7 +44,7 @@ class ToolbarLayout is Layout
             item:SetWidth(x)
         else
             number oldHeight = item:GetHeight()
-            item:SetHeight(tallestHeight - y)
+            item:SetHeight(tallestHeight - y - bottomPadding)
             item:MoveY(oldHeight - (tallestHeight - y))
         end
     end
@@ -59,20 +57,36 @@ class ToolbarLayout is Layout
         return wrapping
     end
 
-    action SetPadding(number value)
-        padding = value
+    action SetLeftPadding(number value)
+        leftPadding = value
     end
 
-    action GetPadding returns number
-        return padding
+    action GetLeftPadding returns number
+        return leftPadding
     end
 
-    action SetFrontPadding(boolean pad)
-        padFront = pad
+    action SetBottomPadding(number value)
+        bottomPadding = value
     end
 
-    action IsFrontPadding returns boolean
-        return padFront
+    action GetBottomPadding returns number
+        return bottomPadding
+    end
+
+    action SetRightPadding(number value)
+        rightPadding = value
+    end
+
+    action GetRightPadding returns number
+        return rightPadding
+    end
+
+    action SetTopPadding(number value)
+        topPadding = value
+    end
+
+    action GetTopPadding returns number
+        return topPadding
     end
 
     action SetIgnoreHidden(boolean ignore)
