@@ -1,0 +1,55 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Controls.TextBox
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Studio.Build.BuildInformation
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Interface.Controls.Tab
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Interface.Selections.TextBoxSelection
+use Libraries.System.File
+
+class ToggleBreakpointBehavior is QuorumStudioBehavior
+    BuildManager builder = undefined
+
+    action GetBuildManager returns BuildManager
+        return builder
+    end
+
+    action SetBuildManager(BuildManager builder)
+        me:builder = builder
+    end
+
+    action Run(BehaviorEvent event)
+        QuorumStudio studio = GetMainApplication()
+        CodeEditorTabPane tabs = studio:GetTabPane()
+        TabPaneSelection selection = tabs:GetSelection()
+        if not selection:IsEmpty()
+            Tab tab = selection:GetTab()
+            if tab not= undefined and tab is EditorTab
+                EditorTab editor = cast(EditorTab, tab)
+                TextBox box = editor:GetTextBox()
+                if box not= undefined
+                    TextBoxSelection boxSelection = box:GetSelection()
+                    integer line = boxSelection:GetFirstLine()
+                    File file = editor:GetFile()
+                    output "Line: " + line + ":" + file:GetAbsolutePath()
+                end
+            end
+        end
+    end
+end
