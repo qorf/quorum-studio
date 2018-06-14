@@ -22,6 +22,7 @@ use Libraries.Development.Environment.Studio.Interface.OutputTab
 use Libraries.Development.Environment.Studio.Interface.VariablesTab
 use Libraries.Development.Environment.Studio.Interface.BreakpointsTab
 use Libraries.Development.Environment.Studio.Interface.CallStackTab
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 
 class OutputEditorTabPane is TabPane
     Color color
@@ -33,6 +34,16 @@ class OutputEditorTabPane is TabPane
 
     
     Resources resources = undefined
+    Behaviors behaviors = undefined
+
+    action GetBehaviors returns Behaviors
+        return behaviors
+    end
+
+    action SetBehaviors(Behaviors behaviors)
+        me:behaviors = behaviors
+        breakpointsTab:SetBehaviors(behaviors)
+    end
 
     on create
         SetName("Output Editor TabPane")
@@ -44,6 +55,7 @@ class OutputEditorTabPane is TabPane
 
     action SetResources(Resources resources)
         me:resources = resources
+        breakpointsTab:SetResources(resources)
     end
 
     action GetOutputTab returns OutputTab
@@ -76,7 +88,7 @@ class OutputEditorTabPane is TabPane
         fill:SetHeightOffset(-4)
 
         breakpointsTab:SetResources(resources)
-        breakpointsTab:Setup()
+        
         
 
         SetName("Output Tabs")
@@ -92,7 +104,6 @@ class OutputEditorTabPane is TabPane
     end
 
     action SetupTabs
-        
         Layout textBoxLayout
         textBoxLayout:SetPercentageX(0)
         textBoxLayout:SetPercentageY(0)
@@ -108,7 +119,8 @@ class OutputEditorTabPane is TabPane
 
         errorTab:Initialize("Errors", undefined, true)
         variablesTab:Initialize("Variables", undefined, true)
-        breakpointsTab:Initialize("Breakpoints", breakpointsTab:GetPane(), true)
+        
         callStackTab:Initialize("Call Stack", undefined, true)
+        breakpointsTab:Setup()
     end
 end

@@ -4,10 +4,29 @@ use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Controls.Tree
 use Libraries.Game.Graphics.Color
 use Libraries.Development.Environmen.Resources
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Language.Debug.Debugger
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Layouts.Layout
 
 class BreakpointsTab is Tab 
     BreakpointScrollPane pane
     Resources resources = undefined
+    Behaviors behaviors = undefined
+    BuildManager manager = undefined
+    Debugger debugger = undefined
+    Tree breakpointTree
+
+    action GetBehaviors returns Behaviors
+        return behaviors
+    end
+
+    action SetBehaviors(Behaviors behaviors)
+        me:behaviors = behaviors
+        manager = behaviors:GetBuildManager()
+        debugger = manager:GetDebugger()
+    end
 
     action GetResources returns Resources
         return resources
@@ -22,10 +41,27 @@ class BreakpointsTab is Tab
     end
 
     action Setup
-        pane:Initialize(100,100, resources:GetBackgroundColor())
+
+        Layout treeLayout
+        treeLayout:SetPercentageOriginY(1)
+        treeLayout:SetPercentageY(1)
+        breakpointTree:AddLayout(treeLayout)
+        
         pane:Setup()
+        pane:Initialize(1,1, resources:GetBackgroundColor())
+        pane:Add(breakpointTree)
         pane:Resize()
 
         
+        
+
+        TreeItem break
+        break:Initialize("Line 2, Bob.quorum")
+        breakpointTree:Add(break)
+        breakpointTree:Resize()
+
+        
+
+        Initialize("Breakpoints", GetPane(), true)
     end
 end

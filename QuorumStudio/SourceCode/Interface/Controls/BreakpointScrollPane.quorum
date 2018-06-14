@@ -3,6 +3,7 @@ use Libraries.Interface.Controls.ScrollPane
 use Libraries.Interface.Layouts.Layout
 use Libraries.Interface.Controls.Tree
 use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Layouts.FillLayout
 
 class BreakpointScrollPane is ScrollPane
     on create
@@ -10,22 +11,15 @@ class BreakpointScrollPane is ScrollPane
     end
 
     action Setup
-        Layout scrollLayout
-        scrollLayout:SetPercentageX(0)
-        scrollLayout:SetPercentageY(0)
-        scrollLayout:SetPercentageOriginY(0)
-        scrollLayout:SetPercentageHeight(1)
-        scrollLayout:SetWidthOffset(300)
+        FillLayout fill
+        fill:SetFillSide(fill:RIGHT)
+        fill:SetPercentageY(1)
+        fill:SetPercentageOriginY(1)
+        fill:SetPercentageHeight(1.0)
+        fill:SetOffsetX(1)
+        fill:SetWidthOffset(-1)
 
-        AddLayout(scrollLayout)
-        SetRegionSize(300, 1000)
-        Tree tree
-
-        TreeItem break
-        break:Initialize("Line 2, Bob.quorum")
-        tree:Add(break)
-
-        
-        Add(tree)
+        AddLayout(fill)
+        SetRegionSize(300, 0)
     end
 end
