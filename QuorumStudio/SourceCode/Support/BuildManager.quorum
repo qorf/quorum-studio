@@ -49,6 +49,21 @@ class BuildManager is DebuggerListener
         return breakpointListeners:GetIterator()
     end
 
+    action GetBreakpointIterator returns Iterator<Breakpoint>
+        Array<Breakpoint> bps
+        Iterator<text> iterator = breakpoints:GetKeyIterator()
+        repeat while iterator:HasNext()
+            text value = iterator:Next()
+            HashTable<integer,Breakpoint> lines = breakpoints:GetValue(value)
+            Iterator<Breakpoint> points = lines:GetValueIterator()
+            repeat while points:HasNext()
+                Breakpoint bp = points:Next()
+                bps:Add(bp)
+            end
+        end
+        return bps:GetIterator()
+    end
+
     private action FireBreakpointEvent(BreakpointEvent event)
         i = 0
         repeat while i < breakpointListeners:GetSize()

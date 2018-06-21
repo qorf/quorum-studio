@@ -8,17 +8,24 @@ use Libraries.Containers.HashTable
 use Libraries.Containers.Iterator
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Language.Debug.Breakpoint
 
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
     constant text OPEN_PROJECTS = "Open Projects"
     constant text OPEN_FILES = "Open Files"
+    constant text BREAKPOINTS = "Breakpoints"
+    constant text BREAKPOINT = "Breakpoint"
+
     HashTable<text, text> projects 
     Array<File> filesOpenAtBoot
     QuorumStudio studio = undefined
+    BuildManager manager = undefined
 
     action SetMainApplication(QuorumStudio studio)
         me:studio = studio
+        manager = studio:GetBuildManager()
     end
 
     action GetMainApplication returns QuorumStudio
@@ -99,6 +106,25 @@ class Options is ProjectListener
                 item:SetText(path)
                 openFiles:Add(item)
             end
+        end
+
+        JavaScriptObjectNotation activeBreakpoints
+        activeBreakpoints:SetArray()
+        notation:Add(BREAKPOINTS, activeBreakpoints)
+        Iterator<Breakpoint> breakpoints = manager:GetBreakpointIterator()
+        repeat while breakpoints:HasNext()
+            Breakpoint bp = breakpoints:Next()
+            JavaScriptObjectNotation item
+            item:SetArray()
+            activeBreakpoints:Add(item)
+
+            JavaScriptObjectNotation bpFile
+            bpFile:SetText(bp:GetFile():GetAbsolutePath())
+            JavaScriptObjectNotation bpLine
+            bpLine:SetInteger(bp:GetLine())
+
+            item:Add(bpFile)
+            item:Add(bpLine)
         end
 
         text value = notation:ToText()
