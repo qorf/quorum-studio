@@ -22,9 +22,12 @@ use Libraries.Interface.Controls.Tab
 use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Interface.Selections.TextBoxSelection
 use Libraries.System.File
+use Libraries.Language.Debug.Debugger
+use Libraries.Language.Debug.Breakpoint
 
 class ToggleBreakpointBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
+    Debugger debugger = undefined
 
     action GetBuildManager returns BuildManager
         return builder
@@ -32,6 +35,7 @@ class ToggleBreakpointBehavior is QuorumStudioBehavior
 
     action SetBuildManager(BuildManager builder)
         me:builder = builder
+        debugger = builder:GetDebugger()
     end
 
     action Run(BehaviorEvent event)
@@ -47,7 +51,7 @@ class ToggleBreakpointBehavior is QuorumStudioBehavior
                     TextBoxSelection boxSelection = box:GetSelection()
                     integer line = boxSelection:GetFirstLine()
                     File file = editor:GetFile()
-                    output "Line: " + line + ":" + file:GetAbsolutePath()
+                    builder:ToggleBreakpoint(file, line)
                 end
             end
         end

@@ -9,8 +9,13 @@ use Libraries.Development.Environment.Studio.Build.BuildManager
 use Libraries.Language.Debug.Debugger
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Interface.Layouts.Layout
+use Libraries.Language.Debug.BreakpointListener
+use Libraries.Language.Debug.BreakpointEvent
+use Libraries.Language.Debug.Breakpoint
+use Libraries.System.File
+use Libraries.Containers.Iterator
 
-class BreakpointsTab is Tab 
+class BreakpointsTab is Tab, BreakpointListener
     BreakpointScrollPane pane
     Resources resources = undefined
     Behaviors behaviors = undefined
@@ -26,6 +31,8 @@ class BreakpointsTab is Tab
         me:behaviors = behaviors
         manager = behaviors:GetBuildManager()
         debugger = manager:GetDebugger()
+
+        manager:Add(me)
     end
 
     action GetResources returns Resources
@@ -40,6 +47,60 @@ class BreakpointsTab is Tab
         return pane
     end
 
+    action ToggledBreakpoint(BreakpointEvent event)
+        Breakpoint point = event:GetBreakpoint()
+        File file = point:GetFile()
+        integer line = point:GetLine()
+
+        if event:IsAdded()
+            boolean found = false
+            Iterator<TreeItem> items = breakpointTree:GetTreeItems()
+            repeat while items:HasNext() and not found
+                TreeItem item = items:Next()
+                if item:GetName() = file:GetFileName()
+                    found = true
+                    TreeItem newOne
+                    newOne:Initialize("" + line, resources:GetBreakpoint())
+                    item:Add(newOne)
+                end
+            end
+
+            if not found
+                TreeItem top
+                top:Initialize("" + file:GetFileName(), resources:GetBreakpoint())
+                
+                TreeItem newOne
+                newOne:Initialize("" + line, resources:GetBreakpoint())
+                top:Add(newOne)
+
+                breakpointTree:Add(top)
+            end
+            breakpointTree:Resize()
+        else 
+            boolean found = false
+            Iterator<TreeItem> items = breakpointTree:GetTreeItems()
+            repeat while items:HasNext() and not found
+                TreeItem item = items:Next()
+                if item:GetName() = file:GetFileName()
+                    found = true
+                    if item:GetSize() = 1
+                        breakpointTree:Remove(item)
+                        found = true
+                    else 
+                        Iterator<TreeItem> lines = item:GetTreeItems()
+                        repeat while lines:HasNext()
+                            TreeItem l = lines:Next()
+                            if l:GetName() = "" + line
+                                item:Remove(l)
+                                found = true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
     action Setup
 
         Layout treeLayout
@@ -51,16 +112,6 @@ class BreakpointsTab is Tab
         pane:Initialize(1,1, resources:GetBackgroundColor())
         pane:Add(breakpointTree)
         pane:Resize()
-
-        
-        
-
-        TreeItem break
-        break:Initialize("Line 2, Bob.quorum")
-        breakpointTree:Add(break)
-        breakpointTree:Resize()
-
-        
 
         Initialize("Breakpoints", GetPane(), true)
     end
