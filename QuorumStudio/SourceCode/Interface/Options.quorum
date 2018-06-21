@@ -110,8 +110,12 @@ class Options is ProjectListener
 
         JavaScriptObjectNotation activeBreakpoints
         activeBreakpoints:SetArray()
-        notation:Add(BREAKPOINTS, activeBreakpoints)
+        
         Iterator<Breakpoint> breakpoints = manager:GetBreakpointIterator()
+        //ignore breakpoints if there aren't any.
+        if breakpoints:HasNext()
+            notation:Add(BREAKPOINTS, activeBreakpoints)
+        end
         repeat while breakpoints:HasNext()
             Breakpoint bp = breakpoints:Next()
             JavaScriptObjectNotation item
@@ -166,6 +170,29 @@ class Options is ProjectListener
                     File file
                     file:SetAbsolutePath(path)
                     filesOpenAtBoot:Add(file)
+                end
+                i = i + 1
+            end
+
+        elseif key = BREAKPOINTS
+            if object:IsEmpty()
+                return now
+            end
+
+            JavaScriptObjectNotation array = object:Get(0)
+
+            i = 0
+            repeat while i < array:GetSize()
+                JavaScriptObjectNotation value = array:Get(i)
+                if value:IsArray() and value:GetSize() = 2
+                    JavaScriptObjectNotation locationJSON = value:Get(0)
+                    JavaScriptObjectNotation lineJSON = value:Get(1)
+
+                    text location = locationJSON:GetText()
+                    integer line = lineJSON:GetInteger()
+                    File file
+                    file:SetAbsolutePath(location)
+                    manager:ToggleBreakpoint(file, line)
                 end
                 i = i + 1
             end
