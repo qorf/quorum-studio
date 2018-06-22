@@ -26,10 +26,9 @@ public class DebuggerListenerWrapper implements DebuggerListener{
     private DebuggerListener_ listener;
     private DebuggerStartEvent_ start = new quorum.Libraries.Language.Debug.DebuggerStartEvent();
     private DebuggerStopEvent_ stop = new quorum.Libraries.Language.Debug.DebuggerStopEvent();
-    private DebuggerStepEvent_ step = new quorum.Libraries.Language.Debug.DebuggerStepEvent();
     private DebuggerErrorEvent_ error = new quorum.Libraries.Language.Debug.DebuggerErrorEvent();
     private BreakpointEvent_ breakpoint = new quorum.Libraries.Language.Debug.BreakpointEvent();
-    
+    private static final String QUORUM = "quorum.";
     @Override
     public void accept(DebuggerStartEvent event) {
         listener.Run(start);
@@ -43,6 +42,11 @@ public class DebuggerListenerWrapper implements DebuggerListener{
 
     @Override
     public void accept(DebuggerStepEvent event) {
+        DebuggerStepEvent_ step = new quorum.Libraries.Language.Debug.DebuggerStepEvent();
+        String source = event.getSource();
+        int line = event.getLine();
+        step.SetClassName(source.substring(QUORUM.length()));
+        step.SetLine(line);
         listener.Run(step);
     }
 
