@@ -36,7 +36,6 @@ public class DebuggerListenerWrapper implements DebuggerListener{
 
     @Override
     public void accept(DebuggerStopEvent event) {
-        
         listener.Run(stop);
     }
 
