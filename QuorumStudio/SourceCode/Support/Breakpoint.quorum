@@ -5,6 +5,7 @@ class Breakpoint
     integer count = -1
     integer line = 0
     text dotName = ""
+    text fullyQualifiedName = ""
     File file = undefined
 
     action GetFile returns File
@@ -36,7 +37,15 @@ class Breakpoint
      * @return 
      */
     action GetFullyQualifiedName returns text
-        return dotName:Replace(".", "/")
+        return fullyQualifiedName
+    end
+
+    private action GetJVMClassName(text key) returns text
+        text value = key:Replace(".", "/")
+        if value:StartsWith("/")
+            return "quorum" + value
+        end
+        return "quorum/" + value
     end
 
     /**
@@ -50,6 +59,7 @@ class Breakpoint
     end
 
     action SetDotName(text key)
+        fullyQualifiedName = GetJVMClassName(key)
         me:dotName = key
     end
 

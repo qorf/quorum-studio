@@ -23,6 +23,8 @@ use Libraries.Containers.HashTable
 use Libraries.Language.Debug.Breakpoint
 use Libraries.Containers.List
 use Libraries.Language.Debug.BreakpointListener
+use Libraries.Language.Compile.Symbol.SymbolTable
+use Libraries.Language.Compile.Symbol.Class
 
 class BuildManager is DebuggerListener
     Library library
@@ -228,9 +230,12 @@ class BuildManager is DebuggerListener
         OutputTab out = info:outputTab
 
         CompilerResult result = info:result
+        SymbolTable table = result:symbolTable
         CompilerErrorManager errors = result:compilerErrorManager
         if errors:IsCompilationErrorFree()
             out:Append("Starting Debugger")
+        else 
+            return now
         end
 
         CompilerRequest request = info:request
@@ -245,10 +250,15 @@ class BuildManager is DebuggerListener
         repeat while iterator:HasNext()
             Breakpoint bp = iterator:Next()
             //calculate its dot location from the build information
+            Class clazz = table:GetClassInFile(bp:GetFile():GetAbsolutePath())
+            if clazz not= undefined
+                text key = clazz:GetStaticKey()
+                bp:SetDotName(key)
+                debugger:Add(bp)
+            end
         end
 
         debugger:Start()
-
         debugger:Continue()
     end
 
