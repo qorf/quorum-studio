@@ -6,6 +6,8 @@
 package plugins.quorum.Libraries.Language.Debug;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import org.debugger.jdi.JDIDebugger;
 import quorum.Libraries.Containers.Array;
 import quorum.Libraries.Containers.Array_;
@@ -23,38 +25,35 @@ public class Debugger {
     String location = "";
     String workingDirectory = "";
     ArrayList<DebuggerListenerWrapper> listeners = new ArrayList<>();
-    ArrayList<BreakpointWrapper> breakpoints = new ArrayList<>();
+    //ArrayList<BreakpointWrapper> breakpoints = new ArrayList<>();
+    HashMap<String, BreakpointWrapper> breakpoints = new HashMap<>();
     
     public void RunToCursor(String className, int line) {
         //TODO
     }
     
-//    public static String staticKeyToJVMName(String name) {
-//        String newName = name.replace('.', '/');
-//        if (newName.startsWith("/")) {
-//            return "quorum" + newName;
-//        }
-//        return "quorum/" + newName;
-//    }
+    public void Toggle(Breakpoint_ breakpoint) {
+        if(breakpoints.containsKey(breakpoint.GetStaticKey())) {
+            Remove(breakpoint);
+        } else {
+            Add(breakpoint);
+        }
+    }
     
     public void Add(Breakpoint_ breakpoint) {
         BreakpointWrapper wrapper = new BreakpointWrapper();
         wrapper.setBreakpoint(breakpoint);
-        breakpoints.add(wrapper);
+        breakpoints.put(breakpoint.GetStaticKey(), wrapper);
         if(debugger != null) {
             debugger.add(wrapper);
         }
     }
     
     public void Remove(Breakpoint_ breakpoint) {
-        for(int i = 0; i < breakpoints.size(); i++) {
-            BreakpointWrapper item = breakpoints.get(i);
-            if(item.getStaticKey().compareTo(breakpoint.GetStaticKey())==0) {
-                listeners.remove(i);
-                if(debugger != null) {
-                    debugger.remove(item);
-                }
-                i--;
+        if(breakpoints.containsKey(breakpoint.GetStaticKey())) {
+            BreakpointWrapper remove = breakpoints.remove(breakpoint.GetStaticKey());
+            if(debugger != null) {
+                debugger.remove(remove);
             }
         }
     }
@@ -69,10 +68,6 @@ public class Debugger {
         return array.GetIterator();
     }
     
-    public Breakpoint_ GetBreakpoint(int index) {
-        return breakpoints.get(index).getBreakpoint();
-    }
-    
     public int GetBreakpointsSize() {
         return listeners.size();
     }
@@ -82,6 +77,13 @@ public class Debugger {
         if(debugger != null) {
             debugger.clearBreakpoints();
         }
+    }
+    
+    public Breakpoint_ GetBreakpoint(String key) {
+        if(breakpoints.containsKey(key)) {
+            return breakpoints.get(key).getBreakpoint();
+        }
+        return null;
     }
     
     public void Add(DebuggerListener_ listener) {
@@ -147,11 +149,12 @@ public class Debugger {
             DebuggerListenerWrapper item = listeners.get(i);
             debugger.add(item);
         }
-        
-        for(int i = 0; i < breakpoints.size(); i++) {
-            BreakpointWrapper item = breakpoints.get(i);
-            debugger.add(item);
+        Iterator<BreakpointWrapper> iterator = breakpoints.values().iterator();
+        while(iterator.hasNext()) {
+            BreakpointWrapper next = iterator.next();
+            debugger.add(next);
         }
+        
         debugger.setExecutable(location);
         debugger.setWorkingDirectory(workingDirectory);
         debugger.launch();

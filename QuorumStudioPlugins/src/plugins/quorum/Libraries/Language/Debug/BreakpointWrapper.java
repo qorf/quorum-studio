@@ -48,7 +48,7 @@ public class BreakpointWrapper implements Breakpoint, ClassInformation{
 
     @Override
     public String getDotName() {
-        return breakpoint.GetDotName();
+        return "quorum." + breakpoint.GetDotName();
     }
 
     /**
