@@ -32,10 +32,8 @@ class CodeEditorTabPane is TabPane, TabChangeListener
     HashTable<text, File> openFiles
     HashTable<text, Tab> openTabs
     Resources resources = undefined
-
-    on create
-        
-    end
+    File queuedFileOpen = undefined
+    integer queuedLine = 0
 
     action ClosedTab(TabChangeEvent event)
         if event:GetTab() is EditorTab
@@ -94,7 +92,11 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         AddTabChangeListener(me)
     end
 
-    action OpenNewTab(File file)
+    /*
+        This action opens a new tab if one is not open. If one is already open, 
+        then it returns the one already there.
+    */
+    action OpenNewTab(File file) returns EditorTab
         text contents = ""
 
         check
@@ -143,24 +145,49 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         // appropriate image (e.g., Quorum icon for a .quorum file).
         Texture icon = resources:GetQuorumFile()
 
-        EditorTab newTab
-        newTab:Initialize(file:GetPath(), textBox, icon, true)
-        newTab:SetFile(file)
-        newTab:Setup()
+        EditorTab returnedTab = undefined
         boolean value = openFiles:HasKey(file:GetAbsolutePath())
         if value //it's already open
             Tab tab = openTabs:GetValue(file:GetAbsolutePath())
             //now we have to give that tab the focus
             tab:ReleasedMouse()
             tab:Focus()
+            returnedTab = cast(EditorTab, tab)
         else 
+            EditorTab tab
+            tab:Initialize(file:GetPath(), textBox, icon, true)
+            tab:SetFile(file)
+            tab:Setup()
             openFiles:Add(file:GetAbsolutePath(), file)
-            openTabs:Add(file:GetAbsolutePath(), newTab)
-            Add(cast(Tab,newTab))
-            newTab:ReleasedMouse()
-            newTab:Focus()
+            openTabs:Add(file:GetAbsolutePath(), tab)
+            Add(cast(Tab,tab))
+            tab:ReleasedMouse()
+            tab:Focus()
+            returnedTab = tab
         end
 
         Resize()
+        return returnedTab
+    end
+
+    /*
+    
+    */
+    action QueueTabOpen(File file, integer line)
+        queuedFileOpen = file
+        queuedLine = line
+    end
+
+    action Update(number seconds)
+        if queuedFileOpen not= undefined
+            EditorTab tab = OpenNewTab(queuedFileOpen)
+            TextBox box = tab:GetTextBox()
+            if box not= undefined
+                box:SetCaretPosition(queuedLine, 0)
+                box:GoToLine(queuedLine)
+                box:Focus()
+            end
+            queuedFileOpen = undefined
+        end
     end
 end

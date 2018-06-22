@@ -25,6 +25,9 @@ use Libraries.Containers.List
 use Libraries.Language.Debug.BreakpointListener
 use Libraries.Language.Compile.Symbol.SymbolTable
 use Libraries.Language.Compile.Symbol.Class
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Interface.Controls.TextBox
 
 class BuildManager is DebuggerListener
     Library library
@@ -34,9 +37,19 @@ class BuildManager is DebuggerListener
     HashTable<text, BuildInformation> builds
     HashTable<text, HashTable<integer, Breakpoint>> breakpoints
     Array<BreakpointListener> breakpointListeners
+    BuildInformation debuggingProgram = undefined
+    CodeEditorTabPane editors = undefined
 
     on create
         debugger:Add(me)
+    end
+
+    action GetCodeEditorTabPane returns CodeEditorTabPane
+        return editors
+    end
+
+    action SetCodeEditorTabPane(CodeEditorTabPane pane)
+        me:editors = pane
     end
 
     action Add(BreakpointListener listener)
@@ -125,15 +138,25 @@ class BuildManager is DebuggerListener
     end
 
     action Run(DebuggerStartEvent event)
-        output "Debugger Started"
+        
     end
 
     action Run(DebuggerStopEvent event)
-        output "Debugger stopped"
+        debuggingProgram = undefined
     end
 
     action Run(DebuggerStepEvent event)
-        output "Step"
+        if debuggingProgram not= undefined
+            CompilerResult result = debuggingProgram:result
+            SymbolTable table = result:symbolTable
+            Class clazz = table:GetClass(event:GetClassName())
+            if clazz not= undefined
+                File file = clazz:GetFile()
+                if file not= undefined and editors not= undefined
+                    editors:QueueTabOpen(file, event:GetLine())
+                end
+            end
+        end
     end
 
     action Run(DebuggerErrorEvent event)
@@ -225,6 +248,7 @@ class BuildManager is DebuggerListener
     end
 
     action Debug(BuildInformation info)
+        debuggingProgram = undefined
         QuorumProject project = info:project
         Build(info)
         OutputTab out = info:outputTab
@@ -257,7 +281,7 @@ class BuildManager is DebuggerListener
                 debugger:Add(bp)
             end
         end
-
+        debuggingProgram = info
         debugger:Start()
         debugger:Continue()
     end
