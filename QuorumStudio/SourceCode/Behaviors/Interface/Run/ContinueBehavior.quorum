@@ -1,0 +1,23 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Language.Debug.Debugger
+use Libraries.Interface.Events.BehaviorEvent
+
+class ContinueBehavior is QuorumStudioBehavior
+    BuildManager builder = undefined
+    Debugger debugger = undefined
+
+    action GetBuildManager returns BuildManager
+        return builder
+    end
+
+    action SetBuildManager(BuildManager builder)
+        me:builder = builder
+        debugger = builder:GetDebugger()
+    end
+
+    action Run(BehaviorEvent event)
+        debugger:Continue()
+    end
+end

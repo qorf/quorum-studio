@@ -33,6 +33,8 @@ class Behaviors
     constant text DEBUG_PROJECT = "Debug Project"
     constant text RUN_PROJECT = "Run Project"
     constant text RUN_TO_CURSOR = "Run to Cursor"
+    constant text PAUSE = "Pause"
+    constant text CONTINUE = "Continue"
     constant text STEP_INTO = "Step Into"
     constant text STEP_OUT = "Step Out"
     constant text STEP_OVER = "Step Over"
@@ -49,6 +51,8 @@ class Behaviors
     StepOutBehavior stepOutBehavior
     StepOverBehavior stepOverBehavior
     StopBehavior stopBehavior
+    PauseBehavior pauseBehavior
+    ContinueBehavior continueBehavior
     ToggleBreakpointBehavior toggleBreakpointBehavior
 
     //Windows Menu
@@ -90,6 +94,8 @@ class Behaviors
     ThreadedBehavior threadedStepOut
     ThreadedBehavior threadedStepOver
     ThreadedBehavior threadedStop
+    ThreadedBehavior threadedPause
+    ThreadedBehavior threadedContinue
     ScanLibraryBehavior scanner
 
     on create
@@ -112,6 +118,8 @@ class Behaviors
         stepOutBehavior:SetBuildManager(builder)
         stepOverBehavior:SetBuildManager(builder)
         stopBehavior:SetBuildManager(builder)
+        pauseBehavior:SetBuildManager(builder)
+        continueBehavior:SetBuildManager(builder)
         scanner:SetBuildManager(builder)
         toggleBreakpointBehavior:SetBuildManager(builder)
 
@@ -136,6 +144,10 @@ class Behaviors
         threadedStepOver:SetThreadRunner(buildSystemRunner)
         threadedStop:SetNestedBehavior(stopBehavior)
         threadedStop:SetThreadRunner(buildSystemRunner)
+        threadedPause:SetNestedBehavior(pauseBehavior)
+        threadedPause:SetThreadRunner(buildSystemRunner)
+        threadedContinue:SetNestedBehavior(continueBehavior)
+        threadedContinue:SetThreadRunner(buildSystemRunner)
 
         //add them to the behaviors system
         behaviors:Add(BUILD_PROJECT, threadedBuild)
@@ -148,6 +160,8 @@ class Behaviors
         behaviors:Add(STEP_OUT, threadedStepOut)
         behaviors:Add(STEP_OVER, threadedStepOver)
         behaviors:Add(STOP, threadedStop)
+        behaviors:Add(PAUSE, threadedPause)
+        behaviors:Add(CONTINUE, threadedContinue)
         behaviors:Add(TOGGLE_BREAKPOINT, toggleBreakpointBehavior)
 
         behaviors:Add(FOCUS_BREAKPOINTS_WINDOW, focusBreakpointsBehavior)
@@ -261,6 +275,22 @@ class Behaviors
 
     action GetStepOutBehavior returns StepOutBehavior
         return stepOutBehavior
+    end
+
+    action GetThreadedPauseBehavior returns ThreadedBehavior
+        return threadedPause
+    end
+
+    action GetPauseBehavior returns PauseBehavior
+        return pauseBehavior
+    end
+
+    action GetThreadedContinueBehavior returns ThreadedBehavior
+        return threadedContinue
+    end
+
+    action GetContinueBehavior returns ContinueBehavior
+        return continueBehavior
     end
         
     action GetThreadedStepOverBehavior returns ThreadedBehavior
