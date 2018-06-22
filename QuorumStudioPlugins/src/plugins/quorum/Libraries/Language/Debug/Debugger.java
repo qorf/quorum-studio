@@ -14,6 +14,7 @@ import quorum.Libraries.Containers.Array_;
 import quorum.Libraries.Containers.Iterator_;
 import quorum.Libraries.Language.Debug.Breakpoint_;
 import quorum.Libraries.Language.Debug.DebuggerListener_;
+import quorum.Libraries.Language.Debug.VariablesModel_;
 
 /**
  *
@@ -26,6 +27,7 @@ public class Debugger {
     String workingDirectory = "";
     ArrayList<DebuggerListenerWrapper> listeners = new ArrayList<>();
     HashMap<String, BreakpointWrapper> breakpoints = new HashMap<>();
+    quorum.Libraries.Language.Debug.VariablesModel model = new quorum.Libraries.Language.Debug.VariablesModel();
     
     public void RunToCursor(String className, int line) {
         if(debugger != null) {
@@ -197,5 +199,10 @@ public class Debugger {
         if(debugger != null) {
             debugger.stepOut();
         }
+    }
+    
+    public VariablesModel_ GetVariablesModel() {
+        model.plugin_.setDebugger(debugger);
+        return model;
     }
 }
