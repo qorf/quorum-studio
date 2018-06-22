@@ -25,11 +25,12 @@ public class Debugger {
     String location = "";
     String workingDirectory = "";
     ArrayList<DebuggerListenerWrapper> listeners = new ArrayList<>();
-    //ArrayList<BreakpointWrapper> breakpoints = new ArrayList<>();
     HashMap<String, BreakpointWrapper> breakpoints = new HashMap<>();
     
     public void RunToCursor(String className, int line) {
-        //TODO
+        if(debugger != null) {
+            debugger.runForwardToLine("quorum." + className, line);
+        }
     }
     
     public void Toggle(Breakpoint_ breakpoint) {
@@ -60,9 +61,10 @@ public class Debugger {
     
     public Iterator_ GetBreakpoints() {
         Array_ array = new Array();
-        for(int i = 0; i < breakpoints.size(); i++) {
-            BreakpointWrapper item = breakpoints.get(i);
-            Breakpoint_ nonwrapped = item.getBreakpoint();
+        Iterator<BreakpointWrapper> iterator = breakpoints.values().iterator();
+        while(iterator.hasNext()) {
+            BreakpointWrapper next = iterator.next();
+            Breakpoint_ nonwrapped = next.getBreakpoint();
             array.Add(nonwrapped);
         }
         return array.GetIterator();
@@ -164,6 +166,12 @@ public class Debugger {
         if(debugger != null) {
             debugger.stop();
             debugger = null;
+        }
+    }
+    
+    public void Pause() {
+        if(debugger != null) {
+            debugger.pause();
         }
     }
     

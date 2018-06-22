@@ -33,7 +33,6 @@ public class ProcessRunner {
             Text_ t = (Text_) o;
             String text = t.GetValue();
             list.add(text);
-            System.out.println(text);
         }
         
         builder = new ProcessBuilder(list);
