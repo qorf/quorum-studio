@@ -1,0 +1,56 @@
+package Libraries.Language.Debug
+
+class StackFrame 
+    text actionName = ""
+    integer line = 0
+    boolean current = false
+    text dotName = ""
+
+    action GetName returns text
+        return actionName
+    end
+
+    action SetName(text name)
+        actionName = name
+    end
+
+    action GetLine returns integer
+        return line
+    end
+
+    action SetLine(integer line)
+        me:line = line
+    end
+
+    action IsCurrent returns boolean
+        return current
+    end
+
+    action SetIsCurrent(boolean current)
+        me:current = current
+    end
+
+    /**
+     * This method returns the dot version of a file name. For example, 
+     * a class in the package foo, named bar, would return foo.bar.
+     * GetDotName
+     * @return 
+     */
+    action GetDotName returns text
+        return dotName
+    end
+
+    action SetDotName(text key)
+        me:dotName = key
+    end
+
+    /**
+     * This method returns a key generated from information in the breakpoint
+     * that can be used to identify unique breakpoints. By default, implementors
+     * follow the format line:className.
+     * @return 
+     */
+    action GetStaticKey returns text
+        return line + "" + dotName
+    end
+end

@@ -1,24 +1,12 @@
 package Libraries.Development.Environment.Studio.Behaviors
 
-use Libraries.Interface.Events.BehaviorEvent
-use Libraries.Development.Environment.Studio.QuorumStudio
-use Libraries.Development.Environment.Projects.ProjectManager
-use Libraries.Development.Environment.Projects.Project
-use Libraries.Interface.Behaviors.Behavior
-use Libraries.Interface.Controls.TextBox
-use Libraries.Development.Environment.Studio.OutputEditorTabPane
-use Libraries.Development.Environment.Projects.Quorum.QuorumProject
-use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Language.Debug.Debugger
 use Libraries.Development.Environment.Studio.Build.BuildManager
-use Libraries.Development.Environment.Projects.ProjectTree
-use Libraries.Interface.Selections.TreeSelection
-use Libraries.Containers.Array
-use Libraries.Interface.Controls.TreeItem
-use Libraries.Development.Environment.Projects.ProjectTreeItem
-use Libraries.Development.Environment.Studio.Build.BuildInformation
+use Libraries.Interface.Events.BehaviorEvent
 
 class StopBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
+    Debugger debugger = undefined
 
     action GetBuildManager returns BuildManager
         return builder
@@ -26,9 +14,10 @@ class StopBehavior is QuorumStudioBehavior
 
     action SetBuildManager(BuildManager builder)
         me:builder = builder
+        debugger = builder:GetDebugger()
     end
 
     action Run(BehaviorEvent event)
-
+        debugger:Stop()
     end
 end
