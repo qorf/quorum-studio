@@ -2,11 +2,20 @@ package Libraries.Language.Debug
 use Libraries.Containers.Array
 
 class VariablesModel 
+
+    action GetRoot returns Array<Variable>
+        return GetChildren(undefined, 0, 0)
+    end
+
+    action GetChildren(Variable var) returns Array<Variable>
+        return GetChildren(var, 0, 0)
+    end
+
     system action GetChildren(Variable var, integer i, integer j) returns Array<Variable>
     system action IsLeaf(Variable var)
     system action GetChildrenCount(Variable var)
     system action GetDisplayName(Variable var) returns text
-    system action GetValueAt(Variable var, VariablesColumn column)
+    system action GetValueAt(Variable var, VariablesColumn column) returns Object
     system action IsReadOnly(Variable var, VariablesColumn column)
     system action SetValueAt(Variable var, VariablesColumn column)
     system action GetWatchResult(Watch watch) returns Object

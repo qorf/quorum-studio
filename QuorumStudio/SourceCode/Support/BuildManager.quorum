@@ -28,6 +28,8 @@ use Libraries.Language.Compile.Symbol.Class
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Interface.Controls.TextBox
+use Libraries.Language.Debug.VariablesModel
+use Libraries.Language.Debug.Variable
 
 class BuildManager is DebuggerListener
     Library library
@@ -165,6 +167,20 @@ class BuildManager is DebuggerListener
 
     action Run(BreakpointEvent event)
         output "Breakpoint"
+        if debugger not= undefined
+            VariablesModel model = debugger:GetVariablesModel()
+            Array<Variable> value = model:GetRoot()
+            if value = undefined
+                return now
+            end
+            i = 0
+            repeat while i < value:GetSize()
+                Variable var = value:Get(i)
+                output var:GetName()
+                i = i + 1
+            end
+            integer a = 5
+        end
     end
 
     action Scan
