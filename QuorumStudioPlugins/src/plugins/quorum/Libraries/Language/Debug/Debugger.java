@@ -28,6 +28,7 @@ public class Debugger {
     ArrayList<DebuggerListenerWrapper> listeners = new ArrayList<>();
     HashMap<String, BreakpointWrapper> breakpoints = new HashMap<>();
     quorum.Libraries.Language.Debug.VariablesModel model = new quorum.Libraries.Language.Debug.VariablesModel();
+    quorum.Libraries.Language.Debug.CallStackModel callStackModel = new quorum.Libraries.Language.Debug.CallStackModel();
     
     public void RunToCursor(String className, int line) {
         if(debugger != null) {
@@ -205,4 +206,8 @@ public class Debugger {
         model.plugin_.setDebugger(debugger);
         return model;
     }
+//    
+//    public CallStackModel_ GetCallStackModel() {
+//        
+//    }
 }

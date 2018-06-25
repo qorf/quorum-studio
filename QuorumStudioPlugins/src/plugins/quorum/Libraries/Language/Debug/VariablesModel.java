@@ -5,7 +5,9 @@
  */
 package plugins.quorum.Libraries.Language.Debug;
 
+import org.debugger.Variable;
 import org.debugger.jdi.JDIDebugger;
+import quorum.Libraries.Containers.Array;
 import quorum.Libraries.Containers.Array_;
 import quorum.Libraries.Language.Debug.Variable_;
 import quorum.Libraries.Language.Debug.VariablesColumn_;
@@ -21,35 +23,93 @@ public class VariablesModel {
     private JDIDebugger debugger = null;
     org.debugger.VariablesModel variablesModel = null;
     
-    public Array_ GetChildren(Variable_ vrbl_, int to, int from) {
+    public Array_ GetChildren(Variable_ variable, int to, int from) {
+        if(variablesModel != null) {
+            
+            
+            Variable[] children = null;
+            if(variable == null) {
+               children = variablesModel.getChildren(null, to, from);
+            } else {
+                Variable v = ((quorum.Libraries.Language.Debug.Variable) variable).plugin_.getVariable();
+                children = variablesModel.getChildren(v, to, from);
+            }
+            
+            Array array = new Array();
+            if(children != null) {
+                for(int i = 0; i < children.length; i++) {
+                    quorum.Libraries.Language.Debug.Variable var = new quorum.Libraries.Language.Debug.Variable();
+                    var.plugin_.setVariable(children[i]);
+                    array.Add(var);
+                }
+                return array;
+            }
+        }
         return null;
     }
 
-    public void IsLeaf(Variable_ vrbl_) {
+    public boolean IsLeaf(Variable_ variable) {
+        if(variablesModel != null) {
+            Variable v = ((quorum.Libraries.Language.Debug.Variable) variable).plugin_.getVariable();
+            return variablesModel.isLeaf(v);
+        }
+        return true;
+    }
+
+    public int GetChildrenCount(Variable_ variable) {
+        if(variablesModel != null) {
+            Variable v = ((quorum.Libraries.Language.Debug.Variable) variable).plugin_.getVariable();
+            return variablesModel.getChildrenCount(v);
+        }
+        return 0;
+    }
+
+    public String GetDisplayName(Variable_ variable) {
+        if(variablesModel != null) {
+            Variable v = ((quorum.Libraries.Language.Debug.Variable) variable).plugin_.getVariable();
+            return variablesModel.getDisplayName(v);
+        }
+        return "";
+    }
+
+    public Object_ GetValueAt(Variable_ variable, VariablesColumn_ vc) {
+        if(variablesModel != null) {
+            Variable v = ((quorum.Libraries.Language.Debug.Variable) variable).plugin_.getVariable();
+            
+            Object valueAt = variablesModel.getValueAt(v, GetVariablesColumn(vc));
+            
+        }
+        return null;
+    }
+    
+    private static org.debugger.VariableColumns GetVariablesColumn(VariablesColumn_ vc) {
+        org.debugger.VariableColumns columns;
+        
+        if(vc.GetCurrent().compareTo(vc.Get_Libraries_Language_Debug_VariablesColumn__NAME_()) == 0) {
+            columns = org.debugger.VariableColumns.NAME;
+        } else if(vc.GetCurrent().compareTo(vc.Get_Libraries_Language_Debug_VariablesColumn__TYPE_()) == 0) {
+            columns = org.debugger.VariableColumns.TYPE;
+        } else if(vc.GetCurrent().compareTo(vc.Get_Libraries_Language_Debug_VariablesColumn__VALUE_()) == 0) {
+            columns = org.debugger.VariableColumns.VALUE;
+        } else {
+            columns = org.debugger.VariableColumns.NAME;
+        }
+        return columns;
+    }
+
+    public boolean IsReadOnly(Variable_ variable, VariablesColumn_ vc) {
+        if(variablesModel != null) {
+            Variable v = ((quorum.Libraries.Language.Debug.Variable) variable).plugin_.getVariable();
+            return variablesModel.isReadOnly(v, GetVariablesColumn(vc));
+        }
+        return true;
+    }
+
+    public void SetValueAt(Variable_ variable, VariablesColumn_ vc) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
-    public void GetChildrenCount(Variable_ vrbl_) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    public String GetDisplayName(Variable_ vrbl_) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    public void GetValueAt(Variable_ vrbl_, VariablesColumn_ vc) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    public void IsReadOnly(Variable_ vrbl_, VariablesColumn_ vc) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    public void SetValueAt(Variable_ vrbl_, VariablesColumn_ vc) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    public Object_ GetWatchResult(Watch_ watch_) {
+    public Object_ GetWatchResult(Watch_ watch) {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
