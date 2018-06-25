@@ -30,6 +30,10 @@ use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Interface.Controls.TextBox
 use Libraries.Language.Debug.VariablesModel
 use Libraries.Language.Debug.Variable
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.VariablesTab
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Interface.Controls.Tab
 
 class BuildManager is DebuggerListener
     Library library
@@ -41,6 +45,7 @@ class BuildManager is DebuggerListener
     Array<BreakpointListener> breakpointListeners
     BuildInformation debuggingProgram = undefined
     CodeEditorTabPane editors = undefined
+    OutputEditorTabPane outputTabs = undefined
 
     on create
         debugger:Add(me)
@@ -52,6 +57,14 @@ class BuildManager is DebuggerListener
 
     action SetCodeEditorTabPane(CodeEditorTabPane pane)
         me:editors = pane
+    end
+
+    action GetOutputEditorTabPane returns OutputEditorTabPane
+        return outputTabs
+    end
+
+    action SetOutputEditorTabPane(OutputEditorTabPane pane)
+        me:outputTabs = pane
     end
 
     action Add(BreakpointListener listener)
@@ -166,21 +179,19 @@ class BuildManager is DebuggerListener
     end
 
     action Run(BreakpointEvent event)
-        output "Breakpoint"
-        if debugger not= undefined
-            VariablesModel model = debugger:GetVariablesModel()
-            Array<Variable> value = model:GetRoot()
-            if value = undefined
-                return now
-            end
-            i = 0
-            repeat while i < value:GetSize()
-                Variable var = value:Get(i)
-                output var:GetName()
-                i = i + 1
-            end
-            integer a = 5
+        VariablesTab variablesTab = outputTabs:GetVariablesTab()
+        if debugger = undefined or variablesTab = undefined
+            return now
         end
+        
+        TabPaneSelection selection = outputTabs:GetSelection()
+        Tab tab = selection:GetTab()
+        boolean selected = false
+        if tab:GetHashCode() = variablesTab:GetHashCode()
+            selected = true
+        end
+        
+        variablesTab:QueueDebuggerUpdate()
     end
 
     action Scan

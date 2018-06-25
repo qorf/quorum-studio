@@ -1,10 +1,92 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Tab
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Interface.Layouts.Layout
+use Libraries.Interface.Controls.Tree
+use Libraries.Development.Environmen.Resources
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Language.Debug.Debugger
+use Libraries.Language.Debug.VariablesModel
+use Libraries.Containers.Array
+use Libraries.Language.Debug.Variable
+use Libraries.Interface.Controls.TreeItem
 
 class VariablesTab is Tab
+    BuildManager manager = undefined
+    Resources resources = undefined
+    Behaviors behaviors = undefined
+    Debugger debugger = undefined
+    BreakpointScrollPane pane
+    Tree variablesTree
+    boolean updateDebuggerInformation = false
 
-    action Main
+    action GetBehaviors returns Behaviors
+        return behaviors
+    end
+
+    action SetBehaviors(Behaviors behaviors)
+        me:behaviors = behaviors
+        manager = behaviors:GetBuildManager()
+        debugger = manager:GetDebugger()
+    end
+
+    action GetResources returns Resources
+        return resources
+    end
+
+    action SetResources(Resources resources)
+        me:resources = resources
+    end
+
+    action GetBuildManager returns BuildManager
+        return manager
+    end
+
+    action SetBuildManager(BuildManager build)
+        me:manager = build
+    end
+
+    action Setup
+        Layout treeLayout
+        treeLayout:SetPercentageOriginY(1)
+        treeLayout:SetPercentageY(1)
+        variablesTree:AddLayout(treeLayout)
         
+        pane:Setup()
+        pane:Initialize(1,1, resources:GetBackgroundColor())
+        pane:Add(variablesTree)
+        pane:Resize()
+
+        Initialize("Variables", GetPane(), true)
+    end
+
+    action GetPane returns BreakpointScrollPane
+        return pane
+    end
+
+    action Update(number seconds)
+        if updateDebuggerInformation
+            updateDebuggerInformation = false
+            if debugger not= undefined
+                variablesTree:Empty()
+                VariablesModel model = debugger:GetVariablesModel()
+                Array<Variable> value = model:GetRoot()
+                i = 0
+                repeat while i < value:GetSize()
+                    Variable variable = value:Get(i)
+                    TreeItem item
+                    text name = variable:GetName()
+                    item:Initialize(name, resources:GetBreakpoint())
+                    variablesTree:Add(item)
+                    i = i + 1
+                end
+                variablesTree:Resize()
+            end
+        end
+    end
+
+    action QueueDebuggerUpdate
+        updateDebuggerInformation = true
     end
 end
