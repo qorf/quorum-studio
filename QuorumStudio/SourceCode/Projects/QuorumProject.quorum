@@ -628,17 +628,10 @@ class QuorumProject is Project
             logger:Log("An Image Sheet is specified in the project properties file, but is empty.")
             return now
         end
-        //there should be one object in this, which contains the image sheet arrays
-        JavaScriptObjectNotation value = object:Get(0)
-        if value:IsEmpty()
-            logger:Log("An Image Sheet is specified in the project properties file, but is empty.")
-            return now
-        end
 
         i = 0
-        
-        repeat while i < value:GetSize()
-            JavaScriptObjectNotation sheetJSON = value:Get(i)
+        repeat while i < object:GetSize()
+            JavaScriptObjectNotation sheetJSON = object:Get(i)
             if not sheetJSON:IsArray()
                 logger:Log("An Image Sheet named " + sheetJSON:GetKey() +" is specified in the project properties file, but it is not an array.")
                 return now
@@ -667,16 +660,15 @@ class QuorumProject is Project
 
     private action AddMultivalueTextProperty(JavaScriptObjectNotation object)
         text key = object:GetKey()
-        JavaScriptObjectNotation theArray = object:Get(0)
         Array<text> dependencies
-        if not theArray:IsArray()
+        if not object:IsArray()
             logger:Log("Could not load property " + key + ", as its value was not of type array.")
             return now
         end
 
         i = 0
-        repeat while i < theArray:GetSize()
-            JavaScriptObjectNotation value = theArray:Get(i)
+        repeat while i < object:GetSize()
+            JavaScriptObjectNotation value = object:Get(i)
             if not value:IsText()
                 logger:Log("Could not load property " + key + ", as its value was not of type text.")
                 return now

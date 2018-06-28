@@ -11,8 +11,10 @@ use Libraries.Language.Debug.VariablesModel
 use Libraries.Containers.Array
 use Libraries.Language.Debug.Variable
 use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Events.TreeChangeListener
+use Libraries.Interface.Events.TreeChangeEvent
 
-class VariablesTab is Tab
+class VariablesTab is Tab, TreeChangeListener
     BuildManager manager = undefined
     Resources resources = undefined
     Behaviors behaviors = undefined
@@ -59,6 +61,21 @@ class VariablesTab is Tab
         pane:Resize()
 
         Initialize("Variables", GetPane(), true)
+        variablesTree:AddTreeChangeListener(me)
+    end
+
+    /*
+
+    */
+    action OpenedTree(TreeChangeEvent event)
+        output event:GetTreeItem():GetName()
+    end
+
+    /*
+
+    */
+    action ClosedTree(TreeChangeEvent event)
+        output event:GetTreeItem():GetName()
     end
 
     action GetPane returns BreakpointScrollPane
@@ -78,6 +95,7 @@ class VariablesTab is Tab
                     TreeItem item
                     text name = variable:GetName()
                     item:Initialize(name, resources:GetBreakpoint())
+                    item:ShowExpandButton()
                     variablesTree:Add(item)
                     i = i + 1
                 end

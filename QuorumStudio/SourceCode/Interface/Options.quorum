@@ -108,27 +108,15 @@ class Options is ProjectListener
             end
         end
 
-        JavaScriptObjectNotation activeBreakpoints
-        activeBreakpoints:SetArray()
-        
         Iterator<Breakpoint> breakpoints = manager:GetBreakpointIterator()
-        //ignore breakpoints if there aren't any.
         if breakpoints:HasNext()
+            JavaScriptObjectNotation activeBreakpoints
             notation:Add(BREAKPOINTS, activeBreakpoints)
-        end
-        repeat while breakpoints:HasNext()
-            Breakpoint bp = breakpoints:Next()
-            JavaScriptObjectNotation item
-            item:SetArray()
-            activeBreakpoints:Add(item)
 
-            JavaScriptObjectNotation bpFile
-            bpFile:SetText(bp:GetFile():GetAbsolutePath())
-            JavaScriptObjectNotation bpLine
-            bpLine:SetInteger(bp:GetLine())
-
-            item:Add(bpFile)
-            item:Add(bpLine)
+            repeat while breakpoints:HasNext()
+                Breakpoint bp = breakpoints:Next()
+                activeBreakpoints:Add(bp:GetFile():GetAbsolutePath(), bp:GetLine())
+            end
         end
 
         text value = notation:ToText()
@@ -141,14 +129,13 @@ class Options is ProjectListener
         text textMessage = "Could not load property " + key + ", as its value was not of type text."
         text booleanMessage = "Could not load property " + key + ", as its value was not of type boolean."
         if key = OPEN_PROJECTS
-            if object:IsEmpty()
+            if object:IsEmpty() or not object:IsArray()
                 return now
             end
-            JavaScriptObjectNotation array = object:Get(0)
 
             i = 0
-            repeat while i < array:GetSize()
-                JavaScriptObjectNotation value = array:Get(i)
+            repeat while i < object:GetSize()
+                JavaScriptObjectNotation value = object:Get(i)
                 if value:IsText()
                     text project = value:GetText()
                     projects:Add(project, project)
@@ -156,15 +143,13 @@ class Options is ProjectListener
                 i = i + 1
             end
         elseif key = OPEN_FILES
-            if object:IsEmpty()
+            if object:IsEmpty() or not object:IsArray()
                 return now
             end
 
-            JavaScriptObjectNotation array = object:Get(0)
-
             i = 0
-            repeat while i < array:GetSize()
-                JavaScriptObjectNotation value = array:Get(i)
+            repeat while i < object:GetSize()
+                JavaScriptObjectNotation value = object:Get(i)
                 if value:IsText()
                     text path = value:GetText()
                     File file
@@ -179,21 +164,15 @@ class Options is ProjectListener
                 return now
             end
 
-            JavaScriptObjectNotation array = object:Get(0)
-
             i = 0
-            repeat while i < array:GetSize()
-                JavaScriptObjectNotation value = array:Get(i)
-                if value:IsArray() and value:GetSize() = 2
-                    JavaScriptObjectNotation locationJSON = value:Get(0)
-                    JavaScriptObjectNotation lineJSON = value:Get(1)
+            repeat while i < object:GetSize()
+                JavaScriptObjectNotation subobject = object:Get(i)
+                text location = subobject:GetKey()
+                integer line = subobject:GetInteger()
 
-                    text location = locationJSON:GetText()
-                    integer line = lineJSON:GetInteger()
-                    File file
-                    file:SetAbsolutePath(location)
-                    manager:ToggleBreakpoint(file, line)
-                end
+                File file
+                file:SetAbsolutePath(location)
+                manager:ToggleBreakpoint(file, line)
                 i = i + 1
             end
         end
