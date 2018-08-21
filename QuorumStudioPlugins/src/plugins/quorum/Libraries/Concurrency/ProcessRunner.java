@@ -5,8 +5,10 @@
  */
 package plugins.quorum.Libraries.Concurrency;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,7 +27,6 @@ public class ProcessRunner {
     
     public void Run(String name, Array_ flags) {
         ProcessBuilder builder;
-        
         ArrayList<String> list = new ArrayList<>();
         list.add(name);
         for(int i = 0; i < flags.GetSize(); i++) {
@@ -34,7 +35,6 @@ public class ProcessRunner {
             String text = t.GetValue();
             list.add(text);
         }
-        
         builder = new ProcessBuilder(list);
         builder.directory(new File(directory.GetAbsolutePath()));
         try {
