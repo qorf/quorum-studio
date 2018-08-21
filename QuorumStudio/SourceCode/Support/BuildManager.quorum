@@ -228,6 +228,8 @@ class BuildManager is DebuggerListener
         repeat while extraSourceIterator:HasNext()
             text value = extraSourceIterator:Next()
             File file
+            File loc = project:GetLocation()
+            file:SetWorkingDirectory(loc:GetAbsolutePath())
             file:SetPath(value)
             sources:Add(file)
         end
@@ -236,6 +238,7 @@ class BuildManager is DebuggerListener
         CompilerRequest request
         request:library = library
         request:files = sources
+        
         request:main = main
         Compiler compiler = project:GetCompiler()
         info:request = request
@@ -246,6 +249,7 @@ class BuildManager is DebuggerListener
         if errors:IsCompilationErrorFree()
             out:Append("Build Successful")
         else
+            out:Append("I was unable to compile this program.")
             Iterator<CompilerError> iterator = errors:GetIterator()
             repeat while iterator:HasNext()
                 CompilerError error = iterator:Next()
@@ -352,7 +356,8 @@ class BuildManager is DebuggerListener
             else//for now do nothing, because we support Windows only in the first release, technically
 
             end
-
+        else 
+            
         end
     end
 end

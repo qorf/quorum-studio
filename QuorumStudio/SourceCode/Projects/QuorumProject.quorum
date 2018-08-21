@@ -523,6 +523,18 @@ class QuorumProject is Project
         end
     end
 
+    private action SetJarDependenciesToCompiler
+        Iterator<text> iterator = GetJarDependencies()
+        repeat while iterator:HasNext()
+            text value = iterator:Next()
+
+            
+            File file = ComputeRelativePath(GetLocation(), value)
+            //file:SetPath(value)
+            compiler:AddJar(file)
+        end
+    end
+
     private action ProcessKey(JavaScriptObjectNotation object)
         text key = object:GetKey()
         text textMessage = "Could not load property " + key + ", as its value was not of type text."
@@ -572,6 +584,7 @@ class QuorumProject is Project
             //compiler:SetMain(mainFile)
         elseif key = JAR_DEPENDENCIES
             AddMultivalueTextProperty(object)
+            SetJarDependenciesToCompiler()
         elseif key = JAVASCRIPT_DEPENDENCIES
             AddMultivalueTextProperty(object)
         elseif key = JAVA_CLASS_DEPENDENCIES
