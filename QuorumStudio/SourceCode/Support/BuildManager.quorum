@@ -34,6 +34,9 @@ use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Development.Environment.Studio.Interface.VariablesTab
 use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Interface.Controls.Tab
+use Libraries.System.DateTime
+use Libraries.Development.Environment.Projects.Quorum.ImageSheets
+use Libraries.Development.Environment.Projects.Quorum.ImageSheet
 
 class BuildManager is DebuggerListener
     Library library
@@ -213,7 +216,20 @@ class BuildManager is DebuggerListener
         out:Empty()
 
         //do image sheet manipulation here
+        if project:IsImageSheetsEnabled() and project:IsRecompileImageSheetsOnBuild()
+            ImageSheets sheets = project:GetImageSheets()
+            Iterator<ImageSheet> iterator = sheets:GetIterator()
 
+            if iterator:HasNext()
+                out:Append("Automatically building the following image sheets: ")
+            end
+
+            repeat while iterator:HasNext()
+                ImageSheet sheet = iterator:Next()
+                text next = sheet:GetName()
+                out:Append(next)
+            end
+        end
         //do file saving here if necessary
         
         //get the project type
@@ -242,12 +258,27 @@ class BuildManager is DebuggerListener
         request:main = main
         Compiler compiler = project:GetCompiler()
         info:request = request
+
+
+        DateTime time
+        number start = time:GetEpochTime()
         CompilerResult result = compiler:Compile(request)
+        number finish = time:GetEpochTime()
+        number amount = (finish - start) / 1000.0
+        text formattedTime = "" + amount
+        Array<text> timeArray = formattedTime:Split("\.")
+        text left = timeArray:Get(0)
+        text right = timeArray:Get(1)
+        if right:GetSize() >= 3
+            right = right:GetSubtext(0, 2)
+        end
+
+        text displayedTime = left + "." + right
         info:result = result
 
         CompilerErrorManager errors = result:compilerErrorManager
         if errors:IsCompilationErrorFree()
-            out:Append("Build Successful")
+            out:Append("Build Successful in " + displayedTime + " seconds")
         else
             out:Append("I was unable to compile this program.")
             Iterator<CompilerError> iterator = errors:GetIterator()
@@ -325,7 +356,7 @@ class BuildManager is DebuggerListener
         CompilerResult result = info:result
         CompilerErrorManager errors = result:compilerErrorManager
         if errors:IsCompilationErrorFree()
-            out:Append("Running")
+            out:Append("Running " + project:GetName())
             ProcessRunner runner
 
             Properties properties
