@@ -37,6 +37,7 @@ use Libraries.Interface.Controls.Tab
 use Libraries.System.DateTime
 use Libraries.Development.Environment.Projects.Quorum.ImageSheets
 use Libraries.Development.Environment.Projects.Quorum.ImageSheet
+use Libraries.Development.Environment.Lego
 
 class BuildManager is DebuggerListener
     Library library
@@ -280,6 +281,9 @@ class BuildManager is DebuggerListener
         CompilerErrorManager errors = result:compilerErrorManager
         if errors:IsCompilationErrorFree()
             out:Append("Build Successful in " + displayedTime + " seconds")
+            if project:IsLegoType()
+                SendToLego(info)
+            end
         else
             out:Append("I was unable to compile this program.")
             Iterator<CompilerError> iterator = errors:GetIterator()
@@ -288,6 +292,28 @@ class BuildManager is DebuggerListener
                 text value = error:GetDisplayName()
                 out:Append(value)
             end
+        end
+    end
+
+    private action SendToLego(BuildInformation info)
+        Lego lego
+        QuorumProject project = info:project
+        OutputTab out = info:outputTab
+
+        File library
+        File plugins
+        File loc = project:GetExecutableLocation()
+        File parentOfExec = loc:GetParentDirectory()
+        library:SetWorkingDirectory(parentOfExec:GetAbsolutePath() + "/" + "QuorumStandardLibrary.jar")
+        plugins:SetWorkingDirectory(parentOfExec:GetAbsolutePath() + "/" + "QuorumStandardPlugins.jar")
+
+        lego:Send(library)
+        lego:Send(plugins)
+        boolean found = lego:Send(loc)
+        if found
+            out:Append("Successfully output " + project:GetExecutableName() + " to your lego robot.")
+        else
+            out:Append("I could not connect to a lego device. Is it plugged in?")
         end
     end
 

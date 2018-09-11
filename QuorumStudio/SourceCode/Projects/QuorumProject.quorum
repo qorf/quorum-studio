@@ -455,6 +455,56 @@ class QuorumProject is Project
         end
     end
 
+    action IsJavascriptType returns boolean
+        ProjectProperty property = GetProperty(PROJECT_TYPE)
+        text value = property:GetFirstValue()
+        if value = JAVASCRIPT_COMPILE_TYPE
+            return true
+        else
+            return false
+        end
+    end
+
+    action IsServertType returns boolean
+        ProjectProperty property = GetProperty(PROJECT_TYPE)
+        text value = property:GetFirstValue()
+        if value = SERVER_COMPILE_TYPE
+            return true
+        else
+            return false
+        end
+    end
+
+    action IsLegoType returns boolean
+        ProjectProperty property = GetProperty(PROJECT_TYPE)
+        text value = property:GetFirstValue()
+        if value = LEGO_COMPILE_TYPE
+            return true
+        else
+            return false
+        end
+    end
+
+    action IsIphoneType returns boolean
+        ProjectProperty property = GetProperty(PROJECT_TYPE)
+        text value = property:GetFirstValue()
+        if value = ANDROID_COMPILE_TYPE
+            return true
+        else
+            return false
+        end
+    end
+
+    action IsAndroidType returns boolean
+        ProjectProperty property = GetProperty(PROJECT_TYPE)
+        text value = property:GetFirstValue()
+        if value = ANDROID_COMPILE_TYPE
+            return true
+        else
+            return false
+        end
+    end
+
     /*
         This action attempts to set the type of project to compile to. If an 
         invalid flag is sent to the system, for example telling the compiler to
@@ -477,6 +527,14 @@ class QuorumProject is Project
     */
     action GetMain returns File
         return mainFile
+    end
+
+    action GetExecutableLocation returns File
+        text path = GetLocation():GetAbsolutePath()// + "/Run/" + project:GetExecutableName() + ".jar"
+        File file
+        file:SetWorkingDirectory(path)
+        file:SetPath("/Run/" + GetExecutableName() + ".jar")
+        return file
     end
 
     /*
