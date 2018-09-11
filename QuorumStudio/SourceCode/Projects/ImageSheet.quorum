@@ -2,6 +2,7 @@ package Libraries.Development.Environment.Projects.Quorum
 use Libraries.Containers.Array
 use Libraries.Containers.Iterator
 use Libraries.Language.Support.CompareResult
+use Libraries.System.File
 
 /*
     This class represents one image sheet on the system. It can parse itself 
@@ -11,10 +12,26 @@ use Libraries.Language.Support.CompareResult
 class ImageSheet 
     /* This is the name of the image sheet. */
     text name = ""
+    text buildPath = "resources"
 
     /* These are the values of the image sheet. Normally, these are individual 
         image files. */
     Array<text> values
+
+
+    action GetBuildPath returns text
+        return buildPath
+    end
+
+    action SetBuildPath(text path)
+        buildPath = path
+    end
+
+    action GetImageSheetCreator returns File
+        File file
+        file:SetPath("External/ImageSheets.jar")
+        return file
+    end
 
     /* This action returns the name of the image sheet. */
     action GetName returns text
@@ -50,4 +67,10 @@ class ImageSheet
         end
         return result
     end
+
+    action Save(File file)
+        NativeSave(file)
+    end
+
+    system action NativeSave(File file)
 end
