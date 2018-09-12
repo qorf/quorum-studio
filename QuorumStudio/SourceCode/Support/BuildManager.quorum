@@ -38,6 +38,7 @@ use Libraries.System.DateTime
 use Libraries.Development.Environment.Projects.Quorum.ImageSheets
 use Libraries.Development.Environment.Projects.Quorum.ImageSheet
 use Libraries.Development.Environment.Lego
+use Libraries.Language.Compile.Documentation.DocumentationGenerator
 
 class BuildManager is DebuggerListener
     Library library
@@ -234,13 +235,8 @@ class BuildManager is DebuggerListener
         end
         //do file saving here if necessary
         
-        //get the project type
-        if project:IsBytecodeType()
-
-        else 
-
-        end
         
+
         Array<File> sources = project:GetSources()
         Iterator<text> extraSourceIterator = project:GetQuorumDependencies()
         repeat while extraSourceIterator:HasNext()
@@ -251,9 +247,30 @@ class BuildManager is DebuggerListener
             file:SetPath(value)
             sources:Add(file)
         end
-        File main = project:GetMain()
         
+        //get the project type
         CompilerRequest request
+        if project:IsBytecodeType()
+            request:SetOutputType(request:JAVA_BYTECODE)
+        elseif project:IsJavascriptType()
+            request:SetOutputType(request:JAVASCRIPT)
+        elseif project:IsServertType()
+            request:SetWebRequest(true)
+            request:SetOutputType(request:JAVA_BYTECODE)
+        elseif project:IsLegoType()
+            request:SetOutputType(request:JAVA_BYTECODE)
+        elseif project:IsAndroidType()
+            request:SetOutputType(request:JAVA_BYTECODE)
+        elseif project:IsDocumentationType()
+            request:SetOutputType(request:DOCUMENT)
+        elseif project:IsDocumentationStandardLibraryType()
+            request:SetOutputType(request:DOCUMENT)
+            GenerateStandardLibraryDocumentation(info)
+            return now
+        end
+        
+        
+        File main = project:GetMain()
         request:library = library
         request:files = sources
         
@@ -266,6 +283,35 @@ class BuildManager is DebuggerListener
         number start = time:GetEpochTime()
         CompilerResult result = compiler:Compile(request)
         number finish = time:GetEpochTime()
+
+        text displayedTime = GetFormattedTime(start, finish)
+        info:result = result
+
+        CompilerErrorManager errors = result:compilerErrorManager
+        OutputErrors(info, errors, "Build Successful in " + displayedTime + " seconds")
+        if project:IsLegoType() and errors:IsCompilationErrorFree()
+            SendToLego(info)
+        end
+    end
+
+    private action OutputErrors(BuildInformation info, CompilerErrorManager errors, text message)
+        QuorumProject project = info:project
+        OutputTab out = info:outputTab
+        if errors:IsCompilationErrorFree()
+            out:Append(message)
+            
+        else
+            out:Append("I was unable to compile this program.")
+            Iterator<CompilerError> iterator = errors:GetIterator()
+            repeat while iterator:HasNext()
+                CompilerError error = iterator:Next()
+                text value = error:GetDisplayName()
+                out:Append(value)
+            end
+        end
+    end
+
+    private action GetFormattedTime(number start, number finish) returns text
         number amount = (finish - start) / 1000.0
         text formattedTime = "" + amount
         Array<text> timeArray = formattedTime:Split("\.")
@@ -276,23 +322,26 @@ class BuildManager is DebuggerListener
         end
 
         text displayedTime = left + "." + right
-        info:result = result
+        return displayedTime
+    end
 
-        CompilerErrorManager errors = result:compilerErrorManager
-        if errors:IsCompilationErrorFree()
-            out:Append("Build Successful in " + displayedTime + " seconds")
-            if project:IsLegoType()
-                SendToLego(info)
-            end
-        else
-            out:Append("I was unable to compile this program.")
-            Iterator<CompilerError> iterator = errors:GetIterator()
-            repeat while iterator:HasNext()
-                CompilerError error = iterator:Next()
-                text value = error:GetDisplayName()
-                out:Append(value)
-            end
-        end
+    private action GenerateStandardLibraryDocumentation(BuildInformation info)
+        DocumentationGenerator generator
+        QuorumProject project = info:project
+        OutputTab out = info:outputTab
+        
+        Compiler compiler = project:GetCompiler()
+        File run = compiler:GetRunFolder()
+        generator:SetRunFolder(run)
+        
+
+        DateTime date
+        number start = date:GetEpochTime()
+        generator:Write(library)
+        number finish = date:GetEpochTime()
+
+        text displayedTime = GetFormattedTime(start, finish)
+        out:Append("Documentation Generated at " + run:GetAbsolutePath() + " in " + displayedTime + " seconds.")
     end
 
     private action SendToLego(BuildInformation info)

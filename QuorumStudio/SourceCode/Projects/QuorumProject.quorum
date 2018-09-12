@@ -50,7 +50,10 @@ class QuorumProject is Project
     public constant text IPHONE_COMPILE_TYPE = "IphoneType"
     /* This property is set for Project type if it is compiled to Android. */
     public constant text ANDROID_COMPILE_TYPE = "AndroidType"
-
+    /* This property is set for Project type if it is compiled to Documentation. */
+    public constant text DOCUMENTATION_COMPILE_TYPE = "DocumentationType"
+    /* This property is set for Project type if it is compiled to Documentation. */
+    public constant text DOCUMENTATION_STANDARD_LIBRARY_TYPE = "DocumentationType"
 
     /* This property stores all of the dependencies on jar files for the system. */
     public constant text JAR_DEPENDENCIES = "JarDependencies"
@@ -438,7 +441,9 @@ class QuorumProject is Project
             value = SERVER_COMPILE_TYPE or
             value = LEGO_COMPILE_TYPE or
             value = IPHONE_COMPILE_TYPE or
-            value = ANDROID_COMPILE_TYPE
+            value = ANDROID_COMPILE_TYPE or
+            value = DOCUMENTATION_COMPILE_TYPE or
+            value = DOCUMENTATION_STANDARD_LIBRARY_TYPE
             return true
         end
 
@@ -488,7 +493,7 @@ class QuorumProject is Project
     action IsIphoneType returns boolean
         ProjectProperty property = GetProperty(PROJECT_TYPE)
         text value = property:GetFirstValue()
-        if value = ANDROID_COMPILE_TYPE
+        if value = IPHONE_COMPILE_TYPE
             return true
         else
             return false
@@ -505,6 +510,25 @@ class QuorumProject is Project
         end
     end
 
+    action IsDocumentationType returns boolean
+        ProjectProperty property = GetProperty(PROJECT_TYPE)
+        text value = property:GetFirstValue()
+        if value = DOCUMENTATION_COMPILE_TYPE
+            return true
+        else
+            return false
+        end
+    end
+
+    action IsDocumentationStandardLibraryType returns boolean
+        ProjectProperty property = GetProperty(PROJECT_TYPE)
+        text value = property:GetFirstValue()
+        if value = DOCUMENTATION_STANDARD_LIBRARY_TYPE
+            return true
+        else
+            return false
+        end
+    end
     /*
         This action attempts to set the type of project to compile to. If an 
         invalid flag is sent to the system, for example telling the compiler to
@@ -766,7 +790,9 @@ class QuorumProject is Project
            type = SERVER_COMPILE_TYPE or
            type = LEGO_COMPILE_TYPE or
            type = IPHONE_COMPILE_TYPE or
-           type = ANDROID_COMPILE_TYPE 
+           type = ANDROID_COMPILE_TYPE  or 
+           type = DOCUMENTATION_COMPILE_TYPE or
+           type = DOCUMENTATION_STANDARD_LIBRARY_TYPE
            return true
         end
 
