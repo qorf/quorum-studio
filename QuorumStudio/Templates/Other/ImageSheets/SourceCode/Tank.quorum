@@ -1,0 +1,103 @@
+package PigShooter
+
+use Libraries.Game.Game
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.Graphics.ImageSheet
+use Libraries.Interface.Events.KeyboardListener
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Events.MouseListener
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Compute.Math
+use Libraries.Game.InputMonitor
+use Libraries.Game.Graphics.OrthographicCamera
+use Libraries.Interface.Events.CollisionListener2D
+
+class Tank is Sprite, KeyboardListener, MouseListener
+    Math math
+    InputMonitor im
+    KeyboardEvent ke
+
+    integer acceleration = 0
+    integer baseTurnSpeed = 100
+    integer baseMoveSpeed = 200
+
+    public OrthographicCamera camera = undefined
+
+    action Update(number delta)
+        if GetTurnSpeed() not= 0
+            if GetTurnSpeed() > 0
+                SetTurnSpeed(baseTurnSpeed + acceleration)
+            else    
+                SetTurnSpeed(-baseTurnSpeed - acceleration)
+            end
+        end
+        parent:Sprite:Update(delta)
+    end
+
+    action Activate()
+        SetPosition(100, 100)
+        AddKeyboardListener(me)
+        AddMouseListener(me)
+        parent:Sprite:Activate()
+    end
+
+    action SetDraw(ImageSheet imageSheet)
+        AddFrame(imageSheet, "tank-1")
+        AddFrame(imageSheet, "tank-2")
+        AddFrame(imageSheet, "tank-3")
+        SetFrameRate(7)
+        SetDraw(0)
+    end
+
+    action ClickedMouse(MouseEvent e)
+    end
+
+    action PressedKey(KeyboardEvent e)
+        if (e:keyCode = e:SPACE)
+            if IsAnimating()
+                StopAnimation()
+            else
+                StartAnimation()
+            end
+        elseif (e:keyCode = e:UP)
+            SetSpeed(baseMoveSpeed)
+        elseif (e:keyCode = e:DOWN)
+            SetSpeed(-baseMoveSpeed)
+        elseif (e:keyCode = e:LEFT)
+            SetTurnSpeed(-baseTurnSpeed - acceleration)
+        elseif (e:keyCode = e:RIGHT)
+            SetTurnSpeed(baseTurnSpeed + acceleration)
+        elseif (e:keyCode = e:SHIFT_LEFT)
+            acceleration = 200
+        elseif e:keyCode = e:W
+            camera:Move(0, 10)
+        elseif e:keyCode = e:A
+            camera:Move(-10, 0)
+        elseif e:keyCode = e:D
+            camera:Move(10, 0)
+        elseif e:keyCode = e:S
+            camera:Move(0, -10)
+//        elseif e:keyCode = e:PLUS
+//            camera:SetZoom(camera:GetZoom() + 0.25)
+//        elseif e:keyCode = e:MINUS
+//            camera:SetZoom(camera:GetZoom() - 0.25)
+        end
+    end
+
+    action ReleasedKey(KeyboardEvent e)
+        if (e:keyCode = e:UP or e:keyCode = e:DOWN)
+            SetSpeed(0)
+        elseif (e:keyCode = e:LEFT or e:keyCode = e:RIGHT)
+            if (im:IsKeyPressed(ke:RIGHT))
+                SetTurnSpeed(baseTurnSpeed)
+            elseif (im:IsKeyPressed(ke:LEFT))
+                SetTurnSpeed(-baseTurnSpeed)
+            else
+                SetTurnSpeed(0)
+            end
+        elseif (e:keyCode = e:SHIFT_LEFT)
+            acceleration = 0
+        end
+    end
+
+end

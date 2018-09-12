@@ -1,0 +1,328 @@
+package PigShooter
+
+use Libraries.Compute.Math
+use Libraries.Compute.Random
+use Libraries.Interface.Item2D
+use Libraries.Game.Game
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.Graphics.ImageSheet
+use Libraries.System.File
+use Libraries.Containers.Array
+use Libraries.Interface.Events.KeyboardListener
+use Libraries.Interface.Events.MouseListener
+use Libraries.Game.Graphics.Label
+use Libraries.Containers.HashTable
+use Libraries.Compute.Random
+use Libraries.Interface.Events.CollisionListener2D
+
+class Sprite is Item2D, CollisionListener2D
+    Math math
+    Drawable draw
+    Game game = undefined
+    Main main = undefined
+    Random r
+
+    //use this hash table to hold the animation cycles
+    HashTable<text, Array<Drawable>> animations
+    Array<Drawable> frames
+    number frameDeltaTime = 0
+    number elapsedTime = 0
+    integer frameNumber = 0
+    integer numberOfFrames = 0
+    boolean animate = false
+    number direction = 0
+    number moveSpeed = 100
+    number speed = 0
+    number rotationSpeed = 0
+    number turnSpeed = 0
+    boolean rotateWithTurn = true
+
+    boolean movingTo = false
+    number xMoveTo = 0
+    number yMoveTo = 0
+
+    action Update(number delta)
+        if animate
+            elapsedTime = elapsedTime + delta
+            if elapsedTime > frameDeltaTime
+                NextFrame()
+                elapsedTime = elapsedTime - frameDeltaTime
+            end
+        end
+        SetX(GetX() + GetSpeed() * delta * math:Sine(direction * math:pi/180))
+        SetY(GetY() + GetSpeed() * delta * math:Cosine(direction * math:pi/180))
+        SetRotation(GetRotation() + rotationSpeed * delta)
+        SetDirection(GetDirection() + turnSpeed * delta)
+        if rotateWithTurn
+            SetRotation(GetRotation() + turnSpeed * delta)
+        end
+        if IsMovingTo()
+            if direction <= 90
+                if GetX() >= xMoveTo and GetY() >= yMoveTo
+                    SetPosition(xMoveTo, yMoveTo)
+                    SetSpeed(0)
+                    movingTo = false
+                end
+            elseif direction <= 180
+                if GetX() >= xMoveTo and GetY() <= yMoveTo
+                    SetPosition(xMoveTo, yMoveTo)
+                    SetSpeed(0)
+                    movingTo = false
+                end
+            elseif direction <= 270
+                if GetX() <= xMoveTo and GetY() <= yMoveTo
+                    SetPosition(xMoveTo, yMoveTo)
+                    SetSpeed(0)
+                    movingTo = false
+                end
+            elseif direction <= 360
+                if GetX() <= xMoveTo and GetY() >= yMoveTo
+                    SetPosition(xMoveTo, yMoveTo)
+                    SetSpeed(0)
+                    movingTo = false
+                end
+            end
+        end
+    end
+
+    action Activate
+        Add(draw)
+        game:Add(me)
+        SetWidth(draw:GetWidth())
+        SetHeight(draw:GetHeight())
+    end
+
+    action SetGame(Main m)
+        main = m
+        game = cast(Game, m)
+    end
+
+    // Set draw from an ImageSheet and file name
+    action SetDraw(ImageSheet imageSheet, text imageName)
+        draw:Load(imageSheet:GetDrawable(imageName))
+    end
+    
+    // Set draw from a file name only
+    action SetDraw(text imageName)
+        draw:Load(imageName)
+    end
+
+    // Set draw from the 'frames' array which is already loaded with AddFrame()
+    action SetDraw(integer startFrame)
+        draw = frames:Get(startFrame)
+    end
+
+    action AddKeyboardListener(KeyboardListener listener)
+        game:AddKeyboardListener(listener)
+    end
+
+    action AddMouseListener(MouseListener listener)
+        game:AddMouseListener(listener)
+    end
+
+    action AddCollisionListener(CollisionListener2D listener)
+        game:AddCollisionListener(listener)
+    end
+
+    action RemoveKeyboardListener(KeyboardListener listener)
+        game:RemoveKeyboardListener(listener)
+    end
+
+    action RemoveMouseListener(MouseListener listener)
+        game:RemoveMouseListener(listener)
+    end
+
+    action RemoveCollisionListener(CollisionListener2D listener)
+        game:RemoveCollisionListener(listener)
+    end
+
+    action AddLabel(Label label)
+        Add(label)
+    end
+
+    action Show()
+        draw:Show()
+//        me:GetParent():Show()
+    end
+
+    action Hide()
+        draw:Hide()
+//        me:GetParent():Hide()
+    end
+
+    action SetScale(number scale)
+        integer i = 0
+        repeat frames:GetSize() times
+            frames:Get(i):SetScale(scale)
+            i = i + 1
+        end
+        parent:Item2D:SetScale(scale)
+    end
+
+    action SetRotation(number rotation)
+        integer i = 0
+        repeat frames:GetSize() times
+            frames:Get(i):SetRotation(rotation)
+            i = i + 1
+        end
+        parent:Item2D:SetRotation(rotation)
+    end
+
+    action IsMovingTo returns boolean
+        return movingTo
+    end
+
+    action MoveTo(number x, number y)
+        movingTo = true
+        xMoveTo = x
+        yMoveTo = y
+        number dX = x - GetX()
+        number dY = y - GetY()
+        number newHeading = (360 + (math:InverseTangent(dY, dX) * 180/math:pi)) mod 360
+        SetDirection(newHeading)
+        SetSpeed(moveSpeed)
+    end
+
+    action MoveToSec (number x, number y, number seconds)
+        //calculate speed based on number of seconds and distance to travel
+        MoveTo(x, y)
+        number dX = x - GetX()
+        number dY = y - GetY()
+        number distanceToTravel = math:SquareRoot((dX * dX) + (dY * dY))
+        SetSpeed(distanceToTravel / seconds)
+    end
+
+    action SetSpeed(number newSpeed)
+        speed = newSpeed
+    end
+
+    action GetSpeed() returns number
+        return speed
+    end
+
+    action SetDirection(number newDirection)
+        direction = newDirection
+    end
+
+    action GetDirection returns number
+        return direction
+    end
+    
+    action RotateWithTurn(boolean value)
+        rotateWithTurn  = true
+    end
+
+    action SetTurnSpeed(number newTurnSpeed)
+        turnSpeed = newTurnSpeed
+    end
+
+    action GetTurnSpeed returns number
+        return turnSpeed
+    end
+
+    action SetRotationSpeed(number newRotationSpeed)
+        rotationSpeed = newRotationSpeed
+    end
+
+    action GetRotationSpeed returns number
+        return rotationSpeed
+    end
+
+    action IsRotating returns boolean
+        return rotationSpeed = 0
+    end
+
+    action NextFrame
+        frameNumber = (frameNumber + 1) mod numberOfFrames
+        ChangeFrame(frameNumber)
+    end
+
+    action ChangeFrame(integer frameNumber)
+        Remove(draw)
+        draw = frames:Get(frameNumber)
+        draw:SetRotation(GetRotation())
+        Add(draw)
+    end
+
+    action ChangeFrame(text nameOfFrame)
+        //key in hash table for frame names
+    end
+
+    action AddFrame(ImageSheet imageSheet, text imageName)
+        numberOfFrames = numberOfFrames + 1
+        Drawable d = imageSheet:GetDrawable(imageName)
+        frames:Add(d)
+    end
+
+    action StartAnimation
+        animate = true
+    end
+
+    action StopAnimation
+        animate = false
+    end
+    
+    action IsAnimating returns boolean
+        return animate
+    end
+
+    action SetFrameRate(number fps)
+        frameDeltaTime = 1/fps
+    end
+
+    action ChangeFrameEvery(number seconds)
+        frameDeltaTime = seconds
+    end
+
+    action RandomX(Item2D i) returns integer
+        return (r:RandomIntegerBetween(0, game:GetScreenWidth()-cast(integer,i:GetWidth())))
+    end
+
+    action RandomY(Item2D i) returns integer
+        return (r:RandomIntegerBetween(0, game:GetScreenHeight()-cast(integer,i:GetHeight())))
+    end
+
+    action SetRandomPosition(Item2D i)
+        i:SetX(RandomX(i))
+        i:SetY(RandomY(i))
+    end
+
+//    action MoveSteps(integer num)
+//        //needs to be adjusted for direction
+//        integer xDir = 0
+//        integer yDir = 0
+//        if direction > 0 and direction < 180
+//            xDir = 1
+//        else
+//            xDir = -1
+//        end
+//        if direction > 90 and direction < 270
+//            yDir = -1
+//        else
+//            yDir = 1
+//        end
+//        me:SetX(me:GetX() + num * xDir)
+//        me:SetY(me:GetY() + num * yDir)
+//        number newX = GetX()
+//        number newY = GetY()
+//        newX = newX + num * xPercent
+//        newY = newY + num * yPercent
+//        SetX(newX)
+//        SetY(newY)
+//    end
+
+//    action SetMoveDirection(integer newDirection)
+//        direction = newDirection mod 360
+//    end
+//
+//    action RotateLeft(integer rotation)   
+//        Rotate(-rotation)
+//        SetMoveDirection(GetDirection() - rotation)
+//    end
+//
+//    action RotateRight(integer rotation)
+//        Rotate(rotation)
+//        SetMoveDirection(GetDirection() + rotation)
+//    end
+
+end

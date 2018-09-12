@@ -1,0 +1,37 @@
+package PigShooter
+
+use Libraries.Game.Graphics.ImageSheet
+use Libraries.Compute.Math
+use Libraries.Interface.Events.CollisionEvent
+use Libraries.Interface.Events.CollisionListener2D
+use Libraries.Interface.Events.CollisionEvent2D
+
+class Bullet is Sprite
+    Math math
+    number angle = 0
+
+    action Update (number delta)
+//        SetX(GetX() + GetSpeed() * delta * math:Sine(angle * math:pi/180))
+//        SetY(GetY() + GetSpeed() * delta * math:Cosine(angle * math:pi/180))
+        parent:Sprite:Update(delta)
+    end
+
+    action Activate()
+        SetFrameRate(5)
+        StartAnimation()
+        SetScale(0.5)
+        SetSpeed(300)
+        SetCollidable(true)
+        parent:Sprite:Activate()
+    end
+
+    action SetDraw(ImageSheet imageSheet)
+        AddFrame(imageSheet, "fireball-1")
+        AddFrame(imageSheet, "fireball-2")
+        AddFrame(imageSheet, "fireball-3")
+        AddFrame(imageSheet, "fireball-4")
+        SetFrameRate(7)
+        SetDraw(0)
+    end
+
+end

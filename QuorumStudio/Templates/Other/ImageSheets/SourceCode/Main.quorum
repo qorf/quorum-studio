@@ -1,0 +1,210 @@
+package PigShooter
+
+use Libraries.Game.Game
+use Libraries.Game.Graphics.ImageSheet
+use Libraries.Game.Graphics.Drawable
+use Libraries.Containers.Array
+use Libraries.Interface.Item
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Events.KeyboardListener
+use Libraries.Compute.Math
+use Libraries.Compute.Random
+use Libraries.Game.Graphics.Label
+use Libraries.Sound.Audio
+use Libraries.System.File
+use Libraries.Game.InputMonitor
+use Libraries.Game.Graphics.FramesPerSecondLabel
+use Libraries.Containers.List
+use Libraries.Interface.Events.CollisionEvent
+use Libraries.Containers.Iterator
+use Libraries.Game.DesktopConfiguration
+use Libraries.Game.Graphics.OrthographicCamera
+use Libraries.Interface.Events.CollisionListener2D
+use Libraries.Interface.Events.CollisionEvent2D
+use Libraries.Interface.Item2D
+
+class Main is Game, KeyboardListener, CollisionListener2D
+    Math math
+    Random r
+    ImageSheet imgs
+    Array<Pig> pigs
+    Array<Bullet> bullets
+    Tank player
+    Label msg1
+    Label msg2
+    File file
+    Audio explosion
+    InputMonitor im
+    KeyboardEvent ke
+    FramesPerSecondLabel fps
+
+    number debugTimer = 1
+
+    action Main
+//        SetFullScreen(true)
+        SetScreenSize(1600, 1200)
+        StartGame()
+    end
+
+    action CreateGame
+//        SetScreenSize(1600, 1200)
+        DesktopConfiguration config
+        config = GetDesktopConfiguration()
+        AddKeyboardListener(me)
+        AddCollisionListener(me)
+        imgs:Load("resources/assets.atlas")
+        file:SetPath("assets/explosion.ogg")
+        explosion:Load(file)
+        player:SetGame(me)
+        player:SetDraw(imgs)
+        player:Activate()
+        msg1:SetPosition(10, GetScreenHeight() - 20)
+        msg2:SetPosition(10, GetScreenHeight() - 40)
+        Add(msg1)
+        Add(msg2)
+        repeat 10 times
+            SpawnPig()
+        end
+        fps:SetPosition(10, GetScreenHeight() - 60)
+        Add(fps)
+
+        player:camera = cast(OrthographicCamera, GetCamera2D())
+    end
+
+    action Update(number delta)
+        integer i = 0
+        repeat bullets:GetSize() times
+            Bullet bullet = bullets:Get(i)
+            if OffScreen(bullet)
+                Remove(bullet)
+                bullets:RemoveAt(i)
+                bullet:Dispose()
+                bullet = undefined
+            else                                                                         
+                i = i + 1
+            end
+        end
+        i = 0
+        repeat pigs:GetSize() times
+            Pig pig = pigs:Get(i)
+            if im:IsKeyPressed(ke:Q)
+                pig:MoveTo(800/2, 600/2)
+            end
+            if OffScreen(pig)
+                pigs:RemoveAt(i)
+                RemoveCollisionListener(pig)
+                RemoveMouseListener(pig)
+                Remove(pig)
+                pig:Dispose()
+                pig = undefined
+            else                                                                         
+                i = i + 1
+            end
+        end
+
+        msg1:SetText("Bullets: " + cast(text,bullets:GetSize()))
+        msg2:SetText("Pigs: " + cast(text,pigs:GetSize()))
+    end
+    
+    action RemovePig(Pig pig)
+        integer i = 0
+        repeat pigs:GetSize() times
+            if pigs:Get(i):GetHashCode() = pig:GetHashCode()
+               pigs:RemoveAt(i)
+            end
+            i = i + 1
+        end
+        RemoveCollisionListener(pig)
+        RemoveMouseListener(pig)
+        Remove(pig)
+        pig:Dispose()
+        pig = undefined
+    end
+
+    action PlayExplosion
+        explosion:Play()
+    end
+
+    action OffScreen(Item i) returns boolean
+        return (i:GetX() < 0 or i:GetX() > GetScreenWidth()) or (i:GetY() < 0 or i:GetY() > GetScreenHeight())
+    end
+    
+    action PressedKey(KeyboardEvent e)
+        if (e:keyCode = e:SPACE)
+            Bullet bullet
+            bullet:SetGame(me)
+            bullet:SetDraw(imgs)
+            bullet:SetRotation(player:GetRotation())
+            bullet:SetDirection(player:GetDirection())
+            bullet:SetPosition(player:GetX()+15, player:GetY()+30)
+            bullet:Activate()
+            bullets:Add(bullet)
+        elseif (e:keyCode = e:N)
+            SpawnPig()
+        end
+    end
+    
+    action SpawnPig
+        Pig newPig
+        newPig:SetGame(me)
+        newPig:SetDraw(imgs, newPig:GetImg())
+        newPig:Activate()
+        pigs:Add(newPig)
+    end
+
+    action RandomIntegerBetween(integer min, integer max) returns integer
+        return r:RandomIntegerBetween(min, max)
+    end
+
+    action BeginCollision(CollisionEvent2D event)
+        Item2D item1 = event:GetItemA()
+        Item2D item2 = event:GetItemB()
+
+        if item1 is Pig and item2 is Bullet
+            Item2D i = item2
+            Pig pig = cast(Pig, item1)
+            PlayExplosion()
+            if i:GetX() < pig:GetX() and i:GetY() < pig:GetY()
+                pig:SetRotationSpeed(700)
+                pig:SetSpeed(500)
+                pig:MoveTo(900, 700)
+            elseif i:GetX() < pig:GetX() and i:GetY() > pig:GetY()
+                pig:SetRotationSpeed(700)
+                pig:SetSpeed(500)
+                pig:MoveTo(900, -100)
+            elseif i:GetX() > pig:GetX() and i:GetY() < pig:GetY()
+                pig:SetRotationSpeed(-700)
+                pig:SetSpeed(500)
+                pig:MoveTo(-100, 700)
+            elseif i:GetX() > pig:GetX() and i:GetY() > pig:GetY()
+                pig:SetRotationSpeed(-700)
+                pig:SetSpeed(500)
+                pig:MoveTo(-100, -100)
+            end
+        elseif item2 is Pig and item1 is Bullet
+            Item2D i = item1
+            Pig pig = cast(Pig, item2)
+            PlayExplosion()
+            if i:GetX() < pig:GetX() and i:GetY() < pig:GetY()
+                pig:SetRotationSpeed(700)
+                pig:SetSpeed(500)
+                pig:MoveTo(900, 700)
+            elseif i:GetX() < pig:GetX() and i:GetY() > pig:GetY()
+                pig:SetRotationSpeed(700)
+                pig:SetSpeed(500)
+                pig:MoveTo(900, -100)
+            elseif i:GetX() > pig:GetX() and i:GetY() < pig:GetY()
+                pig:SetRotationSpeed(-700)
+                pig:SetSpeed(500)
+                pig:MoveTo(-100, 700)
+            elseif i:GetX() > pig:GetX() and i:GetY() > pig:GetY()
+                pig:SetRotationSpeed(-700)
+                pig:SetSpeed(500)
+                pig:MoveTo(-100, -100)
+            end
+        end
+    end
+
+    action FinishCollision(CollisionEvent2D event)
+    end
+end

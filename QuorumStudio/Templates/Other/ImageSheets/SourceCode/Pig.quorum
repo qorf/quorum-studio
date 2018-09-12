@@ -1,0 +1,175 @@
+package PigShooter
+
+use Libraries.Compute.Random
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ImageSheet
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Events.MouseListener
+use Libraries.Interface.Events.CollisionListener2D
+use Libraries.Interface.Events.CollisionEvent2D
+
+class Pig is Sprite, MouseListener
+    Random r
+    Label name
+    text img = "" 
+
+    on create
+        img = GetPigImg()
+        name:SetText(img)
+        name:SetY(-15)
+        name:SetSize(12)
+    end
+
+    action Activate()
+        SetRandomPosition(me)
+        AddMouseListener(me)
+        SetSpeed(0)
+        parent:Sprite:Activate()
+        name:SetX(parent:Sprite:draw:GetWidth()/2 - name:GetWidth()/2)
+        AddLabel(name)
+        SetCollidable(true)
+        MoveTo(RandomX(me), RandomY(me))
+    end
+
+    action SetDraw(ImageSheet imageSheet)
+        parent:Sprite:SetDraw(imageSheet, img)
+    end
+
+    action Update(number delta)
+        parent:Sprite:Update(delta)
+    end
+    
+    action SetName(text n)
+        name:SetText(n)
+    end
+
+    action GetName() returns text
+        return name:GetText()
+    end
+
+    action ClickedMouse (MouseEvent e)
+        MoveTo(e:GetX(), e:GetY())
+    end
+
+    action BeginCollision(CollisionEvent2D event)
+        Item2D i1 = event:GetItemA()
+        Item2D i2 = event:GetItemA()
+        Item2D i
+
+        if i1 is Pig and i2 is Bullet
+            i = i2
+        elseif i2 is Pig and i1 is Bullet
+            i = i1
+        else
+            return now
+        end
+
+        if i is Bullet
+            parent:Sprite:main:PlayExplosion()
+            if i:GetX() < GetX() and i:GetY() < GetY()
+//                output "hit from bottom left"
+                SetRotationSpeed(700)
+                SetSpeed(500)
+                MoveTo(900, 700)
+            elseif i:GetX() < GetX() and i:GetY() > GetY()
+//                output "hit from top left"
+                SetRotationSpeed(700)
+                SetSpeed(500)
+                MoveTo(900, -100)
+            elseif i:GetX() > GetX() and i:GetY() < GetY()
+//                output "hit from bottom right"
+                SetRotationSpeed(-700)
+                SetSpeed(500)
+                MoveTo(-100, 700)
+            elseif i:GetX() > GetX() and i:GetY() > GetY()
+//                output "hit from top right"
+                SetRotationSpeed(-700)
+                SetSpeed(500)
+                MoveTo(-100, -100)
+            end
+//        parent:Sprite:main:RemovePig(me)
+        end
+    end
+
+    action GetImg() returns text
+        return img
+    end
+
+    action GetPigImg() returns text
+        return GetPigImg(r:RandomIntegerBetween(1,50))
+    end
+
+    action GetPigImg(integer num) returns text
+        text pig = ""
+
+        if num < 1 or num > 50
+            num = r:RandomIntegerBetween(1,50)
+        end
+        if num <=10
+            pig = "Normal Pig"
+        elseif num <=12
+            pig = "Red Pig"
+        elseif num <=14
+            pig = "Yellow Pig"
+        elseif num <=16
+            pig = "Blue Pig"
+        elseif num <=18
+            pig = "Green Pig"
+        elseif num <=20
+            pig = "Purple Pig"
+        elseif num <=22
+            pig = "Orange Pig"
+        elseif num <=24
+            pig = "Black Pig"
+        elseif num <=26
+            pig = "White Pig"
+        elseif num <=28
+            pig = "Brown Pig"
+        elseif num <=29
+            pig = "Purple & Orange Pig"
+        elseif num <=30
+            pig = "Black & White Pig"
+        elseif num <=31
+            pig = "Blue & Red Pig"
+        elseif num <=32
+            pig = "Black & Orange Pig"
+        elseif num <=33
+            pig = "Purple & Green Pig"
+        elseif num <=34
+            pig = "Checkerboard Black & White Pig"
+        elseif num <=35
+            pig = "Checkerboard Black & Red Pig"
+        elseif num <=36
+            pig = "Checkerboard Red & White Pig"
+        elseif num <=37
+            pig = "Missile Pig"
+        elseif num <=38
+            pig = "Space Pig"
+        elseif num <=39
+            pig = "Question Mark Pig"
+        elseif num <=40
+            pig = "Hearts Pig"
+        elseif num <=41
+            pig = "Diamonds Pig"
+        elseif num <=42
+            pig = "Clubs Pig"
+        elseif num <=43
+            pig = "Spades Pig"
+        elseif num <=44
+            pig = "Pigferno"
+        elseif num <=45
+            pig = "Brick Pig"
+        elseif num <=46
+            pig = "Sky Pig"
+        elseif num <=47
+            pig = "Flatline Pig"
+        elseif num <=48
+            pig = "Rainbow Pig"
+        elseif num <=49
+            pig = "Cow Pig"
+        elseif num <=50
+            pig = "Bomb Pig"
+        end
+        return pig
+    end
+end
