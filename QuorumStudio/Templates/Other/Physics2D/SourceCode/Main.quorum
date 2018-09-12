@@ -1,0 +1,62 @@
+use Libraries.Game.Game
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Events.CollisionListener2D
+use Libraries.Interface.Events.CollisionEvent2D
+use Libraries.Sound.Audio
+
+class Main is Game, CollisionListener2D
+   Drawable ground
+   Drawable box
+   Color color
+
+   action Main
+       StartGame()
+   end
+
+   action CreateGame
+   /*
+       This flag enables 2 dimensional physics for the game. Make sure to set 
+       this when you want to add physics.
+   */
+       EnablePhysics2D(true)
+
+       ground:SetName("Ground")
+       ground:LoadFilledRectangle(GetScreenWidth(), 50)
+       ground:SetColor(color:Green())
+       Add(ground)
+   /*
+       We must enable physics for each Item2D object that will interact 
+       with other Item2D objects.
+   */
+       ground:EnablePhysics(true)
+   /*
+       Neither gravity, collision, nor any programmatic method should be able 
+       to move the ground; its responsiveness needs to be set to unmovable.
+   */
+       ground:SetUnmovable()
+
+       box:SetName("Box")
+       box:LoadFilledRectangle(150, 100)
+       box:SetColor(color:Blue())
+       box:SetPosition((GetScreenWidth() - box:GetWidth()) / 2, GetScreenHeight() - box:GetHeight())
+       Add(box)
+       box:EnablePhysics(true)
+   /*
+       The box is responds to gravity and impact with the ground, so we will 
+       set to be responsive. 
+   */
+       box:SetResponsive()
+   /*
+       Finally, we set gravity 
+       (This is an approximation of actual gravity)
+   */
+       SetGravity2D(0, -100)
+
+       AddCollisionListener(me)
+   end
+
+   action BeginCollision(CollisionEvent2D event)
+       output "Boom"
+   end
+end

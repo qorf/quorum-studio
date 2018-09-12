@@ -1,0 +1,230 @@
+use Libraries.Game.Game
+use Libraries.Game.Graphics.Model
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Compute.Vector3
+use Libraries.Interface.Events.KeyboardListener
+use Libraries.Game.Graphics.DirectionalLight
+use Libraries.Game.Graphics.AmbientLight
+use Libraries.Game.Physics.PhysicsProperties3D
+use Libraries.Interface.Events.TouchListener
+use Libraries.Interface.Events.TouchEvent
+use Libraries.Interface.Events.MouseListener
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Game.Graphics.FramesPerSecondLabel
+use Libraries.Interface.Vibration.Vibration
+use Libraries.Interface.Vibration.VibrationCommand
+use Libraries.System.SystemHelper
+
+/*
+    This is a default class for creating a game in Quorum. Note that the Main 
+    action begins by calling StartGame(), which loads a window a game can 
+    be displayed in. The action CreateGame is where the game should load any 
+    assets, like images to be displayed, frames of animation, or sounds to be
+    played. 
+*/
+class Main is Game, KeyboardListener, TouchListener, MouseListener
+    Model ball
+    Model ground
+    Color color
+
+    Vector3 force
+    Vector3 gravity
+
+    PhysicsProperties3D stackProperties
+    PhysicsProperties3D wallProperties
+    /*
+        This action, Main, starts our computer program. In Quorum, programs always
+        begin from Main.
+    */
+    action Main
+        StartGame()
+    end
+
+    /*
+        This action sets up the default values for a game. For example, we might
+        use the Libraries.Game.Graphics.Drawable class to load up an image or 
+        a shape. Or, we might add a Libraries.Interface.Button for making something clickable
+        or a Libraries.Interface.TextBox for gathering user input in a game.
+    */
+    action CreateGame
+        FramesPerSecondLabel label
+        label:SetSize(50)
+        DirectionalLight light
+        light:SetColor(0.8, 0.8, 0.8, 1)
+        light:SetDirection(GetCamera3D():GetDirection())
+        Add(light)
+
+        AmbientLight ambient
+        ambient:SetColor(0.4, 0.4, 0.4, 1)
+        SetAmbientLight(ambient)
+
+        AddKeyboardListener(me)
+        GetCurrentLayer3D():EnablePhysics(true)
+
+        ball:SetName("ball")
+        ball:LoadSphere(0.5, 0.5, 0.5, color:Blue())
+        ball:SetPosition(0, 1, -3.5)
+        Add(ball)
+        ball:EnablePhysics(true)
+        ball:SetResponsive()
+        ball:SetFriction(0.2)
+        ball:SetRestitution(0.5)
+        ball:SetMass(1)
+
+        ground:SetName("ground")
+        ground:LoadBox(10, 1, 10, color:Green())
+        Add(ground)
+        ground:EnablePhysics(true)
+        ground:SetFriction(0.3)
+
+        gravity:Set(0, -9.8, 0)
+        GetCurrentLayer3D():SetGravity(gravity)
+
+        force:Set(0, 275, 250)
+
+        wallProperties:SetFriction(0.4)
+        wallProperties:SetRestitution(0.8)
+        SetUpExteriorWalls()
+
+        stackProperties:SetResponsiveness(stackProperties:RESPONSIVE)
+        stackProperties:SetFriction(0.5)
+        stackProperties:SetRestitution(0.5)
+        BuildStack()
+        ball:AddTouchListener(me)
+        ball:AddMouseListener(me)
+        Add(label)
+    end
+
+    /*
+        The update action is called on every "frame" of animation in a game. This
+        action should be used to do operations on items. So, for example, we 
+        might use this action to change frames of animation, to rotate items, 
+        or to make creatures jump.
+    */
+    action Update(number seconds)
+    end
+
+    action BuildStack
+        Model box1
+        Model box2
+        Model box3
+        Model box4
+        Model box5
+        Model box6
+        Model box7
+        Model box8
+        Model box9
+
+        box1:SetName("box1")
+        box2:SetName("box2")
+        box3:SetName("box3")
+        box4:SetName("box4")
+        box5:SetName("box5")
+        box6:SetName("box6")
+        box7:SetName("box7")
+        box8:SetName("box8")
+        box9:SetName("box9")
+
+        box1:LoadBox(0.5, 0.5, 0.5, color:Red())
+        box2:LoadBox(0.5, 0.5, 0.5, color:Red())
+        box3:LoadBox(0.75, 0.5, 0.5, color:Orange())
+        box4:LoadBox(0.5, 0.5, 0.5, color:Yellow())
+        box5:LoadBox(0.5, 0.5, 0.5, color:Yellow())
+        box6:LoadBox(0.75, 0.5, 0.5, color:Green())
+        box7:LoadBox(0.5, 0.5, 0.5, color:Blue())
+        box8:LoadBox(0.5, 0.5, 0.5, color:Blue())
+        box9:LoadBox(0.75, 0.5, 0.5, color:Purple())
+
+        Add(box1)
+        Add(box2)
+        Add(box3)
+        Add(box4)
+        Add(box5)
+        Add(box6)
+        Add(box7)
+        Add(box8)
+        Add(box9)
+
+        box1:SetPosition(-0.30, 0.75, 3.5)
+        box2:SetPosition(0.30, 0.75, 3.5)
+        box3:SetPosition(0, 1.25, 3.5)
+        box4:SetPosition(-0.30, 1.75, 3.5)
+        box5:SetPosition(0.30, 1.75, 3.5)
+        box6:SetPosition(0, 2.25, 3.5)
+        box7:SetPosition(-0.30, 2.75, 3.5)
+        box8:SetPosition(0.30, 2.75, 3.5)
+        box9:SetPosition(0, 3.25, 3.5)
+
+        box1:EnablePhysics(true)
+        box2:EnablePhysics(true)
+        box3:EnablePhysics(true)
+        box4:EnablePhysics(true)
+        box5:EnablePhysics(true)
+        box6:EnablePhysics(true)
+        box7:EnablePhysics(true)
+        box8:EnablePhysics(true)
+        box9:EnablePhysics(true)
+
+        box1:SetPhysicsProperties(stackProperties)
+        box2:SetPhysicsProperties(stackProperties)
+        box3:SetPhysicsProperties(stackProperties)
+        box4:SetPhysicsProperties(stackProperties)
+        box5:SetPhysicsProperties(stackProperties)
+        box6:SetPhysicsProperties(stackProperties)
+        box7:SetPhysicsProperties(stackProperties)
+        box8:SetPhysicsProperties(stackProperties)
+        box9:SetPhysicsProperties(stackProperties)
+    end
+
+    action SetUpExteriorWalls
+        Model backWall
+        Model leftWall
+        Model rightWall
+        Model frontWall
+
+        backWall:SetName("backWall")
+        leftWall:SetName("leftWall")
+        rightWall:SetName("rightWall")
+        frontWall:SetName("frontWall")
+
+        backWall:LoadBox(10, 10, 1, color:Gray())
+        leftWall:LoadBox(1, 10, 10, color:Gray())
+        rightWall:LoadBox(1, 10, 10, color:Gray())
+        frontWall:LoadBox(10, 10, 1, color:Gray())
+
+        Add(backWall)
+        Add(leftWall)
+        Add(rightWall)
+        Add(frontWall)
+
+        backWall:SetPosition(0, -0.5, 5)
+        leftWall:SetPosition(-5, -0.5, 0)
+        rightWall:SetPosition(5, -0.5, 0)
+        frontWall:SetPosition(0, -0.5, -5)
+
+        backWall:EnablePhysics(true)
+        leftWall:EnablePhysics(true)
+        rightWall:EnablePhysics(true)
+        frontWall:EnablePhysics(true)
+
+        backWall:SetPhysicsProperties(wallProperties)
+        leftWall:SetPhysicsProperties(wallProperties)
+        rightWall:SetPhysicsProperties(wallProperties)
+        frontWall:SetPhysicsProperties(wallProperties)
+    end
+
+    action PressedKey(KeyboardEvent event)
+        if event:keyCode = event:SPACE
+            ball:ApplyForceToCenter(force)
+        end
+    end
+
+    action BeganTouch(TouchEvent event)
+        ball:ApplyForceToCenter(force)
+    end
+
+    action ClickedMouse(MouseEvent event)
+        ball:ApplyForceToCenter(force)
+    end
+end

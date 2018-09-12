@@ -1,0 +1,81 @@
+use Libraries.Game.Game
+use Libraries.Game.Graphics.Skybox
+use Libraries.Game.Layer3D
+use Libraries.Game.InputMonitor
+use Libraries.Game.Graphics.Camera
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Game.Graphics.Model
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.FramesPerSecondLabel
+
+class Main is Game
+
+    Skybox skybox
+    InputMonitor monitor
+    KeyboardEvent keys
+    Camera camera = undefined
+    Model model
+    Color color
+    boolean pressed = false
+
+    action Main
+        StartGame()
+    end
+
+    action CreateGame
+        //skybox:Load("Skybox/right.jpg", "Skybox/left.jpg", "Skybox/top.jpg", "Skybox/bottom.jpg", "Skybox/front.jpg", "Skybox/back.jpg")
+        skybox:LoadRight("Skybox/right.jpg")
+        skybox:LoadLeft("Skybox/left.jpg")
+        skybox:LoadTop("Skybox/top.jpg")
+        skybox:LoadBottom("Skybox/bottom.jpg")
+        skybox:LoadFront("Skybox/front.jpg")
+        skybox:LoadBack("Skybox/back.jpg")
+
+        Layer3D layer = GetCurrentLayer3D()
+        layer:SetSkybox(skybox)
+
+        camera = GetCamera3D()
+        camera:SetPosition(0, 0, 0)
+        camera:LookAt(0, 0, 1)
+
+        model:LoadBox(0.5, 0.5, 0.5, color:Red())
+        Add(model)
+        model:SetPosition(0, 0, 2)
+
+        Model model2
+        model2:LoadBox(1, 1, 1, color:Blue())
+        model2:SetPosition(1, 0, 4)
+        Add(model2)
+        
+        Model model3
+        model3:LoadBox(2, 2, 2, color:Green())
+        model3:SetPosition(-2, 0, 8)
+        Add(model3)
+
+        FramesPerSecondLabel fps
+        Add(fps)
+    end
+
+    action Update(number seconds)
+
+        if (monitor:IsKeyPressed(keys:LEFT))
+            camera:Rotate(0, 1, 0, -30 * seconds)
+        elseif (monitor:IsKeyPressed(keys:RIGHT))
+            camera:Rotate(0, 1, 0, 30 * seconds)
+        elseif (monitor:IsKeyPressed(keys:UP))
+            camera:Rotate(1, 0, 0, -30 * seconds)
+        elseif (monitor:IsKeyPressed(keys:DOWN))
+            camera:Rotate(1, 0, 0, 30 * seconds)
+        end
+
+        if (monitor:IsKeyPressed(keys:W))
+            camera:Move(0, 0, 3 * seconds)
+        elseif (monitor:IsKeyPressed(keys:A))
+            camera:Move(-3 * seconds, 0, 0)
+        elseif (monitor:IsKeyPressed(keys:S))
+            camera:Move(0, 0, -3 * seconds)
+        elseif (monitor:IsKeyPressed(keys:D))
+            camera:Move(3 * seconds, 0, 0)
+        end
+    end
+end

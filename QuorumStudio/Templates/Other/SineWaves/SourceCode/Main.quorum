@@ -1,0 +1,21 @@
+use Libraries.Compute.Math
+use Libraries.Sound.Audio
+use Libraries.Sound.AudioSamples
+
+Math math
+number twoPI = math:pi * 2 // period
+number frequency = 440
+integer seconds = 4 // seconds we want each wave to play for
+
+// ~~~~~ Sine wave
+AudioSamples sine
+sine:SetChannels(1)
+sine:SetSizeInSeconds(seconds)
+
+number sampleSize = sine:GetSamplesPerSecond()
+integer counter = 0
+repeat while counter < sine:GetSize()
+   number s = math:Sine(frequency * (twoPI * (counter/sampleSize))) // Equation for sine wave
+   sine:Set(counter, s, 0)
+   counter = counter + 1
+end
