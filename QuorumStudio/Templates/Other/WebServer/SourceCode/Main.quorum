@@ -1,0 +1,23 @@
+/*
+    This class shows how to setup a Quorum Web Server. We receive messages with 
+    the Respond action and respond with a WebResponse Object. We can receive 
+    these messages in any Java Container (e.g., Tomcat, Glassfish).
+*/
+class Main is WebResponder
+
+    /*
+        This action receives a WebRequest object, which contains parameters from a web server. 
+
+        Attribute: Parameter The response from our web server.
+        Attribute: Returns What we are sending back to our web server.
+    */
+    action Respond(WebRequest request) returns WebResponse
+        WebResponse response
+        if not request:HasParameter("MyRequest")
+            response:SetPageText("I had a request.")
+        else 
+            response:SetPageText("I did not have a request")
+        end
+        return response
+    end
+end
