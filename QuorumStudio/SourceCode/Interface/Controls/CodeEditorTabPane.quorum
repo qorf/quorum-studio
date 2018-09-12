@@ -190,4 +190,18 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             queuedFileOpen = undefined
         end
     end
+
+    action SaveDirtyTabs
+        Iterator<File> iterator = GetOpenFileIterator()
+        repeat while iterator:HasNext()
+            File file = iterator:Next()
+            Tab tab = openTabs:GetValue(file:GetAbsolutePath())
+            if tab is EditorTab
+                EditorTab et = cast(EditorTab, tab)
+                if et:IsDirty()
+                    et:Save()
+                end
+            end
+        end
+    end
 end
