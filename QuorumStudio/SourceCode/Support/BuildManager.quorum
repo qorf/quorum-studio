@@ -39,8 +39,13 @@ use Libraries.Development.Environment.Projects.Quorum.ImageSheets
 use Libraries.Development.Environment.Projects.Quorum.ImageSheet
 use Libraries.Development.Environment.Lego
 use Libraries.Language.Compile.Documentation.DocumentationGenerator
+use Libraries.Concurrency.ProcessListener
+use Libraries.Concurrency.ProcessStartedEvent
+use Libraries.Concurrency.ProcessStoppedEvent
+use Libraries.Concurrency.ProcessErrorEvent
+use Libraries.Concurrency.ProcessOutputEvent
 
-class BuildManager is DebuggerListener
+class BuildManager is DebuggerListener, ProcessListener
     Library library
     constant text DEFAULT_LIBRARY_PATH = "Library/Standard"
     constant text DEFAULT_LIBRARY_OUTPUT_PATH = "Library/Compiled"
@@ -433,13 +438,15 @@ class BuildManager is DebuggerListener
         if errors:IsCompilationErrorFree()
             out:Append("Running " + project:GetName())
             ProcessRunner runner
+            runner:SetOutputTab(out)
 
+            runner:AddListener(me)
             Properties properties
             text os = properties:GetOperatingSystemName()
-            if os:Contains("Mac OS X")
-                text java = properties:GetProperty("java.home")
-                java = java + "/" + "bin" + "/" + "java"
+            text java = properties:GetProperty("java.home")
+            java = java + "/" + "bin" + "/" + "java"
 
+            if os:Contains("Mac OS X")
                 text run = project:GetLocation():GetAbsolutePath() + "/Run/" + project:GetExecutableName() + ".jar"
                 runner:SetDirectory(project:GetLocation())
                 Array<text> flags
@@ -447,23 +454,50 @@ class BuildManager is DebuggerListener
                 flags:Add("-XstartOnFirstThread")
                 flags:Add("-jar")
                 flags:Add(run)
-                runner:Run(java, flags)
+                runner:SetProcessName(java)
+                runner:SetParameters(flags)
+                runner:Run()
             elseif os:Contains("Windows")
-                text java = properties:GetProperty("java.home")
-                java = java + "/" + "bin" + "/" + "java"
-
                 text run = project:GetLocation():GetAbsolutePath() + "/Run/" + project:GetExecutableName() + ".jar"
                 runner:SetDirectory(project:GetLocation())
                 Array<text> flags
                 flags:Add("-Dsodbeans=1")
                 flags:Add("-jar")
                 flags:Add(run)
-                runner:Run(java, flags)
-            else//for now do nothing, because we support Windows only in the first release, technically
-
+                runner:SetProcessName(java)
+                runner:SetParameters(flags)
+                runner:Run()
+            else
+                text run = project:GetLocation():GetAbsolutePath() + "/Run/" + project:GetExecutableName() + ".jar"
+                runner:SetDirectory(project:GetLocation())
+                Array<text> flags
+                flags:Add("-Dsodbeans=1")
+                flags:Add("-jar")
+                flags:Add(run)
+                runner:SetProcessName(java)
+                runner:SetParameters(flags)
+                runner:Run()
             end
         else 
             
         end
+    end
+
+    action Run(ProcessStartedEvent event)
+        //output "Started " + event:GetName()
+    end
+
+    action Run(ProcessStoppedEvent event)
+        //output "Stopped " + event:GetName()
+    end
+
+    action Run(ProcessErrorEvent event)
+        output "Error  " + event:GetName()
+    end
+
+    action Run(ProcessOutputEvent event)
+        ProcessRunner process = event:GetProcess()
+        OutputTab out = process:GetOutputTab()
+        out:Append(event:GetOutput())
     end
 end
