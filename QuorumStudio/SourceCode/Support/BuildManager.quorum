@@ -56,6 +56,7 @@ class BuildManager is DebuggerListener, ProcessListener
     BuildInformation debuggingProgram = undefined
     CodeEditorTabPane editors = undefined
     OutputEditorTabPane outputTabs = undefined
+    HashTable<text, ProcessRunner> processes
 
     on create
         debugger:Add(me)
@@ -445,7 +446,15 @@ class BuildManager is DebuggerListener, ProcessListener
             text os = properties:GetOperatingSystemName()
             text java = properties:GetProperty("java.home")
             java = java + "/" + "bin" + "/" + "java"
+            
+            text value = project:GetLocation():GetAbsolutePath()
+            if processes:HasKey(value) //kill it, if you have to
+                ProcessRunner old = processes:RemoveKey(value)
+                old:Cancel()
+            end
 
+            //add it into the list of running processes
+            processes:Add(value, runner)
             if os:Contains("Mac OS X")
                 text run = project:GetLocation():GetAbsolutePath() + "/Run/" + project:GetExecutableName() + ".jar"
                 runner:SetDirectory(project:GetLocation())
@@ -483,12 +492,26 @@ class BuildManager is DebuggerListener, ProcessListener
         end
     end
 
+    action AddInputToProcess(BuildInformation info, text value)
+        QuorumProject project = info:project
+        text path = project:GetLocation():GetAbsolutePath()
+        if processes:HasKey(path) //kill it, if you have to
+            ProcessRunner process = processes:GetValue(path) //I think we can toss it
+            process:SendInput(value)
+        end
+    end
+
     action Run(ProcessStartedEvent event)
-        //output "Started " + event:GetName()
+        output "Started " + event:GetName()
     end
 
     action Run(ProcessStoppedEvent event)
-        //output "Stopped " + event:GetName()
+        ProcessRunner process = event:GetProcess()
+        File file = process:GetDirectory()
+        if processes:HasKey(file:GetAbsolutePath()) //kill it, if you have to
+            processes:RemoveKey(file:GetAbsolutePath()) //I think we can toss it
+        end
+        output "Stopped " + event:GetName()
     end
 
     action Run(ProcessErrorEvent event)

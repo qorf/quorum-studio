@@ -1,0 +1,49 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.TextBox
+use Libraries.Containers.Array
+
+class InputTab  is Tab
+    TextBox box = undefined
+    Array<text> lines
+    boolean empty = false
+    action SetTextBox(TextBox box)
+        me:box = box
+    end
+
+    action GetTextBox returns TextBox
+        return box
+    end
+
+    action GetText returns text
+        return box:GetText()
+    end
+
+    action Empty
+        empty = true
+    end
+
+    action Append(text line)
+        lines:Add(line + line:GetLineFeed())
+    end
+
+    action Update(number seconds)
+        if empty
+            box:Empty()
+            empty = false
+        end
+
+        if not lines:IsEmpty()
+            i = 0
+            text append = ""
+            repeat while i < lines:GetSize()
+                append = append + lines:Get(i)
+                i = i + 1
+            end
+
+            box:SetText(box:GetText() + append)
+            lines:Empty()
+        end
+    end
+end
