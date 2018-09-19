@@ -31,6 +31,7 @@ public class ProcessRunner {
     private quorum.Libraries.Concurrency.ProcessRunner myProcess = null;
     private File_ directory = null;
     public boolean cancelled = false;
+    QuorumProcessWatcher watch = null;
     
     public void Run(String name, Array_ flags) {
         myProcess = (quorum.Libraries.Concurrency.ProcessRunner) me_;
@@ -48,7 +49,7 @@ public class ProcessRunner {
         try {
             myProcess.FireProcessStartedEvent();
             Process process = builder.start();
-            QuorumProcessWatcher watch = new QuorumProcessWatcher(process.getInputStream());
+            watch = new QuorumProcessWatcher(process.getInputStream());
             OutputStream outputStream = process.getOutputStream();
             watch.setStream(outputStream);
             watch.start();
@@ -59,6 +60,7 @@ public class ProcessRunner {
             watch.flush();
             process.destroy();
             myProcess.FireProcessStoppedEvent();
+            watch = null;
         } catch (IOException ex) {
             Logger.getLogger(ProcessRunner.class.getName()).log(Level.SEVERE, null, ex);
         } catch (InterruptedException ex) {
@@ -70,12 +72,21 @@ public class ProcessRunner {
         directory = folder;
     }
     
+    public File_ GetDirectory() {
+        return directory;
+    }
+    
     public void Cancel() {
         cancelled = true;
     }
     
+    public void SendInput(String value) {
+        if(watch != null) {
+            watch.SendInput(value);
+        }
+    }
+    
     protected class QuorumProcessWatcher implements Runnable {
-
         private BufferedReader bufferedReader = null;
         private OutputStream outputStream;
         private InputStream inputStream;
@@ -90,6 +101,17 @@ public class ProcessRunner {
             bufferedReader = new BufferedReader(new InputStreamReader(in));
         }
 
+        public void SendInput(String value) {
+            if(bufferedWriter != null) {
+                try {
+                    bufferedWriter.write(value);
+                    bufferedWriter.newLine();
+                    bufferedWriter.flush();
+                } catch (IOException ex) {
+                    Logger.getLogger(ProcessRunner.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        }
         public void start() {
             if (!running) {
                 blinker = new Thread(this);
