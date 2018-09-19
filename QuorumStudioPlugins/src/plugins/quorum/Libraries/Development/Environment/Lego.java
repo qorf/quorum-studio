@@ -24,6 +24,7 @@ import java.util.logging.Logger;
  * @author stefika
  */
 public class Lego {
+    public java.lang.Object me_ = null;
     //all fields initialized to their default values for the EV3
     private String user = "root";
     private String host = "10.0.1.1";
@@ -94,11 +95,11 @@ public class Lego {
         }
     }
 
-    public boolean Send(quorum.Libraries.System.File from) {
+    public boolean Send(quorum.Libraries.System.File_ from) {
         File newFrom = new File(from.GetAbsolutePath());
         return Send(newFrom);
     }
-    public boolean Send(quorum.Libraries.System.File from, quorum.Libraries.System.File to) {
+    public boolean Send(quorum.Libraries.System.File_ from, quorum.Libraries.System.File_ to) {
         File newFrom = new File(from.GetAbsolutePath());
         File newTo = new File(to.GetAbsolutePath());
         return Send(newFrom, newTo);
