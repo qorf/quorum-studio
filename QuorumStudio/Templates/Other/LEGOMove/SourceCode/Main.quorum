@@ -1,0 +1,25 @@
+use Libraries.Robots.Lego.Motor
+use Libraries.Robots.Lego.Screen
+
+Motor motor
+Screen screen
+
+//returns the default of 360, since we haven't set the speed
+motor:GetSpeed("A")
+motor:RotateByDegrees("A", 1080)
+screen:Output("Rotating to: " + motor:GetRotationTarget("A"), 0)
+repeat while motor:IsMoving("A")
+    //displays real-time speed on the screen
+    screen:Output("Speed: " + motor:GetSpeed("A"), 1) 
+end
+
+//GetRotation will return 1080, since that's how far it has moved
+screen:Output("Rotation: " + motor:GetRotation("A"), 2)
+motor:ResetRotation("A")
+
+//now returns 0, since we reset the rotation information
+screen:Output("After reset: " + motor:GetRotation("A"), 3)  
+
+//do one more rotation so we can look at the screen
+motor:RotateByDegrees("A", 1080)
+motor:Wait("A")
