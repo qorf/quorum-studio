@@ -23,14 +23,12 @@ use Libraries.Development.Environment.Studio.Interface.VariablesTab
 use Libraries.Development.Environment.Studio.Interface.BreakpointsTab
 use Libraries.Development.Environment.Studio.Interface.CallStackTab
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
-use Libraries.Development.Environment.Studio.Interface.InputTab
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Studio.Behaviors.InputBehavior
 
 class OutputEditorTabPane is TabPane
     Color color
     OutputTab outputTab
-    InputTab inputTab
     VariablesTab variablesTab
     ErrorTab errorTab
     BreakpointsTab breakpointsTab
@@ -68,10 +66,6 @@ class OutputEditorTabPane is TabPane
         return outputTab
     end
 
-    action GetInputTab returns InputTab
-        return inputTab
-    end
-
     action GetVariablesTab returns VariablesTab
         return variablesTab
     end
@@ -105,7 +99,6 @@ class OutputEditorTabPane is TabPane
         Array<Tab> array
         SetupTabs()
         array:Add(outputTab)
-        array:Add(inputTab)
         array:Add(errorTab)
         array:Add(variablesTab)
         array:Add(breakpointsTab)
@@ -115,57 +108,57 @@ class OutputEditorTabPane is TabPane
     end
 
     action SetupTabs
-        Layout textBoxLayout
-        textBoxLayout:SetPercentageX(0)
-        textBoxLayout:SetPercentageY(0)
-        textBoxLayout:SetPercentageWidth(1)
-        textBoxLayout:SetPercentageHeight(1)
+        Item2D outputPanel
+        Layout outputPanelLayout
+        outputPanelLayout:SetPercentageX(0)
+        outputPanelLayout:SetPercentageY(0)
+        outputPanelLayout:SetPercentageWidth(1)
+        outputPanelLayout:SetPercentageHeight(1)
 
-        TextBox textBox        
+        Layout textBoxPanelLayout
+        textBoxPanelLayout:SetPercentageX(0)
+        textBoxPanelLayout:SetPercentageY(0.2)
+        textBoxPanelLayout:SetPercentageWidth(1)
+        textBoxPanelLayout:SetPercentageHeight(0.8)
+
+        TextBox textBox  
+        textBox:AddLayout(textBoxPanelLayout)
         textBox:Initialize(400, 400, color:CustomColor(1, 1, 1, 1), "Welcome to Quorum Studio!")
-        textBox:AddLayout(textBoxLayout)
-        outputTab:SetTextBox(textBox)
-        outputTab:Initialize("Output", textBox, true)
 
+        Layout textBoxPanelLayoutForInput
+        textBoxPanelLayoutForInput:SetPercentageX(0)
+        textBoxPanelLayoutForInput:SetPercentageY(0)
+        textBoxPanelLayoutForInput:SetPercentageWidth(0.8)
+        textBoxPanelLayoutForInput:SetPercentageHeight(0.2)
+        textBoxPanelLayoutForInput:SetHeightOffset(-3)
 
-        Layout inputPanelLayout
-        inputPanelLayout:SetPercentageX(0)
-        inputPanelLayout:SetPercentageY(0.0)
-        inputPanelLayout:SetPercentageWidth(1)
-        inputPanelLayout:SetPercentageHeight(1)
-        Item2D inputPanel
-        inputPanel:AddLayout(inputPanelLayout)
-        
-        Layout inputTextBoxLayout
-        inputTextBoxLayout:SetPercentageX(0)
-        inputTextBoxLayout:SetPercentageY(0.0)
-        inputTextBoxLayout:SetPercentageWidth(0.8)
-        inputTextBoxLayout:SetPercentageHeight(1)
-        TextBox inputTextBox        
-        inputTextBox:Initialize(400, 400, color:CustomColor(1, 1, 1, 1), "")
-        inputTextBox:AddLayout(inputTextBoxLayout)
-        inputTab:SetTextBox(inputTextBox)
+        TextBox inputTextBoxForOutputPane  
+        inputTextBoxForOutputPane:AddLayout(textBoxPanelLayoutForInput)
+        inputTextBoxForOutputPane:Initialize(400, 400, color:CustomColor(1, 1, 1, 1), "")
 
+        InputBehavior behavior = behaviors:GetInputBehavior()
         Layout buttonLayout
         buttonLayout:SetPercentageX(0.8)
         buttonLayout:SetPercentageY(0.0)
         buttonLayout:SetPercentageWidth(0.2)
-        buttonLayout:SetPercentageHeight(1)
+        buttonLayout:SetPercentageHeight(0.2)
+        buttonLayout:SetHeightOffset(-2)
         Button button
         button:AddLayout(buttonLayout)
         button:Initialize(1, 1, "Send")
-        InputBehavior behavior = behaviors:GetInputBehavior()
+
+        behavior:SetInputTextBox(inputTextBoxForOutputPane)
         button:SetBehavior(behavior)
 
-        inputPanel:Add(inputTextBox)
-        inputPanel:Add(button)
-
-        inputTab:Initialize("Input", inputPanel, true)
-        behavior:SetInputTab(inputTab)
+        outputPanel:AddLayout(outputPanelLayout)
+        outputPanel:Add(textBox)
+        outputPanel:Add(inputTextBoxForOutputPane)
+        outputPanel:Add(button)
+        outputTab:SetTextBox(textBox)
+        outputTab:Initialize("Output", outputPanel, true)
         
 
         errorTab:Initialize("Errors", undefined, true)
-        
         callStackTab:Initialize("Call Stack", undefined, true)
         breakpointsTab:Setup()
         variablesTab:Setup()

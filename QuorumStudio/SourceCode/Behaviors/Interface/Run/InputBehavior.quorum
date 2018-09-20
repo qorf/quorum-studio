@@ -16,18 +16,17 @@ use Libraries.Containers.Array
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Studio.Build.BuildInformation
-use Libraries.Development.Environment.Studio.Interface.InputTab
 
 class InputBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
-    InputTab tab = undefined
+    TextBox textbox = undefined
 
-    action GetInputTab returns InputTab
-        return tab
+    action GetInputTextBox returns TextBox
+        return textbox
     end
 
-    action SetInputTab(InputTab tab)
-        me:tab = tab
+    action SetInputTextBox(TextBox textbox)
+        me:textbox = textbox
     end
 
     action GetBuildManager returns BuildManager
@@ -45,7 +44,7 @@ class InputBehavior is QuorumStudioBehavior
 
         ProjectTree tree = studio:GetProjectTree()
         TreeSelection selection = tree:GetSelection()
-        if not selection:IsEmpty() and tab not= undefined
+        if not selection:IsEmpty() and textbox not= undefined
             Array<TreeItem> items = selection:GetPath()
             ProjectTreeItem value = cast(ProjectTreeItem, items:Get(0))
             QuorumProject project = value:GetProject()
@@ -54,7 +53,7 @@ class InputBehavior is QuorumStudioBehavior
             info:outputTab = out
             info:project = project
             
-            builder:AddInputToProcess(info, tab:GetText())
+            builder:AddInputToProcess(info, textbox:GetText())
         end
     end
 end
