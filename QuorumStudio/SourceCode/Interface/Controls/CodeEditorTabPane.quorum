@@ -95,8 +95,6 @@ class CodeEditorTabPane is TabPane, TabChangeListener
     action OpenNewTab(File file) returns EditorTab
         text contents = ""
 
-        output "Opening new tab."
-
         check
             contents = file:Read()
         detect error is FileNotFoundError
@@ -147,14 +145,12 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         EditorTab returnedTab = undefined
         boolean value = openFiles:HasKey(file:GetAbsolutePath())
         if value //it's already open
-            output "Already open."
             Tab tab = openTabs:GetValue(file:GetAbsolutePath())
             //now we have to give that tab the focus
             tab:ReleasedMouse()
             tab:Focus()
             returnedTab = cast(EditorTab, tab)
         else
-            output "Opening new tab."
             EditorTab tab
             tab:SetName(file:GetPath())
             tab:SetRelatedItem(textBox)
