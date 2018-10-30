@@ -15,7 +15,6 @@ use Libraries.Game.Layer2D
 use Libraries.Containers.Array
 use Libraries.System.File
 use Libraries.Interface.Layouts.Layout
-use Libraries.Interface.Layouts.FillLayout
 use Libraries.Interface.Controls.Tab
 use Libraries.Game.Graphics.Texture
 use Libraries.Game.GameStateManager
@@ -31,6 +30,12 @@ use Libraries.Development.Environment.Studio.Behaviors.ScanLibraryBehavior
 use Libraries.Development.Environment.Studio.Build.BuildManager
 use Libraries.Concurrency.ThreadRunner
 use Libraries.System.SystemHelper
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.ManualLayout
+use Libraries.Game.InputMonitor
+use Libraries.Interface.Events.KeyboardEvent
 
 
 class QuorumStudio is Game, FocusListener
@@ -40,7 +45,9 @@ class QuorumStudio is Game, FocusListener
     ProjectTree projectTree
     CodeEditorTabPane codeTabs
     OutputEditorTabPane outputWindow
-    Item2D mainContentPane
+    Control mainContentPane
+    // inputOutputPane contains both the code editor and the output area.
+    Control inputOutputPane
     Color color
     
     //Color background
@@ -146,6 +153,9 @@ class QuorumStudio is Game, FocusListener
     end
 
     action CreateGame
+        FlowLayout flowLayout
+        SetLayout(flowLayout)
+
         options:SetMainApplication(me)
         GameStateManager manager
         GraphicsManager graphics = manager:GetGameGraphics()
@@ -161,6 +171,7 @@ class QuorumStudio is Game, FocusListener
 
         Load()
         SetupFocus()
+        SetupInterfaceScaling()
         
         BuildManager builds = behaviors:GetBuildManager()
         builds:SetCodeEditorTabPane(codeTabs)
@@ -187,6 +198,14 @@ class QuorumStudio is Game, FocusListener
         AddFocusListener(me)
     end
 
+    action SetupInterfaceScaling
+        InputTable table = GetDefaultInputTable()
+        KeyMap keyMap = resources:GetKeyMap()
+
+        table:Add(keyMap:GetScaleInterfaceUpKey(), behaviors:GetScaleInterfaceUpBehavior())
+        table:Add(keyMap:GetScaleInterfaceDownKey(), behaviors:GetScaleInterfaceDownBehavior())
+    end
+
     action SetupResources
         manager:Add(projectTree)
         manager:Add(options)
@@ -211,16 +230,17 @@ class QuorumStudio is Game, FocusListener
 
     action SetupInterface
         menu:Setup()
-        toolbar:SetDisplayOffset(-menu:GetHeight())
+//        toolbar:SetDisplayOffset(-menu:GetHeight())
         toolbar:Setup()
 
         CreateMainContentPane()
-        Add(mainContentPane)
-        Add(toolbar)
         Add(menu)
+        Add(toolbar)
+        Add(mainContentPane)
     end
 
     action Load
+        output "Loading on-start projects."
         //load the user's settings
         options:Read()
         //options:Write()
@@ -229,6 +249,7 @@ class QuorumStudio is Game, FocusListener
         i = 0
         repeat while i < projects:GetSize()
             text value = projects:Get(i)
+            output "Project " + i + ": " + value
             File file
             file:SetAbsolutePath(value)
             manager:Open(file)
@@ -238,6 +259,7 @@ class QuorumStudio is Game, FocusListener
         Iterator<File> iterator = options:GetFilesOpenOnStartup()
         repeat while iterator:HasNext()
             File file = iterator:Next()
+            output "On start-up file: " + file:GetAbsolutePath()
             codeTabs:OpenNewTab(file)
         end
     end
@@ -251,42 +273,44 @@ class QuorumStudio is Game, FocusListener
     end
 
     private action CreateMainContentPane
-        Layout layout
-        layout:SetPercentageX(0)
-        layout:SetPercentageY(0)
-        layout:SetPercentageHeight(1)
-        layout:SetHeightOffset(-menu:GetHeight() - toolbar:GetHeight() - 5)
-        layout:SetPercentageWidth(1)
-        layout:SetOffsetX(5)
+        LayoutProperties layoutProperties = mainContentPane:GetDefaultLayoutProperties()
+        layoutProperties:SetVerticalLayoutMode(layoutProperties:FILL)
+        layoutProperties:SetPercentageWidth(1)
+        layoutProperties:SetTopPadding(5)
 
-        mainContentPane:AddLayout(layout)
+        FlowLayout layout
+        mainContentPane:SetLayout(layout)
 
         CreateProjectsWindow()
         CreateCodeEditor()
         CreateOutputWindow()
 
+        LayoutProperties inputOutputProperties = inputOutputPane:GetDefaultLayoutProperties()
+        inputOutputProperties:SetHorizontalLayoutMode(inputOutputProperties:FILL)
+        inputOutputProperties:SetVerticalLayoutMode(inputOutputProperties:FILL)
+        FlowLayout inputOutputLayout
+        inputOutputPane:SetLayout(inputOutputLayout)
+
         mainContentPane:Add(projectPane)
-        mainContentPane:Add(codeTabs)
-        mainContentPane:Add(outputWindow)
+        inputOutputPane:Add(codeTabs)
+        inputOutputPane:Add(outputWindow)
+        mainContentPane:Add(inputOutputPane)
     end
 
     action CreateCodeEditor
-        codeTabs:Setup()
     end
 
     action CreateProjectsWindow()
-        projectTree:Setup()
+        LayoutProperties scrollLayout = projectPane:GetDefaultLayoutProperties()
+        scrollLayout:SetVerticalLayoutMode(scrollLayout:FILL)
+        scrollLayout:SetHorizontalLayoutMode(scrollLayout:STANDARD)
+        scrollLayout:SetPixelWidth(300)
 
-        Layout scrollLayout
-        scrollLayout:SetPercentageX(0)
-        scrollLayout:SetPercentageY(0)
-        scrollLayout:SetPercentageOriginY(0)
-        scrollLayout:SetPercentageHeight(1)
-        scrollLayout:SetWidthOffset(300)
+        FlowLayout layout
+        projectPane:SetLayout(layout)
 
-        projectPane:Initialize(1, 1, resources:GetBackgroundColor())
+        projectPane:SetBackgroundColor(resources:GetBackgroundColor())
         projectPane:SetRegionSize(300, 1000)
-        projectPane:AddLayout(scrollLayout)
         projectPane:Add(projectTree)
     end
 
@@ -344,7 +368,35 @@ class QuorumStudio is Game, FocusListener
         updater:CheckForNewerVersion(up)
     end
 
+    integer frame = 0
+    boolean pressedKey = false
+    InputMonitor monitor
+    KeyboardEvent keys
+    number scale = 1
+
     action Update(number seconds)
+        frame = frame + 1
+        if frame = 5
+            output "mainContentPane: " + mainContentPane:GetGlobalX() + ", " + mainContentPane:GetGlobalY() + " -- " + mainContentPane:GetWidth() + "x" + mainContentPane:GetHeight()
+            output "projectPane: " + projectPane:GetGlobalX() + ", " + projectPane:GetGlobalY() + " -- " + projectPane:GetWidth() + "x" + projectPane:GetHeight()
+            output "projectTree: " + projectTree:GetGlobalX() + ", " + projectTree:GetGlobalY() + " -- " + projectTree:GetWidth() + "x" + projectTree:GetHeight()
+            output "codeTabs: " + codeTabs:GetGlobalX() + ", " + codeTabs:GetGlobalY() + " -- " + codeTabs:GetWidth() + "x" + codeTabs:GetHeight()
+            output "outputWindow: " + outputWindow:GetGlobalX() + ", " + outputWindow:GetGlobalY() + " -- " + outputWindow:GetWidth() + "x" + outputWindow:GetHeight()
+        end
         helper:Sleep(40) //hard cap at 25 FPS for now.
+
+        if monitor:IsKeyPressed(keys:Q)
+            if pressedKey = false
+                scale = scale - 0.2
+                SetInterfaceScale(scale)
+            end
+        elseif monitor:IsKeyPressed(keys:E)
+            if pressedKey = false
+                scale = scale + 0.2
+                SetInterfaceScale(scale)
+            end
+        else
+            pressedKey = false
+        end
     end
 end

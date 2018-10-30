@@ -1,0 +1,44 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Development.Environment.Studio.QuorumStudio
+
+class ScaleInterfaceBehavior is QuorumStudioBehavior
+    
+    boolean scaleUp = true
+    number scaleAmount = 0.2
+
+    action SetScaleUp(boolean up)
+        scaleUp = up
+    end
+
+    action IsScalingUp returns boolean
+        return scaleUp
+    end
+
+    action SetScaleAmount(number amount)
+        scaleAmount = amount
+    end
+
+    action GetScaleAmount returns number
+        return scaleAmount
+    end
+
+    action Run(BehaviorEvent event)
+        QuorumStudio studio = GetMainApplication()
+        number scale = studio:GetInterfaceScale()
+        if scaleUp
+            scale = scale + scaleAmount
+        else
+            scale = scale - scaleAmount
+        end
+
+        if scale >= 0.1
+            studio:SetInterfaceScale(scale)
+        end
+    end
+
+end

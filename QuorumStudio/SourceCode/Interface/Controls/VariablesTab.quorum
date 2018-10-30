@@ -13,6 +13,9 @@ use Libraries.Language.Debug.Variable
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Interface.Events.TreeChangeListener
 use Libraries.Interface.Events.TreeChangeEvent
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.Icon
 
 class VariablesTab is Tab, TreeChangeListener
     BuildManager manager = undefined
@@ -50,17 +53,16 @@ class VariablesTab is Tab, TreeChangeListener
     end
 
     action Setup
-        Layout treeLayout
-        treeLayout:SetPercentageOriginY(1)
-        treeLayout:SetPercentageY(1)
-        variablesTree:AddLayout(treeLayout)
+        LayoutProperties properties = variablesTree:GetDefaultLayoutProperties()
+        properties:SetPercentageOriginY(1)
+        properties:SetPercentageY(1)
         
-        pane:Setup()
-        pane:Initialize(1,1, resources:GetBackgroundColor())
         pane:Add(variablesTree)
         pane:Resize()
 
-        Initialize("Variables", GetPane(), true)
+        SetName("Variables")
+        SetRelatedItem(GetPane())
+        DisplayCloseButton(true)
         variablesTree:AddTreeChangeListener(me)
     end
 
@@ -94,7 +96,10 @@ class VariablesTab is Tab, TreeChangeListener
                     Variable variable = value:Get(i)
                     TreeItem item
                     text name = variable:GetName()
-                    item:Initialize(name, resources:GetBreakpoint())
+                    item:SetName(name)
+                    Icon icon
+                    icon:Load(resources:GetBreakpoint())
+                    item:SetIcon(icon)
                     item:ShowExpandButton()
                     variablesTree:Add(item)
                     i = i + 1

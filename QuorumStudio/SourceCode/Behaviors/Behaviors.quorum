@@ -69,6 +69,9 @@ class Behaviors
 
     constant text SCANNER = "Scanner"
 
+    constant text SCALE_INTERFACE_UP = "Scale Interface Up"
+    constant text SCALE_INTERFACE_DOWN = "Scale Interface Down"
+
     FocusBreakpointsBehavior focusBreakpointsBehavior
     FocusCallStackBehavior focusCallStackBehavior
     FocusEditorBehavior focusEditorBehavior
@@ -98,6 +101,10 @@ class Behaviors
     ThreadedBehavior threadedPause
     ThreadedBehavior threadedContinue
     ScanLibraryBehavior scanner
+
+    // Interface scaling.
+    ScaleInterfaceBehavior interfaceScaleUp
+    ScaleInterfaceBehavior interfaceScaleDown
 
     on create
         behaviors:Add(DEFAULT_MENU_OPEN, defaultMenuOpenBehavior)
@@ -151,6 +158,12 @@ class Behaviors
         threadedContinue:SetNestedBehavior(continueBehavior)
         threadedContinue:SetThreadRunner(buildSystemRunner)
 
+        // Set direction and magnitude of interface scaling behaviors.
+        interfaceScaleUp:SetScaleUp(true)
+        interfaceScaleDown:SetScaleUp(false)
+        interfaceScaleUp:SetScaleAmount(0.2)
+        interfaceScaleDown:SetScaleAmount(0.2)
+
         //add them to the behaviors system
         behaviors:Add(BUILD_PROJECT, threadedBuild)
         behaviors:Add(CLEAN_AND_BUILD_PROJECT, threadedCleanAndBuild)
@@ -179,6 +192,8 @@ class Behaviors
 
         //other behaviors
         behaviors:Add(SCANNER, scanner)
+        behaviors:Add(SCALE_INTERFACE_UP, interfaceScaleUp)
+        behaviors:Add(SCALE_INTERFACE_DOWN, interfaceScaleDown)
     end
     
     //general behaviors
@@ -363,6 +378,14 @@ class Behaviors
 
     action GetDefaultEscapeBehavior returns DefaultEscapeBehavior
         return defaultEscapeBehavior
+    end
+
+    action GetScaleInterfaceUpBehavior returns QuorumStudioBehavior
+        return interfaceScaleUp
+    end
+
+    action GetScaleInterfaceDownBehavior returns QuorumStudioBehavior
+        return interfaceScaleDown
     end
 
     action SetMainApplication(QuorumStudio studio)

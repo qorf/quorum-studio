@@ -1,6 +1,6 @@
 package Libraries.Development.Environment.Studio
 use Libraries.Interface.Controls.TabPane
-use Libraries.Interface.Layouts.FillLayout
+use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Containers.Array
 use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Controls.TextBox
@@ -25,6 +25,7 @@ use Libraries.Interface.Events.FocusEvent
 use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Interface.Events.TabChangeListener
 use Libraries.Interface.Events.TabChangeEvent
+use Libraries.Interface.Controls.Icon
 
 class CodeEditorTabPane is TabPane, TabChangeListener
     KeyboardEvent keys
@@ -34,6 +35,18 @@ class CodeEditorTabPane is TabPane, TabChangeListener
     Resources resources = undefined
     File queuedFileOpen = undefined
     integer queuedLine = 0
+
+    on create
+        LayoutProperties properties = GetDefaultLayoutProperties()
+        properties:SetHorizontalLayoutMode(properties:FILL)
+        properties:SetVerticalLayoutMode(properties:STANDARD)
+        properties:SetPercentageHeight(0.7)
+        properties:SetLeftPadding(3)
+        properties:SetRightPadding(3)
+
+        SetName("Code Tabs")
+        AddTabChangeListener(me)
+    end
 
     action ClosedTab(TabChangeEvent event)
         if event:GetTab() is EditorTab
@@ -75,29 +88,14 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         return openFiles:GetValueIterator()
     end
 
-    action Setup
-        FillLayout fill
-        fill:SetFillSide(fill:RIGHT)
-        fill:SetPercentageY(1)
-        fill:SetPercentageOriginY(1)
-        fill:SetPercentageHeight(0.7)
-        fill:SetOffsetX(3)
-        fill:SetWidthOffset(-3)
-
-        SetName("Code Tabs")
-        Array<Tab> array
-        
-        Initialize(200, 200, array)
-        AddLayout(fill)
-        AddTabChangeListener(me)
-    end
-
     /*
         This action opens a new tab if one is not open. If one is already open, 
         then it returns the one already there.
     */
     action OpenNewTab(File file) returns EditorTab
         text contents = ""
+
+        output "Opening new tab."
 
         check
             contents = file:Read()
@@ -114,14 +112,17 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             return now
         end
 
-        Layout textBoxLayout
-        textBoxLayout:SetPercentageX(0)
-        textBoxLayout:SetPercentageY(0)
-        textBoxLayout:SetPercentageWidth(1)
-        textBoxLayout:SetPercentageHeight(1)
-
-        TextBox textBox        
-        textBox:Initialize(400, 400, color:CustomColor(1, 1, 1, 1), contents)
+        TextBox textBox
+        LayoutProperties boxProperties = textBox:GetDefaultLayoutProperties()
+        boxProperties:SetPercentageWidth(1)
+        boxProperties:SetPercentageHeight(1)
+        boxProperties:SetPercentageX(0)
+        boxProperties:SetPercentageY(0)
+        boxProperties:SetHorizontalLayoutMode(boxProperties:STANDARD)
+        boxProperties:SetVerticalLayoutMode(boxProperties:STANDARD)
+        textBox:SetBackgroundColor(color:White())
+        textBox:SetText(contents)
+        textBox:SetName("Code Edit Text Box")
         //Experimental section on setting a textured background.
 //        Drawable bg = textBox:GetBackground()
 //        Texture texture
@@ -138,24 +139,27 @@ class CodeEditorTabPane is TabPane, TabChangeListener
 //        region:LoadTextureRegion(texture, 0, 0, texture:GetWidth() * 3, texture:GetHeight() * 3)
 //        bg:Load(region)
 
-        textBox:AddLayout(textBoxLayout)    
-
         // For testing purposes, just put in a placeholder icon.
         // Long-term, this should instead check the file extension and load an
         // appropriate image (e.g., Quorum icon for a .quorum file).
-        Texture icon = resources:GetQuorumFile()
+        Icon icon = resources:GetQuorumFile()
 
         EditorTab returnedTab = undefined
         boolean value = openFiles:HasKey(file:GetAbsolutePath())
         if value //it's already open
+            output "Already open."
             Tab tab = openTabs:GetValue(file:GetAbsolutePath())
             //now we have to give that tab the focus
             tab:ReleasedMouse()
             tab:Focus()
             returnedTab = cast(EditorTab, tab)
-        else 
+        else
+            output "Opening new tab."
             EditorTab tab
-            tab:Initialize(file:GetPath(), textBox, icon, true)
+            tab:SetName(file:GetPath())
+            tab:SetRelatedItem(textBox)
+            tab:SetIcon(icon)
+            tab:DisplayCloseButton(true)
             tab:SetFile(file)
             tab:Setup()
             openFiles:Add(file:GetAbsolutePath(), file)
@@ -165,7 +169,7 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             tab:Focus()
             returnedTab = tab
         end
-
+//
         Resize()
         return returnedTab
     end

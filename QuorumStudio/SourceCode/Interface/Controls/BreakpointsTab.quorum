@@ -14,6 +14,8 @@ use Libraries.Language.Debug.BreakpointEvent
 use Libraries.Language.Debug.Breakpoint
 use Libraries.System.File
 use Libraries.Containers.Iterator
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Layouts.ManualLayout
 
 class BreakpointsTab is Tab, BreakpointListener
     BreakpointScrollPane pane
@@ -60,17 +62,20 @@ class BreakpointsTab is Tab, BreakpointListener
                 if item:GetName() = file:GetFileName()
                     found = true
                     TreeItem newOne
-                    newOne:Initialize("" + line, resources:GetBreakpoint())
+                    newOne:SetName("" + line)
+                    newOne:SetIcon(resources:GetBreakpoint())
                     item:Add(newOne)
                 end
             end
 
             if not found
                 TreeItem top
-                top:Initialize("" + file:GetFileName(), resources:GetBreakpoint())
+                top:SetName("" + file:GetFileName())
+                top:SetIcon(resources:GetBreakpoint())
                 
                 TreeItem newOne
-                newOne:Initialize("" + line, resources:GetBreakpoint())
+                newOne:SetName("" + line)
+                newOne:SetIcon(resources:GetBreakpoint())
                 top:Add(newOne)
 
                 breakpointTree:Add(top)
@@ -102,16 +107,19 @@ class BreakpointsTab is Tab, BreakpointListener
     end
 
     action Setup
-        Layout treeLayout
-        treeLayout:SetPercentageOriginY(1)
-        treeLayout:SetPercentageY(1)
-        breakpointTree:AddLayout(treeLayout)
+        LayoutProperties treeProperties = GetDefaultLayoutProperties()
+        treeProperties:SetPercentageOriginY(1)
+        treeProperties:SetPercentageY(1)
         
-        pane:Setup()
-        pane:Initialize(1,1, resources:GetBackgroundColor())
+        ManualLayout layout
+        pane:SetLayout(layout)
+
+        pane:SetBackgroundColor(resources:GetBackgroundColor())
         pane:Add(breakpointTree)
         pane:Resize()
 
-        Initialize("Breakpoints", GetPane(), true)
+        SetName("Breakpoints")
+        SetRelatedItem(GetPane())
+        DisplayCloseButton(true)
     end
 end

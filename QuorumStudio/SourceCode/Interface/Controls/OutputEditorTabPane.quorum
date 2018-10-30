@@ -1,7 +1,7 @@
 package Libraries.Development.Environment.Studio
 
 use Libraries.Interface.Controls.TabPane
-use Libraries.Interface.Layouts.FillLayout
+use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Containers.Array
 use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Controls.TextBox
@@ -25,6 +25,7 @@ use Libraries.Development.Environment.Studio.Interface.CallStackTab
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Studio.Behaviors.InputBehavior
+use Libraries.Interface.Layouts.FlowLayout
 
 class OutputEditorTabPane is TabPane
     Color color
@@ -83,13 +84,13 @@ class OutputEditorTabPane is TabPane
     end
 
     action Setup
-        FillLayout fill
-        fill:SetFillSide(fill:RIGHT)
-        fill:SetPercentageY(0)
-        fill:SetPercentageHeight(0.3)
-        fill:SetOffsetX(3)
-        fill:SetWidthOffset(-3)
-        fill:SetHeightOffset(-4)
+        LayoutProperties properties = GetDefaultLayoutProperties()
+        properties:SetHorizontalLayoutMode(properties:STANDARD)
+        properties:SetVerticalLayoutMode(properties:FILL)
+        properties:SetPercentageWidth(1.0)
+        properties:SetLeftPadding(3)
+        properties:SetRightPadding(3)
+        properties:SetTopPadding(4)
 
         breakpointsTab:SetResources(resources)
         variablesTab:SetResources(resources)
@@ -103,63 +104,72 @@ class OutputEditorTabPane is TabPane
         array:Add(variablesTab)
         array:Add(breakpointsTab)
         array:Add(callStackTab)
-        Initialize(200, 200, array)
-        AddLayout(fill)
+        Add(array)
     end
 
     action SetupTabs
-        Item2D outputPanel
-        Layout outputPanelLayout
+        Control outputPanel
+        LayoutProperties outputPanelLayout = outputPanel:GetDefaultLayoutProperties()
         outputPanelLayout:SetPercentageX(0)
         outputPanelLayout:SetPercentageY(0)
         outputPanelLayout:SetPercentageWidth(1)
         outputPanelLayout:SetPercentageHeight(1)
 
-        Layout textBoxPanelLayout
+        FlowLayout flow
+        outputPanel:SetLayout(flow)
+
+        TextBox textBox  
+        textBox:SetBackgroundColor(color:White())
+        textBox:SetText("Welcome to Quorum Studio!")
+
+        LayoutProperties textBoxPanelLayout = textBox:GetDefaultLayoutProperties()
         textBoxPanelLayout:SetPercentageX(0)
         textBoxPanelLayout:SetPercentageY(0.2)
         textBoxPanelLayout:SetPercentageWidth(1)
         textBoxPanelLayout:SetPercentageHeight(0.8)
 
-        TextBox textBox  
-        textBox:AddLayout(textBoxPanelLayout)
-        textBox:Initialize(400, 400, color:CustomColor(1, 1, 1, 1), "Welcome to Quorum Studio!")
+        TextBox inputTextBoxForOutputPane
 
-        Layout textBoxPanelLayoutForInput
+        LayoutProperties textBoxPanelLayoutForInput = inputTextBoxForOutputPane:GetDefaultLayoutProperties()
         textBoxPanelLayoutForInput:SetPercentageX(0)
         textBoxPanelLayoutForInput:SetPercentageY(0)
         textBoxPanelLayoutForInput:SetPercentageWidth(0.8)
         textBoxPanelLayoutForInput:SetPercentageHeight(0.2)
-        textBoxPanelLayoutForInput:SetHeightOffset(-3)
+        textBoxPanelLayoutForInput:SetTopPadding(3)
 
-        TextBox inputTextBoxForOutputPane  
-        inputTextBoxForOutputPane:AddLayout(textBoxPanelLayoutForInput)
-        inputTextBoxForOutputPane:Initialize(400, 400, color:CustomColor(1, 1, 1, 1), "")
+        inputTextBoxForOutputPane:SetBackgroundColor(color:White())
 
         InputBehavior behavior = behaviors:GetInputBehavior()
-        Layout buttonLayout
-        buttonLayout:SetPercentageX(0.8)
-        buttonLayout:SetPercentageY(0.0)
-        buttonLayout:SetPercentageWidth(0.2)
-        buttonLayout:SetPercentageHeight(0.2)
-        buttonLayout:SetHeightOffset(-2)
+        
         Button button
-        button:AddLayout(buttonLayout)
-        button:Initialize(1, 1, "Send")
+        LayoutProperties buttonProperties = button:GetDefaultLayoutProperties()
+//        buttonProperties:SetPercentageX(0.8)
+//        buttonProperties:SetPercentageY(0.0)
+//        buttonProperties:SetPercentageWidth(0.2)
+//        buttonProperties:SetPercentageHeight(0.2)
+        buttonProperties:SetHorizontalLayoutMode(buttonProperties:FILL)
+        buttonProperties:SetVerticalLayoutMode(buttonProperties:FILL)
+        buttonProperties:SetTopPadding(2)
+        button:SetName("Send")
 
         behavior:SetInputTextBox(inputTextBoxForOutputPane)
         button:SetBehavior(behavior)
 
-        outputPanel:AddLayout(outputPanelLayout)
         outputPanel:Add(textBox)
         outputPanel:Add(inputTextBoxForOutputPane)
         outputPanel:Add(button)
         outputTab:SetTextBox(textBox)
-        outputTab:Initialize("Console", outputPanel, true)
+        outputTab:SetName("Console")
+        outputTab:SetRelatedItem(outputPanel)
+        outputTab:DisplayCloseButton(true)
         
 
-        errorTab:Initialize("Errors", undefined, true)
-        callStackTab:Initialize("Call Stack", undefined, true)
+        errorTab:SetName("Errors")
+        errorTab:SetRelatedItem(undefined)
+        errorTab:DisplayCloseButton(true)
+        callStackTab:SetName("Call Stack")
+        callStackTab:SetRelatedItem(undefined)
+        callStackTab:DisplayCloseButton(true)
         breakpointsTab:Setup()
         variablesTab:Setup()
     end

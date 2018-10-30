@@ -43,6 +43,7 @@ class QuorumProjectView is ProjectView
 
     action GetLogicalTree returns TreeItem
         if project = undefined
+            output "GetLogicalTree: project = undefined"
             return undefined
         end
 
@@ -75,8 +76,11 @@ class QuorumProjectView is ProjectView
 //            i = i + 1
 //        end
 //        source:Initialize(SOURCE_FOLDER_NAME, resources:GetFolder(), items)
-        projectItem:Initialize(project:GetName(), resources:GetProjectLogo(), folders)
-        
+        projectItem:SetName(project:GetName())
+        projectItem:SetIcon(resources:GetProjectLogo())
+        projectItem:Add(folders)
+        output "Returning project item: " + projectItem:GetName() + " with " + folders:GetSize() + " elements."
+
         return projectItem
     end
 
@@ -97,16 +101,20 @@ class QuorumProjectView is ProjectView
                 behavior:SetMainApplication(studio)
                 behavior:SetFile(file)
                 item:SetBehavior(behavior)
-                item:Initialize(file:GetFileName(), resources:GetQuorumFile())
+                item:SetName(file:GetFileName())
+                item:SetIcon(resources:GetQuorumFile())
                 items:Add(item)
             end
             i = i + 1
         end
         if source:IsDirectory()
-            value:Initialize(source:GetFileName(), resources:GetFolder(), items)
+            value:SetIcon(resources:GetFolder())
         else
-            value:Initialize(source:GetFileName(), resources:GetQuorumFile(), items)
+            value:SetIcon(resources:GetQuorumFile())
         end
+
+        value:SetName(source:GetFileName())
+        value:Add(items)
         
         return value
     end
