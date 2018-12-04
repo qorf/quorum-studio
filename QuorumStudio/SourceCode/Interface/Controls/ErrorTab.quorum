@@ -2,5 +2,102 @@ package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Tab
 
+use Libraries.Interface.Controls.Tab
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Interface.Layouts.Layout
+use Libraries.Interface.Controls.Tree
+use Libraries.Development.Environment.Resources
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Language.Debug.Debugger
+use Libraries.Language.Debug.VariablesModel
+use Libraries.Containers.Array
+use Libraries.Language.Debug.Variable
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Events.TreeChangeListener
+use Libraries.Interface.Events.TreeChangeEvent
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.Icon
+use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Interface.Controls.Column
+use Libraries.Interface.Controls.Cell
+
 class ErrorTab is Tab
+    BuildManager manager = undefined
+    Resources resources = undefined
+    Behaviors behaviors = undefined
+    Debugger debugger = undefined
+    BreakpointScrollPane pane
+    Spreadsheet table
+    boolean updateDebuggerInformation = false
+
+    action GetBehaviors returns Behaviors
+        return behaviors
+    end
+
+    action SetBehaviors(Behaviors behaviors)
+        me:behaviors = behaviors
+        manager = behaviors:GetBuildManager()
+        debugger = manager:GetDebugger()
+    end
+
+    action GetResources returns Resources
+        return resources
+    end
+
+    action SetResources(Resources resources)
+        me:resources = resources
+    end
+
+    action GetBuildManager returns BuildManager
+        return manager
+    end
+
+    action SetBuildManager(BuildManager build)
+        me:manager = build
+    end
+
+    action Setup
+        i = 0
+        repeat while i < 10
+            Column column = GetColumn()
+            LayoutProperties properties = column:GetDefaultLayoutProperties()
+            //properties:SetPixelWidth(0)
+            //properties:SetPercentageWidth(0.33)
+            
+            table:Add(column)
+            i = i + 1
+        end
+
+        LayoutProperties properties = table:GetDefaultLayoutProperties()
+        properties:SetHorizontalLayoutMode(properties:FILL)
+        properties:SetPixelWidth(1000)
+
+        pane:Add(table)
+        pane:Resize()
+        SetName("Errors")
+        SetRelatedItem(GetPane())
+        DisplayCloseButton(true)
+    end
+
+    action GetPane returns BreakpointScrollPane
+        return pane
+    end
+
+    action GetColumn returns Column
+        Column column
+
+        i = 0
+        repeat while i < 100
+            Cell cell
+            //LayoutProperties properties = cell:GetDefaultLayoutProperties()
+            //properties:SetPercentageWidth(0.33)
+            cell:SetText("" + i)
+            column:Add(cast(Cell, cell))
+            i = i + 10
+        end
+        return column
+    end
+
+
 end
