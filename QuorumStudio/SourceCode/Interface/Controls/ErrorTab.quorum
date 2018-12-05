@@ -21,6 +21,7 @@ use Libraries.Interface.Controls.Icon
 use Libraries.Interface.Controls.Spreadsheet
 use Libraries.Interface.Controls.Column
 use Libraries.Interface.Controls.Cell
+use Libraries.Language.Compile.CompilerError
 
 class ErrorTab is Tab
     BuildManager manager = undefined
@@ -58,6 +59,7 @@ class ErrorTab is Tab
     end
 
     action Setup
+        DisplayCloseButton(true)
         i = 0
         repeat while i < 10
             Column column = GetColumn()
@@ -78,6 +80,14 @@ class ErrorTab is Tab
         SetName("Errors")
         SetRelatedItem(GetPane())
         DisplayCloseButton(true)
+    end
+
+    action Empty 
+        table:Empty()
+    end
+
+    action AddError(CompilerError error)
+
     end
 
     action GetPane returns BreakpointScrollPane
