@@ -31,6 +31,9 @@ class ErrorTab is Tab
     BreakpointScrollPane pane
     Spreadsheet table
     boolean updateDebuggerInformation = false
+    Column message
+    Column line
+    Column file
 
     action GetBehaviors returns Behaviors
         return behaviors
@@ -60,16 +63,24 @@ class ErrorTab is Tab
 
     action Setup
         DisplayCloseButton(true)
-        i = 0
-        repeat while i < 10
-            Column column = GetColumn()
-            LayoutProperties properties = column:GetDefaultLayoutProperties()
-            //properties:SetPixelWidth(0)
-            //properties:SetPercentageWidth(0.33)
-            
-            table:Add(column)
-            i = i + 1
-        end
+        table:Add(message)
+
+
+        LayoutProperties messageProps = message:GetDefaultLayoutProperties()
+        messageProps:SetPercentageWidth(0.5)
+        table:Add(line)
+        table:Add(file)
+
+//        i = 0
+//        repeat while i < 10
+//            Column column = GetColumn()
+//            LayoutProperties properties = column:GetDefaultLayoutProperties()
+//            //properties:SetPixelWidth(0)
+//            //properties:SetPercentageWidth(0.33)
+//            
+//            table:Add(column)
+//            i = i + 1
+//        end
 
         LayoutProperties properties = table:GetDefaultLayoutProperties()
         properties:SetHorizontalLayoutMode(properties:FILL)
@@ -83,11 +94,23 @@ class ErrorTab is Tab
     end
 
     action Empty 
-        table:Empty()
+        //table:Empty()
     end
 
     action AddError(CompilerError error)
+        Cell m
+        Cell l
+        Cell f
+        
+        m:SetText(error:GetErrorMessage())
+        l:SetText("" + error:GetLineNumber())
+        if error:GetFile() not= undefined
+            f:SetText("" + error:GetFile():GetAbsolutePath())
+        end
 
+        message:Add(m)
+        line:Add(l)
+        file:Add(f)
     end
 
     action GetPane returns BreakpointScrollPane

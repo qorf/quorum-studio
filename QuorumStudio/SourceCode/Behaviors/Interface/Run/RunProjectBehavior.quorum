@@ -16,6 +16,7 @@ use Libraries.Containers.Array
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Studio.Build.BuildInformation
+use Libraries.Development.Environment.Studio.Interface.ErrorTab
 
 class RunProjectBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
@@ -32,6 +33,7 @@ class RunProjectBehavior is QuorumStudioBehavior
         QuorumStudio studio = GetMainApplication()
         OutputEditorTabPane outPane = studio:GetOutputPane()
         OutputTab out = outPane:GetOutputTab()
+        ErrorTab errors = outPane:GetErrorTab()
         out:Empty()
 
         ProjectTree tree = studio:GetProjectTree()
@@ -44,6 +46,7 @@ class RunProjectBehavior is QuorumStudioBehavior
             BuildInformation info
             info:outputTab = out
             info:project = project
+            info:errorTab = errors
             builder:Run(info)
         end
     end
