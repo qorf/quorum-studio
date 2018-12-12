@@ -31,9 +31,12 @@ class ErrorTab is Tab
     BreakpointScrollPane pane
     Spreadsheet table
     boolean updateDebuggerInformation = false
-    Column message
-    Column line
-    Column file
+    Column messageColumn
+    Column lineColumn
+    Column fileColumn
+    Cell headerMessage
+    Cell headerFile
+    Cell headerLine
 
     action GetBehaviors returns Behaviors
         return behaviors
@@ -63,24 +66,20 @@ class ErrorTab is Tab
 
     action Setup
         DisplayCloseButton(true)
-        table:Add(message)
+        table:Add(messageColumn)
 
+        headerMessage:SetText("Message")
+        headerLine:SetText("Line")
+        headerFile:SetText("File")
+        
+        messageColumn:Add(headerMessage)
+        lineColumn:Add(headerLine)
+        fileColumn:Add(headerFile)
 
-        LayoutProperties messageProps = message:GetDefaultLayoutProperties()
+        LayoutProperties messageProps = messageColumn:GetDefaultLayoutProperties()
         messageProps:SetPercentageWidth(0.5)
-        table:Add(line)
-        table:Add(file)
-
-//        i = 0
-//        repeat while i < 10
-//            Column column = GetColumn()
-//            LayoutProperties properties = column:GetDefaultLayoutProperties()
-//            //properties:SetPixelWidth(0)
-//            //properties:SetPercentageWidth(0.33)
-//            
-//            table:Add(column)
-//            i = i + 1
-//        end
+        table:Add(lineColumn)
+        table:Add(fileColumn)
 
         LayoutProperties properties = table:GetDefaultLayoutProperties()
         properties:SetHorizontalLayoutMode(properties:FILL)
@@ -94,7 +93,14 @@ class ErrorTab is Tab
     end
 
     action Empty 
-        //table:Empty()
+        table:Empty()
+        table:Add(messageColumn)
+        table:Add(lineColumn)
+        table:Add(fileColumn)
+
+        messageColumn:Add(headerMessage)
+        lineColumn:Add(headerLine)
+        fileColumn:Add(headerFile)
     end
 
     action AddError(CompilerError error)
@@ -108,9 +114,9 @@ class ErrorTab is Tab
             f:SetText("" + error:GetFile():GetAbsolutePath())
         end
 
-        message:Add(m)
-        line:Add(l)
-        file:Add(f)
+        messageColumn:Add(m)
+        lineColumn:Add(l)
+        fileColumn:Add(f)
     end
 
     action GetPane returns BreakpointScrollPane
