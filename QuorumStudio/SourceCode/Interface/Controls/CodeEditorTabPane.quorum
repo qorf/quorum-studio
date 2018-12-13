@@ -26,6 +26,8 @@ use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Interface.Events.TabChangeListener
 use Libraries.Interface.Events.TabChangeEvent
 use Libraries.Interface.Controls.Icon
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Development.Environment.Studio.Interface.KeyMap
 
 class CodeEditorTabPane is TabPane, TabChangeListener
     KeyboardEvent keys
@@ -33,6 +35,8 @@ class CodeEditorTabPane is TabPane, TabChangeListener
     HashTable<text, File> openFiles
     HashTable<text, Tab> openTabs
     Resources resources = undefined
+    KeyMap keyMap = undefined
+    Behaviors behaviors = undefined
     File queuedFileOpen = undefined
     integer queuedLine = 0
 
@@ -82,6 +86,15 @@ class CodeEditorTabPane is TabPane, TabChangeListener
 
     action SetResources(Resources resources)
         me:resources = resources
+        me:keyMap = resources:GetKeyMap()
+    end
+
+    action GetBehaviors returns Behaviors
+        return behaviors
+    end
+
+    action SetBehaviors(Behaviors behaviors)
+        me:behaviors = behaviors
     end
 
     action GetOpenFileIterator returns Iterator<File>
@@ -121,25 +134,10 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         textBox:SetBackgroundColor(color:White())
         textBox:SetText(contents)
         textBox:SetName("Code Edit Text Box")
-        //Experimental section on setting a textured background.
-//        Drawable bg = textBox:GetBackground()
-//        Texture texture
-//        texture:LoadFromFile("Resources/Graphics/Interface/Paper.png")
-//
-//        TextureWrap horizontalWrap
-//        TextureWrap verticalWrap
-//        horizontalWrap:ConstructTextureWrap(horizontalWrap:REPEAT)
-//        verticalWrap:ConstructTextureWrap(verticalWrap:REPEAT)
-//
-//        texture:SetWrap(horizontalWrap, verticalWrap)
-//
-//        TextureRegion region
-//        region:LoadTextureRegion(texture, 0, 0, texture:GetWidth() * 3, texture:GetHeight() * 3)
-//        bg:Load(region)
 
-        // For testing purposes, just put in a placeholder icon.
-        // Long-term, this should instead check the file extension and load an
-        // appropriate image (e.g., Quorum icon for a .quorum file).
+        InputTable table = textBox:GetInputTable()
+        table:Add(keyMap:GetCodeCompletionKey(), behaviors:GetCodeCompletionBehavior())
+        
         Icon icon = resources:GetQuorumFile()
 
         EditorTab returnedTab = undefined
@@ -165,7 +163,7 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             tab:Focus()
             returnedTab = tab
         end
-//
+
         Resize()
         return returnedTab
     end
