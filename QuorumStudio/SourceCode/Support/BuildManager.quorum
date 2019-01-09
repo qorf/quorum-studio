@@ -308,16 +308,18 @@ class BuildManager is DebuggerListener, ProcessListener
         if errors:IsCompilationErrorFree()
             out:Append(message)
             errorTab:Empty()
+            errorTab:Resize()
+            outputTabs:Select(out)
         else
-            //out:Append("I was unable to compile this program.")
+            errorTab:Empty()
+            out:Append("I found " + errors:GetErrorAmount() + " errors and have listed them in the errors tab.")
             Iterator<CompilerError> iterator = errors:GetIterator()
             repeat while iterator:HasNext()
                 CompilerError error = iterator:Next()
-                //text value = error:GetDisplayName()
-                //out:Append(value)
-
                 errorTab:AddError(error)
             end
+            errorTab:Resize()
+            outputTabs:Select(errorTab)
         end
     end
 
