@@ -17,38 +17,39 @@ use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Studio.Build.BuildInformation
 use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Interface.Selections.SpreadsheetSelection
+use Libraries.Interface.Controls.Cell
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.Interface.EditorTab
 
 class JumpToErrorBehavior is QuorumStudioBehavior
-    BuildManager builder = undefined
-
-    action GetBuildManager returns BuildManager
-        return builder
-    end
-
-    action SetBuildManager(BuildManager builder)
-        me:builder = builder
-    end
 
     action Run(BehaviorEvent event)
+        if not(event:GetItem() is Cell)
+            return now
+        end
+       
+        Cell cell = cast(Cell, event:GetItem())
+        Spreadsheet sheet = cell:GetSpreadsheet()
+        SpreadsheetSelection selection = sheet:GetSelection()
+        integer x = selection:GetX()
+        integer y = selection:GetY()
+        Cell lineCell = sheet:GetCell(1, y)
+        Cell fileCell = sheet:GetCell(2, y)
+        
+        integer line = cast(integer, lineCell:GetText())
+        text fileText = fileCell:GetText()
 
-        output "fired"
-//        QuorumStudio studio = GetMainApplication()
-//        OutputEditorTabPane outPane = studio:GetOutputPane()
-//        OutputTab out = outPane:GetOutputTab()
-//        ErrorTab errors = outPane:GetErrorTab()
-//
-//        ProjectTree tree = studio:GetProjectTree()
-//        TreeSelection selection = tree:GetSelection()
-//        if not selection:IsEmpty()
-//            Array<TreeItem> items = selection:GetPath()
-//            ProjectTreeItem value = cast(ProjectTreeItem, items:Get(0))
-//            QuorumProject project = value:GetProject()
-//
-//            BuildInformation info
-//            info:outputTab = out
-//            info:project = project
-//            info:errorTab = errors
-//            builder:Build(info)
-//        end
+        QuorumStudio studio = GetMainApplication()
+        CodeEditorTabPane editors = studio:GetTabPane()
+        File file
+        file:SetAbsolutePath(fileText)
+        EditorTab tab = editors:OpenNewTab(file)
+        TextBox box = tab:GetTextBox()
+        if line > 0
+            box:SetCaretPosition(line - 1, 0)
+        end
     end
 end

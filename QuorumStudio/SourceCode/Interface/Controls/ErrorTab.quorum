@@ -39,12 +39,6 @@ class ErrorTab is Tab
     Cell headerFile
     Cell headerLine
 
-    JumpToErrorBehavior jumpBehavior
-
-    on create
-        table:SetCellActivationBehavior(jumpBehavior)
-    end
-
     action GetBehaviors returns Behaviors
         return behaviors
     end
@@ -53,6 +47,7 @@ class ErrorTab is Tab
         me:behaviors = behaviors
         manager = behaviors:GetBuildManager()
         debugger = manager:GetDebugger()
+        table:SetCellActivationBehavior(behaviors:GetJumpToErrorBehavior())
     end
 
     action GetResources returns Resources
