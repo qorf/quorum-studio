@@ -21,6 +21,8 @@ use Libraries.Language.Debug.BreakpointFileColumn
 use Libraries.Interface.Controls.TreeTableColumn
 use Libraries.Language.Debug.BreakpointRow
 use Libraries.Language.Debug.BreakpointLineColumn
+use Libraries.Containers.HashTable
+use Libraries.Interface.Layouts.FlowLayout
 
 class BreakpointsTab is Tab, BreakpointListener
     BreakpointScrollPane pane
@@ -31,8 +33,14 @@ class BreakpointsTab is Tab, BreakpointListener
     TreeTable breakpointTree
     BreakpointFileColumn fileColumn
     BreakpointLineColumn lineColumn
+    HashTable<text, BreakpointRow> rows
 
     on create
+        fileColumn:SetPixelWidth(0)
+        fileColumn:SetPercentageWidth(0.5)
+
+        lineColumn:SetPixelWidth(0)
+        lineColumn:SetPercentageWidth(0.5)
         breakpointTree:Add(cast(TreeTableColumn, fileColumn))
         breakpointTree:Add(cast(TreeTableColumn, lineColumn))
         BreakpointRow row
@@ -128,6 +136,9 @@ class BreakpointsTab is Tab, BreakpointListener
     end
 
     action Setup
+        LayoutProperties properties = breakpointTree:GetDefaultLayoutProperties()
+        properties:SetHorizontalLayoutMode(properties:STANDARD)
+        properties:SetPercentageWidth(1)
         pane:SetBackgroundColor(resources:GetBackgroundColor())
         pane:Add(breakpointTree)
         pane:Resize()
