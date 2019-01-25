@@ -83,7 +83,20 @@ class BreakpointsTab is Tab, BreakpointListener
             
             BreakpointRow row
             row:SetBreakpoint(point)
-            breakpointTree:Add(row)
+            
+            if rows:HasKey(file:GetPath()) 
+                //if it has this path, go find that and add this
+                BreakpointRow rowFile = rows:GetValue(file:GetPath())
+                if rowFile not= undefined
+                    rowFile:AddRow(row)
+                end
+            else
+                BreakpointRow rowFile
+                rowFile:SetFile(file:GetPath())
+                rows:Add(file:GetPath(), rowFile)
+                rowFile:AddRow(row)
+                breakpointTree:Add(rowFile)
+            end
             
 //            Iterator<TreeItem> items = breakpointTree:GetTreeItems()
 //            repeat while items:HasNext() and not found
