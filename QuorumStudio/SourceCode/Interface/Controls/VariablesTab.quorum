@@ -16,6 +16,7 @@ use Libraries.Interface.Events.TreeChangeEvent
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Controls.Icon
+use Libraries.Interface.Controls.TreeTable
 
 class VariablesTab is Tab, TreeChangeListener
     BuildManager manager = undefined
@@ -23,7 +24,7 @@ class VariablesTab is Tab, TreeChangeListener
     Behaviors behaviors = undefined
     Debugger debugger = undefined
     BreakpointScrollPane pane
-    Tree variablesTree
+    TreeTable variablesTree
     boolean updateDebuggerInformation = false
 
     action GetBehaviors returns Behaviors
@@ -63,21 +64,6 @@ class VariablesTab is Tab, TreeChangeListener
         SetName("Variables")
         SetRelatedItem(GetPane())
         DisplayCloseButton(true)
-        variablesTree:AddTreeChangeListener(me)
-    end
-
-    /*
-
-    */
-    action OpenedTree(TreeChangeEvent event)
-        output event:GetTreeItem():GetName()
-    end
-
-    /*
-
-    */
-    action ClosedTree(TreeChangeEvent event)
-        output event:GetTreeItem():GetName()
     end
 
     action GetPane returns BreakpointScrollPane

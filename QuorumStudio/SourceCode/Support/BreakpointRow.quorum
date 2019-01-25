@@ -1,0 +1,39 @@
+package Libraries.Language.Debug
+
+use Libraries.Interface.Controls.TreeTableRow
+use Libraries.System.File
+
+class BreakpointRow is TreeTableRow
+    text file = ""
+    text line = ""
+    Breakpoint breakpoint = undefined
+
+    action GetBreakpoint returns Breakpoint
+        return breakpoint
+    end
+
+    action SetBreakpoint(Breakpoint point)
+        File f = point:GetFile()
+        text value = f:GetPath()
+        me:file = value
+
+        me:line = "" + point:GetLine()
+        me:breakpoint = point
+    end
+
+    action GetFile returns text
+        return file
+    end
+
+    action SetFile(text file)
+        me:file = file
+    end
+
+    action GetLine returns text
+        return line
+    end
+
+    action SetLine(text line)
+        me:line = line
+    end
+end
