@@ -23,6 +23,12 @@ use Libraries.Language.Debug.BreakpointRow
 use Libraries.Language.Debug.BreakpointLineColumn
 use Libraries.Containers.HashTable
 use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Development.Environment.Studio.Behaviors.DeleteBreakpointBehavior
+use Libraries.Game.InputTable
+use Libraries.Game.InputSet
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
 
 class BreakpointsTab is Tab, BreakpointListener
     BreakpointScrollPane pane
@@ -34,6 +40,7 @@ class BreakpointsTab is Tab, BreakpointListener
     BreakpointFileColumn fileColumn
     BreakpointLineColumn lineColumn
     HashTable<text, BreakpointRow> rows
+    DeleteBreakpointBehavior deleteBehavior
 
     on create
         fileColumn:SetPixelWidth(0)
@@ -110,18 +117,18 @@ class BreakpointsTab is Tab, BreakpointListener
 //                end
 //            end
 
-            if not found
-                TreeItem top
-                top:SetName("" + file:GetFileName())
-                top:SetIcon(resources:GetBreakpoint())
-                
-                TreeItem newOne
-                newOne:SetName("" + line)
-                newOne:SetIcon(resources:GetBreakpoint())
-                top:Add(newOne)
-
-                breakpointTree:Add(top)
-            end
+//            if not found
+//                TreeItem top
+//                top:SetName("" + file:GetFileName())
+//                top:SetIcon(resources:GetBreakpoint())
+//                
+//                TreeItem newOne
+//                newOne:SetName("" + line)
+//                newOne:SetIcon(resources:GetBreakpoint())
+//                top:Add(newOne)
+//
+//                breakpointTree:Add(top)
+//            end
             breakpointTree:Resize()
         else 
             boolean found = false
@@ -159,5 +166,18 @@ class BreakpointsTab is Tab, BreakpointListener
         SetName("Breakpoints")
         SetRelatedItem(GetPane())
         DisplayCloseButton(true)
+ 
+        InputTable inputTable = breakpointTree:GetInputTable():Copy()
+        text groupName = "QuorumStudioBreakpointTreeTable"
+        InputSet set
+        KeyboardEvent keys
+        set:SetKeyboardInput(keys:FORWARD_DELETE)
+        inputTable:Add(set, deleteBehavior)
+
+        inputTable:SetIdentifier(groupName)
+        breakpointTree:SetInputGroup(groupName)
+        GameStateManager manager
+        Game game = manager:GetGame()
+        game:AddInputTable(inputTable)
     end
 end
