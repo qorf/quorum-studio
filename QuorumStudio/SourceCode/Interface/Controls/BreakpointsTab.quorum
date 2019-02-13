@@ -65,6 +65,7 @@ class BreakpointsTab is Tab, BreakpointListener
         manager = behaviors:GetBuildManager()
         debugger = manager:GetDebugger()
 
+        deleteBehavior:SetBuildManager(manager)
         manager:Add(me)
     end
 
@@ -173,6 +174,10 @@ class BreakpointsTab is Tab, BreakpointListener
         KeyboardEvent keys
         set:SetKeyboardInput(keys:FORWARD_DELETE)
         inputTable:Add(set, deleteBehavior)
+
+        InputSet set2
+        set2:SetKeyboardInput(keys:BACKSPACE)
+        inputTable:Add(set2, deleteBehavior)
 
         inputTable:SetIdentifier(groupName)
         breakpointTree:SetInputGroup(groupName)

@@ -2,9 +2,52 @@ package Libraries.Development.Environment.Studio.Behaviors
 
 use Libraries.Interface.Behaviors.Behavior
 use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Item
+use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Interface.Controls.TreeTable
+use Libraries.Interface.Selections.TreeTableSelection
+use Libraries.Interface.Controls.TreeTableCell
+use Libraries.Interface.Controls.TreeTableRow
+use Libraries.Language.Debug.BreakpointRow
+use Libraries.Language.Debug.Breakpoint
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Containers.Array
 
 class DeleteBreakpointBehavior is Behavior
+    BuildManager manager = undefined
+
+    action SetBuildManager(BuildManager bm)
+        manager = bm
+    end
+
+    action GetBuildManager returns BuildManager
+        return manager
+    end
+
     action Run(BehaviorEvent event)
-        output "Hi"
+        TreeTable sheet = cast(TreeTable, event:GetItem())
+        TreeTableSelection selection = sheet:GetSelection()
+        TreeTableCell cell = selection:Get()
+        TreeTableRow row = cell:GetRow()
+        
+        if selection:GetY() > 0 //if not, it's the header, so do nothing
+            if row:IsEmpty()
+                //now remove all the breakpoints
+                BreakpointRow br = cast(BreakpointRow, row)
+                Breakpoint bp = br:GetBreakpoint()
+                manager:ToggleBreakpoint(bp)
+            else
+                Array<TreeTableRow> rows = row:GetChildren()
+                i = 0
+                repeat while i < rows:GetSize()
+                    TreeTableRow row2 = rows:Get(i)
+                    BreakpointRow br = cast(BreakpointRow, row2)
+                    Breakpoint bp = br:GetBreakpoint()
+                    manager:ToggleBreakpoint(bp)
+                    i = i + 1
+                end
+            end
+            sheet:Remove(row)
+        end
     end
 end

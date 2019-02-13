@@ -115,12 +115,10 @@ class BuildManager is DebuggerListener, ProcessListener
         end
     end
 
-    action ToggleBreakpoint(File file, integer line)
+    action ToggleBreakpoint(Breakpoint point)
+        File file = point:GetFile()
+        integer line = point:GetLine()
         text path = file:GetAbsolutePath()
-        //path = path + ":" + line
-        Breakpoint point
-        point:SetLine(line)
-        point:SetFile(file)
         BreakpointEvent event
         event:SetBreakpoint(point)
         if breakpoints:HasKey(path)
@@ -146,6 +144,13 @@ class BuildManager is DebuggerListener, ProcessListener
         FireBreakpointEvent(event)
     end
 
+    action ToggleBreakpoint(File file, integer line)
+        //path = path + ":" + line
+        Breakpoint point
+        point:SetLine(line)
+        point:SetFile(file)
+        ToggleBreakpoint(point)
+    end
 
     /*
         This action returns the most recent information from the build.
