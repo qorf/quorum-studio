@@ -149,6 +149,7 @@ public class Debugger {
             debugger.stop();
             debugger = null;
         }
+        
         debugger = new JDIDebugger();
         for(int i = 0; i < listeners.size(); i++) {
             DebuggerListenerWrapper item = listeners.get(i);

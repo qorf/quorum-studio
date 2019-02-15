@@ -77,5 +77,4 @@ public class DebuggerListenerWrapper implements DebuggerListener{
     public void setListener(DebuggerListener_ listener) {
         this.listener = listener;
     }
-    
 }
