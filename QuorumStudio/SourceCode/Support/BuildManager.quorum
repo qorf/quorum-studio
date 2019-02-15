@@ -170,14 +170,16 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action Run(DebuggerStartEvent event)
-        
+        output "Start"
     end
 
     action Run(DebuggerStopEvent event)
+        output "Stop"
         debuggingProgram = undefined
     end
 
     action Run(DebuggerStepEvent event)
+        output "Step"
         if debuggingProgram not= undefined
             CompilerResult result = debuggingProgram:result
             SymbolTable table = result:symbolTable
@@ -196,6 +198,7 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action Run(BreakpointEvent event)
+        output "Breakpoint Hit"
         VariablesTab variablesTab = outputTabs:GetVariablesTab()
         if debugger = undefined or variablesTab = undefined
             return now

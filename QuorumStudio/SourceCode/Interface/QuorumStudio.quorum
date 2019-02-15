@@ -103,9 +103,9 @@ class QuorumStudio is Game, FocusListener
         currentFocus = event:GetNewFocus()
         previousFocus = event:GetLastFocus()
 
-        if currentFocus not= undefined
-            output currentFocus:GetAccessibilityType() + ", " + currentFocus:GetName()
-        end
+//        if currentFocus not= undefined
+//            output currentFocus:GetAccessibilityType() + ", " + currentFocus:GetName()
+//        end
     end
 
     action LostFocus(FocusEvent event)
@@ -245,16 +245,13 @@ class QuorumStudio is Game, FocusListener
     end
 
     action Load
-        output "Loading on-start projects."
         //load the user's settings
         options:Read()
-        //options:Write()
         Array<text> projects = options:GetProjects()
 
         i = 0
         repeat while i < projects:GetSize()
             text value = projects:Get(i)
-            output "Project " + i + ": " + value
             File file
             file:SetAbsolutePath(value)
             manager:Open(file)
@@ -264,7 +261,6 @@ class QuorumStudio is Game, FocusListener
         Iterator<File> iterator = options:GetFilesOpenOnStartup()
         repeat while iterator:HasNext()
             File file = iterator:Next()
-            output "On start-up file: " + file:GetAbsolutePath()
             codeTabs:OpenNewTab(file)
         end
     end
