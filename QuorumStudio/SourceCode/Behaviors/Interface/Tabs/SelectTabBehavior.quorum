@@ -1,0 +1,36 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Interface.Controls.Tab
+
+class SelectTabBehavior is Behavior
+    boolean finished = false
+    OutputEditorTabPane tabs = undefined
+    Tab tab = undefined
+
+    action GetOutputEditorTabPane returns OutputEditorTabPane
+        return tabs
+    end
+
+    action SetOutputEditorTabPane(OutputEditorTabPane out)
+        tabs = out
+    end
+
+    action SetSelectedTab(Tab tab)
+        me:tab = tab
+    end
+
+    action GetSelectedTab returns Tab
+        return me:tab
+    end
+    
+    action Update(number seconds)
+        tabs:Select(tab)
+        finished = true
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+end

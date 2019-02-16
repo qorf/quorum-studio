@@ -45,6 +45,7 @@ use Libraries.Concurrency.ProcessStoppedEvent
 use Libraries.Concurrency.ProcessErrorEvent
 use Libraries.Concurrency.ProcessOutputEvent
 use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Development.Environment.Studio.Behaviors.SelectTabBehavior
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -198,19 +199,12 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action Run(BreakpointEvent event)
-        output "Breakpoint Hit"
         VariablesTab variablesTab = outputTabs:GetVariablesTab()
-        if debugger = undefined or variablesTab = undefined
-            return now
-        end
-        
-        TabPaneSelection selection = outputTabs:GetSelection()
-        Tab tab = selection:GetTab()
-        boolean selected = false
-        if tab:GetHashCode() = variablesTab:GetHashCode()
-            selected = true
-        end
-        
+        SelectTabBehavior behavior
+        behavior:SetOutputEditorTabPane(outputTabs)
+        behavior:SetSelectedTab(variablesTab)
+        variablesTab:AddBehavior(behavior)
+
         variablesTab:QueueDebuggerUpdate()
     end
 
