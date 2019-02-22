@@ -2,6 +2,7 @@ package Libraries.Language.Debug
 
 use Libraries.Interface.Controls.TreeTableRow
 use Libraries.System.File
+use Libraries.Containers.Array
 
 class VariableRow is TreeTableRow
     Variable variable = undefined
@@ -9,7 +10,16 @@ class VariableRow is TreeTableRow
     text type = ""
     text value = ""
     boolean isFirstExpansion = true
-    
+    VariablesModel model = undefined
+
+    action GetVariablesModel returns VariablesModel
+        return model
+    end
+
+    action SetVariablesModel(VariablesModel model)
+        me:model = model
+    end
+
     action GetVariable returns Variable
         return variable
     end
@@ -27,8 +37,17 @@ class VariableRow is TreeTableRow
 
         //if we are expanding this row for the first time and we have
         //a valid variable, expand it
-        if expand and isFirstExpansion and variable not= undefined
-            output "Expanded first time"
+        if expand and isFirstExpansion and variable not= undefined and model not= undefined
+            Array<Variable> variables = model:GetChildren(variable)
+            i = 0
+            repeat while i < variables:GetSize()
+                Variable var = variables:Get(i)
+                VariableRow row
+                row:SetVariable(var)
+                row:SetVariablesModel(model)
+                AddRow(row)
+                i = i + 1
+            end
             isFirstExpansion = false
         end
     end
