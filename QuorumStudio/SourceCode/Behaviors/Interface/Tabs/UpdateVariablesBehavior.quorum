@@ -1,0 +1,86 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.TreeTable
+use Libraries.Language.Debug.Debugger
+use Libraries.Language.Debug.VariablesModel
+use Libraries.Containers.Array
+use Libraries.Language.Debug.Variable
+use Libraries.Language.Debug.VariableRow
+
+class UpdateVariablesBehavior is Behavior
+    boolean finished = false
+    OutputEditorTabPane tabs = undefined
+    Tab tab = undefined
+    TreeTable variablesTable = undefined
+    Debugger debugger = undefined
+    VariableRow titleRow
+
+    on create
+        titleRow:SetName("Name")
+        titleRow:SetType("Type")
+        titleRow:SetValue("Value")
+    end
+
+    action GetDebugger returns Debugger
+        return debugger
+    end
+
+    action SetDebugger(Debugger debugger)
+        me:debugger = debugger
+    end
+
+    action GetOutputEditorTabPane returns OutputEditorTabPane
+        return tabs
+    end
+
+    action SetOutputEditorTabPane(OutputEditorTabPane out)
+        tabs = out
+    end
+
+    action SetSelectedTab(Tab tab)
+        me:tab = tab
+    end
+
+    action GetSelectedTab returns Tab
+        return me:tab
+    end
+    
+    action GetTreeTable returns TreeTable
+        return variablesTable
+    end
+
+    action SetTreeTable(TreeTable table)
+        variablesTable = table
+    end
+
+    action Update(number seconds)
+//        tabs:Select(tab)
+
+        if debugger not= undefined
+            variablesTable:EmptyRows()
+            variablesTable:Add(titleRow)
+
+            VariablesModel model = debugger:GetVariablesModel()
+            Array<Variable> value = model:GetRoot()
+            i = 0
+            repeat while i < value:GetSize()
+                Variable variable = value:Get(i)
+                VariableRow row
+                row:SetVariable(variable)
+
+                variablesTable:Add(row)
+                i = i + 1
+            end
+            variablesTable:Resize()
+        end
+
+        finished = true
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+end

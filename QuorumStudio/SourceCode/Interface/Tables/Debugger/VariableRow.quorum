@@ -1,0 +1,59 @@
+package Libraries.Language.Debug
+
+use Libraries.Interface.Controls.TreeTableRow
+use Libraries.System.File
+
+class VariableRow is TreeTableRow
+    Variable variable = undefined
+    text name = ""
+    text type = ""
+    text value = ""
+    boolean isFirstExpansion = true
+
+    action GetVariable returns Variable
+        return variable
+    end
+
+    action SetVariable(Variable variable)
+        me:variable = variable
+
+        me:name = variable:GetName()
+        me:type = variable:GetTypeName()
+        me:value = variable:GetValue()
+    end
+
+    action SetExpandFlag(boolean expand)
+        parent:TreeTableRow:SetExpandFlag(expand)
+
+        //if we are expanding this row for the first time and we have
+        //a valid variable, expand it
+        if expand and isFirstExpansion and variable not= undefined
+            output "Expanded first time"
+            isFirstExpansion = false
+        end
+    end
+
+    action GetName returns text
+        return name
+    end
+
+    action SetName(text name)
+        me:name = name
+    end
+
+    action GetType returns text
+        return type
+    end
+
+    action SetType(text type)
+        me:type = type
+    end
+
+    action GetValue returns text
+        return value
+    end
+
+    action SetValue(text value)
+        me:value = value
+    end
+end

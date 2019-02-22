@@ -1,0 +1,21 @@
+package Libraries.Language.Debug
+
+use Libraries.Interface.Controls.TreeTableColumn
+use Libraries.Interface.Controls.Cell
+use Libraries.Interface.Controls.TreeTableRow
+use Libraries.Interface.Controls.TreeTableCell
+use Libraries.Language.Debug.VariableRow
+
+class VariableTypeColumn is TreeTableColumn
+    action CreateCell returns TreeTableCell
+        TreeTableCell cell
+        return cell
+    end
+
+    action SetCell(integer index, TreeTableRow row)
+        TreeTableCell cell = GetCell(index)
+        VariableRow entry = cast(VariableRow, row)
+        text result = entry:GetType()
+        cell:SetText(result)
+    end
+end

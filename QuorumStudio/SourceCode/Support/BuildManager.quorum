@@ -46,6 +46,7 @@ use Libraries.Concurrency.ProcessErrorEvent
 use Libraries.Concurrency.ProcessOutputEvent
 use Libraries.Development.Environment.Studio.Interface.ErrorTab
 use Libraries.Development.Environment.Studio.Behaviors.SelectTabBehavior
+use Libraries.Development.Environment.Studio.Behaviors.UpdateVariablesBehavior
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -191,6 +192,7 @@ class BuildManager is DebuggerListener, ProcessListener
                     editors:QueueTabOpen(file, event:GetLine())
                 end
             end
+            UpdateDebugger()
         end
     end
 
@@ -204,8 +206,17 @@ class BuildManager is DebuggerListener, ProcessListener
         behavior:SetOutputEditorTabPane(outputTabs)
         behavior:SetSelectedTab(variablesTab)
         variablesTab:AddBehavior(behavior)
+        UpdateDebugger()
+    end
 
-        variablesTab:QueueDebuggerUpdate()
+    private action UpdateDebugger
+        VariablesTab variablesTab = outputTabs:GetVariablesTab()
+        UpdateVariablesBehavior update
+        update:SetSelectedTab(variablesTab)
+        update:SetOutputEditorTabPane(outputTabs)
+        update:SetDebugger(debugger)
+        update:SetTreeTable(variablesTab:GetDebuggerTreeTable())
+        variablesTab:AddBehavior(update)
     end
 
     action Scan

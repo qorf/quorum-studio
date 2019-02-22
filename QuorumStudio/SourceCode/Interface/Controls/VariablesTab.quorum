@@ -17,6 +17,11 @@ use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Controls.Icon
 use Libraries.Interface.Controls.TreeTable
+use Libraries.Language.Debug.VariableTypeColumn
+use Libraries.Language.Debug.VariableNameColumn
+use Libraries.Language.Debug.VariableValueColumn
+use Libraries.Interface.Controls.TreeTableColumn
+use Libraries.Language.Debug.VariableRow
 
 class VariablesTab is Tab, TreeChangeListener
     BuildManager manager = undefined
@@ -26,9 +31,37 @@ class VariablesTab is Tab, TreeChangeListener
     BreakpointScrollPane pane
     TreeTable variablesTree
     boolean updateDebuggerInformation = false
+    VariableNameColumn nameColumn
+    VariableTypeColumn typeColumn
+    VariableValueColumn valueColumn
+    VariableRow titleRow
+
+    on create
+        nameColumn:SetPixelWidth(0)
+        nameColumn:SetPercentageWidth(0.333)
+
+        typeColumn:SetPixelWidth(0)
+        typeColumn:SetPercentageWidth(0.333)
+
+        valueColumn:SetPixelWidth(0)
+        valueColumn:SetPercentageWidth(0.334)
+
+        variablesTree:Add(cast(TreeTableColumn, nameColumn))
+        variablesTree:Add(cast(TreeTableColumn, typeColumn))
+        variablesTree:Add(cast(TreeTableColumn, valueColumn))
+
+        titleRow:SetName("Name")
+        titleRow:SetType("Type")
+        titleRow:SetValue("Value")
+        variablesTree:Add(titleRow)
+    end
 
     action GetBehaviors returns Behaviors
         return behaviors
+    end
+
+    action GetDebuggerTreeTable returns TreeTable
+        return variablesTree
     end
 
     action SetBehaviors(Behaviors behaviors)
@@ -55,9 +88,9 @@ class VariablesTab is Tab, TreeChangeListener
 
     action Setup
         LayoutProperties properties = variablesTree:GetDefaultLayoutProperties()
-        properties:SetPercentageOriginY(1)
-        properties:SetPercentageY(1)
-        
+        properties:SetHorizontalLayoutMode(properties:STANDARD)
+        properties:SetPercentageWidth(1)
+        pane:SetBackgroundColor(resources:GetBackgroundColor())
         pane:Add(variablesTree)
         pane:Resize()
 
@@ -68,34 +101,5 @@ class VariablesTab is Tab, TreeChangeListener
 
     action GetPane returns BreakpointScrollPane
         return pane
-    end
-
-    action Update(number seconds)
-        if updateDebuggerInformation
-            updateDebuggerInformation = false
-            if debugger not= undefined
-                variablesTree:Empty()
-                VariablesModel model = debugger:GetVariablesModel()
-                Array<Variable> value = model:GetRoot()
-                i = 0
-                repeat while i < value:GetSize()
-                    Variable variable = value:Get(i)
-                    TreeItem item
-                    text name = variable:GetName()
-                    item:SetName(name)
-                    Icon icon
-                    icon:Load(resources:GetBreakpoint())
-                    item:SetIcon(icon)
-                    item:ShowExpandButton()
-                    variablesTree:Add(item)
-                    i = i + 1
-                end
-                variablesTree:Resize()
-            end
-        end
-    end
-
-    action QueueDebuggerUpdate
-        updateDebuggerInformation = true
     end
 end
