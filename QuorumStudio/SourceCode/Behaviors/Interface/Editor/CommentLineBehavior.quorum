@@ -1,0 +1,88 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Item
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Selections.TextBoxSelection
+
+class CommentLineBehavior is QuorumStudioBehavior
+    action Run(BehaviorEvent event)
+
+        Item item = event:GetItem()
+        if not (item is TextBox)
+            return now
+        end
+
+        TextBox textBox = cast(TextBox, item)
+        TextBoxSelection selection = textBox:GetSelection()
+
+        integer start = selection:GetFirstLine()
+        integer last = selection:GetLastLine()
+        integer counter = start
+        boolean alreadyCommented = true
+
+        // If all the lines already begin with double-slashes, we'll remove them.
+        // Otherwise we'll add the double slashes to each line.
+        repeat while counter <= last
+            text line = textBox:GetLineText(counter)
+
+            integer i = 0
+            repeat while i < line:GetSize()
+                text character = line:GetCharacter(i)
+
+                if character not= " " and character not= "/"
+                    // At least one line isn't commented. Exit the loops.
+                    alreadyCommented = false
+                    i = line:GetSize()
+                    counter = last
+                elseif character = "/"
+                    if (i + 1) < line:GetSize() and line:GetCharacter(i + 1) = "/"
+                        // This line is already commented. Move onto the next line.
+                        i = line:GetSize()
+                    else
+                        // At least one line isn't commented. Exit the loops.
+                        alreadyCommented = false
+                        i = line:GetSize()
+                        counter = last
+                    end
+                end
+                i = i + 1
+            end
+
+            counter = counter + 1
+        end
+
+        counter = last
+
+        integer startIndex = selection:GetStartIndex()
+        integer endIndex = selection:GetEndIndex()
+
+        textBox:Select(startIndex, startIndex)
+
+        if alreadyCommented
+            repeat while counter >= start
+                text line = textBox:GetLineText(counter)
+
+                integer i = 0
+                repeat while i < line:GetSize()
+                    text character = line:GetCharacter(i)
+
+                    if character = "/"
+                        integer startDelete = textBox:GetIndexOfLine(counter) + i
+                        textBox:Delete(startDelete, startDelete + 2)
+                        i = line:GetSize()
+                    end
+                    i = i + 1
+                end
+
+                counter = counter - 1
+            end
+        else
+            repeat while counter >= start
+                integer index = textBox:GetIndexOfLine(counter)
+                textBox:Insert(index, "//")
+                counter = counter - 1
+            end
+        end
+    end
+end
