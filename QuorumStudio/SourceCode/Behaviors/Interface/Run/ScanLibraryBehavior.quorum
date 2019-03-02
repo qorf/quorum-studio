@@ -15,9 +15,11 @@ use Libraries.Interface.Selections.TreeSelection
 use Libraries.Containers.Array
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.System.DateTime
 
 class ScanLibraryBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
+    DateTime time
 
     action GetBuildManager returns BuildManager
         return builder
@@ -28,6 +30,11 @@ class ScanLibraryBehavior is QuorumStudioBehavior
     end
 
     action Run(BehaviorEvent event)
+        output "Scanning Standard Library"
+        number value = time:GetEpochTime()
         builder:Scan()
+        number value2 = time:GetEpochTime()
+
+        output "Finished Scanning in " + ((value2 - value) / 1000.0) + " seconds"
     end
 end

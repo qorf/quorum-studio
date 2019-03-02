@@ -119,6 +119,24 @@ class QuorumProject is Project
         return sources
     end
 
+    /*
+        This action searches through all source files in a project and returns 
+        true if this is a valid source code file in the project. If it cannot
+        be found, it returns false.
+    */
+    action IsSource(File file) returns boolean
+        Array<File> files = GetSources()
+        i = 0
+        repeat while i < files:GetSize()
+            File value = files:Get(i)
+            if file:GetAbsolutePath() = value:GetAbsolutePath()
+                return true
+            end
+            i = i + 1
+        end
+        return false
+    end
+
     action GetSources returns Array<File>
         Array<File> files
         File root = GetSourceLocation()

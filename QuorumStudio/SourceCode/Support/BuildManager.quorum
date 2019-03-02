@@ -47,6 +47,10 @@ use Libraries.Concurrency.ProcessOutputEvent
 use Libraries.Development.Environment.Studio.Interface.ErrorTab
 use Libraries.Development.Environment.Studio.Behaviors.SelectTabBehavior
 use Libraries.Development.Environment.Studio.Behaviors.UpdateVariablesBehavior
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Concurrency.ThreadRunner
+use Libraries.Development.Environment.Studio.Behaviors.FastBuild
+use Libraries.Development.Environment.Studio.Behaviors.BuildLoop
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -60,9 +64,21 @@ class BuildManager is DebuggerListener, ProcessListener
     CodeEditorTabPane editors = undefined
     OutputEditorTabPane outputTabs = undefined
     HashTable<text, ProcessRunner> processes
+    ProjectManager projectManager = undefined
 
+    //for the parsing and indexing procedures
+    BuildLoop buildLoop
+    
     on create
         debugger:Add(me)
+    end
+
+    action GetProjectManager returns ProjectManager
+        return projectManager
+    end
+
+    action SetProjectManager(ProjectManager manager)
+        projectManager = manager
     end
 
     action GetCodeEditorTabPane returns CodeEditorTabPane
@@ -115,6 +131,59 @@ class BuildManager is DebuggerListener, ProcessListener
             listener:ToggledBreakpoint(event)
             i = i + 1
         end
+    end
+
+    action StartIndexing
+        //parsingAndIndexingThread:Add(buildLoop)
+    end
+
+    /*
+        This action returns true if the build engine chose to index at this time.
+        The engine may reject an index request, normally because the currently 
+        open file is not dirty.
+    */
+    action Index returns boolean
+        //first check if the standard library is finished scanning. If not, bail
+        if not library:IsScanned()
+            return false
+        else 
+        end
+        
+        //check to see what the current file open is
+        CodeEditorTabPane code = GetCodeEditorTabPane()
+        TabPaneSelection selection = code:GetSelection()
+
+        EditorTab tab = cast(EditorTab, selection:GetTab())
+        File file = tab:GetFile()
+        
+        //first check if the tab is dirty. If not, exit and return false
+        if not tab:IsParseDirty()
+            return false
+        end
+
+        //now check to see if it has been long enough since the user stopped typing
+        if tab:GetTimeSinceDirty() < 0.5
+            return false
+        end
+
+        //set this file to not be parse dirty, so that it is not compiled again
+        //unless it changes
+        tab:SetIsParseDirty(false)
+
+        //get the file the tab is using
+        //if that project hasn't been built, build it
+        
+        FastBuild fastBuild
+
+        //if it has been built, check to see if the file being typed in is dirty
+        //if it is dirty, re-build the file
+
+        
+        return true
+    end
+
+    action StopIndexing
+        //parsingAndIndexingThread:ShutDown()
     end
 
     action ToggleBreakpoint(Breakpoint point)

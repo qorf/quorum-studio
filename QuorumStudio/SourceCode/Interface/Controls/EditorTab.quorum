@@ -10,6 +10,8 @@ use Libraries.Game.GameStateManager
 class EditorTab is Tab, TextChangeListener
     boolean dirty = false
     File file = undefined
+    number timeSinceDirty = 0
+    boolean parseDirty = false
 
     action GetFile returns File
         return file
@@ -31,6 +33,7 @@ class EditorTab is Tab, TextChangeListener
 
     action TextChanged(TextChangeEvent event)
         dirty = true
+        me:parseDirty = dirty
     end
 
     action IsDirty returns boolean
@@ -39,6 +42,20 @@ class EditorTab is Tab, TextChangeListener
 
     action SetIsDirty(boolean dirty)
         me:dirty = dirty
+        timeSinceDirty = 0
+        me:parseDirty = dirty
+    end
+
+    action IsParseDirty returns boolean
+        return parseDirty
+    end
+
+    action SetIsParseDirty(boolean dirty)
+        me:parseDirty = dirty
+    end
+
+    action GetTimeSinceDirty returns number
+        return timeSinceDirty
     end
 
     action Save
@@ -61,5 +78,9 @@ class EditorTab is Tab, TextChangeListener
     action Focus
         GameStateManager manager
         manager:GetGame():SetFocus(GetTextBox())
+    end
+
+    action Update(number seconds)
+        timeSinceDirty = timeSinceDirty + seconds
     end
 end

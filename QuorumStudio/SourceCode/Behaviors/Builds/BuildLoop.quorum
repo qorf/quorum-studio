@@ -1,0 +1,52 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.System.SystemHelper
+use Libraries.System.DateTime
+
+class BuildLoop is Behavior
+    BuildManager manager = undefined
+    boolean finished = false
+    DateTime time
+
+    action SetBuildManager(BuildManager bm)
+        manager = bm
+    end
+
+    action GetBuildManager returns BuildManager
+        return manager
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+
+    action SetFinished(boolean finished)
+        me:finished = finished
+    end
+
+    action Run(BehaviorEvent event)
+        
+        SystemHelper help
+        if manager = undefined
+            return now
+        end
+
+        repeat until finished
+            number start = time:GetEpochTime()
+            boolean indexed = manager:Index()
+            number stop = time:GetEpochTime()
+            text seconds = ((stop - start) / 1000.0) + ""
+            if indexed
+                output "Compiling from Parsing and Indexing Loop: " + seconds + " seconds"
+            else
+                output "Did not index " + seconds + " seconds"
+            end
+            
+            help:Sleep(500)
+            
+        end
+    end
+end

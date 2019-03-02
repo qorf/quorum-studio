@@ -36,6 +36,7 @@ use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Layouts.ManualLayout
 use Libraries.Game.InputMonitor
 use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Development.Environment.Studio.Behaviors.BuildLoop
 
 
 class QuorumStudio is Game, FocusListener
@@ -68,6 +69,7 @@ class QuorumStudio is Game, FocusListener
     Item currentFocus = undefined
     Item previousFocus = undefined
     SystemHelper helper
+    BuildLoop buildLoop
 
     action Start
         DesktopConfiguration config = GetDesktopConfiguration()
@@ -77,7 +79,10 @@ class QuorumStudio is Game, FocusListener
 
     action OnExit returns boolean
         ThreadRunner buildThreadRunner = behaviors:GetBuildThreadRunner()
+        ThreadRunner indexThread = behaviors:GetBuildIndexingThread()
+        buildLoop:SetFinished(true)
         buildThreadRunner:ShutDown()
+        indexThread:ShutDown()
         Save()
         return true
     end
@@ -102,10 +107,6 @@ class QuorumStudio is Game, FocusListener
     action GainedFocus(FocusEvent event)
         currentFocus = event:GetNewFocus()
         previousFocus = event:GetLastFocus()
-
-//        if currentFocus not= undefined
-//            output currentFocus:GetAccessibilityType() + ", " + currentFocus:GetName()
-//        end
     end
 
     action LostFocus(FocusEvent event)
@@ -160,8 +161,8 @@ class QuorumStudio is Game, FocusListener
         SetLayout(flowLayout)
 
         options:SetMainApplication(me)
-        GameStateManager manager
-        GraphicsManager graphics = manager:GetGameGraphics()
+        GameStateManager gameStateManager
+        GraphicsManager graphics = gameStateManager:GetGameGraphics()
         graphics:ClearScreenColor(101.0/255.0, 101.0/255.0, 101.0/255.0, 1.0)
         SetupResources()
 
@@ -179,12 +180,17 @@ class QuorumStudio is Game, FocusListener
         BuildManager builds = behaviors:GetBuildManager()
         builds:SetCodeEditorTabPane(codeTabs)
         builds:SetOutputEditorTabPane(outputWindow)
+        builds:SetProjectManager(manager)
 
         //now that we're all setup, tell the library scanner to run
         ScanLibraryBehavior scanner = behaviors:GetScanLibraryBehavior()
         BuildManager builder = behaviors:GetBuildManager()
         ThreadRunner buildThreadRunner = behaviors:GetBuildThreadRunner()
+        ThreadRunner indexThread = behaviors:GetBuildIndexingThread()
         buildThreadRunner:Add(scanner)
+        buildLoop:SetBuildManager(builder)
+
+        indexThread:Add(buildLoop)
         FocusWindow()
         SetFocus(projectTree)
     end

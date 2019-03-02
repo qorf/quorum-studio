@@ -21,6 +21,21 @@ class ProjectManager
         listeners:Remove(listener)
     end
 
+    /*
+        This action detects what project a source file comes from, if any.
+    */
+    action IsProjectSourceFile(File file) returns Project
+        Iterator<QuorumProject> projects = GetIterator()
+        repeat while projects:HasNext()
+            QuorumProject project = projects:Next()
+            boolean value = project:IsSource(file)
+            if value 
+                return project
+            end
+        end
+        return undefined
+    end
+
     private action FireEvent(QuorumProject project, boolean opened)
         i = 0
         repeat while i < listeners:GetSize()
