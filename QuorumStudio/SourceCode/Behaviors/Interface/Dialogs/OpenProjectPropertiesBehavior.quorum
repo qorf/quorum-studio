@@ -1,0 +1,25 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Containers.Array
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+
+class OpenProjectPropertiesBehavior is QuorumStudioBehavior
+    action Run(BehaviorEvent event)
+        QuorumStudio studio = GetMainApplication()
+        ProjectTree tree = studio:GetProjectTree()
+        TreeSelection selection = tree:GetSelection()
+        if not selection:IsEmpty()
+            Array<TreeItem> items = selection:GetPath()
+            ProjectTreeItem value = cast(ProjectTreeItem, items:Get(0))
+            QuorumProject project = value:GetProject()
+
+            output "Project is " + project:GetName()
+        end
+    end
+end
