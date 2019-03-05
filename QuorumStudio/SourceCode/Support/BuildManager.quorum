@@ -155,7 +155,11 @@ class BuildManager is DebuggerListener, ProcessListener
 
         EditorTab tab = cast(EditorTab, selection:GetTab())
         File file = tab:GetFile()
-        
+        //get the file the tab is using
+        if file = undefined
+            return false
+        end
+
         //first check if the tab is dirty. If not, exit and return false
         if not tab:IsParseDirty()
             return false
@@ -169,15 +173,19 @@ class BuildManager is DebuggerListener, ProcessListener
         //set this file to not be parse dirty, so that it is not compiled again
         //unless it changes
         tab:SetIsParseDirty(false)
+        QuorumProject project = cast(QuorumProject, projectManager:IsProjectSourceFile(file))
+        TextBox box = tab:GetTextBox()
+        text source = box:GetText()
 
-        //get the file the tab is using
-        //if that project hasn't been built, build it
-        
-        FastBuild fastBuild
+        //actually do the building
+        BuildInformation info
+        info:outputTab = outputTabs:GetOutputTab()
+        info:project = project
+        info:errorTab = outputTabs:GetErrorTab()
+        info:recompile = file
+        info:recompileValue = source
 
-        //if it has been built, check to see if the file being typed in is dirty
-        //if it is dirty, re-build the file
-
+        FastBuild(info)
         
         return true
     end
@@ -299,6 +307,79 @@ class BuildManager is DebuggerListener, ProcessListener
         outputLocation:SetPath(DEFAULT_LIBRARY_OUTPUT_PATH)
         library:SetOutputFolder(outputLocation)
         library:Scan()
+    end
+
+    action FastBuild(BuildInformation info)
+        QuorumProject project = info:project
+        OutputTab out = info:outputTab
+        out:Empty()
+
+        Array<File> sources = project:GetSources()
+        Iterator<text> extraSourceIterator = project:GetQuorumDependencies()
+        repeat while extraSourceIterator:HasNext()
+            text value = extraSourceIterator:Next()
+            File file
+            File loc = project:GetLocation()
+            file:SetWorkingDirectory(loc:GetAbsolutePath())
+            file:SetPath(value)
+            sources:Add(file)
+        end
+        
+        //get the project type
+        CompilerRequest request
+        if project:IsBytecodeType()
+            request:SetOutputType(request:JAVA_BYTECODE)
+        elseif project:IsJavascriptType()
+            request:SetOutputType(request:JAVASCRIPT)
+        elseif project:IsServertType()
+            request:SetWebRequest(true)
+            request:SetOutputType(request:JAVA_BYTECODE)
+        elseif project:IsLegoType()
+            request:SetOutputType(request:JAVA_BYTECODE)
+        elseif project:IsAndroidType()
+            request:SetOutputType(request:JAVA_BYTECODE)
+        elseif project:IsDocumentationType()
+            request:SetOutputType(request:DOCUMENT)
+        elseif project:IsDocumentationStandardLibraryType()
+            request:SetOutputType(request:DOCUMENT)
+            GenerateStandardLibraryDocumentation(info)
+            return now
+        end
+        
+        File main = project:GetMain()
+        request:library = library
+        request:files = sources
+        request:isFastCompileRequest = true
+
+        //these are the core changes
+        request:recompileValue = info:recompileValue
+        request:recompile = info:recompile
+        
+        request:main = main
+        Compiler compiler = project:GetCompiler()
+        info:request = request
+
+
+        DateTime time
+        number start = time:GetEpochTime()
+        CompilerResult result = compiler:Compile(request)
+        number finish = time:GetEpochTime()
+
+        text displayedTime = GetFormattedTime(start, finish)
+        info:result = result
+
+        //this will need to be changed to update the editor once red lines exist.
+        CompilerErrorManager errors = result:compilerErrorManager
+        if errors:IsCompilationErrorFree()
+            output "No errors"
+        else
+            output "I found " + errors:GetErrorAmount() + " errors and have listed them in the errors tab."
+            Iterator<CompilerError> iterator = errors:GetIterator()
+            repeat while iterator:HasNext()
+                CompilerError error = iterator:Next()
+                output error:GetErrorMessage()
+            end
+        end
     end
 
     action Build(BuildInformation info)
