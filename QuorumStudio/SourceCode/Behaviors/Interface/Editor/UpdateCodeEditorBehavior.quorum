@@ -7,7 +7,7 @@ use Libraries.Language.Compile.CompilerResult
 use Libraries.System.File
 use Libraries.Language.Compile.Lexer
 use Libraries.Language.Compile.Token
-use Libraries.Interface.Controls.TextStyling
+use Libraries.Interface.Controls.TextStyles.TextStyle
 use Libraries.Game.Graphics.Color
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
@@ -56,27 +56,27 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         end
         //reset the lexer and go forward
         lexer:Reset()
-        box:ClearTextStyling()
+        box:EmptyTextStyles()
         Token token = lexer:NextToken()
         i = 0
         repeat while token not= undefined
             if token:GetTokenCategory() not= -1
                 if IsKeyword(token, lexer)
-                    TextStyling style = GetTextStyle(token)
+                    TextStyle style = GetTextStyle(token)
                     style:SetColor(blue)
-                    box:AddTextStyling("Lexer" + i, style)
+                    box:AddTextStyle("Lexer" + i, style)
                 elseif IsStructure(token, lexer)
-                    TextStyling style = GetTextStyle(token)
+                    TextStyle style = GetTextStyle(token)
                     style:SetColor(purple)
-                    box:AddTextStyling("Lexer" + i, style)
+                    box:AddTextStyle("Lexer" + i, style)
                 elseif IsText(token, lexer)
-                    TextStyling style = GetTextStyle(token)
+                    TextStyle style = GetTextStyle(token)
                     style:SetColor(orange)
-                    box:AddTextStyling("Lexer" + i, style)
+                    box:AddTextStyle("Lexer" + i, style)
                 elseif IsComment(token, lexer)
-                    TextStyling style = GetTextStyle(token)
+                    TextStyle style = GetTextStyle(token)
                     style:SetColor(grey)
-                    box:AddTextStyling("Lexer" + i, style)
+                    box:AddTextStyle("Lexer" + i, style)
                 end
                 token = lexer:NextToken()
             else
@@ -87,10 +87,10 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         end
     end
 
-    private action GetTextStyle(Token token) returns TextStyling
-        TextStyling style
+    private action GetTextStyle(Token token) returns TextStyle
+        TextStyle style
         style:SetIndex(token:GetStartIndex())
-        style:SetLength(token:GetStopIndex() - token:GetStartIndex() + 1)
+        style:SetSize(token:GetStopIndex() - token:GetStartIndex() + 1)
         return style
     end
 
