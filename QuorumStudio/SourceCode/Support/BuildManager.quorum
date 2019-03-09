@@ -50,6 +50,7 @@ use Libraries.Development.Environment.Studio.Behaviors.UpdateVariablesBehavior
 use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Concurrency.ThreadRunner
 use Libraries.Development.Environment.Studio.Behaviors.BuildLoop
+use Libraries.Development.Environment.Studio.Behaviors.UpdateCodeEditorBehavior
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -183,6 +184,7 @@ class BuildManager is DebuggerListener, ProcessListener
         info:errorTab = outputTabs:GetErrorTab()
         info:recompile = file
         info:recompileValue = source
+        info:box = box
 
         FastBuild(info)
         
@@ -306,6 +308,7 @@ class BuildManager is DebuggerListener, ProcessListener
         outputLocation:SetPath(DEFAULT_LIBRARY_OUTPUT_PATH)
         library:SetOutputFolder(outputLocation)
         library:Scan()
+        Index()
     end
 
     action FastBuild(BuildInformation info)
@@ -366,6 +369,14 @@ class BuildManager is DebuggerListener, ProcessListener
 
         text displayedTime = GetFormattedTime(start, finish)
         info:result = result
+
+        TextBox box = info:box
+        if box not= undefined
+            UpdateCodeEditorBehavior updater
+            updater:SetCompilerResult(result)
+            updater:SetPath(info:recompile)
+            box:AddBehavior(updater)
+        end
 
         //this will need to be changed to update the editor once red lines exist.
         CompilerErrorManager errors = result:compilerErrorManager

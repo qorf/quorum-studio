@@ -1,0 +1,168 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Item
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Controls.TextBox
+use Libraries.Language.Compile.CompilerResult
+use Libraries.System.File
+use Libraries.Language.Compile.Lexer
+use Libraries.Language.Compile.Token
+use Libraries.Interface.Controls.TextStyling
+use Libraries.Game.Graphics.Color
+
+class UpdateCodeEditorBehavior is QuorumStudioBehavior
+    CompilerResult compilerResult = undefined
+    File path
+    Color blue
+    Color orange
+    Color grey
+    Color purple
+
+    /*
+        
+    */
+    on create
+        blue = blue:Blue()
+        orange:SetColor(206.0/255, 123.0/255, 0, 1.0)
+        grey:SetColor(152.0/255, 152.0/255, 152.0/255, 1.0)
+        purple = blue:Purple()
+    end
+
+    action SetCompilerResult(CompilerResult result)
+        compilerResult = result
+    end
+
+    action GetCompilerResult returns CompilerResult
+        return compilerResult
+    end
+
+    action GetPath returns File
+        return path
+    end
+
+    action SetPath(File path)
+        me:path = path
+    end
+
+    action Run(BehaviorEvent event)
+        TextBox box = cast(TextBox, event:GetItem())
+        Lexer lexer = compilerResult:lexers:GetValue(path:GetAbsolutePath())
+        if lexer = undefined
+            return now
+        end
+
+        if box = undefined
+            return now
+        end
+        //reset the lexer and go forward
+        lexer:Reset()
+        box:ClearTextStyling()
+        Token token = lexer:NextToken()
+        i = 0
+        repeat while token not= undefined
+            if token:GetTokenCategory() not= -1
+                if IsKeyword(token, lexer)
+                    TextStyling style = GetTextStyle(token)
+                    style:SetColor(blue)
+                    box:AddTextStyling("Lexer" + i, style)
+                elseif IsStructure(token, lexer)
+                    TextStyling style = GetTextStyle(token)
+                    style:SetColor(purple)
+                    box:AddTextStyling("Lexer" + i, style)
+                elseif IsText(token, lexer)
+                    TextStyling style = GetTextStyle(token)
+                    style:SetColor(orange)
+                    box:AddTextStyling("Lexer" + i, style)
+                elseif IsComment(token, lexer)
+                    TextStyling style = GetTextStyle(token)
+                    style:SetColor(grey)
+                    box:AddTextStyling("Lexer" + i, style)
+                end
+                token = lexer:NextToken()
+            else
+                token = undefined
+            end
+            
+            i = i + 1
+        end
+    end
+
+    private action GetTextStyle(Token token) returns TextStyling
+        TextStyling style
+        style:SetIndex(token:GetStartIndex())
+        style:SetLength(token:GetStopIndex() - token:GetStartIndex() + 1)
+        return style
+    end
+
+    private action IsStructure(Token token, Lexer lexer) returns boolean
+        if  token:GetTokenCategory() = lexer:OUTPUT 
+            or token:GetTokenCategory() = lexer:ON
+            or token:GetTokenCategory() = lexer:CREATE
+            or token:GetTokenCategory() = lexer:BLUEPRINT
+            or token:GetTokenCategory() = lexer:NATIVE
+            or token:GetTokenCategory() = lexer:ACTION
+            or token:GetTokenCategory() = lexer:CLASS
+            or token:GetTokenCategory() = lexer:END
+            or token:GetTokenCategory() = lexer:IF
+            or token:GetTokenCategory() = lexer:REPEAT
+            or token:GetTokenCategory() = lexer:ELSE
+            or token:GetTokenCategory() = lexer:ELSE_IF
+            return true
+        end
+
+        return false
+    end
+
+    private action IsText(Token token, Lexer lexer) returns boolean
+        if  token:GetTokenCategory() = lexer:STRING 
+            return true
+        end
+        return false
+    end
+
+    private action IsComment(Token token, Lexer lexer) returns boolean
+        if  token:GetTokenCategory() = lexer:COMMENTS 
+            return true
+        end
+        return false
+    end
+
+    private action IsKeyword(Token token, Lexer lexer) returns boolean
+        if  token:GetTokenCategory() = lexer:OUTPUT 
+            or token:GetTokenCategory() = lexer:CONSTANT
+            or token:GetTokenCategory() = lexer:ME
+            or token:GetTokenCategory() = lexer:UNTIL
+            or token:GetTokenCategory() = lexer:PUBLIC
+            or token:GetTokenCategory() = lexer:PRIVATE
+            or token:GetTokenCategory() = lexer:ALERT
+            or token:GetTokenCategory() = lexer:DETECT
+            or token:GetTokenCategory() = lexer:ALWAYS
+            or token:GetTokenCategory() = lexer:CHECK
+            or token:GetTokenCategory() = lexer:PARENT
+            or token:GetTokenCategory() = lexer:CAST
+            or token:GetTokenCategory() = lexer:INPUT
+            or token:GetTokenCategory() = lexer:SAY
+            or token:GetTokenCategory() = lexer:NOW
+            or token:GetTokenCategory() = lexer:WHILE
+            or token:GetTokenCategory() = lexer:PACKAGE_NAME
+            or token:GetTokenCategory() = lexer:TIMES
+            or token:GetTokenCategory() = lexer:RETURNS
+            or token:GetTokenCategory() = lexer:RETURN
+            or token:GetTokenCategory() = lexer:AND
+            or token:GetTokenCategory() = lexer:OR
+            or token:GetTokenCategory() = lexer:NULL
+            or token:GetTokenCategory() = lexer:INTEGER_KEYWORD
+            or token:GetTokenCategory() = lexer:NUMBER_KEYWORD
+            or token:GetTokenCategory() = lexer:TEXT
+            or token:GetTokenCategory() = lexer:BOOLEAN_KEYWORD
+            or token:GetTokenCategory() = lexer:USE
+            or token:GetTokenCategory() = lexer:NOT
+            or token:GetTokenCategory() = lexer:NOTEQUALS
+            or token:GetTokenCategory() = lexer:MODULO
+            
+            return true
+        end
+
+        return false
+    end
+end
