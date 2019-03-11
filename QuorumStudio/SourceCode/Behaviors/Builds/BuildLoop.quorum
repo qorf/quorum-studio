@@ -36,17 +36,10 @@ class BuildLoop is Behavior
 
         repeat until finished
             check
-//                number start = time:GetEpochTime()
                 boolean indexed = manager:Index()
-//                number stop = time:GetEpochTime()
-//                text seconds = ((stop - start) / 1000.0) + ""
-//                if indexed
-//                    output "Compiling from Parsing and Indexing Loop: " + seconds + " seconds"
-//                else
-//                    output "Did not index " + seconds + " seconds"
-//                end
-
-                help:Sleep(500)
+                number value = manager:GetParseDelayInSeconds()
+                integer delay = cast(integer, value * 100)
+                help:Sleep(delay)
             detect e
                 e:OutputStackTrace()
             end

@@ -28,6 +28,9 @@ use Libraries.Interface.Events.TabChangeEvent
 use Libraries.Interface.Controls.Icon
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Development.Environment.Studio.Interface.KeyMap
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
 
 class CodeEditorTabPane is TabPane, TabChangeListener
     KeyboardEvent keys
@@ -123,7 +126,7 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             return now
         end
 
-        TextBox textBox
+        CodeTextBox textBox
         LayoutProperties boxProperties = textBox:GetDefaultLayoutProperties()
         boxProperties:SetPercentageWidth(1)
         boxProperties:SetPercentageHeight(1)
@@ -135,9 +138,22 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         textBox:SetText(contents)
         textBox:SetName("Code Edit Text Box")
 
-        InputTable table = textBox:GetInputTable()
-        table:Add(keyMap:GetCodeCompletionKey(), behaviors:GetCodeCompletionBehavior())
-        table:Add(keyMap:GetCommentLinesKey(), behaviors:GetCommentLinesBehavior())
+        GameStateManager manager
+        Game game = manager:GetGame()
+        InputTable table = game:GetInputTable(textBox:CODE_BOX_INPUT_GROUP)
+        if table = undefined
+            table = textBox:CopyAndActivateInputTable(textBox:CODE_BOX_INPUT_GROUP)
+            textBox:SetInputGroup(textBox:CODE_BOX_INPUT_GROUP)
+
+            table:Add(keyMap:GetCodeCompletionKey(), behaviors:GetCodeCompletionBehavior())
+            table:Add(keyMap:GetCommentLinesKey(), behaviors:GetCommentLinesBehavior())
+            table:Add(keyMap:GetSmartNavigateUpKey(), behaviors:GetEditorSmartNavigationUp())
+            table:Add(keyMap:GetSmartNavigateDownKey(), behaviors:GetEditorSmartNavigationDown())
+            table:Add(keyMap:GetSmartNavigateLeftKey(), behaviors:GetEditorSmartNavigationLeft())
+            table:Add(keyMap:GetSmartNavigateRightKey(), behaviors:GetEditorSmartNavigationRight())
+        else 
+            textBox:SetInputGroup(textBox:CODE_BOX_INPUT_GROUP)
+        end
         
         Icon icon = resources:GetQuorumFile()
 

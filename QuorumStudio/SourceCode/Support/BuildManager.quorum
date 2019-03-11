@@ -51,6 +51,7 @@ use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Concurrency.ThreadRunner
 use Libraries.Development.Environment.Studio.Behaviors.BuildLoop
 use Libraries.Development.Environment.Studio.Behaviors.UpdateCodeEditorBehavior
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -68,9 +69,14 @@ class BuildManager is DebuggerListener, ProcessListener
 
     //for the parsing and indexing procedures
     BuildLoop buildLoop
+    constant number PARSE_DELAY_SECONDS = 0.15
     
     on create
         debugger:Add(me)
+    end
+
+    action GetParseDelayInSeconds returns number
+        return PARSE_DELAY_SECONDS
     end
 
     action GetProjectManager returns ProjectManager
@@ -166,7 +172,7 @@ class BuildManager is DebuggerListener, ProcessListener
         end
 
         //now check to see if it has been long enough since the user stopped typing
-        if tab:GetTimeSinceDirty() < 0.5
+        if tab:GetTimeSinceDirty() < PARSE_DELAY_SECONDS
             return false
         end
 
@@ -174,7 +180,7 @@ class BuildManager is DebuggerListener, ProcessListener
         //unless it changes
         tab:SetIsParseDirty(false)
         QuorumProject project = cast(QuorumProject, projectManager:IsProjectSourceFile(file))
-        TextBox box = tab:GetTextBox()
+        CodeTextBox box = tab:GetTextBox()
         text source = box:GetText()
 
         //actually do the building
@@ -370,7 +376,7 @@ class BuildManager is DebuggerListener, ProcessListener
         text displayedTime = GetFormattedTime(start, finish)
         info:result = result
 
-        TextBox box = info:box
+        CodeTextBox box = info:box
         if box not= undefined
             UpdateCodeEditorBehavior updater
             updater:SetCompilerResult(result)

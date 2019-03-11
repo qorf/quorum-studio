@@ -105,54 +105,9 @@ class BreakpointsTab is Tab, BreakpointListener
                 rowFile:AddRow(row)
                 breakpointTree:Add(rowFile)
             end
-            
-//            Iterator<TreeItem> items = breakpointTree:GetTreeItems()
-//            repeat while items:HasNext() and not found
-//                TreeItem item = items:Next()
-//                if item:GetName() = file:GetFileName()
-//                    found = true
-//                    TreeItem newOne
-//                    newOne:SetName("" + line)
-//                    newOne:SetIcon(resources:GetBreakpoint())
-//                    item:Add(newOne)
-//                end
-//            end
-
-//            if not found
-//                TreeItem top
-//                top:SetName("" + file:GetFileName())
-//                top:SetIcon(resources:GetBreakpoint())
-//                
-//                TreeItem newOne
-//                newOne:SetName("" + line)
-//                newOne:SetIcon(resources:GetBreakpoint())
-//                top:Add(newOne)
-//
-//                breakpointTree:Add(top)
-//            end
             breakpointTree:Resize()
         else 
             boolean found = false
-//            Iterator<TreeItem> items = breakpointTree:GetTreeItems()
-//            repeat while items:HasNext() and not found
-//                TreeItem item = items:Next()
-//                if item:GetName() = file:GetFileName()
-//                    found = true
-//                    if item:GetSize() = 1
-//                        breakpointTree:Remove(item)
-//                        found = true
-//                    else 
-//                        Iterator<TreeItem> lines = item:GetTreeItems()
-//                        repeat while lines:HasNext()
-//                            TreeItem l = lines:Next()
-//                            if l:GetName() = "" + line
-//                                item:Remove(l)
-//                                found = true
-//                            end
-//                        end
-//                    end
-//                end
-//            end
         end
     end
 
@@ -168,8 +123,7 @@ class BreakpointsTab is Tab, BreakpointListener
         SetRelatedItem(GetPane())
         DisplayCloseButton(true)
  
-        InputTable inputTable = breakpointTree:GetInputTable():Copy()
-        text groupName = "QuorumStudioBreakpointTreeTable"
+        InputTable inputTable = breakpointTree:CopyAndActivateInputTable("QuorumStudioBreakpointTreeTable")
         InputSet set
         KeyboardEvent keys
         set:SetKeyboardInput(keys:FORWARD_DELETE)
@@ -178,11 +132,5 @@ class BreakpointsTab is Tab, BreakpointListener
         InputSet set2
         set2:SetKeyboardInput(keys:BACKSPACE)
         inputTable:Add(set2, deleteBehavior)
-
-        inputTable:SetIdentifier(groupName)
-        breakpointTree:SetInputGroup(groupName)
-        GameStateManager manager
-        Game game = manager:GetGame()
-        game:AddInputTable(inputTable)
     end
 end
