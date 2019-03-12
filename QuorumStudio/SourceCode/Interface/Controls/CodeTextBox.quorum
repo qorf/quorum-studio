@@ -2,18 +2,89 @@ package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.TextBox
 use Libraries.Language.Compile.Symbol.SymbolTable
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Language.Compile.Symbol.Class
+use Libraries.Containers.Iterator
+use Libraries.Language.Compile.Symbol.Action
 
 class CodeTextBox is TextBox
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
-    SymbolTable table = undefined
+    BuildManager manager = undefined
     text staticKey = ""
+    Class clazz = undefined
+    action GetBuildManager returns BuildManager
+        return manager
+    end
+
+    action SetBuildManager(BuildManager manager)
+        me:manager = manager
+    end
+
+    action GetStaticKey returns text
+        return staticKey
+    end
+
+    action SetStaticKey(text key)
+        me:staticKey = key
+    end
+
+    action GetClass returns Class
+        return clazz
+    end
+
+    action SetClass(Class clazz)
+        me:clazz = clazz
+    end
 
     action SmartNavigateUp
-        output "up"
+        if clazz = undefined
+            return now
+        end
+
+        integer line = GetCaretLine()
+
+        Action closest = undefined
+        Iterator<Action> iterator = clazz:GetActions()
+        repeat while iterator:HasNext()
+            Action act = iterator:Next()
+            if act:GetLineNumber() < line and closest = undefined//it's up
+                closest = act
+            elseif act:GetLineNumber() < line and closest not= undefined//it's up
+                if line - act:GetLineNumber() < line - closest:GetLineNumber()
+                    closest = act
+                end
+            end
+        end
+
+        if closest not= undefined and closest:GetLineNumber() > 0
+            SetCaretPositionToLine(closest:GetLineNumber() - 1)
+        end
     end
 
     action SmartNavigateDown
-        output "down"
+        if clazz = undefined
+            return now
+        end
+
+        integer line = GetCaretLine()
+
+        Action closest = undefined
+        Iterator<Action> iterator = clazz:GetActions()
+        repeat while iterator:HasNext()
+            Action act = iterator:Next()
+            if act:GetLineNumber() - 1 > line and closest = undefined//it's up
+                closest = act
+            elseif act:GetLineNumber() - 1 > line and closest not= undefined//it's up
+                if line - act:GetLineNumber()  - 1 > line - closest:GetLineNumber()
+                    closest = act
+                end
+            end
+        end
+
+        
+        if closest not= undefined and closest:GetLineNumber() < GetLineCount()
+            SetCaretPositionToLine(closest:GetLineNumber() - 1)
+        end
     end
 
     action SmartNavigateLeft
