@@ -71,8 +71,23 @@ class BuildManager is DebuggerListener, ProcessListener
     BuildLoop buildLoop
     constant number PARSE_DELAY_SECONDS = 0.15
     
+
+    //state storage from the build loop
+    HashTable<text, CompilerResult> goodCompilerResults
+
     on create
         debugger:Add(me)
+    end
+
+    
+    action GetLastGoodResult(text projectPath) returns CompilerResult
+        CompilerResult lastGoodResult = undefined
+
+        if goodCompilerResults:HasKey(projectPath)
+            lastGoodResult = goodCompilerResults:GetValue(projectPath)
+        end
+
+        return lastGoodResult
     end
 
     action GetParseDelayInSeconds returns number
@@ -139,10 +154,6 @@ class BuildManager is DebuggerListener, ProcessListener
         end
     end
 
-    action StartIndexing
-        //parsingAndIndexingThread:Add(buildLoop)
-    end
-
     /*
         This action returns true if the build engine chose to index at this time.
         The engine may reject an index request, normally because the currently 
@@ -199,10 +210,6 @@ class BuildManager is DebuggerListener, ProcessListener
         FastBuild(info)
         
         return true
-    end
-
-    action StopIndexing
-        //parsingAndIndexingThread:ShutDown()
     end
 
     action ToggleBreakpoint(Breakpoint point)
@@ -382,6 +389,17 @@ class BuildManager is DebuggerListener, ProcessListener
 
         CodeTextBox box = info:box
         if box not= undefined
+            box:SetBuildManager(me)
+            File f = info:recompile
+            SymbolTable table = result:symbolTable
+            if table not= undefined
+                Class clazz = table:GetClassInFile(f:GetAbsolutePath())
+                if clazz not= undefined
+                    box:SetClass(clazz)
+                    box:SetStaticKey(clazz:GetStaticKey())
+                end
+            end
+
             UpdateCodeEditorBehavior updater
             updater:SetCompilerResult(result)
             updater:SetPath(info:recompile)
@@ -392,6 +410,9 @@ class BuildManager is DebuggerListener, ProcessListener
         CompilerErrorManager errors = result:compilerErrorManager
         if errors:IsCompilationErrorFree()
             output "No errors"
+            
+            text value = project:GetLocation():GetAbsolutePath()
+            goodCompilerResults:Add(value, result)
         else
             output "I found " + errors:GetErrorAmount() + " errors and have listed them in the errors tab."
             Iterator<CompilerError> iterator = errors:GetIterator()
