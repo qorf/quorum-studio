@@ -141,41 +141,37 @@ class CodeTextBox is TextBox
         return value:GetBlock(0)
     end
 
+    private action ComputeBlockRange(Block block) returns integer
+         return block:GetLineNumberEnd() - block:GetLineNumber()   
+    end
+
     private action FindLowestSubblock(Action act, Block block, integer line) returns Block
-        if act not= undefined and block not= undefined
+        Block candidate = undefined
+        if block not= undefined
             Iterator<Block> blocks = block:GetBlocks()
             repeat while blocks:HasNext()
                 Block sub = blocks:Next()
                 if line >= sub:GetLineNumber() - 1 and line <= sub:GetLineNumberEnd() - 1
                     Block final = FindLowestSubblock(act, sub, line)
-                    if final = undefined
-                        //if sub is an if statement, we need to check the other
-                        //branches, because of the way quorum calculates regions
-                        if sub:GetBlockType() = sub:IF
-                            boolean continue = true
-                            repeat while blocks:HasNext() and continue
-                                Block els = blocks:Next()
-                                if line >= els:GetLineNumber() - 1 and line <= els:GetLineNumberEnd() - 1
-                                    return els
-                                end
-
-                                if els:GetBlockType() = els:ELSE_IF or els:GetBlockType() = els:ELSE
-                                    continue = true
-                                else
-                                    continue = false
-                                end
-                            end
-                            return sub
-                        else
-                            return sub
-                        end
+                    Block newCandidate = undefined
+                    if final not= undefined
+                        newCandidate = final
                     else
-                        return final
+                        newCandidate = sub
+                    end
+                    if candidate = undefined
+                        candidate = sub
+                    else
+                        if sub:GetLineNumber() - 1 = line
+                            candidate = sub
+                        elseif ComputeBlockRange(sub) < ComputeBlockRange(candidate)
+                            candidate = sub
+                        end
                     end
                 end
             end
         end
-        return undefined
+        return candidate
     end
 
     action SmartNavigateLeft
@@ -263,7 +259,7 @@ class CodeTextBox is TextBox
                 if value = undefined
                     SetCaretPositionToLine(act:GetLineNumberEnd() - 1)
                 else
-                    SetCaretPositionToLine(value:GetLineNumberEnd() - 1)
+                    SetCaretPositionToLine(value:GetLineNumber() - 1)
                 end
             elseif block:GetSubBlockSize() = 0 and block:GetBlockType() = block:IF
                 Block value = FindNextBlock(block)
