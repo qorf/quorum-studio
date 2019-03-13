@@ -204,11 +204,26 @@ class CodeTextBox is TextBox
 
         Block block = FindLowestSubblock(act, act:GetBlock(), caret)
         if block not= undefined
-            Block mom = block:GetParentBlock()
-            if mom = undefined and act not= undefined// go up to the action
-                SetCaretPositionToLine(act:GetLineNumber() - 1)
-            else // go to the parent block
-                SetCaretPositionToLine(mom:GetLineNumber() - 1)
+            if block:GetSubBlockSize() > 0
+                Block sub = block:GetBlock(0)
+                SetCaretPositionToLine(sub:GetLineNumber() - 1)
+            //in this case, there isn't any sub-blocks and this is the end
+            elseif caret = block:GetLineNumberEnd() - 1
+                Block value = FindPreviousBlock(block)
+                if value = undefined
+                    SetCaretPositionToLine(act:GetLineNumber() - 1)
+                else
+                    SetCaretPositionToLine(value:GetLineNumber() - 1)
+                end
+            elseif block:GetSubBlockSize() = 0 and block:GetBlockType() = block:IF
+                Block value = FindPreviousBlock(block)
+                if value = undefined
+                    SetCaretPositionToLine(act:GetLineNumber() - 1)
+                else
+                    SetCaretPositionToLine(value:GetLineNumber() - 1)
+                end
+            else
+                SetCaretPositionToLine(block:GetLineNumber() - 1)
             end
         end
     end
@@ -250,6 +265,13 @@ class CodeTextBox is TextBox
                 else
                     SetCaretPositionToLine(value:GetLineNumberEnd() - 1)
                 end
+            elseif block:GetSubBlockSize() = 0 and block:GetBlockType() = block:IF
+                Block value = FindNextBlock(block)
+                if value = undefined
+                    SetCaretPositionToLine(act:GetLineNumberEnd() - 1)
+                else
+                    SetCaretPositionToLine(value:GetLineNumberEnd() - 1)
+                end
             else
                 SetCaretPositionToLine(block:GetLineNumberEnd() - 1)
             end
@@ -279,5 +301,30 @@ class CodeTextBox is TextBox
         //if it's still undefined, try the mom of this one
         //eventually this will recurse out, because parents will eventually be null
         return FindNextBlock(mom)
+    end
+
+    action FindPreviousBlock(Block block) returns Block
+        Block mom = block:GetParentBlock()
+        if mom = undefined //there is no
+            return undefined
+        end
+        
+        //search through the sequence and find this block. 
+        //then grab the next one. If there isn't one, then return nothing
+        i = 0
+        Iterator<Block> iterator = mom:GetBlocks()
+        repeat while iterator:HasNext()
+            Block momBlock = iterator:Next()
+            if momBlock = block
+                if i - 1 >= 0 and i - 1 < mom:GetSubBlockSize()
+                    return mom:GetBlock(i - 1)
+                end
+            end
+            i = i + 1
+        end
+
+        //if it's still undefined, try the mom of this one
+        //eventually this will recurse out, because parents will eventually be null
+        return FindPreviousBlock(mom)
     end
 end
