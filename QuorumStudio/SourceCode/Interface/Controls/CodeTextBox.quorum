@@ -6,6 +6,7 @@ use Libraries.Development.Environment.Studio.Build.BuildManager
 use Libraries.Language.Compile.Symbol.Class
 use Libraries.Containers.Iterator
 use Libraries.Language.Compile.Symbol.Action
+use Libraries.Language.Compile.Symbol.Block
 
 class CodeTextBox is TextBox
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -42,19 +43,7 @@ class CodeTextBox is TextBox
         end
 
         integer line = GetCaretLine()
-
-        Action closest = undefined
-        Iterator<Action> iterator = clazz:GetActions()
-        repeat while iterator:HasNext()
-            Action act = iterator:Next()
-            if act:GetLineNumber() < line and closest = undefined//it's up
-                closest = act
-            elseif act:GetLineNumber() < line and closest not= undefined//it's up
-                if line - act:GetLineNumber() < line - closest:GetLineNumber()
-                    closest = act
-                end
-            end
-        end
+        Action closest = FindPreviousAction(line)
 
         if closest not= undefined and closest:GetLineNumber() > 0
             SetCaretPositionToLine(closest:GetLineNumber() - 1)
@@ -67,7 +56,30 @@ class CodeTextBox is TextBox
         end
 
         integer line = GetCaretLine()
+        Action closest = FindNextAction(line)
+        
+        if closest not= undefined and closest:GetLineNumber() < GetLineCount()
+            SetCaretPositionToLine(closest:GetLineNumber() - 1)
+        end
+    end
 
+    private action FindPreviousAction(integer line) returns Action
+        Action closest = undefined
+        Iterator<Action> iterator = clazz:GetActions()
+        repeat while iterator:HasNext()
+            Action act = iterator:Next()
+            if act:GetLineNumber() < line and closest = undefined//it's up
+                closest = act
+            elseif act:GetLineNumber() < line and closest not= undefined//it's up
+                if line - act:GetLineNumber() < line - closest:GetLineNumber()
+                    closest = act
+                end
+            end
+        end
+        return closest
+    end
+
+    private action FindNextAction(integer line) returns Action
         Action closest = undefined
         Iterator<Action> iterator = clazz:GetActions()
         repeat while iterator:HasNext()
@@ -80,18 +92,192 @@ class CodeTextBox is TextBox
                 end
             end
         end
+        return closest
+    end
 
-        
-        if closest not= undefined and closest:GetLineNumber() < GetLineCount()
-            SetCaretPositionToLine(closest:GetLineNumber() - 1)
+    private action FindAction(integer line) returns Action
+        if clazz = undefined
+            return undefined
         end
+        Iterator<Action> iterator = clazz:GetActions()
+        repeat while iterator:HasNext()
+            Action act = iterator:Next()
+            if line >= act:GetLineNumber() - 1 and line <= act:GetLineNumberEnd()
+                return act
+            end
+        end
+        return undefined
+    end
+
+    private action FindLastBlockInAction(Action act) returns Block
+        if act = undefined
+            return undefined
+        end
+        Block value = act:GetBlock()
+        if value = undefined
+            return undefined
+        end
+
+        if value:GetSubBlockSize() = 0
+            return undefined
+        end
+
+        return value:GetBlock(value:GetSubBlockSize() - 1)
+    end
+
+    private action FindFirstBlockInAction(Action act) returns Block
+        if act = undefined
+            return undefined
+        end
+        Block value = act:GetBlock()
+        if value = undefined
+            return undefined
+        end
+
+        if value:GetSubBlockSize() = 0
+            return undefined
+        end
+
+        return value:GetBlock(0)
+    end
+
+    private action FindLowestSubblock(Action act, Block block, integer line) returns Block
+        if act not= undefined and block not= undefined
+            Iterator<Block> blocks = block:GetBlocks()
+            repeat while blocks:HasNext()
+                Block sub = blocks:Next()
+                if line >= sub:GetLineNumber() - 1 and line <= sub:GetLineNumberEnd() - 1
+                    Block final = FindLowestSubblock(act, sub, line)
+                    if final = undefined
+                        //if sub is an if statement, we need to check the other
+                        //branches, because of the way quorum calculates regions
+                        if sub:GetBlockType() = sub:IF
+                            boolean continue = true
+                            repeat while blocks:HasNext() and continue
+                                Block els = blocks:Next()
+                                if line >= els:GetLineNumber() - 1 and line <= els:GetLineNumberEnd() - 1
+                                    return els
+                                end
+
+                                if els:GetBlockType() = els:ELSE_IF or els:GetBlockType() = els:ELSE
+                                    continue = true
+                                else
+                                    continue = false
+                                end
+                            end
+                            return sub
+                        else
+                            return sub
+                        end
+                    else
+                        return final
+                    end
+                end
+            end
+        end
+        return undefined
     end
 
     action SmartNavigateLeft
-        output "left"
+        integer caret = GetCaretLine()
+        Action act = FindAction(caret)
+        if act = undefined
+            return now
+        end
+
+        //we're on an action, so go to the previous one's end
+        if caret = act:GetLineNumber() - 1
+            Action previous = FindPreviousAction(caret)
+            if previous not= undefined
+                SetCaretPositionToLine(previous:GetLineNumberEnd() - 1)
+                return now
+            end
+        elseif caret = act:GetLineNumberEnd() - 1
+            Block block = FindLastBlockInAction(act)
+            if block not= undefined
+                SetCaretPositionToLine(block:GetLineNumberEnd() - 1)
+            else
+                SetCaretPositionToLine(act:GetLineNumber() - 1)
+            end
+            return now
+        end
+
+        Block block = FindLowestSubblock(act, act:GetBlock(), caret)
+        if block not= undefined
+            Block mom = block:GetParentBlock()
+            if mom = undefined and act not= undefined// go up to the action
+                SetCaretPositionToLine(act:GetLineNumber() - 1)
+            else // go to the parent block
+                SetCaretPositionToLine(mom:GetLineNumber() - 1)
+            end
+        end
     end
 
     action SmartNavigateRight
-        output "right"
+        integer caret = GetCaretLine()
+        Action act = FindAction(caret)
+        if act = undefined
+            return now
+        end
+
+        //we're on an action, so go to the first block in it
+        if caret = act:GetLineNumber() - 1
+            Block block = FindFirstBlockInAction(act)
+            if block not= undefined
+                SetCaretPositionToLine(block:GetLineNumber() - 1)
+            else
+                SetCaretPositionToLine(act:GetLineNumberEnd() - 1)
+            end
+            return now
+        elseif caret = act:GetLineNumberEnd() - 1
+            Action next = FindNextAction(caret)
+            if next not= undefined
+                SetCaretPositionToLine(next:GetLineNumber() - 1)
+                return now
+            end
+        end
+
+        Block block = FindLowestSubblock(act, act:GetBlock(), caret)
+        if block not= undefined
+            if block:GetSubBlockSize() > 0
+                Block sub = block:GetBlock(0)
+                SetCaretPositionToLine(sub:GetLineNumber() - 1)
+            //in this case, there isn't any sub-blocks and this is the end
+            elseif caret = block:GetLineNumberEnd() - 1
+                Block value = FindNextBlock(block)
+                if value = undefined
+                    SetCaretPositionToLine(act:GetLineNumberEnd() - 1)
+                else
+                    SetCaretPositionToLine(value:GetLineNumberEnd() - 1)
+                end
+            else
+                SetCaretPositionToLine(block:GetLineNumberEnd() - 1)
+            end
+        end
+    end
+
+    action FindNextBlock(Block block) returns Block
+        Block mom = block:GetParentBlock()
+        if mom = undefined //there is no
+            return undefined
+        end
+        
+        //search through the sequence and find this block. 
+        //then grab the next one. If there isn't one, then return nothing
+        i = 0
+        Iterator<Block> iterator = mom:GetBlocks()
+        repeat while iterator:HasNext()
+            Block momBlock = iterator:Next()
+            if momBlock = block
+                if i + 1 < mom:GetSubBlockSize()
+                    return mom:GetBlock(i + 1)
+                end
+            end
+            i = i + 1
+        end
+
+        //if it's still undefined, try the mom of this one
+        //eventually this will recurse out, because parents will eventually be null
+        return FindNextBlock(mom)
     end
 end
