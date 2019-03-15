@@ -11,12 +11,16 @@ import org.debugger.events.DebuggerExceptionEvent;
 import org.debugger.events.DebuggerStartEvent;
 import org.debugger.events.DebuggerStepEvent;
 import org.debugger.events.DebuggerStopEvent;
+import quorum.Libraries.Language.Debug.Breakpoint;
 import quorum.Libraries.Language.Debug.BreakpointEvent_;
+import quorum.Libraries.Language.Debug.Breakpoint_;
 import quorum.Libraries.Language.Debug.DebuggerErrorEvent_;
 import quorum.Libraries.Language.Debug.DebuggerListener_;
 import quorum.Libraries.Language.Debug.DebuggerStartEvent_;
 import quorum.Libraries.Language.Debug.DebuggerStepEvent_;
 import quorum.Libraries.Language.Debug.DebuggerStopEvent_;
+import quorum.Libraries.System.File;
+import quorum.Libraries.System.File_;
 
 /**
  *
@@ -27,7 +31,7 @@ public class DebuggerListenerWrapper implements DebuggerListener{
     private DebuggerStartEvent_ start = new quorum.Libraries.Language.Debug.DebuggerStartEvent();
     private DebuggerStopEvent_ stop = new quorum.Libraries.Language.Debug.DebuggerStopEvent();
     private DebuggerErrorEvent_ error = new quorum.Libraries.Language.Debug.DebuggerErrorEvent();
-    private BreakpointEvent_ breakpoint = new quorum.Libraries.Language.Debug.BreakpointEvent();
+    
     private static final String QUORUM = "quorum.";
     @Override
     public void accept(DebuggerStartEvent event) {
@@ -56,7 +60,16 @@ public class DebuggerListenerWrapper implements DebuggerListener{
 
     @Override
     public void accept(DebuggerBreakpointEvent event) {
-        listener.Run(breakpoint);
+        BreakpointEvent_ be = new quorum.Libraries.Language.Debug.BreakpointEvent();
+        String path = event.getSource();
+        int line = event.getLine();
+        Breakpoint_ breakpoint = new Breakpoint();
+        breakpoint.SetLine(line);
+        if(path != null && path.length() > 7) { //remove the quorum. at the beginning
+            breakpoint.SetDotName(path.substring(7));
+        }
+        be.SetBreakpoint(breakpoint);
+        listener.Run(be);
     }
 
     @Override
