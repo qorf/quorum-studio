@@ -13,6 +13,7 @@ use Libraries.Language.Compile.CompilerErrorManager
 use Libraries.Interface.Controls.TextStyles.TextUnderline
 use Libraries.Containers.Iterator
 use Libraries.Language.Compile.CompilerError
+use Libraries.Interface.Controls.TextStyles.ColoredHighlight
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
     CompilerResult compilerResult = undefined
@@ -21,7 +22,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     Color orange
     Color grey
     Color purple
-
+    Color caretColor
     /*
         
     */
@@ -29,6 +30,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         blue = blue:Blue()
         orange:SetColor(206.0/255, 123.0/255, 0, 1.0)
         grey:SetColor(152.0/255, 152.0/255, 152.0/255, 1.0)
+        caretColor:SetColor(233.0/255.0, 239.0/255.0, 248.0/255.0, 1.0)
         purple = blue:Purple()
     end
 
@@ -115,6 +117,21 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                 i = i + 1
             end
         end
+
+        //now set the cursor line
+        integer caret = box:GetCaretPosition()
+        ColoredHighlight caretHighlight
+        caretHighlight:SetColor(caretColor)
+        caretHighlight:SetLineHighlight(true)
+        TextStyle caretStyle
+        caretStyle:SetIndex(caret)
+        caretStyle:SetHighlight(caretHighlight)
+        box:AddTextStyle("Caret", caretStyle)
+
+        //add breakpoints
+        
+
+        //add the debugger line
     end
 
     private action GetTextStyle(Token token) returns TextStyle
