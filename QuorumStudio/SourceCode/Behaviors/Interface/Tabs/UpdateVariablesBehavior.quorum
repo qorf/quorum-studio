@@ -16,6 +16,8 @@ use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Game.Graphics.Color
 use Libraries.Interface.Controls.TextStyles.ColoredHighlight
 use Libraries.Interface.Controls.TextStyles.TextStyle
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 
 class UpdateVariablesBehavior is Behavior
     boolean finished = false
@@ -30,12 +32,21 @@ class UpdateVariablesBehavior is Behavior
     CodeEditorTabPane codeEditorTabPane = undefined
     Color debuggerColor
     public constant text DEBUGGER_ANNOTATION = "Debugger"
+    BuildManager manager = undefined
 
     on create
         titleRow:SetName("Name")
         titleRow:SetType("Type")
         titleRow:SetValue("Value")
         debuggerColor:SetColor(189.0/255.0, 230.0/255.0, 170.0/255.0, 1.0)
+    end
+
+    action GetBuildManager returns BuildManager
+        return manager
+    end
+
+    action SetBuildManager(BuildManager manager)
+        me:manager = manager
     end
 
     action GetOldTextBox returns TextBox
@@ -123,6 +134,7 @@ class UpdateVariablesBehavior is Behavior
                     debuggerStyle:SetHighlight(debuggerHighlight)
                     box:AddTextStyle(DEBUGGER_ANNOTATION, debuggerStyle)
 
+                    manager:SetDebuggerLineTextBox(cast(CodeTextBox, box))
                     box:SetCaretPositionToLine(debuggerLine - 1)
                     box:GoToLine(debuggerLine - 1)
                     box:Focus()

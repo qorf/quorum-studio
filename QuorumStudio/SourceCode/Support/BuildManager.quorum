@@ -75,10 +75,19 @@ class BuildManager is DebuggerListener, ProcessListener
     //state storage from the build loop
     HashTable<text, CompilerResult> goodCompilerResults
 
+    CodeTextBox debuggerLineTextBox = undefined
+
     on create
         debugger:Add(me)
     end
 
+    action GetDebuggerLineTextBox returns CodeTextBox
+        return debuggerLineTextBox
+    end
+
+    action SetDebuggerLineTextBox(CodeTextBox box)
+        debuggerLineTextBox = box
+    end
     
     action GetLastGoodResult(text projectPath) returns CompilerResult
         CompilerResult lastGoodResult = undefined
@@ -283,6 +292,19 @@ class BuildManager is DebuggerListener, ProcessListener
 
     action Run(DebuggerStopEvent event)
         debuggingProgram = undefined
+        if debuggerLineTextBox not= undefined
+            debuggerLineTextBox:RemoveTextStyle("Debugger")
+        end
+    end
+
+    /*
+        This action might be called in an instance where a debugger line
+        exists, but should be removed, like in a continue call.
+    */
+    action RemoveDebuggerLine
+        if debuggerLineTextBox not= undefined
+            debuggerLineTextBox:RemoveTextStyle("Debugger")
+        end
     end
 
     action Run(DebuggerStepEvent event)
@@ -307,11 +329,6 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action Run(BreakpointEvent event)
-//        VariablesTab variablesTab = outputTabs:GetVariablesTab()
-//        SelectTabBehavior behavior
-//        behavior:SetOutputEditorTabPane(outputTabs)
-//        behavior:SetSelectedTab(variablesTab)
-//        variablesTab:AddBehavior(behavior)
         Breakpoint bp = event:GetBreakpoint()
         BuildInformation info = debuggingProgram
         CompilerResult result = info:result
@@ -323,9 +340,6 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     private action UpdateDebugger(File newFile, integer line)
-
-        
-
         VariablesTab variablesTab = outputTabs:GetVariablesTab()
         UpdateVariablesBehavior update
         update:SetSelectedTab(variablesTab)
@@ -334,6 +348,7 @@ class BuildManager is DebuggerListener, ProcessListener
         update:SetTreeTable(variablesTab:GetDebuggerTreeTable())
         update:SetNewFile(newFile)
         update:SetDebuggerLine(line)
+        update:SetBuildManager(me)
 
         CodeEditorTabPane code = GetCodeEditorTabPane()
         TabPaneSelection selection = code:GetSelection()
