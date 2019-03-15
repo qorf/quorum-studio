@@ -278,6 +278,7 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action Run(DebuggerStartEvent event)
+        integer a = 5
     end
 
     action Run(DebuggerStopEvent event)
@@ -302,6 +303,7 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action Run(DebuggerErrorEvent event)
+        a = 5
     end
 
     action Run(BreakpointEvent event)
@@ -311,7 +313,11 @@ class BuildManager is DebuggerListener, ProcessListener
 //        behavior:SetSelectedTab(variablesTab)
 //        variablesTab:AddBehavior(behavior)
         Breakpoint bp = event:GetBreakpoint()
-        File file = bp:GetFile()
+        BuildInformation info = debuggingProgram
+        CompilerResult result = info:result
+        SymbolTable table = result:symbolTable
+        Class value = table:GetClass(bp:GetDotName())
+        File file = value:GetFile()
         integer line = bp:GetLine()
         UpdateDebugger(file, line)
     end
@@ -331,6 +337,7 @@ class BuildManager is DebuggerListener, ProcessListener
 
         CodeEditorTabPane code = GetCodeEditorTabPane()
         TabPaneSelection selection = code:GetSelection()
+        update:SetCodeEditorTabPane(code)
 
         EditorTab tab = cast(EditorTab, selection:GetTab())
         if tab not= undefined
