@@ -14,20 +14,25 @@ use Libraries.Interface.Events.SelectionEvent
 use Libraries.Game.Graphics.Color
 use Libraries.Interface.Controls.TextStyles.ColoredHighlight
 use Libraries.Interface.Controls.TextStyles.TextStyle
+use Libraries.Language.Debug.BreakpointListener
+use Libraries.Language.Debug.BreakpointEvent
+use Libraries.Language.Debug.Breakpoint
 
-class CodeTextBox is TextBox, SelectionListener
+class CodeTextBox is TextBox, SelectionListener, BreakpointListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
     BuildManager manager = undefined
     text staticKey = ""
     Class clazz = undefined
     public constant text CARET_STYLE = "Caret"
     Color caretColor
+    Color breakpointColor
 
     on create
         GameStateManager manager
         Game game = manager:GetGame()
         game:AddSelectionListener(me)
         caretColor:SetColor(233.0/255.0, 239.0/255.0, 248.0/255.0, 1.0)
+        breakpointColor:SetColor(252.0/255.0, 157.0/255.0, 159.0/255.0, 1.0)
     end
 
     action SelectionChanged(SelectionEvent selection)
@@ -36,13 +41,34 @@ class CodeTextBox is TextBox, SelectionListener
             integer caret = GetCaretPosition()
             boolean value1 = RemoveTextStyle(CARET_STYLE)
 
-            ColoredHighlight caretHighlight
-            caretHighlight:SetColor(caretColor)
-            caretHighlight:SetLineHighlight(true)
-            TextStyle caretStyle
-            caretStyle:SetIndex(caret)
-            caretStyle:SetHighlight(caretHighlight)
-            AddTextStyle(CARET_STYLE, caretStyle)
+            boolean hasBreakpoint = HasTextStyle("Breakpoint" + GetCaretLine())
+            if not hasBreakpoint
+                ColoredHighlight caretHighlight
+                caretHighlight:SetColor(caretColor)
+                caretHighlight:SetLineHighlight(true)
+                TextStyle caretStyle
+                caretStyle:SetIndex(caret)
+                caretStyle:SetHighlight(caretHighlight)
+                AddTextStyle(CARET_STYLE, caretStyle)
+            end
+        end
+    end
+
+    action ToggledBreakpoint(BreakpointEvent event)
+        if event:IsAdded()
+            Breakpoint bp = event:GetBreakpoint()
+            integer line = bp:GetLine()
+            ColoredHighlight breakpointHighlight
+            breakpointHighlight:SetColor(breakpointColor)
+            breakpointHighlight:SetLineHighlight(true)
+            TextStyle breakpointStyle
+            breakpointStyle:SetIndex(GetIndexOfLine(line))
+            breakpointStyle:SetHighlight(breakpointHighlight)
+            AddTextStyle("Breakpoint" + bp:GetLine(), breakpointStyle)
+        else
+            Breakpoint bp = event:GetBreakpoint()
+            integer line = bp:GetLine()
+            RemoveTextStyle("Breakpoint" + bp:GetLine())
         end
     end
 
@@ -52,6 +78,7 @@ class CodeTextBox is TextBox, SelectionListener
 
     action SetBuildManager(BuildManager manager)
         me:manager = manager
+        manager:Add(me)
     end
 
     action GetStaticKey returns text

@@ -14,6 +14,8 @@ use Libraries.Interface.Controls.TextStyles.TextUnderline
 use Libraries.Containers.Iterator
 use Libraries.Language.Compile.CompilerError
 use Libraries.Interface.Controls.TextStyles.ColoredHighlight
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Language.Debug.Breakpoint
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
     CompilerResult compilerResult = undefined
@@ -23,6 +25,9 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     Color grey
     Color purple
     Color caretColor
+    Color breakpointColor
+    BuildManager manager = undefined
+
     /*
         
     */
@@ -31,6 +36,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         orange:SetColor(206.0/255, 123.0/255, 0, 1.0)
         grey:SetColor(152.0/255, 152.0/255, 152.0/255, 1.0)
         caretColor:SetColor(233.0/255.0, 239.0/255.0, 248.0/255.0, 1.0)
+        breakpointColor:SetColor(252.0/255.0, 157.0/255.0, 159.0/255.0, 1.0)
         purple = blue:Purple()
     end
 
@@ -40,6 +46,14 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
 
     action GetCompilerResult returns CompilerResult
         return compilerResult
+    end
+
+    action GetBuildManager returns BuildManager
+        return manager
+    end
+
+    action SetBuildManager(BuildManager manager)
+        me:manager = manager
     end
 
     action GetPath returns File
@@ -129,7 +143,18 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         box:AddTextStyle("Caret", caretStyle)
 
         //add breakpoints
-        
+        Iterator<Breakpoint> breakpoints = manager:GetBreakpointIterator(path:GetAbsolutePath())
+        repeat while breakpoints:HasNext()
+            Breakpoint bp = breakpoints:Next()
+            integer line = bp:GetLine()
+            ColoredHighlight breakpointHighlight
+            breakpointHighlight:SetColor(breakpointColor)
+            breakpointHighlight:SetLineHighlight(true)
+            TextStyle breakpointStyle
+            breakpointStyle:SetIndex(box:GetIndexOfLine(line))
+            breakpointStyle:SetHighlight(breakpointHighlight)
+            box:AddTextStyle("Breakpoint" + bp:GetLine(), breakpointStyle)
+        end
 
         //add the debugger line
     end

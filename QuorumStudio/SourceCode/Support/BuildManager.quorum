@@ -145,6 +145,17 @@ class BuildManager is DebuggerListener, ProcessListener
         return bps:GetIterator()
     end
 
+    action GetBreakpointIterator(text path) returns Iterator<Breakpoint>
+        HashTable<integer, Breakpoint> points = breakpoints:GetValue(path)
+        if points = undefined
+            Array<Breakpoint> bps
+            return bps:GetIterator()
+        end
+
+        Iterator<Breakpoint> iterator = points:GetValueIterator()
+        return iterator
+    end
+
     private action FireBreakpointEvent(BreakpointEvent event)
         i = 0
         repeat while i < breakpointListeners:GetSize()
@@ -401,6 +412,7 @@ class BuildManager is DebuggerListener, ProcessListener
             end
 
             UpdateCodeEditorBehavior updater
+            updater:SetBuildManager(me)
             updater:SetCompilerResult(result)
             updater:SetPath(info:recompile)
             box:AddBehavior(updater)
