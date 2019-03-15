@@ -106,8 +106,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
         Action closest = FindPreviousAction(line)
 
         if closest not= undefined and closest:GetLineNumber() > 0
-            SetCaretPositionToLine(closest:GetLineNumber() - 1)
-            GoToLine(closest:GetLineNumber() - 1)
+            NavigateTo(closest:GetLineNumber())
         end
     end
 
@@ -120,8 +119,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
         Action closest = FindNextAction(line)
         
         if closest not= undefined and closest:GetLineNumber() < GetLineCount()
-            SetCaretPositionToLine(closest:GetLineNumber() - 1)
-            GoToLine(closest:GetLineNumber() - 1)
+            NavigateTo(closest:GetLineNumber())
         end
     end
 
@@ -236,6 +234,11 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
         return candidate
     end
 
+    private action NavigateTo(integer line)
+        SetCaretPositionToLine(line - 1)
+        GoToLine(line - 1)
+    end
+
     action SmartNavigateLeft
         integer caret = GetCaretLine()
         Action act = FindAction(caret)
@@ -247,15 +250,15 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
         if caret = act:GetLineNumber() - 1
             Action previous = FindPreviousAction(caret)
             if previous not= undefined
-                SetCaretPositionToLine(previous:GetLineNumberEnd() - 1)
+                NavigateTo(previous:GetLineNumberEnd())
                 return now
             end
         elseif caret = act:GetLineNumberEnd() - 1
             Block block = FindLastBlockInAction(act)
             if block not= undefined
-                SetCaretPositionToLine(block:GetLineNumberEnd() - 1)
+                NavigateTo(block:GetLineNumberEnd())
             else
-                SetCaretPositionToLine(act:GetLineNumber() - 1)
+                NavigateTo(act:GetLineNumber())
             end
             return now
         end
@@ -264,24 +267,24 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
         if block not= undefined
             if block:GetSubBlockSize() > 0
                 Block sub = block:GetBlock(0)
-                SetCaretPositionToLine(sub:GetLineNumber() - 1)
+                NavigateTo(sub:GetLineNumber())
             //in this case, there isn't any sub-blocks and this is the end
             elseif caret = block:GetLineNumberEnd() - 1
                 Block value = FindPreviousBlock(block)
                 if value = undefined
-                    SetCaretPositionToLine(act:GetLineNumber() - 1)
+                    NavigateTo(act:GetLineNumber())
                 else
-                    SetCaretPositionToLine(value:GetLineNumber() - 1)
+                    NavigateTo(value:GetLineNumber())
                 end
             elseif block:GetSubBlockSize() = 0 and block:GetBlockType() = block:IF
                 Block value = FindPreviousBlock(block)
                 if value = undefined
-                    SetCaretPositionToLine(act:GetLineNumber() - 1)
+                    NavigateTo(act:GetLineNumber())
                 else
-                    SetCaretPositionToLine(value:GetLineNumber() - 1)
+                    NavigateTo(value:GetLineNumber())
                 end
             else
-                SetCaretPositionToLine(block:GetLineNumber() - 1)
+                NavigateTo(block:GetLineNumber())
             end
         end
     end
@@ -297,15 +300,15 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
         if caret = act:GetLineNumber() - 1
             Block block = FindFirstBlockInAction(act)
             if block not= undefined
-                SetCaretPositionToLine(block:GetLineNumber() - 1)
+                NavigateTo(block:GetLineNumber())
             else
-                SetCaretPositionToLine(act:GetLineNumberEnd() - 1)
+                NavigateTo(act:GetLineNumber())
             end
             return now
         elseif caret = act:GetLineNumberEnd() - 1
             Action next = FindNextAction(caret)
             if next not= undefined
-                SetCaretPositionToLine(next:GetLineNumber() - 1)
+                NavigateTo(next:GetLineNumber())
                 return now
             end
         end
@@ -314,24 +317,24 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
         if block not= undefined
             if block:GetSubBlockSize() > 0
                 Block sub = block:GetBlock(0)
-                SetCaretPositionToLine(sub:GetLineNumber() - 1)
+                NavigateTo(sub:GetLineNumber())
             //in this case, there isn't any sub-blocks and this is the end
             elseif caret = block:GetLineNumberEnd() - 1
                 Block value = FindNextBlock(block)
                 if value = undefined
-                    SetCaretPositionToLine(act:GetLineNumberEnd() - 1)
+                    NavigateTo(act:GetLineNumberEnd())
                 else
-                    SetCaretPositionToLine(value:GetLineNumber() - 1)
+                    NavigateTo(value:GetLineNumber())
                 end
             elseif block:GetSubBlockSize() = 0 and block:GetBlockType() = block:IF
                 Block value = FindNextBlock(block)
                 if value = undefined
-                    SetCaretPositionToLine(act:GetLineNumberEnd() - 1)
+                    NavigateTo(act:GetLineNumberEnd())
                 else
-                    SetCaretPositionToLine(value:GetLineNumberEnd() - 1)
+                    NavigateTo(value:GetLineNumber())
                 end
             else
-                SetCaretPositionToLine(block:GetLineNumberEnd() - 1)
+                NavigateTo(block:GetLineNumber())
             end
         end
     end
