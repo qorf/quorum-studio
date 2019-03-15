@@ -9,6 +9,13 @@ use Libraries.Language.Debug.VariablesModel
 use Libraries.Containers.Array
 use Libraries.Language.Debug.Variable
 use Libraries.Language.Debug.VariableRow
+use Libraries.System.File
+use Libraries.Interface.Controls.TextBox
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Controls.TextStyles.ColoredHighlight
+use Libraries.Interface.Controls.TextStyles.TextStyle
 
 class UpdateVariablesBehavior is Behavior
     boolean finished = false
@@ -17,11 +24,50 @@ class UpdateVariablesBehavior is Behavior
     TreeTable variablesTable = undefined
     Debugger debugger = undefined
     VariableRow titleRow
+    TextBox oldTextBox = undefined
+    File newFile = undefined
+    integer debuggerLine = -1
+    CodeEditorTabPane codeEditorTabPane = undefined
+    Color debuggerColor
+    public constant text DEBUGGER_ANNOTATION = "Debugger"
 
     on create
         titleRow:SetName("Name")
         titleRow:SetType("Type")
         titleRow:SetValue("Value")
+        debuggerColor:SetColor(189.0/255.0, 230.0/255.0, 170.0/255.0, 1.0)
+    end
+
+    action GetOldTextBox returns TextBox
+        return oldTextBox
+    end 
+
+    action SetOldTextBox(TextBox tb)
+        me:oldTextBox = tb
+    end
+
+    action GetNewFile returns File
+        return newFile
+    end 
+
+    action SetNewFile(File file)
+        me:newFile = file
+    end
+
+    action GetCodeEditorTabPane returns CodeEditorTabPane
+        return codeEditorTabPane
+    end 
+
+    action SetCodeEditorTabPane(CodeEditorTabPane cetb)
+        me:codeEditorTabPane = cetb
+    end
+
+    action SetDebuggerLine(integer line)
+        debuggerLine = line
+    end
+
+    action GetDebuggerLine returns integer
+        return debuggerLine
     end
 
     action GetDebugger returns Debugger
@@ -58,6 +104,31 @@ class UpdateVariablesBehavior is Behavior
 
     action Update(number seconds)
         if debugger not= undefined
+
+            //remove the old debugger line
+            if oldTextBox not= undefined
+                oldTextBox:RemoveTextStyle(DEBUGGER_ANNOTATION)
+            end
+
+            EditorTab tab = codeEditorTabPane:OpenNewTab(newFile)
+            if tab not= undefined
+                TextBox box = tab:GetTextBox()
+                if box not= undefined
+                    //add the new debugger line
+                    ColoredHighlight debuggerHighlight
+                    debuggerHighlight:SetColor(debuggerColor)
+                    debuggerHighlight:SetLineHighlight(true)
+                    TextStyle debuggerStyle
+                    debuggerStyle:SetIndex(debuggerLine)
+                    debuggerStyle:SetHighlight(debuggerHighlight)
+                    box:AddTextStyle(DEBUGGER_ANNOTATION, debuggerStyle)
+
+                    box:SetCaretPositionToLine(debuggerLine)
+                    box:GoToLine(debuggerLine)
+                    box:Focus()
+                end
+            end
+
             variablesTable:EmptyRows()
             variablesTable:Add(titleRow)
 
