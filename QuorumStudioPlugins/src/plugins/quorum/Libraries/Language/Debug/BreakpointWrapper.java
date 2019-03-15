@@ -18,7 +18,7 @@ public class BreakpointWrapper implements Breakpoint, ClassInformation{
     
     @Override
     public int getLine() {
-        return breakpoint.GetLine();
+        return breakpoint.GetLine() + 1;
     }
 
     @Override

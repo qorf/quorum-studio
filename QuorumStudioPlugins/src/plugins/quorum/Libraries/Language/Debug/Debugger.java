@@ -207,8 +207,4 @@ public class Debugger {
         model.plugin_.setDebugger(debugger);
         return model;
     }
-//    
-//    public CallStackModel_ GetCallStackModel() {
-//        
-//    }
 }
