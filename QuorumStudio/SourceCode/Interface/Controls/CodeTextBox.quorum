@@ -17,6 +17,9 @@ use Libraries.Interface.Controls.TextStyles.TextStyle
 use Libraries.Language.Debug.BreakpointListener
 use Libraries.Language.Debug.BreakpointEvent
 use Libraries.Language.Debug.Breakpoint
+use Libraries.Language.Compile.Lexer
+use Libraries.Containers.Array
+use Libraries.Language.Compile.Token
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -26,6 +29,8 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
     public constant text CARET_STYLE = "Caret"
     Color caretColor
     Color breakpointColor
+    Array<Token> lexer = undefined
+    Lexer categories
 
     on create
         GameStateManager manager
@@ -95,6 +100,14 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
 
     action SetClass(Class clazz)
         me:clazz = clazz
+    end
+
+    action GetLexer returns Array<Token>
+        return lexer
+    end
+
+    action SetLexer(Array<Token> lexer)
+        me:lexer = lexer
     end
 
     action SmartNavigateUp
@@ -239,103 +252,131 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
         GoToLine(line - 1)
     end
 
+    private action NavigateToIndex(integer index)
+        SetCaretPosition(index)
+        integer line = GetCaretLine()
+        GoToLine(line)
+    end
+
+    action FindTokenIndexFromCaret(integer index) returns integer
+        if lexer = undefined or lexer:IsEmpty()
+            return -1
+        end
+
+        if index < lexer:Get(0):GetStartIndex()
+            return 0
+        end
+
+        if index > lexer:Get(lexer:GetSize() - 1):GetStopIndex()
+            return lexer:GetSize() - 1
+        end
+
+        integer high = lexer:GetSize()
+        integer low = 0
+        integer mid = lexer:GetSize() / 2
+        i = mid
+        
+        continue = true
+        repeat while continue
+            Token token = lexer:Get(mid)
+            Token next = undefined
+
+            if mid + 1 < lexer:GetSize()
+                next = lexer:Get(mid + 1)
+            else
+                return lexer:GetSize() - 1 
+            end
+
+            //we found the token
+            if index >= token:GetStartIndex() and index < next:GetStartIndex()
+                return mid
+            elseif index >= token:GetStopIndex()
+                low = mid
+                mid = ((high - low) / 2) + mid
+                i = mid
+            else
+                high = mid
+                mid = ((high - low) / 2) + low
+                i = mid
+            end
+        end
+        return -1
+    end
+
+    private action IsSignificantToken(Token token) returns boolean
+        if token:GetTokenCategory() = categories:IF or
+            token:GetTokenCategory() = categories:ELSE_IF or
+            token:GetTokenCategory() = categories:ELSE or
+            token:GetTokenCategory() = categories:REPEAT or
+            token:GetTokenCategory() = categories:END or
+            token:GetTokenCategory() = categories:ACTION or
+            token:GetTokenCategory() = categories:CLASS or
+            token:GetTokenCategory() = categories:COMMENTS or
+            token:GetTokenCategory() = categories:CHECK or
+            token:GetTokenCategory() = categories:DETECT or
+            token:GetTokenCategory() = categories:ON or
+            token:GetTokenCategory() = categories:ALWAYS or
+            token:GetTokenCategory() = categories:USE
+            return true
+        end
+
+        return false
+    end
+
     action SmartNavigateLeft
         integer caret = GetCaretLine()
-        Action act = FindAction(caret)
-        if act = undefined
+        integer index = GetCaretPosition()
+        if lexer = undefined
             return now
         end
 
-        //we're on an action, so go to the previous one's end
-        if caret = act:GetLineNumber() - 1
-            Action previous = FindPreviousAction(caret)
-            if previous not= undefined
-                NavigateTo(previous:GetLineNumberEnd())
+        integer tokenIndex = FindTokenIndexFromCaret(index)
+        if tokenIndex = -1
+            return now
+        end
+
+        if tokenIndex > lexer:GetSize()
+            return now
+        end
+
+        Token token = lexer:Get(tokenIndex)
+        i = tokenIndex - 1
+        repeat while i >= 0
+            Token previous = lexer:Get(i)
+            if IsSignificantToken(previous)
+                NavigateToIndex(previous:GetStartIndex())
                 return now
             end
-        elseif caret = act:GetLineNumberEnd() - 1
-            Block block = FindLastBlockInAction(act)
-            if block not= undefined
-                NavigateTo(block:GetLineNumberEnd())
-            else
-                NavigateTo(act:GetLineNumber())
-            end
-            return now
-        end
-
-        Block block = FindLowestSubblock(act, act:GetBlock(), caret)
-        if block not= undefined
-            if block:GetSubBlockSize() > 0
-                Block sub = block:GetBlock(0)
-                NavigateTo(sub:GetLineNumber())
-            //in this case, there isn't any sub-blocks and this is the end
-            elseif caret = block:GetLineNumberEnd() - 1
-                Block value = FindPreviousBlock(block)
-                if value = undefined
-                    NavigateTo(act:GetLineNumber())
-                else
-                    NavigateTo(value:GetLineNumber())
-                end
-            elseif block:GetSubBlockSize() = 0 and block:GetBlockType() = block:IF
-                Block value = FindPreviousBlock(block)
-                if value = undefined
-                    NavigateTo(act:GetLineNumber())
-                else
-                    NavigateTo(value:GetLineNumber())
-                end
-            else
-                NavigateTo(block:GetLineNumber())
-            end
+            i = i - 1
         end
     end
 
     action SmartNavigateRight
         integer caret = GetCaretLine()
-        Action act = FindAction(caret)
-        if act = undefined
+        integer index = GetCaretPosition()
+        if lexer = undefined
             return now
         end
 
-        //we're on an action, so go to the first block in it
-        if caret = act:GetLineNumber() - 1
-            Block block = FindFirstBlockInAction(act)
-            if block not= undefined
-                NavigateTo(block:GetLineNumber())
-            else
-                NavigateTo(act:GetLineNumber())
-            end
+        integer tokenIndex = FindTokenIndexFromCaret(index)
+        if tokenIndex = -1
             return now
-        elseif caret = act:GetLineNumberEnd() - 1
-            Action next = FindNextAction(caret)
-            if next not= undefined
-                NavigateTo(next:GetLineNumber())
+        end
+
+        integer size = lexer:GetSize()
+        if tokenIndex >= size
+            return now
+        end
+
+        Token token = lexer:Get(tokenIndex)
+        i = tokenIndex + 1
+        repeat while i < size
+            Token next = lexer:Get(i)
+            if IsSignificantToken(next)
+                NavigateToIndex(next:GetStartIndex())
                 return now
             end
-        end
-
-        Block block = FindLowestSubblock(act, act:GetBlock(), caret)
-        if block not= undefined
-            if block:GetSubBlockSize() > 0
-                Block sub = block:GetBlock(0)
-                NavigateTo(sub:GetLineNumber())
-            //in this case, there isn't any sub-blocks and this is the end
-            elseif caret = block:GetLineNumberEnd() - 1
-                Block value = FindNextBlock(block)
-                if value = undefined
-                    NavigateTo(act:GetLineNumberEnd())
-                else
-                    NavigateTo(value:GetLineNumber())
-                end
-            elseif block:GetSubBlockSize() = 0 and block:GetBlockType() = block:IF
-                Block value = FindNextBlock(block)
-                if value = undefined
-                    NavigateTo(act:GetLineNumberEnd())
-                else
-                    NavigateTo(value:GetLineNumber())
-                end
-            else
-                NavigateTo(block:GetLineNumber())
-            end
+            i = i + 1
         end
     end
 

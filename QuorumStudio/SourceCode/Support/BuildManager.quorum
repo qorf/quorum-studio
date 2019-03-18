@@ -52,6 +52,7 @@ use Libraries.Concurrency.ThreadRunner
 use Libraries.Development.Environment.Studio.Behaviors.BuildLoop
 use Libraries.Development.Environment.Studio.Behaviors.UpdateCodeEditorBehavior
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Language.Compile.Lexer
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -438,17 +439,8 @@ class BuildManager is DebuggerListener, ProcessListener
         CodeTextBox box = info:box
         if box not= undefined
             box:SetBuildManager(me)
-            File f = info:recompile
-            SymbolTable table = result:symbolTable
-            if table not= undefined
-                Class clazz = table:GetClassInFile(f:GetAbsolutePath())
-                if clazz not= undefined
-                    box:SetClass(clazz)
-                    box:SetStaticKey(clazz:GetStaticKey())
-                end
-            end
-
             UpdateCodeEditorBehavior updater
+            updater:SetBuildInformation(info)
             updater:SetBuildManager(me)
             updater:SetCompilerResult(result)
             updater:SetPath(info:recompile)
