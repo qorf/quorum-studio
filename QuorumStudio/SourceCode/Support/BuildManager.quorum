@@ -77,6 +77,7 @@ class BuildManager is DebuggerListener, ProcessListener
 
     //state storage from the build loop
     HashTable<text, CompilerResult> goodCompilerResults
+    HashTable<text, CompilerResult> recentCompilerResults
 
     CodeTextBox debuggerLineTextBox = undefined
 
@@ -401,6 +402,12 @@ class BuildManager is DebuggerListener, ProcessListener
         end
 
         QuorumProject project = cast(QuorumProject, projectManager:IsProjectSourceFile(file))
+        if project = undefined
+            return undefined
+        end
+
+        File location = project:GetLocation()
+
         CodeTextBox box = tab:GetTextBox()
         text source = box:GetText()
         integer index = box:GetCaretPosition()
@@ -409,8 +416,8 @@ class BuildManager is DebuggerListener, ProcessListener
         request:fileKey = file:GetAbsolutePath()
         request:source = source
         request:caretLocation = index
-        request:lastCompiledResult = goodCompilerResults:GetValue(file:GetAbsolutePath())
-        request:lastCompiledResult = goodCompilerResults:GetValue(file:GetAbsolutePath())
+        request:result = recentCompilerResults:GetValue(location:GetAbsolutePath())
+        request:lastCompiledResult = goodCompilerResults:GetValue(location:GetAbsolutePath())
 
         Compiler compiler = project:GetCompiler()
         CodeCompletionResult result = compiler:Request(request)
@@ -490,10 +497,12 @@ class BuildManager is DebuggerListener, ProcessListener
 
         //this will need to be changed to update the editor once red lines exist.
         CompilerErrorManager errors = result:compilerErrorManager
+        text value = project:GetLocation():GetAbsolutePath()
         if errors:IsCompilationErrorFree()
-            text value = project:GetLocation():GetAbsolutePath()
             goodCompilerResults:Add(value, result)
         end
+
+        recentCompilerResults:Add(value, result)
     end
 
     action Build(BuildInformation info)
