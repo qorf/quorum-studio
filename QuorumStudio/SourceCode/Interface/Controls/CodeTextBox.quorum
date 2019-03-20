@@ -21,6 +21,9 @@ use Libraries.Language.Compile.Lexer
 use Libraries.Containers.Array
 use Libraries.Language.Compile.Token
 use Libraries.Containers.MultipleLineText
+use Libraries.Interface.Controls.LineNumberGutter
+use Libraries.Game.Graphics.Font
+use Libraries.System.File
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -32,6 +35,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
     Color breakpointColor
     Array<Token> lexer = undefined
     Lexer categories
+    LineNumberGutter gutter
 
     on create
         GameStateManager manager
@@ -39,6 +43,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
         game:AddSelectionListener(me)
         caretColor:SetColor(233.0/255.0, 239.0/255.0, 248.0/255.0, 1.0)
         breakpointColor:SetColor(252.0/255.0, 157.0/255.0, 159.0/255.0, 1.0)
+        Add(gutter)
     end
 
     action SelectionChanged(SelectionEvent selection)
