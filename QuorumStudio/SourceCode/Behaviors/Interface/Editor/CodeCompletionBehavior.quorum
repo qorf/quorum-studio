@@ -10,8 +10,23 @@ use Libraries.Interface.Controls.TextBox
 use Libraries.Development.Environment.Studio.Interface.BreakpointsTab
 use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Interface.Item
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Language.Compile.CodeCompletionRequest
+use Libraries.Language.Compile.CodeCompletionResult
+use Libraries.Containers.Iterator
+use Libraries.Language.Compile.CodeCompletionItem
 
 class CodeCompletionBehavior is QuorumStudioBehavior
+    BuildManager builder = undefined
+
+    action GetBuildManager returns BuildManager
+        return builder
+    end
+
+    action SetBuildManager(BuildManager builder)
+        me:builder = builder
+    end
+
     action Run(BehaviorEvent event)
         QuorumStudio studio = GetMainApplication()
         Item item = event:GetItem()
@@ -22,5 +37,15 @@ class CodeCompletionBehavior is QuorumStudioBehavior
     end
 
     private action DoCodeCompletion(TextBox box)
+        if builder = undefined
+            return now
+        end
+
+        CodeCompletionResult result = builder:RequestCodeCompletion()
+        Iterator<CodeCompletionItem> iterator = result:GetIterator()
+        repeat while iterator:HasNext()
+            CodeCompletionItem item = iterator:Next()
+            output item:displayText
+        end
     end
 end

@@ -53,6 +53,8 @@ use Libraries.Development.Environment.Studio.Behaviors.BuildLoop
 use Libraries.Development.Environment.Studio.Behaviors.UpdateCodeEditorBehavior
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Language.Compile.Lexer
+use Libraries.Language.Compile.CodeCompletionRequest
+use Libraries.Language.Compile.CodeCompletionResult
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -375,6 +377,55 @@ class BuildManager is DebuggerListener, ProcessListener
         library:SetOutputFolder(outputLocation)
         library:Scan()
         Index()
+    end
+
+    action RequestCodeCompletion returns CodeCompletionResult
+        if not library:IsScanned()
+            return undefined
+        else 
+        end
+        
+        //check to see what the current file open is
+        CodeEditorTabPane code = GetCodeEditorTabPane()
+        TabPaneSelection selection = code:GetSelection()
+
+        EditorTab tab = cast(EditorTab, selection:GetTab())
+        if tab = undefined
+            return undefined
+        end
+
+        File file = tab:GetFile()
+        //get the file the tab is using
+        if file = undefined
+            return undefined
+        end
+
+        QuorumProject project = cast(QuorumProject, projectManager:IsProjectSourceFile(file))
+        CodeTextBox box = tab:GetTextBox()
+        text source = box:GetText()
+        integer index = box:GetCaretPosition()
+
+        CodeCompletionRequest request
+        request:fileKey = file:GetAbsolutePath()
+        request:source = source
+        request:caretLocation = index
+        request:lastCompiledResult = goodCompilerResults:GetValue(file:GetAbsolutePath())
+        request:lastCompiledResult = goodCompilerResults:GetValue(file:GetAbsolutePath())
+
+        Compiler compiler = project:GetCompiler()
+        CodeCompletionResult result = compiler:Request(request)
+//        //actually do the building
+//        BuildInformation info
+//        info:outputTab = outputTabs:GetOutputTab()
+//        info:project = project
+//        info:errorTab = outputTabs:GetErrorTab()
+//        info:recompile = file
+//        info:recompileValue = source
+//        info:box = box
+//
+//        FastBuild(info)
+//        
+        return result
     end
 
     action FastBuild(BuildInformation info)
