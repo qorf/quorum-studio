@@ -43,6 +43,10 @@ class CodeCompletionBehavior is QuorumStudioBehavior
 
         CodeCompletionResult result = builder:RequestCodeCompletion()
         Iterator<CodeCompletionItem> iterator = result:GetIterator()
+        if not iterator:HasNext()
+            output "No completion items available"
+        end
+
         repeat while iterator:HasNext()
             CodeCompletionItem item = iterator:Next()
             output item:displayText
