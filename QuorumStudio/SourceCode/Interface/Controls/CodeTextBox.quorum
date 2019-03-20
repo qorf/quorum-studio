@@ -24,8 +24,10 @@ use Libraries.Containers.MultipleLineText
 use Libraries.Interface.Controls.LineNumberGutter
 use Libraries.Game.Graphics.Font
 use Libraries.System.File
+use Libraries.Interface.Events.GutterListener
+use Libraries.Interface.Events.GutterEvent
 
-class CodeTextBox is TextBox, SelectionListener, BreakpointListener
+class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
     BuildManager manager = undefined
     text staticKey = ""
@@ -44,6 +46,15 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener
         caretColor:SetColor(233.0/255.0, 239.0/255.0, 248.0/255.0, 1.0)
         breakpointColor:SetColor(252.0/255.0, 157.0/255.0, 159.0/255.0, 1.0)
         Add(gutter)
+        gutter:AddGutterListener(me)
+    end
+
+    action GutterClicked(GutterEvent event)
+        integer line = event:GetLine()
+        if clazz not= undefined
+            File file = clazz:GetFile()
+            manager:ToggleBreakpoint(file, line)
+        end
     end
 
     action SelectionChanged(SelectionEvent selection)
