@@ -7,15 +7,26 @@ use Libraries.System.File
 class KeyMapLoader is KeyMap
     KeyMap actualKeyMap = undefined
     Properties properties
+    public constant text KEYMAP = "Configuration/KeyMap.json"
 
     on create
         File customKeymap
-        customKeymap:SetPath("KeyMap.json")
+        customKeymap:SetPath(KEYMAP)
+        if customKeymap:Exists()
+            RemapKeyMap map
+            boolean value = map:Load(customKeymap)
+            if value
+                actualKeyMap = map  
+            else //the file is invalid
+                LoadDefaultMap()
+            end
+        else
+            LoadDefaultMap()
+        end
+    end
+
+    private action LoadDefaultMap
         text string = properties:GetOperatingSystemName()
-//        if customKeymap:Exists()
-//            RemapKeyMap map
-//            actualKeyMap = map
-//        else
         if string:Contains("Mac OS X")
             MacKeyMap map
             actualKeyMap = map
