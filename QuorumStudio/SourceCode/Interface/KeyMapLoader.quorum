@@ -2,21 +2,28 @@ package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Game.InputSet
 use Libraries.System.Properties
+use Libraries.System.File
 
 class KeyMapLoader is KeyMap
     KeyMap actualKeyMap = undefined
     Properties properties
 
     on create
+        File customKeymap
+        customKeymap:SetPath("KeyMap.json")
         text string = properties:GetOperatingSystemName()
-        if string:Contains("Mac OS X")
+        if customKeymap:Exists()
+            RemapKeyMap map
+            actualKeyMap = map
+        elseif string:Contains("Mac OS X")
             MacKeyMap map
             actualKeyMap = map
         elseif string:Contains("Windows")
             WindowsKeyMap map
             actualKeyMap = map
         else//for now do nothing, because we support Windows only in the first release, technically
-
+            MacKeyMap map
+            actualKeyMap = map
         end
     end
 
@@ -138,22 +145,6 @@ class KeyMapLoader is KeyMap
 
     action GetCodeCompletionKey returns InputSet
         return actualKeyMap:GetCodeCompletionKey()
-    end
-
-    action GetSmartEditorNavigationLeftKey returns InputSet
-        return actualKeyMap:GetSmartEditorNavigationLeftKey()
-    end
-
-    action GetSmartEditorNavigationRightKey returns InputSet
-        return actualKeyMap:GetSmartEditorNavigationRightKey()
-    end
-
-    action GetSmartEditorNavigationUpKey returns InputSet
-        return actualKeyMap:GetSmartEditorNavigationUpKey()
-    end
-
-    action GetSmartEditorNavigationDownKey returns InputSet
-        return actualKeyMap:GetSmartEditorNavigationDownKey()
     end
 
     action GetCommentLinesKey returns InputSet

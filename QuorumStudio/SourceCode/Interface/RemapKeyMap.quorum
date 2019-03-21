@@ -1,9 +1,72 @@
 package Libraries.Development.Environment.Studio.Interface
 use Libraries.Game.InputSet
 use Libraries.Interface.Events.KeyboardEvent
+use Libraries.System.File
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Containers.HashTable
 
-class MacKeyMap is KeyMap
+class RemapKeyMap is KeyMap
     KeyboardEvent keys
+    HashTable<text, InputSet> map
+    constant text BUILD_KEY = "EXIT_KEY"
+    constant text CLEAN_BUILD_KEY = "EXIT_KEY"
+    constant text CODE_COMPLETION_KEY = "EXIT_KEY"
+    constant text COMMENT_LINES_KEY = "EXIT_KEY"
+    constant text CONTINUE_KEY = "EXIT_KEY"
+    constant text DEBUG_KEY = "EXIT_KEY"
+    constant text DEFAULT_MENU_POPUP_1_KEY = "EXIT_KEY"
+    constant text DEFAULT_MENU_POPUP_2_KEY = "EXIT_KEY"
+    constant text ESCAPE_KEY = "EXIT_KEY"
+    constant text EXIT_KEY = "EXIT_KEY"
+    constant text FOCUS_NEXT_WINDOW_KEY = "SAVE_KEY"
+    constant text FOCUS_PREVIOUS_WINDOW_KEY = "SAVE_KEY"
+    constant text FOCUS_TO_BREAKPOINT_KEY = "SAVE_KEY"
+    constant text FOCUS_CALL_STACK_KEY = "SAVE_KEY"
+    constant text FOCUS_TO_EDITOR_KEY = "SAVE_KEY"
+    constant text FOCUS_TO_ERRORS_KEY = "SAVE_KEY"
+    constant text FOCUS_TO_OUTPUT_KEY = "SAVE_KEY"
+    constant text FOCUS_TO_PROJECTS_KEY = "SAVE_KEY"
+    constant text FOCUS_TO_VARIABLES_KEY = "SAVE_KEY"
+    constant text OPEN_PROJECT_KEY = "OPEN_PROJECT_KEY"
+    constant text PAUSE_KEY = "SAVE_KEY"
+    constant text RUN_KEY = "SAVE_KEY"
+    constant text RUN_TO_CURSOR_KEY = "SAVE_KEY"
+    constant text SAVE_KEY = "SAVE_KEY"
+    constant text SCALE_INTERFACE_DOWN_KEY = "SAVE_KEY"
+    constant text SCALE_INTERFACE_UP_KEY = "SAVE_KEY"
+    constant text SMART_NAVIGATE_DOWN_KEY = "SAVE_KEY"
+    constant text SMART_NAVIGATE_UP_KEY = "SAVE_KEY"
+    constant text SMART_NAVIGATE_LEFT_KEY = "SAVE_KEY"
+    constant text SMART_NAVIGATE_RIGHT_KEY = "SAVE_KEY"
+    constant text SMART_NAVIGATION_RIGHT_KEY = "SAVE_KEY"
+    constant text STEP_INTO_KEY = "SAVE_KEY"
+    constant text STEP_OUT_KEY = "SAVE_KEY"
+    constant text STEP_OVER_KEY = "SAVE_KEY"
+    constant text STOP_KEY = "SAVE_KEY"
+    constant text TOGGLE_BREAKPOINT_KEY = "SAVE_KEY"
+
+    action Load(File file)
+        JavaScriptObjectNotation note
+        note:Read(file)
+
+        LoadKey(note, SAVE_KEY)
+        
+    end
+
+    action Save(File file)
+
+    end
+
+    action LoadKey(JavaScriptObjectNotation note, text key)
+        if note:GetObject(key) not= undefined
+            integer value = note:GetInteger(key)
+            InputSet set
+            set:SetBitMask(value)
+            map:Add(key, set)
+        else //should we fail silently here, have a backup keymap or something else?
+            alert("KeyMap has an incorrect value at:" + key)
+        end
+    end
 
     action GetSaveKey returns InputSet
         InputSet set
