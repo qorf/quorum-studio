@@ -1,5 +1,690 @@
-class ProjectPropertiesDialog 
-    action Main
-        
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Controls.TabPane
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.ScrollPane
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.ButtonGroup
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Controls.RadioButton
+
+class ProjectPropertiesDialog is Dialog
+
+    boolean initialized = false
+
+    action Initialize
+        if initialized
+            output "WARNING: Re-initializing the ProjectPropertiesDialog."
+        end
+
+        initializing = true
+
+        SetName("Properties")
+        SetPixelWidth(400)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+
+        TabPane tabPane
+        FlowLayout tabLayout
+        tabPane:SetViewAreaLayout(tabLayout)
+        tabPane:SetPercentageWidth(1.0)
+        tabPane:SetPixelHeight(500)
+
+        tabPane:Add(CreateProjectInfoTab())
+        tabPane:Add(CreateGamesTab())
+        tabPane:Add(CreateMobileTab())
+        Add(tabPane)
+
+        tabPane:Select(0)
+    end
+
+    action IsInitialized returns boolean
+        return initialized
+    end
+
+    private action CreateProjectInfoTab returns Tab
+        Tab projectInfoTab
+        projectInfoTab:SetName("Project Information")
+        projectInfoTab:DisplayCloseButton(false)
+
+        ScrollPane scrollPane
+        scrollPane:SetPercentageWidth(1.0)
+        scrollPane:SetPixelHeight(500)
+        FlowLayout scrollLayout
+        scrollPane:SetLayout(scrollLayout)
+
+        projectInfoTab:SetRelatedItem(scrollPane)
+
+        Control panel
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+//        panel:SetPixelHeight(500)
+//        panel:SetPercentageHeight(1.0)
+
+        LabelBoxView panelView
+        Color color
+
+        panelView:Initialize(color:CustomColor(0.95, 0.95, 0.95, 1), color:Black())
+        panel:SetView2D(panelView)
+
+        FlowLayout layout
+        panel:SetLayout(layout)
+
+        scrollPane:Add(panel)
+
+        Label programName
+        programName:SetText("Program Name: ")
+        programName:SetLeftPadding(10)
+        programName:SetRightPadding(10)
+        programName:SetTopPadding(6)
+        programName:SetBottomPadding(6)
+
+        TextField nameField
+        nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
+        nameField:SetTopPadding(6)
+        nameField:SetRightPadding(10)
+
+        panel:Add(programName)
+        panel:Add(nameField)
+
+        Label projectType
+        projectType:SetText("Select Project Type: ")
+        projectType:SetTopPadding(6)
+        projectType:SetLeftPadding(10)
+        projectType:SetRightPadding(10)
+        panel:Add(projectType)
+
+        Control buttonArea
+        FlowLayout buttonLayout
+        buttonArea:SetTopPadding(6)
+        buttonArea:SetLayout(buttonLayout)
+        buttonArea:SetHorizontalLayoutMode(buttonArea:FILL)
+        buttonArea:SetVerticalLayoutMode(buttonArea:FIT_CONTENTS)
+
+        ButtonGroup buttonGroup
+        RadioButton standardButton
+        standardButton:SetName("Standard")
+        standardButton:SetRightPadding(6)
+        buttonGroup:AddButton(standardButton)
+        buttonArea:Add(standardButton)
+
+        RadioButton legoButton
+        legoButton:SetName("Lego")
+        legoButton:SetRightPadding(6)
+        buttonGroup:AddButton(legoButton)
+        buttonArea:Add(legoButton)
+
+        RadioButton webServer
+        webServer:SetName("Web Server")
+        webServer:SetRightPadding(6)
+        buttonGroup:AddButton(webServer)
+        buttonArea:Add(webServer)
+
+        RadioButton webBrowser
+        webBrowser:SetName("Web Browser")
+        webBrowser:SetRightPadding(6)
+        buttonGroup:AddButton(webBrowser)
+        buttonArea:Add(webBrowser)
+
+        panel:Add(buttonArea)
+
+        Label pluginFolders
+        pluginFolders:SetLeftPadding(10)
+        pluginFolders:SetTopPadding(10)
+        pluginFolders:SetBottomPadding(6)
+        pluginFolders:SetText("Additional Quorum Plugin Folders")
+        panel:Add(pluginFolders)
+
+        FlowLayout pluginLayout
+
+        Control pluginArea
+        pluginArea:SetLayout(pluginLayout)
+        pluginArea:SetHorizontalLayoutMode(pluginArea:STANDARD)
+        pluginArea:SetVerticalLayoutMode(pluginArea:FIT_CONTENTS)
+        pluginArea:SetPercentageWidth(1.0)
+        pluginArea:SetLeftPadding(10)
+
+        List pluginList
+        pluginList:SetHorizontalLayoutMode(pluginList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        pluginList:SetVerticalLayoutMode(pluginList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        pluginList:SetPercentageWidth(0.7)
+        pluginList:SetPixelHeight(100)
+        pluginList:Add("Example 1")
+        pluginArea:Add(pluginList)
+
+        Control pluginButtons
+        FlowLayout pluginButtonsLayout
+        pluginButtons:SetLayout(pluginButtonsLayout)
+        pluginButtons:SetHorizontalLayoutMode(pluginButtons:FILL)
+        pluginButtons:SetVerticalLayoutMode(pluginButtons:FIT_CONTENTS)
+        pluginArea:Add(pluginButtons)
+
+        Button addPlugin
+        addPlugin:SetName("Add")
+        addPlugin:SetPercentageWidth(1.0)
+        addPlugin:SetLeftPadding(4)
+        addPlugin:SetRightPadding(4)
+        addPlugin:SetBottomPadding(6)
+        pluginButtons:Add(addPlugin)
+
+        Button removePlugin
+        removePlugin:SetName("Remove")
+        removePlugin:SetPercentageWidth(1.0)
+        removePlugin:SetLeftPadding(4)
+        removePlugin:SetRightPadding(4)
+        removePlugin:SetBottomPadding(6)
+        pluginButtons:Add(removePlugin)
+
+        Button clearPlugins
+        clearPlugins:SetName("Clear")
+        clearPlugins:SetPercentageWidth(1.0)
+        clearPlugins:SetLeftPadding(4)
+        clearPlugins:SetRightPadding(4)
+        clearPlugins:SetBottomPadding(6)
+        pluginButtons:Add(clearPlugins)
+
+        panel:Add(pluginArea)
+
+        Label jarLibraries
+        jarLibraries:SetText("Additional Java Jar Libraries")
+        jarLibraries:SetLeftPadding(10)
+        jarLibraries:SetTopPadding(10)
+        jarLibraries:SetBottomPadding(6)
+        panel:Add(jarLibraries)
+
+        FlowLayout jarLayout
+
+        Control jarArea
+        jarArea:SetLayout(jarLayout)
+        jarArea:SetHorizontalLayoutMode(jarArea:STANDARD)
+        jarArea:SetVerticalLayoutMode(jarArea:FIT_CONTENTS)
+        jarArea:SetPercentageWidth(1.0)
+        jarArea:SetLeftPadding(10)
+
+        List jarList
+        jarList:SetHorizontalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        jarList:SetVerticalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        jarList:SetPercentageWidth(0.7)
+        jarList:SetPixelHeight(100)
+        jarList:Add("Example 2")
+        jarArea:Add(jarList)
+
+        Control jarButtons
+        FlowLayout jarButtonsLayout
+        jarButtons:SetLayout(jarButtonsLayout)
+        jarButtons:SetHorizontalLayoutMode(jarButtons:FILL)
+        jarButtons:SetVerticalLayoutMode(jarButtons:FIT_CONTENTS)
+        jarArea:Add(jarButtons)
+
+        Button addJar
+        addJar:SetName("Add")
+        addJar:SetPercentageWidth(1.0)
+        addJar:SetLeftPadding(4)
+        addJar:SetRightPadding(4)
+        addJar:SetBottomPadding(6)
+        jarButtons:Add(addJar)
+
+        Button removeJar
+        removeJar:SetName("Remove")
+        removeJar:SetPercentageWidth(1.0)
+        removeJar:SetLeftPadding(4)
+        removeJar:SetRightPadding(4)
+        removeJar:SetBottomPadding(6)
+        jarButtons:Add(removeJar)
+
+        Button clearJars
+        clearJars:SetName("Clear")
+        clearJars:SetPercentageWidth(1.0)
+        clearJars:SetLeftPadding(4)
+        clearJars:SetRightPadding(4)
+        clearJars:SetBottomPadding(6)
+        jarButtons:Add(clearJars)
+
+        panel:Add(jarArea)
+
+        // Additional source.
+
+        Label sourceFiles
+        sourceFiles:SetText("Additional Source Files")
+        sourceFiles:SetLeftPadding(10)
+        sourceFiles:SetTopPadding(10)
+        sourceFiles:SetBottomPadding(6)
+        panel:Add(sourceFiles)
+
+        FlowLayout sourceLayout
+
+        Control sourceArea
+        sourceArea:SetLayout(sourceLayout)
+        sourceArea:SetHorizontalLayoutMode(sourceArea:STANDARD)
+        sourceArea:SetVerticalLayoutMode(sourceArea:FIT_CONTENTS)
+        sourceArea:SetPercentageWidth(1.0)
+        sourceArea:SetLeftPadding(10)
+
+        List sourceList
+        sourceList:SetHorizontalLayoutMode(sourceList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        sourceList:SetVerticalLayoutMode(sourceList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        sourceList:SetPercentageWidth(0.7)
+        sourceList:SetPixelHeight(100)
+        sourceList:Add("Example 3")
+        sourceArea:Add(sourceList)
+
+        Control sourceButtons
+        FlowLayout sourceButtonsLayout
+        sourceButtons:SetLayout(sourceButtonsLayout)
+        sourceButtons:SetHorizontalLayoutMode(sourceButtons:FILL)
+        sourceButtons:SetVerticalLayoutMode(sourceButtons:FIT_CONTENTS)
+        sourceArea:Add(sourceButtons)
+
+        Button addSource
+        addSource:SetName("Add")
+        addSource:SetPercentageWidth(1.0)
+        addSource:SetLeftPadding(4)
+        addSource:SetRightPadding(4)
+        addSource:SetBottomPadding(6)
+        sourceButtons:Add(addSource)
+
+        Button removeSource
+        removeSource:SetName("Remove")
+        removeSource:SetPercentageWidth(1.0)
+        removeSource:SetLeftPadding(4)
+        removeSource:SetRightPadding(4)
+        removeSource:SetBottomPadding(6)
+        sourceButtons:Add(removeSource)
+
+        Button clearSource
+        clearSource:SetName("Clear")
+        clearSource:SetPercentageWidth(1.0)
+        clearSource:SetLeftPadding(4)
+        clearSource:SetRightPadding(4)
+        clearSource:SetBottomPadding(6)
+        sourceButtons:Add(clearSource)
+
+        panel:Add(sourceArea)
+
+        Button okayButton
+        okayButton:SetName("OK")
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(20)
+        panel:Add(okayButton)
+
+        Button cancelButton
+        cancelButton:SetName("Cancel")
+        cancelButton:SetLeftPadding(10)
+        cancelButton:SetTopPadding(20)
+        panel:Add(cancelButton)
+
+        return projectInfoTab
+    end
+
+    private action CreateGamesTab returns Tab
+        Tab tab
+        tab:SetName("Games")
+        tab:DisplayCloseButton(false)
+
+        ScrollPane scrollPane
+        scrollPane:SetPercentageWidth(1.0)
+        scrollPane:SetPixelHeight(500)
+        FlowLayout scrollLayout
+        scrollPane:SetLayout(scrollLayout)
+
+        tab:SetRelatedItem(scrollPane)
+
+        Control panel
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+//        panel:SetPixelHeight(500)
+//        panel:SetPercentageHeight(1.0)
+
+        LabelBoxView panelView
+        Color color
+
+        panelView:Initialize(color:CustomColor(0.95, 0.95, 0.95, 1), color:Black())
+        panel:SetView2D(panelView)
+
+        FlowLayout layout
+        panel:SetLayout(layout)
+
+        scrollPane:Add(panel)
+
+        Checkbox enable
+        enable:SetName("Enable Image Sheet Support")
+        enable:SetLeftPadding(10)
+        enable:SetRightPadding(20)
+        enable:SetTopPadding(10)
+        panel:Add(enable)
+
+        Checkbox buildOnCompile
+        buildOnCompile:SetName("Rebuild on Compile")
+        buildOnCompile:SetLeftPadding(10)
+        buildOnCompile:SetTopPadding(10)
+        panel:Add(buildOnCompile)
+
+        Control buildPathContainer
+        buildPathContainer:SetPercentageWidth(1.0)
+        buildPathContainer:SetPixelWidth(-10)
+        buildPathContainer:SetVerticalLayoutMode(buildPathContainer:FIT_CONTENTS)
+        buildPathContainer:SetTopPadding(20)
+        buildPathContainer:SetLeftPadding(10)
+
+        FlowLayout buildPathLayout
+        buildPathContainer:SetLayout(buildPathLayout)
+
+        Label buildPathLabel
+        buildPathLabel:SetText("Build Path: ")
+        buildPathContainer:Add(buildPathLabel)
+
+        TextField buildPathField
+        buildPathField:SetText("resources")
+        buildPathField:SetHorizontalLayoutMode(buildPathField:parent:Libraries.Interface.Controls.Control:FILL)
+        buildPathContainer:Add(buildPathField)
+
+        panel:Add(buildPathContainer)
+
+        Label imageSheetsLabel
+        imageSheetsLabel:SetText("Image Sheets")
+        imageSheetsLabel:SetLeftPadding(10)
+        imageSheetsLabel:SetTopPadding(20)
+        panel:Add(imageSheetsLabel)
+
+        FlowLayout imageSheetsLayout
+
+        Control imageSheetsArea
+        imageSheetsArea:SetLayout(imageSheetsLayout)
+        imageSheetsArea:SetHorizontalLayoutMode(imageSheetsArea:STANDARD)
+        imageSheetsArea:SetVerticalLayoutMode(imageSheetsArea:FIT_CONTENTS)
+        imageSheetsArea:SetPercentageWidth(1.0)
+        imageSheetsArea:SetLeftPadding(10)
+        imageSheetsArea:SetTopPadding(10)
+
+        List imageSheetsList
+        imageSheetsList:SetHorizontalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        imageSheetsList:SetVerticalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        imageSheetsList:SetPercentageWidth(0.7)
+        imageSheetsList:SetPixelHeight(100)
+        imageSheetsList:Add("Example 1")
+        imageSheetsArea:Add(imageSheetsList)
+
+        Control imageSheetsButtons
+        FlowLayout imageSheetsButtonsLayout
+        imageSheetsButtons:SetLayout(imageSheetsButtonsLayout)
+        imageSheetsButtons:SetHorizontalLayoutMode(imageSheetsButtons:FILL)
+        imageSheetsButtons:SetVerticalLayoutMode(imageSheetsButtons:FIT_CONTENTS)
+        imageSheetsArea:Add(imageSheetsButtons)
+
+        Button addSheet
+        addSheet:SetName("Add")
+        addSheet:SetPercentageWidth(1.0)
+        addSheet:SetLeftPadding(4)
+        addSheet:SetRightPadding(4)
+        addSheet:SetBottomPadding(6)
+        imageSheetsButtons:Add(addSheet)
+
+        Button editSheet
+        editSheet:SetName("Edit")
+        editSheet:SetPercentageWidth(1.0)
+        editSheet:SetLeftPadding(4)
+        editSheet:SetRightPadding(4)
+        editSheet:SetBottomPadding(6)
+        imageSheetsButtons:Add(editSheet)
+
+        Button removeSheet
+        removeSheet:SetName("Remove")
+        removeSheet:SetPercentageWidth(1.0)
+        removeSheet:SetLeftPadding(4)
+        removeSheet:SetRightPadding(4)
+        removeSheet:SetBottomPadding(6)
+        imageSheetsButtons:Add(removeSheet)
+
+        Button buildSheets
+        buildSheets:SetName("Build")
+        buildSheets:SetPercentageWidth(1.0)
+        buildSheets:SetLeftPadding(4)
+        buildSheets:SetRightPadding(4)
+        buildSheets:SetBottomPadding(6)
+        imageSheetsButtons:Add(buildSheets)
+
+        panel:Add(imageSheetsArea)
+
+        Label imagesLabel
+        imagesLabel:SetText("Images")
+        imagesLabel:SetLeftPadding(10)
+        imagesLabel:SetTopPadding(20)
+        panel:Add(imagesLabel)
+
+        FlowLayout imagesLayout
+
+        Control imagesArea
+        imagesArea:SetLayout(imagesLayout)
+        imagesArea:SetHorizontalLayoutMode(imageSheetsArea:STANDARD)
+        imagesArea:SetVerticalLayoutMode(imageSheetsArea:FIT_CONTENTS)
+        imagesArea:SetPercentageWidth(1.0)
+        imagesArea:SetLeftPadding(10)
+        imagesArea:SetTopPadding(10)
+
+        List imagesList
+        imagesList:SetHorizontalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        imagesList:SetVerticalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        imagesList:SetPercentageWidth(0.7)
+        imagesList:SetPixelHeight(100)
+        imagesList:Add("Example 1")
+        imagesArea:Add(imagesList)
+
+        Control imagesButtons
+        FlowLayout imagesButtonsLayout
+        imagesButtons:SetLayout(imagesButtonsLayout)
+        imagesButtons:SetHorizontalLayoutMode(imagesButtons:FILL)
+        imagesButtons:SetVerticalLayoutMode(imagesButtons:FIT_CONTENTS)
+        imagesArea:Add(imagesButtons)
+
+        Button addImage
+        addImage:SetName("Add")
+        addImage:SetPercentageWidth(1.0)
+        addImage:SetLeftPadding(4)
+        addImage:SetRightPadding(4)
+        addImage:SetBottomPadding(6)
+        imagesButtons:Add(addImage)
+
+        Button addImageFolder
+        addImageFolder:SetName("Add Folder")
+        addImageFolder:SetPercentageWidth(1.0)
+        addImageFolder:SetLeftPadding(4)
+        addImageFolder:SetRightPadding(4)
+        addImageFolder:SetBottomPadding(6)
+        imagesButtons:Add(addImageFolder)
+
+        Button removeImage
+        removeImage:SetName("Remove")
+        removeImage:SetPercentageWidth(1.0)
+        removeImage:SetLeftPadding(4)
+        removeImage:SetRightPadding(4)
+        removeImage:SetBottomPadding(6)
+        imagesButtons:Add(removeImage)
+
+        panel:Add(imagesArea)
+
+        Button okayButton
+        okayButton:SetName("OK")
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(20)
+        panel:Add(okayButton)
+
+        Button cancelButton
+        cancelButton:SetName("Cancel")
+        cancelButton:SetLeftPadding(10)
+        cancelButton:SetTopPadding(20)
+        panel:Add(cancelButton)
+
+        return tab
+    end
+
+    private action CreateMobileTab returns Tab
+        Tab tab
+        tab:SetName("Mobile")
+        tab:DisplayCloseButton(false)
+
+        ScrollPane scrollPane
+        scrollPane:SetPercentageWidth(1.0)
+        scrollPane:SetPixelHeight(500)
+        FlowLayout scrollLayout
+        scrollPane:SetLayout(scrollLayout)
+
+        tab:SetRelatedItem(scrollPane)
+
+        Control panel
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+
+        LabelBoxView panelView
+        Color color
+
+        panelView:Initialize(color:CustomColor(0.95, 0.95, 0.95, 1), color:Black())
+        panel:SetView2D(panelView)
+
+        FlowLayout layout
+        panel:SetLayout(layout)
+
+        scrollPane:Add(panel)
+
+        Label resourcesLabel
+        resourcesLabel:SetText("Resources")
+        resourcesLabel:SetLeftPadding(10)
+        resourcesLabel:SetTopPadding(10)
+        panel:Add(resourcesLabel)
+
+        FlowLayout resourcesLayout
+        Control resourcesContainer
+        resourcesContainer:SetLayout(resourcesLayout)
+        resourcesContainer:SetPercentageWidth(1.0)
+        resourcesContainer:SetPixelWidth(-10)
+        resourcesContainer:SetVerticalLayoutMode(resourcesContainer:FIT_CONTENTS)
+        resourcesContainer:SetLeftPadding(10)
+        resourcesContainer:SetTopPadding(10)
+
+        panel:Add(resourcesContainer)
+
+        TextField resourcesField
+        resourcesField:SetPercentageWidth(0.5)
+        resourcesContainer:Add(resourcesField)
+
+        Button resourcesBrowse
+        resourcesBrowse:SetName("Browse...")
+        resourcesBrowse:SetPercentageWidth(0.15)
+        resourcesBrowse:SetLeftPadding(6)
+        resourcesContainer:Add(resourcesBrowse)
+
+        Button resourcesClear
+        resourcesClear:SetName("Clear")
+        resourcesClear:SetPercentageWidth(0.15)
+        resourcesClear:SetLeftPadding(6)
+        resourcesContainer:Add(resourcesClear)
+
+        Label androidLabel
+        androidLabel:SetSize(20)
+        androidLabel:SetText("Android")
+        androidLabel:SetLeftPadding(10)
+        androidLabel:SetTopPadding(20)
+        panel:Add(androidLabel)
+
+        Control newLine
+        newLine:SetHorizontalLayoutMode(newLine:FILL)
+        panel:Add(newLine)
+
+        Label androidLibraryLabel
+        androidLibraryLabel:SetText("Android Library Path")
+        androidLibraryLabel:SetLeftPadding(10)
+        androidLibraryLabel:SetTopPadding(10)
+        panel:Add(androidLibraryLabel)
+
+        TextField androidLibraryField
+        androidLibraryField:SetPercentageWidth(1.0)
+        androidLibraryField:SetPixelWidth(-10)
+        androidLibraryField:SetLeftPadding(10)
+        androidLibraryField:SetTopPadding(10)
+        panel:Add(androidLibraryField)
+
+        Label keyStoreLabel
+        keyStoreLabel:SetText("Key Store Path")
+        keyStoreLabel:SetLeftPadding(10)
+        keyStoreLabel:SetTopPadding(20)
+        panel:Add(keyStoreLabel)
+
+        TextField keyStoreField
+        keyStoreField:SetPercentageWidth(1.0)
+        keyStoreField:SetPixelWidth(-10)
+        keyStoreField:SetLeftPadding(10)
+        keyStoreField:SetTopPadding(10)
+        panel:Add(keyStoreField)
+
+        Label keyStorePasswordLabel
+        keyStorePasswordLabel:SetText("Key Store Password")
+        keyStorePasswordLabel:SetLeftPadding(10)
+        keyStorePasswordLabel:SetTopPadding(20)
+        panel:Add(keyStorePasswordLabel)
+
+        TextField keyStorePasswordField
+        keyStorePasswordField:SetPercentageWidth(1.0)
+        keyStorePasswordField:SetPixelWidth(-10)
+        keyStorePasswordField:SetLeftPadding(10)
+        keyStorePasswordField:SetTopPadding(10)
+        panel:Add(keyStorePasswordField)
+
+        Label keyAliasLabel
+        keyAliasLabel:SetText("Key Alias")
+        keyAliasLabel:SetLeftPadding(10)
+        keyAliasLabel:SetTopPadding(20)
+        panel:Add(keyAliasLabel)
+
+        TextField keyAliasField
+        keyAliasField:SetPercentageWidth(1.0)
+        keyAliasField:SetPixelWidth(-10)
+        keyAliasField:SetLeftPadding(10)
+        keyAliasField:SetTopPadding(10)
+        panel:Add(keyAliasField)
+
+        Label keyPasswordLabel
+        keyPasswordLabel:SetText("Key Password")
+        keyPasswordLabel:SetLeftPadding(10)
+        keyPasswordLabel:SetTopPadding(20)
+        panel:Add(keyPasswordLabel)
+
+        TextField keyPasswordField
+        keyPasswordField:SetPercentageWidth(1.0)
+        keyPasswordField:SetPixelWidth(-10)
+        keyPasswordField:SetLeftPadding(10)
+        keyPasswordField:SetTopPadding(10)
+        panel:Add(keyPasswordField)
+
+        Label jdkLabel
+        jdkLabel:SetText("Alternative Java Development Kit")
+        jdkLabel:SetLeftPadding(10)
+        jdkLabel:SetTopPadding(20)
+        panel:Add(jdkLabel)
+
+        TextField jdkField
+        jdkField:SetPercentageWidth(1.0)
+        jdkField:SetPixelWidth(-10)
+        jdkField:SetLeftPadding(10)
+        jdkField:SetTopPadding(10)
+        panel:Add(jdkField)
+
+        Button okayButton
+        okayButton:SetName("OK")
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(20)
+        panel:Add(okayButton)
+
+        Button cancelButton
+        cancelButton:SetName("Cancel")
+        cancelButton:SetLeftPadding(10)
+        cancelButton:SetTopPadding(20)
+        panel:Add(cancelButton)
+
+        return tab
     end
 end
