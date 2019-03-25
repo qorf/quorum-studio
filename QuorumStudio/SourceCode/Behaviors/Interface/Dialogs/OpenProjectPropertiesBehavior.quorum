@@ -8,8 +8,12 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.Interface.ProjectPropertiesDialog
 
 class OpenProjectPropertiesBehavior is QuorumStudioBehavior
+
+    ProjectPropertiesDialog dialog = undefined
+
     action Run(BehaviorEvent event)
         QuorumStudio studio = GetMainApplication()
         ProjectTree tree = studio:GetProjectTree()
@@ -18,6 +22,14 @@ class OpenProjectPropertiesBehavior is QuorumStudioBehavior
             Array<TreeItem> items = selection:GetPath()
             ProjectTreeItem value = cast(ProjectTreeItem, items:Get(0))
             QuorumProject project = value:GetProject()
+
+            if dialog = undefined
+                ProjectPropertiesDialog properties
+                dialog = properties
+                dialog:Initialize()
+            end
+
+            dialog:Show()
 
             output "Project is " + project:GetName()
         end
