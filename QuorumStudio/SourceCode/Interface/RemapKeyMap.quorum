@@ -8,80 +8,6 @@ use Libraries.Containers.Iterator
 
 class RemapKeyMap is KeyMap
     KeyboardEvent keys
-    HashTable<text, InputSet> map
-    constant text BUILD_KEY = "BUILD_KEY"
-    constant text CLEAN_BUILD_KEY = "CLEAN_BUILD_KEY"
-    constant text CODE_COMPLETION_KEY = "CODE_COMPLETION_KEY"
-    constant text COMMENT_LINES_KEY = "COMMENT_LINES_KEY"
-    constant text CONTINUE_KEY = "CONTINUE_KEY"
-    constant text DEBUG_KEY = "DEBUG_KEY"
-    constant text DEFAULT_MENU_POPUP_1_KEY = "DEFAULT_MENU_POPUP_1_KEY"
-    constant text DEFAULT_MENU_POPUP_2_KEY = "DEFAULT_MENU_POPUP_2_KEY"
-    constant text ESCAPE_KEY = "ESCAPE_KEY"
-    constant text EXIT_KEY = "EXIT_KEY"
-    constant text FOCUS_NEXT_WINDOW_KEY = "FOCUS_NEXT_WINDOW_KEY"
-    constant text FOCUS_PREVIOUS_WINDOW_KEY = "FOCUS_PREVIOUS_WINDOW_KEY"
-    constant text FOCUS_TO_BREAKPOINT_KEY = "FOCUS_TO_BREAKPOINT_KEY"
-    constant text FOCUS_CALL_STACK_KEY = "FOCUS_CALL_STACK_KEY"
-    constant text FOCUS_TO_EDITOR_KEY = "FOCUS_TO_EDITOR_KEY"
-    constant text FOCUS_TO_ERRORS_KEY = "FOCUS_TO_ERRORS_KEY"
-    constant text FOCUS_TO_OUTPUT_KEY = "FOCUS_TO_OUTPUT_KEY"
-    constant text FOCUS_TO_PROJECTS_KEY = "FOCUS_TO_PROJECTS_KEY"
-    constant text FOCUS_TO_VARIABLES_KEY = "FOCUS_TO_VARIABLES_KEY"
-    constant text OPEN_PROJECT_KEY = "OPEN_PROJECT_KEY"
-    constant text PAUSE_KEY = "PAUSE_KEY"
-    constant text RUN_KEY = "RUN_KEY"
-    constant text RUN_TO_CURSOR_KEY = "RUN_TO_CURSOR_KEY"
-    constant text SAVE_KEY = "SAVE_KEY"
-    constant text SCALE_INTERFACE_DOWN_KEY = "SCALE_INTERFACE_DOWN_KEY"
-    constant text SCALE_INTERFACE_UP_KEY = "SCALE_INTERFACE_UP_KEY"
-    constant text SMART_NAVIGATE_DOWN_KEY = "SMART_NAVIGATE_DOWN_KEY"
-    constant text SMART_NAVIGATE_UP_KEY = "SMART_NAVIGATE_UP_KEY"
-    constant text SMART_NAVIGATE_LEFT_KEY = "SMART_NAVIGATE_LEFT_KEY"
-    constant text SMART_NAVIGATE_RIGHT_KEY = "SMART_NAVIGATE_RIGHT_KEY"
-    constant text STEP_INTO_KEY = "STEP_INTO_KEY"
-    constant text STEP_OUT_KEY = "STEP_OUT_KEY"
-    constant text STEP_OVER_KEY = "STEP_OVER_KEY"
-    constant text STOP_KEY = "STOP_KEY"
-    constant text TOGGLE_BREAKPOINT_KEY = "TOGGLE_BREAKPOINT_KEY"
-
-    on create
-        map:Add(BUILD_KEY, undefined)
-        map:Add(CLEAN_BUILD_KEY, undefined)
-        map:Add(CODE_COMPLETION_KEY, undefined)
-        map:Add(COMMENT_LINES_KEY, undefined)
-        map:Add(CONTINUE_KEY, undefined)
-        map:Add(DEBUG_KEY, undefined)
-        map:Add(DEFAULT_MENU_POPUP_1_KEY, undefined)
-        map:Add(DEFAULT_MENU_POPUP_2_KEY, undefined)
-        map:Add(ESCAPE_KEY, undefined)
-        map:Add(EXIT_KEY, undefined)
-        map:Add(FOCUS_NEXT_WINDOW_KEY, undefined)
-        map:Add(FOCUS_PREVIOUS_WINDOW_KEY, undefined)
-        map:Add(FOCUS_TO_BREAKPOINT_KEY, undefined)
-        map:Add(FOCUS_CALL_STACK_KEY, undefined)
-        map:Add(FOCUS_TO_EDITOR_KEY, undefined)
-        map:Add(FOCUS_TO_ERRORS_KEY, undefined)
-        map:Add(FOCUS_TO_OUTPUT_KEY, undefined)
-        map:Add(FOCUS_TO_PROJECTS_KEY, undefined)
-        map:Add(FOCUS_TO_VARIABLES_KEY, undefined)
-        map:Add(OPEN_PROJECT_KEY, undefined)
-        map:Add(PAUSE_KEY, undefined)
-        map:Add(RUN_KEY, undefined)
-        map:Add(RUN_TO_CURSOR_KEY, undefined)
-        map:Add(SAVE_KEY, undefined)
-        map:Add(SCALE_INTERFACE_DOWN_KEY, undefined)
-        map:Add(SCALE_INTERFACE_UP_KEY, undefined)
-        map:Add(SMART_NAVIGATE_DOWN_KEY, undefined)
-        map:Add(SMART_NAVIGATE_UP_KEY, undefined)
-        map:Add(SMART_NAVIGATE_LEFT_KEY, undefined)
-        map:Add(SMART_NAVIGATE_RIGHT_KEY, undefined)
-        map:Add(STEP_INTO_KEY, undefined)
-        map:Add(STEP_OUT_KEY, undefined)
-        map:Add(STEP_OVER_KEY, undefined)
-        map:Add(STOP_KEY, undefined)
-        map:Add(TOGGLE_BREAKPOINT_KEY, undefined)
-    end
 
     action Load(File file) returns boolean
         JavaScriptObjectNotation note
@@ -89,7 +15,7 @@ class RemapKeyMap is KeyMap
         check
             note:Read(fileText)
 
-            Iterator<text> iterator = map:GetKeyIterator()
+            Iterator<text> iterator = GetSupportedKeysIterator()
             repeat while iterator:HasNext()
                 text key = iterator:Next()
                 boolean value = LoadKey(note, key)
@@ -114,7 +40,7 @@ class RemapKeyMap is KeyMap
             integer value = note:GetInteger(key)
             InputSet set
             set:SetBitMask(value)
-            map:Add(key, set)
+            //map:Add(key, set)
             return true
         else //warn the caller that the keymap did not exist.
             return false

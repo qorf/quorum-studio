@@ -13,6 +13,7 @@ use Libraries.Language.Debug.Breakpoint
 
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
+    constant text KEYMAP_FILE = "Configuration/KeyMap.json"
     constant text OPEN_PROJECTS = "Open Projects"
     constant text OPEN_FILES = "Open Files"
     constant text BREAKPOINTS = "Breakpoints"
@@ -38,6 +39,12 @@ class Options is ProjectListener
 
     action GetFilesOpenOnStartup returns Iterator<File>
         return filesOpenAtBoot:GetIterator()
+    end
+
+    action GetKeyMapFile returns File
+        File file
+        file:SetPath(KEYMAP_FILE)
+        return file
     end
 
     action OpenedProject(QuorumProject project)

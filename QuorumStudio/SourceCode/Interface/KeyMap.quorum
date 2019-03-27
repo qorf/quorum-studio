@@ -2,8 +2,50 @@ package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Game.InputSet
 use Libraries.System.Properties
+use Libraries.Containers.HashTable
+use Libraries.Containers.Iterator
+use Libraries.System.File
+use Libraries.Data.Formats.JavaScriptObjectNotation
 
 class KeyMap 
+    HashTable<text, InputSet> map
+    constant text BUILD_KEY = "BUILD_KEY"
+    constant text CLEAN_KEY = "CLEAN_KEY"
+    constant text CLEAN_BUILD_KEY = "CLEAN_BUILD_KEY"
+    constant text CODE_COMPLETION_KEY = "CODE_COMPLETION_KEY"
+    constant text COMMENT_LINES_KEY = "COMMENT_LINES_KEY"
+    constant text CONTINUE_KEY = "CONTINUE_KEY"
+    constant text DEBUG_KEY = "DEBUG_KEY"
+    constant text DEFAULT_MENU_POPUP_1_KEY = "DEFAULT_MENU_POPUP_1_KEY"
+    constant text DEFAULT_MENU_POPUP_2_KEY = "DEFAULT_MENU_POPUP_2_KEY"
+    constant text ESCAPE_KEY = "ESCAPE_KEY"
+    constant text EXIT_KEY = "EXIT_KEY"
+    constant text FOCUS_NEXT_WINDOW_KEY = "FOCUS_NEXT_WINDOW_KEY"
+    constant text FOCUS_PREVIOUS_WINDOW_KEY = "FOCUS_PREVIOUS_WINDOW_KEY"
+    constant text FOCUS_TO_BREAKPOINT_KEY = "FOCUS_TO_BREAKPOINT_KEY"
+    constant text FOCUS_CALL_STACK_KEY = "FOCUS_CALL_STACK_KEY"
+    constant text FOCUS_TO_EDITOR_KEY = "FOCUS_TO_EDITOR_KEY"
+    constant text FOCUS_TO_ERRORS_KEY = "FOCUS_TO_ERRORS_KEY"
+    constant text FOCUS_TO_OUTPUT_KEY = "FOCUS_TO_OUTPUT_KEY"
+    constant text FOCUS_TO_PROJECTS_KEY = "FOCUS_TO_PROJECTS_KEY"
+    constant text FOCUS_TO_VARIABLES_KEY = "FOCUS_TO_VARIABLES_KEY"
+    constant text OPEN_PROJECT_KEY = "OPEN_PROJECT_KEY"
+    constant text PAUSE_KEY = "PAUSE_KEY"
+    constant text RUN_KEY = "RUN_KEY"
+    constant text RUN_TO_CURSOR_KEY = "RUN_TO_CURSOR_KEY"
+    constant text SAVE_KEY = "SAVE_KEY"
+    constant text SCALE_INTERFACE_DOWN_KEY = "SCALE_INTERFACE_DOWN_KEY"
+    constant text SCALE_INTERFACE_UP_KEY = "SCALE_INTERFACE_UP_KEY"
+    constant text SMART_NAVIGATE_DOWN_KEY = "SMART_NAVIGATE_DOWN_KEY"
+    constant text SMART_NAVIGATE_UP_KEY = "SMART_NAVIGATE_UP_KEY"
+    constant text SMART_NAVIGATE_LEFT_KEY = "SMART_NAVIGATE_LEFT_KEY"
+    constant text SMART_NAVIGATE_RIGHT_KEY = "SMART_NAVIGATE_RIGHT_KEY"
+    constant text STEP_INTO_KEY = "STEP_INTO_KEY"
+    constant text STEP_OUT_KEY = "STEP_OUT_KEY"
+    constant text STEP_OVER_KEY = "STEP_OVER_KEY"
+    constant text STOP_KEY = "STOP_KEY"
+    constant text TOGGLE_BREAKPOINT_KEY = "TOGGLE_BREAKPOINT_KEY"
+
     blueprint action GetSaveKey returns InputSet
     blueprint action GetExitKey returns InputSet
     blueprint action GetOpenProjectKey returns InputSet
@@ -19,9 +61,13 @@ class KeyMap
     blueprint action GetDefaultMenuPopup1 returns InputSet
     blueprint action GetDefaultMenuPopup2 returns InputSet
     blueprint action GetEscapeKey returns InputSet
+
     blueprint action GetBuildKey returns InputSet
-    blueprint action GetCleanBuildKey returns InputSet
     blueprint action GetCleanKey returns InputSet
+    blueprint action GetCleanBuildKey returns InputSet
+    blueprint action GetCodeCompletionKey returns InputSet
+    blueprint action GetCommentLinesKey returns InputSet
+
     blueprint action GetRunKey returns InputSet
     blueprint action GetDebugKey returns InputSet
     blueprint action GetStopKey returns InputSet
@@ -34,10 +80,84 @@ class KeyMap
     blueprint action GetToggleBreakpointKey returns InputSet
     blueprint action GetScaleInterfaceUpKey returns InputSet
     blueprint action GetScaleInterfaceDownKey returns InputSet
-    blueprint action GetCodeCompletionKey returns InputSet
-    blueprint action GetCommentLinesKey returns InputSet
+    
+    
     blueprint action GetSmartNavigateUpKey returns InputSet
     blueprint action GetSmartNavigateDownKey returns InputSet
     blueprint action GetSmartNavigateLeftKey returns InputSet
     blueprint action GetSmartNavigateRightKey returns InputSet
+
+    action GetSupportedKeysIterator returns Iterator<text>
+        return map:GetKeyIterator()
+    end
+
+    action Load
+        LoadIntoHashTable()
+    end
+
+    /*
+        This action loads a KeyMap. If the implementation chooses to, it may
+        read information from a file in making decisions on what keys to load. 
+        Some implementations may, however, load in constants or defaults instead.
+    */
+    action Load(File file) returns boolean
+        LoadIntoHashTable()
+        return true
+    end
+
+    action LoadIntoHashTable
+        map:Add(BUILD_KEY, GetBuildKey())
+        map:Add(CLEAN_KEY, GetCleanKey())
+        map:Add(CLEAN_BUILD_KEY, GetCleanBuildKey())
+        map:Add(CODE_COMPLETION_KEY, GetCodeCompletionKey())
+        map:Add(COMMENT_LINES_KEY, GetCommentLinesKey())
+        map:Add(CONTINUE_KEY, GetContinueKey())
+        map:Add(DEBUG_KEY, GetDebugKey())
+        map:Add(DEFAULT_MENU_POPUP_1_KEY, GetDefaultMenuPopup1())
+        map:Add(DEFAULT_MENU_POPUP_2_KEY, GetDefaultMenuPopup2())
+        map:Add(ESCAPE_KEY, GetEscapeKey())
+        map:Add(EXIT_KEY, GetExitKey())
+        map:Add(FOCUS_NEXT_WINDOW_KEY, GetFocusNextWindowKey())
+        map:Add(FOCUS_PREVIOUS_WINDOW_KEY, GetFocusPreviousWindowKey())
+        map:Add(FOCUS_TO_BREAKPOINT_KEY, GetFocusToBreakpointsKey())
+        map:Add(FOCUS_CALL_STACK_KEY, GetFocusToCallStackKey())
+        map:Add(FOCUS_TO_EDITOR_KEY, GetFocusToEditorKey())
+        map:Add(FOCUS_TO_ERRORS_KEY, GetFocusToErrorsKey())
+        map:Add(FOCUS_TO_OUTPUT_KEY, GetFocusToOutputKey())
+        map:Add(FOCUS_TO_PROJECTS_KEY, GetFocusToProjectsKey())
+        map:Add(FOCUS_TO_VARIABLES_KEY, GetFocusToVariablesKey())
+        map:Add(OPEN_PROJECT_KEY, GetOpenProjectKey())
+        map:Add(PAUSE_KEY, GetPauseKey())
+        map:Add(RUN_KEY, GetRunKey())
+        map:Add(RUN_TO_CURSOR_KEY, GetRunToCursorKey())
+        map:Add(SAVE_KEY, GetSaveKey())
+        map:Add(SCALE_INTERFACE_DOWN_KEY, GetScaleInterfaceDownKey())
+        map:Add(SCALE_INTERFACE_UP_KEY, GetScaleInterfaceUpKey())
+        map:Add(SMART_NAVIGATE_DOWN_KEY, GetSmartNavigateDownKey())
+        map:Add(SMART_NAVIGATE_UP_KEY, GetSmartNavigateUpKey())
+        map:Add(SMART_NAVIGATE_LEFT_KEY, GetSmartNavigateLeftKey())
+        map:Add(SMART_NAVIGATE_RIGHT_KEY, GetSmartNavigateRightKey())
+        map:Add(STEP_INTO_KEY, GetStepIntoKey())
+        map:Add(STEP_OUT_KEY, GetStepOutKey())
+        map:Add(STEP_OVER_KEY, GetStepOverKey())
+        map:Add(STOP_KEY, GetStopKey())
+        map:Add(TOGGLE_BREAKPOINT_KEY, GetToggleBreakpointKey())
+    end
+
+    /*
+        This action saves any information from the keymap to a file.
+    */
+    action Save(File file)
+        JavaScriptObjectNotation note
+        Iterator<text> iterator = GetSupportedKeysIterator()
+        repeat while iterator:HasNext()
+            text key = iterator:Next()
+            InputSet value = map:GetValue(key)
+            note:Add(key, value:GetHashCode())
+        end
+
+        note:SetPrettyPrint(true)
+        text value = note:ToText()
+        file:Write(value)
+    end
 end
