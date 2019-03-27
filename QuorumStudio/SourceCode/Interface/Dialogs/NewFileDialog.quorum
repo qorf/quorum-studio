@@ -1,0 +1,136 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Controls.TabPane
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.ScrollPane
+
+class NewFileDialog is Dialog
+    boolean initialized = false
+
+    action Initialize
+        if initialized
+            output "WARNING: Re-initializing the NewFileDialog."
+        end
+
+        initialized = true
+
+        SetName("New File")
+        SetPixelWidth(400)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+
+
+
+        TabPane tabPane
+        FlowLayout tabLayout
+        tabPane:SetViewAreaLayout(tabLayout)
+        tabPane:SetPercentageWidth(1.0)
+        tabPane:SetPixelHeight(500)
+
+        tabPane:Add(CreateNewFileTab())
+        Add(tabPane)
+
+        tabPane:Select(0)
+
+    end
+
+    action IsInitialized returns boolean
+        return initialized
+    end
+
+    action CreateNewFileTab() returns Tab
+        Tab createNewFileTab
+        createNewFileTab:SetName("Create New File")
+        createNewFileTab:DisplayCloseButton(false)
+
+        ScrollPane scrollPane
+        scrollPane:SetPercentageWidth(1.0)
+        scrollPane:SetPixelHeight(500)
+        FlowLayout scrollLayout
+        scrollPane:SetLayout(scrollLayout)
+
+        createNewFileTab:SetRelatedItem(scrollPane)
+
+        Control panel
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+//        panel:SetPixelHeight(500)
+//        panel:SetPercentageHeight(1.0)
+
+        LabelBoxView panelView
+        Color color
+
+        panelView:Initialize(color:CustomColor(0.95, 0.95, 0.95, 1), color:Black())
+        panel:SetView2D(panelView)
+
+        FlowLayout layout
+        panel:SetLayout(layout)
+
+        scrollPane:Add(panel)
+
+        Label fileName
+        fileName:SetText("File Name: ")
+        fileName:SetLeftPadding(10)
+        fileName:SetRightPadding(10)
+        fileName:SetTopPadding(6)
+        fileName:SetBottomPadding(6)
+
+        TextField nameField
+        nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
+        nameField:SetTopPadding(6)
+        nameField:SetRightPadding(10)
+
+        panel:Add(fileName)
+        panel:Add(nameField)
+
+        FlowLayout folderLayout
+        Control folderContainer
+        folderContainer:SetLayout(folderLayout)
+        folderContainer:SetPercentageWidth(1.0)
+        folderContainer:SetPixelWidth(-10)
+        folderContainer:SetVerticalLayoutMode(folderContainer:FIT_CONTENTS)
+        folderContainer:SetLeftPadding(10)
+        folderContainer:SetTopPadding(10)
+
+        Label folderLabel
+        folderLabel:SetText("Folder: ")
+        folderLabel:SetPercentageWidth(0.3)
+        folderContainer:Add(folderLabel)
+
+        TextField folderField
+        folderField:SetPercentageWidth(0.5)
+        folderContainer:Add(folderField)
+
+        Button folderBrowse
+        folderBrowse:SetName("Browse...")
+        folderBrowse:SetPercentageWidth(0.15)
+        folderBrowse:SetLeftPadding(6)
+        folderBrowse:SetBottomPadding(6)
+        folderContainer:Add(folderBrowse)
+        
+        panel:Add(folderContainer)
+
+        Button okayButton
+        okayButton:SetName("OK")
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(20)
+        panel:Add(okayButton)
+
+        
+        Button cancelButton
+//        CancelNewFileBehavior cancelBehavior
+//        cancelButton:SetBehavior(cancelBehavior)
+        cancelButton:SetName("Cancel")
+        cancelButton:SetLeftPadding(10)
+        cancelButton:SetTopPadding(20)
+        panel:Add(cancelButton)
+
+        return createNewFileTab
+    end
+end
