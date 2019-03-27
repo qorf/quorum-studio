@@ -10,6 +10,7 @@ class RemapKeyMap is KeyMap
     KeyboardEvent keys
 
     action Load(File file) returns boolean
+        LoadIntoHashTable()
         JavaScriptObjectNotation note
         text fileText = file:Read()
         check
@@ -31,258 +32,168 @@ class RemapKeyMap is KeyMap
         return false
     end
 
-    action Save(File file)
-
-    end
-
     action LoadKey(JavaScriptObjectNotation note, text key) returns boolean
-        if note:GetObject(key) not= undefined
+        text result = note:GetValue(key)
+        if result not= undefined
             integer value = note:GetInteger(key)
             InputSet set
             set:SetBitMask(value)
-            //map:Add(key, set)
+            parent:KeyMap:map:Add(key, set)
             return true
         else //warn the caller that the keymap did not exist.
             return false
         end
     end
 
+    private action GetInputSetCopy(text key) returns InputSet
+        InputSet set = parent:KeyMap:map:GetValue(key)
+        if set = undefined
+            return undefined
+        end
+        return set:Copy()
+    end
+
     action GetSaveKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:S)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:SAVE_KEY)
     end
 
     action GetExitKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:Q)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:EXIT_KEY)
     end
 
     action GetOpenProjectKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:O)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:OPEN_PROJECT_KEY)
     end
     
     action GetFocusNextWindowKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F6)
-        return set
+        return GetInputSetCopy(parent:KeyMap:FOCUS_NEXT_WINDOW_KEY)
     end
 
     action GetFocusPreviousWindowKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F6)
-        set:AddModifier(set:SHIFT)
-        return set
+        return GetInputSetCopy(parent:KeyMap:FOCUS_PREVIOUS_WINDOW_KEY)
     end
 
     action GetFocusToProjectsKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:NUM_1)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:FOCUS_TO_PROJECTS_KEY)
     end
 
     action GetFocusToEditorKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:NUM_2)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:FOCUS_TO_EDITOR_KEY)
     end
 
     action GetFocusToErrorsKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:NUM_4)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:FOCUS_TO_ERRORS_KEY)
     end
 
     action GetFocusToOutputKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:NUM_3)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:FOCUS_TO_OUTPUT_KEY)
     end
 
     action GetFocusToVariablesKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:NUM_5)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:FOCUS_TO_VARIABLES_KEY)
     end
 
     action GetFocusToBreakpointsKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:NUM_6)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:FOCUS_TO_BREAKPOINT_KEY)
     end
 
     action GetFocusToCallStackKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:NUM_7)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:FOCUS_CALL_STACK_KEY)
     end
 
     action GetDefaultMenuPopup1 returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:ALT_LEFT)
-        return set
+        return GetInputSetCopy(parent:KeyMap:DEFAULT_MENU_POPUP_1_KEY)
     end
 
     action GetDefaultMenuPopup2 returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:ALT_RIGHT)
-        return set
+        return GetInputSetCopy(parent:KeyMap:DEFAULT_MENU_POPUP_2_KEY)
     end
 
     action GetEscapeKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:ESCAPE)
-        return set
+        return GetInputSetCopy(parent:KeyMap:ESCAPE_KEY)
     end
 
     action GetBuildKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F2)
-        return set
+        return GetInputSetCopy(parent:KeyMap:BUILD_KEY)
     end
 
     action GetCleanBuildKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F2)
-        set:AddModifier(set:CONTROL)
-        return set
+        return GetInputSetCopy(parent:KeyMap:CLEAN_BUILD_KEY)
     end
 
     action GetCleanKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F3)
-        return set
+        return GetInputSetCopy(parent:KeyMap:CLEAN_KEY)
     end
 
     action GetRunKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F4)
-        return set
+        return GetInputSetCopy(parent:KeyMap:RUN_KEY)
     end
 
     action GetDebugKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F4)
-        set:AddModifier(set:CONTROL)
-        return set
+        return GetInputSetCopy(parent:KeyMap:DEBUG_KEY)
     end
 
     action GetStopKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F5)
-        return set
+        return GetInputSetCopy(parent:KeyMap:STOP_KEY)
     end
 
     action GetPauseKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F7)
-        return set
+        return GetInputSetCopy(parent:KeyMap:PAUSE_KEY)
     end
 
     action GetContinueKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F8)
-        set:AddModifier(set:CONTROL)
-        return set
+        return GetInputSetCopy(parent:KeyMap:CONTINUE_KEY)
     end
 
     action GetStepOverKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F9)
-        return set
+        return GetInputSetCopy(parent:KeyMap:STEP_OVER_KEY)
     end
 
     action GetStepIntoKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F10)
-        return set
+        return GetInputSetCopy(parent:KeyMap:STEP_INTO_KEY)
     end
 
     action GetStepOutKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F11)
-        return set
+        return GetInputSetCopy(parent:KeyMap:STEP_OUT_KEY)
     end
 
     action GetRunToCursorKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:F12)
-        return set
+        return GetInputSetCopy(parent:KeyMap:RUN_TO_CURSOR_KEY)
     end
 
     action GetToggleBreakpointKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:B)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:TOGGLE_BREAKPOINT_KEY)
     end
 
     action GetScaleInterfaceUpKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:EQUALS)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:SCALE_INTERFACE_UP_KEY)
     end
 
     action GetScaleInterfaceDownKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:MINUS)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:SCALE_INTERFACE_DOWN_KEY)
     end
 
     action GetCodeCompletionKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:SPACE)
-        set:AddModifier(set:CONTROL)
-        return set
+        return GetInputSetCopy(parent:KeyMap:CODE_COMPLETION_KEY)
     end
 
     action GetCommentLinesKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:SLASH)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:COMMENT_LINES_KEY)
     end
 
     action GetSmartNavigateUpKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:HOME)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:SCALE_INTERFACE_UP_KEY)
     end
 
     action GetSmartNavigateDownKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:END)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:SCALE_INTERFACE_DOWN_KEY)
     end
 
     action GetSmartNavigateLeftKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:PAGE_UP)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:SMART_NAVIGATE_LEFT_KEY)
     end
 
     action GetSmartNavigateRightKey returns InputSet
-        InputSet set
-        set:SetKeyboardInput(keys:PAGE_DOWN)
-        set:AddModifier(set:META)
-        return set
+        return GetInputSetCopy(parent:KeyMap:SMART_NAVIGATE_RIGHT_KEY)
     end
 end
