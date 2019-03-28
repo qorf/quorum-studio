@@ -14,17 +14,45 @@ use Libraries.Interface.Controls.List
 use Libraries.Interface.Controls.Button
 use Libraries.Interface.Controls.Checkbox
 use Libraries.Interface.Controls.RadioButton
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Projects.ProjectProperty
+use Libraries.Containers.Iterator
+use Libraries.Containers.Array
 
 class ProjectPropertiesDialog is Dialog
 
     boolean initialized = false
+
+    // The current Quorum project that we're modifying the properties of.
+    // Set during the SetProperties(QuorumProject) action.
+    QuorumProject project = undefined
+
+    // Variables for the Project Information tab.
+    TextField programNameField
+    RadioButton standardProjectButton
+    RadioButton legoProjectButton
+    RadioButton webServerProjectButton
+    RadioButton webBrowserProjectButton
+
+    List jarList
+    List quorumSourcesList
+
+    // Variables for the Games tab.
+    Checkbox enableImageSheets
+    Checkbox buildImageSheetsOnCompile
+    TextField imageSheetsBuildPathField
+    List imageSheetsList
+    List imagesList
+
+    // Variables for the Mobile tab.
+    TextField mobileResourcesField
 
     action Initialize
         if initialized
             output "WARNING: Re-initializing the ProjectPropertiesDialog."
         end
 
-        initializing = true
+        initialized = true
 
         SetName("Properties")
         SetPixelWidth(400)
@@ -42,6 +70,136 @@ class ProjectPropertiesDialog is Dialog
         Add(tabPane)
 
         tabPane:Select(0)
+    end
+
+    action SetProperties(QuorumProject project)
+        me:project = project
+
+        SetName(project:GetName() + " Properties")
+
+        text executableName = project:GetProperty(project:EXECUTABLE_NAME):GetFirstValue()
+
+        if executableName not= undefined
+            programNameField:SetText(executableName)
+        end
+
+        text projectType = project:GetProperty(project:PROJECT_TYPE):GetFirstValue()
+
+        if projectType = undefined or projectType = project:JAVA_COMPILE_TYPE
+            standardProjectButton:SetToggleState(true)
+        elseif projectType = project:JAVASCRIPT_COMPILE_TYPE
+            webBrowserProjectButton:SetToggleState(true)
+        elseif projectType = project:SERVER_COMPILE_TYPE
+            webServerProjectButton:SetToggleState(true)
+        elseif projectType = project:LEGO_COMPILE_TYPE
+            legoProjectButton:SetToggleState(true)
+        end
+
+        jarList:Empty()
+
+        ProjectProperty jarProperty = project:GetProperty(project:JAR_DEPENDENCIES)
+
+        if jarProperty not= undefined
+            Iterator<text> jarDependencies = jarProperty:GetValueIterator()
+
+            repeat while jarDependencies:HasNext()
+                jarList:Add(jarDependencies:Next())
+            end
+        end
+
+        quorumSourcesList:Empty()
+
+        ProjectProperty quorumDependenciesProperty = project:GetProperty(project:QUORUM_DEPENDENCIES)
+
+        if quorumDependenciesProperty not= undefined
+            Iterator<text> quorumDependencies = quorumDependenciesProperty:GetValueIterator()
+
+            repeat while quorumDependencies:HasNext()
+                quorumSourcesList:Add(quorumDependencies:Next())
+            end
+        end
+
+        ProjectProperty enableImageSheetsProperty = project:GetProperty(project:IMAGE_SHEET_ENABLED)
+        
+        if enableImageSheetsProperty not= undefined and enableImageSheetsProperty:GetFirstValue() = "true"
+            enableImageSheets:SetToggleState(true)
+        else
+            enableImageSheets:SetToggleState(false)
+        end
+
+        ProjectProperty buildImageSheetsProperty = project:GetProperty(project:IMAGE_SHEET_REBUILD_ON_COMPILE)
+
+        if buildImageSheetsProperty not= undefined and buildImageSheetsProperty:GetFirstValue() = "true"
+            buildImageSheetsOnCompile:SetToggleState(true)
+        else
+            buildImageSheetsOnCompile:SetToggleState(false)
+        end
+
+        ProjectProperty imageSheetsPathProperty = project:GetProperty(project:IMAGE_SHEET_BUILD_PATH)
+
+        if imageSheetsPathProperty not= undefined
+            imageSheetsBuildPathField:SetText(imageSheetsPathProperty:GetFirstValue())
+        else
+            imageSheetsBuildPathField:SetText("resources")
+        end
+
+        imageSheetsList:Empty()
+
+        ProjectProperty imageSheetsProperty = project:GetProperty(project:IMAGE_SHEETS)
+        
+        if imageSheetsProperty not= undefined
+            Iterator<text> imageSheets = imageSheetsProperty:GetValueIterator()
+
+            repeat while imageSheets:HasNext()
+                quorumSourcesList:Add(imageSheets:Next())
+            end
+        end
+
+        ProjectProperty mobileResourcesProperty = project:GetProperty(project:MOBILE_ASSETS)
+
+        if mobileResourcesProperty not= undefined
+            mobileResourcesField:SetText(mobileResourcesProperty:GetFirstValue())
+        else
+            mobileResourcesField:SetText("media")
+        end
+    end
+
+    /*
+    This action saves all of the changes made in this dialog within the project,
+    and asks the project to rewrite its property file.
+    */
+    action SavePropertyChanges
+        project:SetExecutableName(programNameField:GetText())
+        
+        if standardProjectButton:GetToggleState() = true
+            project:SetProjectCompileType(project:JAVA_COMPILE_TYPE)
+        elseif webBrowserProjectButton:GetToggleState() = true
+            project:SetProjectCompileType(project:JAVASCRIPT_COMPILE_TYPE)
+        elseif webServerProjectButton:GetToggleState() = true
+            project:SetProjectCompileType(project:SERVER_COMPILE_TYPE)
+        elseif legoProjectButton:GetToggleState() = true
+            project:SetProjectCompileType(project:LEGO_COMPILE_TYPE)
+        end
+
+        // NYI: Additional Quorum Plugin Folders
+        project:SetJarDependencies(ListToArray(jarList))
+        project:SetQuorumDependencies(ListToArray(quorumSourcesList))
+
+        project:EnableImageSheets(enableImageSheets:GetToggleState())
+        project:EnableRecompileImageSheetsOnBuild(buildImageSheetsOnCompile:GetToggleState())
+        project:SetImageSheetBuildPath(imageSheetsBuildPathField:GetText())
+        // NYI: Image Sheets
+        // NYI: Images
+
+        project:SetMobileAssetsPath(mobileResourcesField:GetText())
+        // NYI: Android Library Path
+        // NYI: Key Store Path
+        // NYI: Key Store Password
+        // NYI: Key Alias
+        // NYI: Key Password
+        // NYI: Alternative Java Development Kit
+
+        project:Save()
     end
 
     action IsInitialized returns boolean
@@ -85,13 +243,12 @@ class ProjectPropertiesDialog is Dialog
         programName:SetTopPadding(6)
         programName:SetBottomPadding(6)
 
-        TextField nameField
-        nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
-        nameField:SetTopPadding(6)
-        nameField:SetRightPadding(10)
+        programNameField:SetHorizontalLayoutMode(programNameField:parent:Libraries.Interface.Controls.Control:FILL)
+        programNameField:SetTopPadding(6)
+        programNameField:SetRightPadding(10)
 
         panel:Add(programName)
-        panel:Add(nameField)
+        panel:Add(programNameField)
 
         Label projectType
         projectType:SetText("Select Project Type: ")
@@ -108,29 +265,25 @@ class ProjectPropertiesDialog is Dialog
         buttonArea:SetVerticalLayoutMode(buttonArea:FIT_CONTENTS)
 
         ButtonGroup buttonGroup
-        RadioButton standardButton
-        standardButton:SetName("Standard")
-        standardButton:SetRightPadding(6)
-        buttonGroup:AddButton(standardButton)
-        buttonArea:Add(standardButton)
+        standardProjectButton:SetName("Standard")
+        standardProjectButton:SetRightPadding(6)
+        buttonGroup:AddButton(standardProjectButton)
+        buttonArea:Add(standardProjectButton)
 
-        RadioButton legoButton
-        legoButton:SetName("Lego")
-        legoButton:SetRightPadding(6)
-        buttonGroup:AddButton(legoButton)
-        buttonArea:Add(legoButton)
+        legoProjectButton:SetName("Lego")
+        legoProjectButton:SetRightPadding(6)
+        buttonGroup:AddButton(legoProjectButton)
+        buttonArea:Add(legoProjectButton)
 
-        RadioButton webServer
-        webServer:SetName("Web Server")
-        webServer:SetRightPadding(6)
-        buttonGroup:AddButton(webServer)
-        buttonArea:Add(webServer)
+        webServerProjectButton:SetName("Web Server")
+        webServerProjectButton:SetRightPadding(6)
+        buttonGroup:AddButton(webServerProjectButton)
+        buttonArea:Add(webServerProjectButton)
 
-        RadioButton webBrowser
-        webBrowser:SetName("Web Browser")
-        webBrowser:SetRightPadding(6)
-        buttonGroup:AddButton(webBrowser)
-        buttonArea:Add(webBrowser)
+        webBrowserProjectButton:SetName("Web Browser")
+        webBrowserProjectButton:SetRightPadding(6)
+        buttonGroup:AddButton(webBrowserProjectButton)
+        buttonArea:Add(webBrowserProjectButton)
 
         panel:Add(buttonArea)
 
@@ -207,7 +360,6 @@ class ProjectPropertiesDialog is Dialog
         jarArea:SetPercentageWidth(1.0)
         jarArea:SetLeftPadding(10)
 
-        List jarList
         jarList:SetHorizontalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
         jarList:SetVerticalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
         jarList:SetPercentageWidth(0.7)
@@ -266,13 +418,12 @@ class ProjectPropertiesDialog is Dialog
         sourceArea:SetPercentageWidth(1.0)
         sourceArea:SetLeftPadding(10)
 
-        List sourceList
-        sourceList:SetHorizontalLayoutMode(sourceList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        sourceList:SetVerticalLayoutMode(sourceList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        sourceList:SetPercentageWidth(0.7)
-        sourceList:SetPixelHeight(100)
-        sourceList:Add("Example 3")
-        sourceArea:Add(sourceList)
+        quorumSourcesList:SetHorizontalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        quorumSourcesList:SetVerticalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        quorumSourcesList:SetPercentageWidth(0.7)
+        quorumSourcesList:SetPixelHeight(100)
+        quorumSourcesList:Add("Example 3")
+        sourceArea:Add(quorumSourcesList)
 
         Control sourceButtons
         FlowLayout sourceButtonsLayout
@@ -352,18 +503,16 @@ class ProjectPropertiesDialog is Dialog
 
         scrollPane:Add(panel)
 
-        Checkbox enable
-        enable:SetName("Enable Image Sheet Support")
-        enable:SetLeftPadding(10)
-        enable:SetRightPadding(20)
-        enable:SetTopPadding(10)
-        panel:Add(enable)
+        enableImageSheets:SetName("Enable Image Sheet Support")
+        enableImageSheets:SetLeftPadding(10)
+        enableImageSheets:SetRightPadding(20)
+        enableImageSheets:SetTopPadding(10)
+        panel:Add(enableImageSheets)
 
-        Checkbox buildOnCompile
-        buildOnCompile:SetName("Rebuild on Compile")
-        buildOnCompile:SetLeftPadding(10)
-        buildOnCompile:SetTopPadding(10)
-        panel:Add(buildOnCompile)
+        buildImageSheetsOnCompile:SetName("Rebuild on Compile")
+        buildImageSheetsOnCompile:SetLeftPadding(10)
+        buildImageSheetsOnCompile:SetTopPadding(10)
+        panel:Add(buildImageSheetsOnCompile)
 
         Control buildPathContainer
         buildPathContainer:SetPercentageWidth(1.0)
@@ -379,10 +528,9 @@ class ProjectPropertiesDialog is Dialog
         buildPathLabel:SetText("Build Path: ")
         buildPathContainer:Add(buildPathLabel)
 
-        TextField buildPathField
-        buildPathField:SetText("resources")
-        buildPathField:SetHorizontalLayoutMode(buildPathField:parent:Libraries.Interface.Controls.Control:FILL)
-        buildPathContainer:Add(buildPathField)
+        imageSheetsBuildPathField:SetText("resources")
+        imageSheetsBuildPathField:SetHorizontalLayoutMode(imageSheetsBuildPathField:parent:Libraries.Interface.Controls.Control:FILL)
+        buildPathContainer:Add(imageSheetsBuildPathField)
 
         panel:Add(buildPathContainer)
 
@@ -402,7 +550,6 @@ class ProjectPropertiesDialog is Dialog
         imageSheetsArea:SetLeftPadding(10)
         imageSheetsArea:SetTopPadding(10)
 
-        List imageSheetsList
         imageSheetsList:SetHorizontalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imageSheetsList:SetVerticalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imageSheetsList:SetPercentageWidth(0.7)
@@ -467,7 +614,6 @@ class ProjectPropertiesDialog is Dialog
         imagesArea:SetLeftPadding(10)
         imagesArea:SetTopPadding(10)
 
-        List imagesList
         imagesList:SetHorizontalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imagesList:SetVerticalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imagesList:SetPercentageWidth(0.7)
@@ -568,9 +714,8 @@ class ProjectPropertiesDialog is Dialog
 
         panel:Add(resourcesContainer)
 
-        TextField resourcesField
-        resourcesField:SetPercentageWidth(0.5)
-        resourcesContainer:Add(resourcesField)
+        mobileResourcesField:SetPercentageWidth(0.5)
+        resourcesContainer:Add(mobileResourcesField)
 
         Button resourcesBrowse
         resourcesBrowse:SetName("Browse...")
@@ -686,5 +831,17 @@ class ProjectPropertiesDialog is Dialog
         panel:Add(cancelButton)
 
         return tab
+    end
+
+    private action ListToArray(List list) returns Array<text>
+        Array<text> array
+
+        integer counter = 0
+        repeat while counter < list:GetSize()
+            array:Add(list:Get(counter))
+            counter = counter + 1
+        end
+
+        return array
     end
 end
