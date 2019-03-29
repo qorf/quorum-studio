@@ -18,6 +18,7 @@ use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environment.Projects.ProjectProperty
 use Libraries.Containers.Iterator
 use Libraries.Containers.Array
+use Libraries.Game.Graphics.Gradient
 
 class ProjectPropertiesDialog is Dialog
 
@@ -320,6 +321,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button addPlugin
         addPlugin:SetName("Add")
+        addPlugin:SetHorizontalLayoutMode(addPlugin:parent:Libraries.Interface.Controls.Control:STANDARD)
         addPlugin:SetPercentageWidth(1.0)
         addPlugin:SetLeftPadding(4)
         addPlugin:SetRightPadding(4)
@@ -328,6 +330,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button removePlugin
         removePlugin:SetName("Remove")
+        removePlugin:SetHorizontalLayoutMode(removePlugin:parent:Libraries.Interface.Controls.Control:STANDARD)
         removePlugin:SetPercentageWidth(1.0)
         removePlugin:SetLeftPadding(4)
         removePlugin:SetRightPadding(4)
@@ -336,6 +339,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button clearPlugins
         clearPlugins:SetName("Clear")
+        clearPlugins:SetHorizontalLayoutMode(clearPlugins:parent:Libraries.Interface.Controls.Control:STANDARD)
         clearPlugins:SetPercentageWidth(1.0)
         clearPlugins:SetLeftPadding(4)
         clearPlugins:SetRightPadding(4)
@@ -376,6 +380,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button addJar
         addJar:SetName("Add")
+        addJar:SetHorizontalLayoutMode(addJar:parent:Libraries.Interface.Controls.Control:STANDARD)
         addJar:SetPercentageWidth(1.0)
         addJar:SetLeftPadding(4)
         addJar:SetRightPadding(4)
@@ -384,6 +389,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button removeJar
         removeJar:SetName("Remove")
+        removeJar:SetHorizontalLayoutMode(removeJar:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeJar:SetPercentageWidth(1.0)
         removeJar:SetLeftPadding(4)
         removeJar:SetRightPadding(4)
@@ -391,6 +397,7 @@ class ProjectPropertiesDialog is Dialog
         jarButtons:Add(removeJar)
 
         Button clearJars
+        clearJars:SetHorizontalLayoutMode(clearJars:parent:Libraries.Interface.Controls.Control:STANDARD)
         clearJars:SetName("Clear")
         clearJars:SetPercentageWidth(1.0)
         clearJars:SetLeftPadding(4)
@@ -434,6 +441,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button addSource
         addSource:SetName("Add")
+        addSource:SetHorizontalLayoutMode(addSource:parent:Libraries.Interface.Controls.Control:STANDARD)
         addSource:SetPercentageWidth(1.0)
         addSource:SetLeftPadding(4)
         addSource:SetRightPadding(4)
@@ -442,6 +450,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button removeSource
         removeSource:SetName("Remove")
+        removeSource:SetHorizontalLayoutMode(removeSource:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeSource:SetPercentageWidth(1.0)
         removeSource:SetLeftPadding(4)
         removeSource:SetRightPadding(4)
@@ -450,6 +459,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button clearSource
         clearSource:SetName("Clear")
+        clearSource:SetHorizontalLayoutMode(clearSource:parent:Libraries.Interface.Controls.Control:STANDARD)
         clearSource:SetPercentageWidth(1.0)
         clearSource:SetLeftPadding(4)
         clearSource:SetRightPadding(4)
@@ -458,17 +468,41 @@ class ProjectPropertiesDialog is Dialog
 
         panel:Add(sourceArea)
 
-        Button okayButton
-        okayButton:SetName("OK")
-        okayButton:SetLeftPadding(10)
-        okayButton:SetTopPadding(20)
-        panel:Add(okayButton)
+        Control confirmArea
+        FlowLayout confirmLayout
+        confirmArea:SetLayout(confirmLayout)
+        confirmArea:SetPercentageWidth(1.0)
+        confirmArea:SetTopPadding(20)
+        confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
+
+        Control confirmPadding
+        confirmPadding:SetPercentageWidth(0.5)
+        confirmPadding:SetPixelHeight(1)
+        confirmArea:Add(confirmPadding)
 
         Button cancelButton
         cancelButton:SetName("Cancel")
-        cancelButton:SetLeftPadding(10)
-        cancelButton:SetTopPadding(20)
-        panel:Add(cancelButton)
+        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancelButton:SetPercentageWidth(0.2)
+        cancelButton:SetLeftPadding(0)
+        cancelButton:SetTopPadding(0)
+        confirmArea:Add(cancelButton)
+
+        Gradient okayGradient
+        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
+        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
+        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
+
+        Button okayButton
+        okayButton:SetName("OK")
+        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        okayButton:SetBackgroundColor(okayGradient)
+        okayButton:SetPercentageWidth(0.2)
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(0)
+        confirmArea:Add(okayButton)
+
+        panel:Add(confirmArea)
 
         return projectInfoTab
     end
@@ -566,6 +600,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button addSheet
         addSheet:SetName("Add")
+        addSheet:SetHorizontalLayoutMode(addSheet:parent:Libraries.Interface.Controls.Control:STANDARD)
         addSheet:SetPercentageWidth(1.0)
         addSheet:SetLeftPadding(4)
         addSheet:SetRightPadding(4)
@@ -574,6 +609,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button editSheet
         editSheet:SetName("Edit")
+        editSheet:SetHorizontalLayoutMode(editSheet:parent:Libraries.Interface.Controls.Control:STANDARD)
         editSheet:SetPercentageWidth(1.0)
         editSheet:SetLeftPadding(4)
         editSheet:SetRightPadding(4)
@@ -582,6 +618,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button removeSheet
         removeSheet:SetName("Remove")
+        removeSheet:SetHorizontalLayoutMode(removeSheet:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeSheet:SetPercentageWidth(1.0)
         removeSheet:SetLeftPadding(4)
         removeSheet:SetRightPadding(4)
@@ -590,6 +627,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button buildSheets
         buildSheets:SetName("Build")
+        buildSheets:SetHorizontalLayoutMode(buildSheets:parent:Libraries.Interface.Controls.Control:STANDARD)
         buildSheets:SetPercentageWidth(1.0)
         buildSheets:SetLeftPadding(4)
         buildSheets:SetRightPadding(4)
@@ -630,6 +668,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button addImage
         addImage:SetName("Add")
+        addImage:SetHorizontalLayoutMode(addImage:parent:Libraries.Interface.Controls.Control:STANDARD)
         addImage:SetPercentageWidth(1.0)
         addImage:SetLeftPadding(4)
         addImage:SetRightPadding(4)
@@ -638,6 +677,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button addImageFolder
         addImageFolder:SetName("Add Folder")
+        addImageFolder:SetHorizontalLayoutMode(addImageFolder:parent:Libraries.Interface.Controls.Control:STANDARD)
         addImageFolder:SetPercentageWidth(1.0)
         addImageFolder:SetLeftPadding(4)
         addImageFolder:SetRightPadding(4)
@@ -646,6 +686,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button removeImage
         removeImage:SetName("Remove")
+        removeImage:SetHorizontalLayoutMode(removeImage:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeImage:SetPercentageWidth(1.0)
         removeImage:SetLeftPadding(4)
         removeImage:SetRightPadding(4)
