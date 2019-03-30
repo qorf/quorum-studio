@@ -1,0 +1,22 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.ProjectPropertiesDialog
+
+class ProjectPropertiesOkBehavior is QuorumStudioBehavior
+    
+    ProjectPropertiesDialog dialog = undefined
+
+    action SetDialog(ProjectPropertiesDialog propertiesDialog)
+        dialog = propertiesDialog
+    end
+
+    action GetDialog returns ProjectPropertiesDialog
+        return dialog
+    end
+
+    action Run(BehaviorEvent event)
+        dialog:SavePropertyChanges()
+        dialog:Hide()
+    end
+end

@@ -1,0 +1,30 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.ProjectPropertiesDialog
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.FileChooser
+use Libraries.Interface.Controls.FileFilter
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.System.File
+use Libraries.Interface.Selections.ListSelection
+
+class RemoveListItemBehavior is QuorumStudioBehavior
+    
+    List list = undefined
+
+    action SetList(List list)
+        me:list = list
+    end
+
+    action GetList returns List
+        return list
+    end
+
+    action Run(BehaviorEvent event)
+        ListSelection selection = list:GetSelection()
+        if selection:IsEmpty() = false
+            list:Remove(selection:GetIndex())
+        end
+    end
+end

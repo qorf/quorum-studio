@@ -1,0 +1,42 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.ProjectPropertiesDialog
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.FileChooser
+use Libraries.Interface.Controls.FileFilter
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.System.File
+
+class ProjectPropertiesAddJavaClassFolderBehavior is QuorumStudioBehavior
+    
+    ProjectPropertiesDialog dialog = undefined
+    List javaClassList = undefined
+
+    action SetDialog(ProjectPropertiesDialog dialog)
+        me:dialog = dialog
+    end
+
+    action GetDialog returns ProjectPropertiesDialog
+        return dialog
+    end
+
+    action SetList(List list)
+        javaClassList = list
+    end
+
+    action GetList returns List
+        return javaClassList
+    end
+
+    action Run(BehaviorEvent event)
+        FileChooser chooser
+
+        QuorumProject project = dialog:GetProject()
+        File folder = chooser:OpenFileDialog(project:GetLocation())
+
+        if folder not= undefined and folder:IsDirectory()
+            javaClassList:Add(folder:GetAbsolutePath())
+        end
+    end
+end

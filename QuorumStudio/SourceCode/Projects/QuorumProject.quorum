@@ -9,6 +9,7 @@ use Libraries.System.Logger
 use Libraries.Language.Compile.Compiler
 use Libraries.Development.Environment.Projects.QuorumProjectView
 use Libraries.Development.Environment.Projects.ProjectView
+use Libraries.Containers.Support.ArrayIterator
 
 /*
     This class loads a Quorum project into the Integrated Development Environment.
@@ -363,9 +364,16 @@ class QuorumProject is Project
     */
     action GetJavaClassDependencies returns Iterator<text>
         ProjectProperty property = GetProperty(JAVA_CLASS_DEPENDENCIES)
-        property = property:Copy()
-        Iterator<text> iterator = property:GetValueIterator()
-        return iterator
+        if property not= undefined
+            property = property:Copy()
+            Iterator<text> iterator = property:GetValueIterator()
+            return iterator
+        else
+            ArrayIterator<text> iterator
+            Array<text> emptyArray
+            iterator:Set(emptyArray)
+            return iterator
+        end
     end
 
     action ComputeRelativePath(File file, text val) returns File
