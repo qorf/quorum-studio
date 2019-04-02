@@ -14,17 +14,74 @@ use Libraries.Interface.Controls.List
 use Libraries.Interface.Controls.Button
 use Libraries.Interface.Controls.Checkbox
 use Libraries.Interface.Controls.RadioButton
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Projects.ProjectProperty
+use Libraries.Containers.Iterator
+use Libraries.Containers.Array
+use Libraries.Game.Graphics.Gradient
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesOkBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddJarBehavior
+use Libraries.Development.Environment.Studio.Behaviors.RemoveListItemBehavior
+use Libraries.Development.Environment.Studio.Behaviors.EmptyListBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddJavaClassFolderBehavior
 
 class ProjectPropertiesDialog is Dialog
 
     boolean initialized = false
+
+    // The current Quorum project that we're modifying the properties of.
+    // Set during the SetProperties(QuorumProject) action.
+    QuorumProject project = undefined
+
+    // Variables for the Project Information tab.
+    TextField programNameField
+    RadioButton standardProjectButton
+    RadioButton legoProjectButton
+    RadioButton webServerProjectButton
+    RadioButton webBrowserProjectButton
+
+    List javaClassList
+    List jarList
+    List quorumSourcesList
+
+    ProjectPropertiesAddJavaClassFolderBehavior addJavaClassBehavior
+    RemoveListItemBehavior removeJavaClassBehavior
+    EmptyListBehavior clearJavaClassesBehavior
+
+    ProjectPropertiesAddJarBehavior addJarBehavior
+    RemoveListItemBehavior removeJarBehavior
+    EmptyListBehavior clearJarsBehavior
+    
+
+    // Variables for the Games tab.
+    Checkbox enableImageSheets
+    Checkbox buildImageSheetsOnCompile
+    TextField imageSheetsBuildPathField
+    List imageSheetsList
+    List imagesList
+
+    // Variables for the Mobile tab.
+    TextField mobileResourcesField
+
+    // Behaviors used by the OK and Cancel buttons.
+    ProjectPropertiesOkBehavior okBehavior
+    DialogCancelBehavior cancelBehavior
+
+    on create
+        addJarBehavior:SetDialog(me)
+        addJavaClassBehavior:SetDialog(me)
+
+        okBehavior:SetDialog(me)
+        cancelBehavior:SetDialog(me)
+    end
 
     action Initialize
         if initialized
             output "WARNING: Re-initializing the ProjectPropertiesDialog."
         end
 
-        initializing = true
+        initialized = true
 
         SetName("Properties")
         SetPixelWidth(400)
@@ -42,6 +99,153 @@ class ProjectPropertiesDialog is Dialog
         Add(tabPane)
 
         tabPane:Select(0)
+    end
+
+    action SetProperties(QuorumProject project)
+        me:project = project
+
+        SetName(project:GetName() + " Properties")
+
+        text executableName = project:GetProperty(project:EXECUTABLE_NAME):GetFirstValue()
+
+        if executableName not= undefined
+            programNameField:SetText(executableName)
+        end
+
+        text projectType = project:GetProperty(project:PROJECT_TYPE):GetFirstValue()
+
+        if projectType = undefined or projectType = project:JAVA_COMPILE_TYPE
+            standardProjectButton:SetToggleState(true)
+        elseif projectType = project:JAVASCRIPT_COMPILE_TYPE
+            webBrowserProjectButton:SetToggleState(true)
+        elseif projectType = project:SERVER_COMPILE_TYPE
+            webServerProjectButton:SetToggleState(true)
+        elseif projectType = project:LEGO_COMPILE_TYPE
+            legoProjectButton:SetToggleState(true)
+        end
+
+        javaClassList:Empty()
+
+        Iterator<text> javaClasses = project:GetJavaClassDependencies()
+        repeat while javaClasses:HasNext()
+            javaClassList:Add(javaClasses:Next())
+        end
+
+        jarList:Empty()
+
+        ProjectProperty jarProperty = project:GetProperty(project:JAR_DEPENDENCIES)
+
+        if jarProperty not= undefined
+            Iterator<text> jarDependencies = jarProperty:GetValueIterator()
+
+            repeat while jarDependencies:HasNext()
+                jarList:Add(jarDependencies:Next())
+            end
+        end
+
+        quorumSourcesList:Empty()
+
+        ProjectProperty quorumDependenciesProperty = project:GetProperty(project:QUORUM_DEPENDENCIES)
+
+        if quorumDependenciesProperty not= undefined
+            Iterator<text> quorumDependencies = quorumDependenciesProperty:GetValueIterator()
+
+            repeat while quorumDependencies:HasNext()
+                quorumSourcesList:Add(quorumDependencies:Next())
+            end
+        end
+
+        ProjectProperty enableImageSheetsProperty = project:GetProperty(project:IMAGE_SHEET_ENABLED)
+        
+        if enableImageSheetsProperty not= undefined and enableImageSheetsProperty:GetFirstValue() = "true"
+            enableImageSheets:SetToggleState(true)
+        else
+            enableImageSheets:SetToggleState(false)
+        end
+
+        ProjectProperty buildImageSheetsProperty = project:GetProperty(project:IMAGE_SHEET_REBUILD_ON_COMPILE)
+
+        if buildImageSheetsProperty not= undefined and buildImageSheetsProperty:GetFirstValue() = "true"
+            buildImageSheetsOnCompile:SetToggleState(true)
+        else
+            buildImageSheetsOnCompile:SetToggleState(false)
+        end
+
+        ProjectProperty imageSheetsPathProperty = project:GetProperty(project:IMAGE_SHEET_BUILD_PATH)
+
+        if imageSheetsPathProperty not= undefined
+            imageSheetsBuildPathField:SetText(imageSheetsPathProperty:GetFirstValue())
+        else
+            imageSheetsBuildPathField:SetText("resources")
+        end
+
+        imageSheetsList:Empty()
+
+        ProjectProperty imageSheetsProperty = project:GetProperty(project:IMAGE_SHEETS)
+        
+        if imageSheetsProperty not= undefined
+            Iterator<text> imageSheets = imageSheetsProperty:GetValueIterator()
+
+            repeat while imageSheets:HasNext()
+                quorumSourcesList:Add(imageSheets:Next())
+            end
+        end
+
+        ProjectProperty mobileResourcesProperty = project:GetProperty(project:MOBILE_ASSETS)
+
+        if mobileResourcesProperty not= undefined
+            mobileResourcesField:SetText(mobileResourcesProperty:GetFirstValue())
+        else
+            mobileResourcesField:SetText("media")
+        end
+    end
+
+    /*
+    This action returns the current project that's associated with this dialog.
+    Because QuorumStudio reuses the same properties dialog for multiple projects
+    when possible, this usually refers to the last project whose properties were
+    opened. This value is set from the SetProperties action.
+    */
+    action GetProject returns QuorumProject
+        return project
+    end
+
+    /*
+    This action saves all of the changes made in this dialog within the project,
+    and asks the project to rewrite its property file.
+    */
+    action SavePropertyChanges
+        project:SetExecutableName(programNameField:GetText())
+        
+        if standardProjectButton:GetToggleState() = true
+            project:SetProjectCompileType(project:JAVA_COMPILE_TYPE)
+        elseif webBrowserProjectButton:GetToggleState() = true
+            project:SetProjectCompileType(project:JAVASCRIPT_COMPILE_TYPE)
+        elseif webServerProjectButton:GetToggleState() = true
+            project:SetProjectCompileType(project:SERVER_COMPILE_TYPE)
+        elseif legoProjectButton:GetToggleState() = true
+            project:SetProjectCompileType(project:LEGO_COMPILE_TYPE)
+        end
+
+        project:SetJavaClassDependencies(ListToArray(javaClassList))
+        project:SetJarDependencies(ListToArray(jarList))
+        project:SetQuorumDependencies(ListToArray(quorumSourcesList))
+
+        project:EnableImageSheets(enableImageSheets:GetToggleState())
+        project:EnableRecompileImageSheetsOnBuild(buildImageSheetsOnCompile:GetToggleState())
+        project:SetImageSheetBuildPath(imageSheetsBuildPathField:GetText())
+        // NYI: Image Sheets
+        // NYI: Images
+
+        project:SetMobileAssetsPath(mobileResourcesField:GetText())
+        // NYI: Android Library Path
+        // NYI: Key Store Path
+        // NYI: Key Store Password
+        // NYI: Key Alias
+        // NYI: Key Password
+        // NYI: Alternative Java Development Kit
+
+        project:Save()
     end
 
     action IsInitialized returns boolean
@@ -85,13 +289,12 @@ class ProjectPropertiesDialog is Dialog
         programName:SetTopPadding(6)
         programName:SetBottomPadding(6)
 
-        TextField nameField
-        nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
-        nameField:SetTopPadding(6)
-        nameField:SetRightPadding(10)
+        programNameField:SetHorizontalLayoutMode(programNameField:parent:Libraries.Interface.Controls.Control:FILL)
+        programNameField:SetTopPadding(6)
+        programNameField:SetRightPadding(10)
 
         panel:Add(programName)
-        panel:Add(nameField)
+        panel:Add(programNameField)
 
         Label projectType
         projectType:SetText("Select Project Type: ")
@@ -108,29 +311,25 @@ class ProjectPropertiesDialog is Dialog
         buttonArea:SetVerticalLayoutMode(buttonArea:FIT_CONTENTS)
 
         ButtonGroup buttonGroup
-        RadioButton standardButton
-        standardButton:SetName("Standard")
-        standardButton:SetRightPadding(6)
-        buttonGroup:AddButton(standardButton)
-        buttonArea:Add(standardButton)
+        standardProjectButton:SetName("Standard")
+        standardProjectButton:SetRightPadding(6)
+        buttonGroup:AddButton(standardProjectButton)
+        buttonArea:Add(standardProjectButton)
 
-        RadioButton legoButton
-        legoButton:SetName("Lego")
-        legoButton:SetRightPadding(6)
-        buttonGroup:AddButton(legoButton)
-        buttonArea:Add(legoButton)
+        legoProjectButton:SetName("Lego")
+        legoProjectButton:SetRightPadding(6)
+        buttonGroup:AddButton(legoProjectButton)
+        buttonArea:Add(legoProjectButton)
 
-        RadioButton webServer
-        webServer:SetName("Web Server")
-        webServer:SetRightPadding(6)
-        buttonGroup:AddButton(webServer)
-        buttonArea:Add(webServer)
+        webServerProjectButton:SetName("Web Server")
+        webServerProjectButton:SetRightPadding(6)
+        buttonGroup:AddButton(webServerProjectButton)
+        buttonArea:Add(webServerProjectButton)
 
-        RadioButton webBrowser
-        webBrowser:SetName("Web Browser")
-        webBrowser:SetRightPadding(6)
-        buttonGroup:AddButton(webBrowser)
-        buttonArea:Add(webBrowser)
+        webBrowserProjectButton:SetName("Web Browser")
+        webBrowserProjectButton:SetRightPadding(6)
+        buttonGroup:AddButton(webBrowserProjectButton)
+        buttonArea:Add(webBrowserProjectButton)
 
         panel:Add(buttonArea)
 
@@ -150,13 +349,12 @@ class ProjectPropertiesDialog is Dialog
         pluginArea:SetPercentageWidth(1.0)
         pluginArea:SetLeftPadding(10)
 
-        List pluginList
-        pluginList:SetHorizontalLayoutMode(pluginList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        pluginList:SetVerticalLayoutMode(pluginList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        pluginList:SetPercentageWidth(0.7)
-        pluginList:SetPixelHeight(100)
-        pluginList:Add("Example 1")
-        pluginArea:Add(pluginList)
+        javaClassList:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        javaClassList:SetVerticalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        javaClassList:SetPercentageWidth(0.7)
+        javaClassList:SetPixelHeight(100)
+        javaClassList:Add("Example 1")
+        pluginArea:Add(javaClassList)
 
         Control pluginButtons
         FlowLayout pluginButtonsLayout
@@ -165,28 +363,38 @@ class ProjectPropertiesDialog is Dialog
         pluginButtons:SetVerticalLayoutMode(pluginButtons:FIT_CONTENTS)
         pluginArea:Add(pluginButtons)
 
+        addJavaClassBehavior:SetList(javaClassList)
+        removeJavaClassBehavior:SetList(javaClassList)
+        clearJavaClassesBehavior:SetList(javaClassList)
+
         Button addPlugin
         addPlugin:SetName("Add")
+        addPlugin:SetHorizontalLayoutMode(addPlugin:parent:Libraries.Interface.Controls.Control:STANDARD)
         addPlugin:SetPercentageWidth(1.0)
         addPlugin:SetLeftPadding(4)
         addPlugin:SetRightPadding(4)
         addPlugin:SetBottomPadding(6)
+        addPlugin:SetBehavior(addJavaClassBehavior)
         pluginButtons:Add(addPlugin)
 
         Button removePlugin
         removePlugin:SetName("Remove")
+        removePlugin:SetHorizontalLayoutMode(removePlugin:parent:Libraries.Interface.Controls.Control:STANDARD)
         removePlugin:SetPercentageWidth(1.0)
         removePlugin:SetLeftPadding(4)
         removePlugin:SetRightPadding(4)
         removePlugin:SetBottomPadding(6)
+        removePlugin:SetBehavior(removeJavaClassBehavior)
         pluginButtons:Add(removePlugin)
 
         Button clearPlugins
         clearPlugins:SetName("Clear")
+        clearPlugins:SetHorizontalLayoutMode(clearPlugins:parent:Libraries.Interface.Controls.Control:STANDARD)
         clearPlugins:SetPercentageWidth(1.0)
         clearPlugins:SetLeftPadding(4)
         clearPlugins:SetRightPadding(4)
         clearPlugins:SetBottomPadding(6)
+        clearPlugins:SetBehavior(clearJavaClassesBehavior)
         pluginButtons:Add(clearPlugins)
 
         panel:Add(pluginArea)
@@ -207,12 +415,10 @@ class ProjectPropertiesDialog is Dialog
         jarArea:SetPercentageWidth(1.0)
         jarArea:SetLeftPadding(10)
 
-        List jarList
         jarList:SetHorizontalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
         jarList:SetVerticalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
         jarList:SetPercentageWidth(0.7)
         jarList:SetPixelHeight(100)
-        jarList:Add("Example 2")
         jarArea:Add(jarList)
 
         Control jarButtons
@@ -222,28 +428,38 @@ class ProjectPropertiesDialog is Dialog
         jarButtons:SetVerticalLayoutMode(jarButtons:FIT_CONTENTS)
         jarArea:Add(jarButtons)
 
+        addJarBehavior:SetList(jarList)
+        removeJarBehavior:SetList(jarList)
+        clearJarsBehavior:SetList(jarList)
+
         Button addJar
         addJar:SetName("Add")
+        addJar:SetHorizontalLayoutMode(addJar:parent:Libraries.Interface.Controls.Control:STANDARD)
         addJar:SetPercentageWidth(1.0)
         addJar:SetLeftPadding(4)
         addJar:SetRightPadding(4)
         addJar:SetBottomPadding(6)
+        addJar:SetBehavior(addJarBehavior)
         jarButtons:Add(addJar)
 
         Button removeJar
         removeJar:SetName("Remove")
+        removeJar:SetHorizontalLayoutMode(removeJar:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeJar:SetPercentageWidth(1.0)
         removeJar:SetLeftPadding(4)
         removeJar:SetRightPadding(4)
         removeJar:SetBottomPadding(6)
+        removeJar:SetBehavior(removeJarBehavior)
         jarButtons:Add(removeJar)
 
         Button clearJars
+        clearJars:SetHorizontalLayoutMode(clearJars:parent:Libraries.Interface.Controls.Control:STANDARD)
         clearJars:SetName("Clear")
         clearJars:SetPercentageWidth(1.0)
         clearJars:SetLeftPadding(4)
         clearJars:SetRightPadding(4)
         clearJars:SetBottomPadding(6)
+        clearJars:SetBehavior(clearJarsBehavior)
         jarButtons:Add(clearJars)
 
         panel:Add(jarArea)
@@ -266,13 +482,11 @@ class ProjectPropertiesDialog is Dialog
         sourceArea:SetPercentageWidth(1.0)
         sourceArea:SetLeftPadding(10)
 
-        List sourceList
-        sourceList:SetHorizontalLayoutMode(sourceList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        sourceList:SetVerticalLayoutMode(sourceList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        sourceList:SetPercentageWidth(0.7)
-        sourceList:SetPixelHeight(100)
-        sourceList:Add("Example 3")
-        sourceArea:Add(sourceList)
+        quorumSourcesList:SetHorizontalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        quorumSourcesList:SetVerticalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        quorumSourcesList:SetPercentageWidth(0.7)
+        quorumSourcesList:SetPixelHeight(100)
+        sourceArea:Add(quorumSourcesList)
 
         Control sourceButtons
         FlowLayout sourceButtonsLayout
@@ -283,6 +497,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button addSource
         addSource:SetName("Add")
+        addSource:SetHorizontalLayoutMode(addSource:parent:Libraries.Interface.Controls.Control:STANDARD)
         addSource:SetPercentageWidth(1.0)
         addSource:SetLeftPadding(4)
         addSource:SetRightPadding(4)
@@ -291,6 +506,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button removeSource
         removeSource:SetName("Remove")
+        removeSource:SetHorizontalLayoutMode(removeSource:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeSource:SetPercentageWidth(1.0)
         removeSource:SetLeftPadding(4)
         removeSource:SetRightPadding(4)
@@ -299,6 +515,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button clearSource
         clearSource:SetName("Clear")
+        clearSource:SetHorizontalLayoutMode(clearSource:parent:Libraries.Interface.Controls.Control:STANDARD)
         clearSource:SetPercentageWidth(1.0)
         clearSource:SetLeftPadding(4)
         clearSource:SetRightPadding(4)
@@ -307,17 +524,43 @@ class ProjectPropertiesDialog is Dialog
 
         panel:Add(sourceArea)
 
-        Button okayButton
-        okayButton:SetName("OK")
-        okayButton:SetLeftPadding(10)
-        okayButton:SetTopPadding(20)
-        panel:Add(okayButton)
+        Control confirmArea
+        FlowLayout confirmLayout
+        confirmArea:SetLayout(confirmLayout)
+        confirmArea:SetPercentageWidth(1.0)
+        confirmArea:SetTopPadding(20)
+        confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
+
+        Control confirmPadding
+        confirmPadding:SetPercentageWidth(0.5)
+        confirmPadding:SetPixelHeight(1)
+        confirmArea:Add(confirmPadding)
 
         Button cancelButton
         cancelButton:SetName("Cancel")
-        cancelButton:SetLeftPadding(10)
-        cancelButton:SetTopPadding(20)
-        panel:Add(cancelButton)
+        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancelButton:SetPercentageWidth(0.2)
+        cancelButton:SetLeftPadding(0)
+        cancelButton:SetTopPadding(0)
+        cancelButton:SetBehavior(cancelBehavior)
+        confirmArea:Add(cancelButton)
+
+        Gradient okayGradient
+        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
+        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
+        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
+
+        Button okayButton
+        okayButton:SetName("OK")
+        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        okayButton:SetBackgroundColor(okayGradient)
+        okayButton:SetPercentageWidth(0.2)
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(0)
+        okayButton:SetBehavior(okBehavior)
+        confirmArea:Add(okayButton)
+
+        panel:Add(confirmArea)
 
         return projectInfoTab
     end
@@ -352,18 +595,16 @@ class ProjectPropertiesDialog is Dialog
 
         scrollPane:Add(panel)
 
-        Checkbox enable
-        enable:SetName("Enable Image Sheet Support")
-        enable:SetLeftPadding(10)
-        enable:SetRightPadding(20)
-        enable:SetTopPadding(10)
-        panel:Add(enable)
+        enableImageSheets:SetName("Enable Image Sheet Support")
+        enableImageSheets:SetLeftPadding(10)
+        enableImageSheets:SetRightPadding(20)
+        enableImageSheets:SetTopPadding(10)
+        panel:Add(enableImageSheets)
 
-        Checkbox buildOnCompile
-        buildOnCompile:SetName("Rebuild on Compile")
-        buildOnCompile:SetLeftPadding(10)
-        buildOnCompile:SetTopPadding(10)
-        panel:Add(buildOnCompile)
+        buildImageSheetsOnCompile:SetName("Rebuild on Compile")
+        buildImageSheetsOnCompile:SetLeftPadding(10)
+        buildImageSheetsOnCompile:SetTopPadding(10)
+        panel:Add(buildImageSheetsOnCompile)
 
         Control buildPathContainer
         buildPathContainer:SetPercentageWidth(1.0)
@@ -379,10 +620,9 @@ class ProjectPropertiesDialog is Dialog
         buildPathLabel:SetText("Build Path: ")
         buildPathContainer:Add(buildPathLabel)
 
-        TextField buildPathField
-        buildPathField:SetText("resources")
-        buildPathField:SetHorizontalLayoutMode(buildPathField:parent:Libraries.Interface.Controls.Control:FILL)
-        buildPathContainer:Add(buildPathField)
+        imageSheetsBuildPathField:SetText("resources")
+        imageSheetsBuildPathField:SetHorizontalLayoutMode(imageSheetsBuildPathField:parent:Libraries.Interface.Controls.Control:FILL)
+        buildPathContainer:Add(imageSheetsBuildPathField)
 
         panel:Add(buildPathContainer)
 
@@ -402,7 +642,6 @@ class ProjectPropertiesDialog is Dialog
         imageSheetsArea:SetLeftPadding(10)
         imageSheetsArea:SetTopPadding(10)
 
-        List imageSheetsList
         imageSheetsList:SetHorizontalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imageSheetsList:SetVerticalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imageSheetsList:SetPercentageWidth(0.7)
@@ -419,6 +658,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button addSheet
         addSheet:SetName("Add")
+        addSheet:SetHorizontalLayoutMode(addSheet:parent:Libraries.Interface.Controls.Control:STANDARD)
         addSheet:SetPercentageWidth(1.0)
         addSheet:SetLeftPadding(4)
         addSheet:SetRightPadding(4)
@@ -427,6 +667,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button editSheet
         editSheet:SetName("Edit")
+        editSheet:SetHorizontalLayoutMode(editSheet:parent:Libraries.Interface.Controls.Control:STANDARD)
         editSheet:SetPercentageWidth(1.0)
         editSheet:SetLeftPadding(4)
         editSheet:SetRightPadding(4)
@@ -435,6 +676,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button removeSheet
         removeSheet:SetName("Remove")
+        removeSheet:SetHorizontalLayoutMode(removeSheet:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeSheet:SetPercentageWidth(1.0)
         removeSheet:SetLeftPadding(4)
         removeSheet:SetRightPadding(4)
@@ -443,6 +685,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button buildSheets
         buildSheets:SetName("Build")
+        buildSheets:SetHorizontalLayoutMode(buildSheets:parent:Libraries.Interface.Controls.Control:STANDARD)
         buildSheets:SetPercentageWidth(1.0)
         buildSheets:SetLeftPadding(4)
         buildSheets:SetRightPadding(4)
@@ -467,7 +710,6 @@ class ProjectPropertiesDialog is Dialog
         imagesArea:SetLeftPadding(10)
         imagesArea:SetTopPadding(10)
 
-        List imagesList
         imagesList:SetHorizontalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imagesList:SetVerticalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imagesList:SetPercentageWidth(0.7)
@@ -484,6 +726,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button addImage
         addImage:SetName("Add")
+        addImage:SetHorizontalLayoutMode(addImage:parent:Libraries.Interface.Controls.Control:STANDARD)
         addImage:SetPercentageWidth(1.0)
         addImage:SetLeftPadding(4)
         addImage:SetRightPadding(4)
@@ -492,6 +735,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button addImageFolder
         addImageFolder:SetName("Add Folder")
+        addImageFolder:SetHorizontalLayoutMode(addImageFolder:parent:Libraries.Interface.Controls.Control:STANDARD)
         addImageFolder:SetPercentageWidth(1.0)
         addImageFolder:SetLeftPadding(4)
         addImageFolder:SetRightPadding(4)
@@ -500,6 +744,7 @@ class ProjectPropertiesDialog is Dialog
 
         Button removeImage
         removeImage:SetName("Remove")
+        removeImage:SetHorizontalLayoutMode(removeImage:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeImage:SetPercentageWidth(1.0)
         removeImage:SetLeftPadding(4)
         removeImage:SetRightPadding(4)
@@ -512,12 +757,14 @@ class ProjectPropertiesDialog is Dialog
         okayButton:SetName("OK")
         okayButton:SetLeftPadding(10)
         okayButton:SetTopPadding(20)
+        okayButton:SetBehavior(okBehavior)
         panel:Add(okayButton)
 
         Button cancelButton
         cancelButton:SetName("Cancel")
         cancelButton:SetLeftPadding(10)
         cancelButton:SetTopPadding(20)
+        cancelButton:SetBehavior(cancelBehavior)
         panel:Add(cancelButton)
 
         return tab
@@ -568,9 +815,8 @@ class ProjectPropertiesDialog is Dialog
 
         panel:Add(resourcesContainer)
 
-        TextField resourcesField
-        resourcesField:SetPercentageWidth(0.5)
-        resourcesContainer:Add(resourcesField)
+        mobileResourcesField:SetPercentageWidth(0.5)
+        resourcesContainer:Add(mobileResourcesField)
 
         Button resourcesBrowse
         resourcesBrowse:SetName("Browse...")
@@ -677,14 +923,28 @@ class ProjectPropertiesDialog is Dialog
         okayButton:SetName("OK")
         okayButton:SetLeftPadding(10)
         okayButton:SetTopPadding(20)
+        okayButton:SetBehavior(okBehavior)
         panel:Add(okayButton)
 
         Button cancelButton
         cancelButton:SetName("Cancel")
         cancelButton:SetLeftPadding(10)
         cancelButton:SetTopPadding(20)
+        cancelButton:SetBehavior(cancelBehavior)
         panel:Add(cancelButton)
 
         return tab
+    end
+
+    private action ListToArray(List list) returns Array<text>
+        Array<text> array
+
+        integer counter = 0
+        repeat while counter < list:GetSize()
+            array:Add(list:Get(counter))
+            counter = counter + 1
+        end
+
+        return array
     end
 end

@@ -1,0 +1,168 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Controls.TabPane
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.ScrollPane
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Interface.Controls.ButtonGroup
+use Libraries.System.File
+use Libraries.System.FileWriter
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Layouts.LayoutProperties
+
+
+
+
+class NewFileDialog is Dialog
+    boolean initialized = false
+    Color color 
+    TextField fileNameField
+    TextField folderNameField
+    Button folderBrowseButton
+    Button okayButton
+    Button cancelButton
+    
+    File file
+    QuorumProject project = undefined
+
+    action Initialize
+        if initialized
+            output "WARNING: Re-initializing the NewFileDialog."
+        end
+
+        initialized = true
+       
+        SetName("New File")
+        SetPixelWidth(500)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL - view:TOP)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        
+        Control panel
+        FlowLayout newFileLayout
+        panel:SetLayout(newFileLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetPixelHeight(300)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+        panel:Add(CreateNewFileControl())
+        panel:SetView2D(view)
+        Add(panel)
+
+           
+    end
+
+    action SetProperties(QuorumProject project)
+        me:project = project
+       
+        text executableName = project:GetProperty(project:EXECUTABLE_NAME):GetFirstValue()
+        if executableName not= undefined
+            folderNameField:SetText(executableName)
+        end
+
+//        NewFileCancelButtonBehavior  cancelButtonBehavior
+//        cancelButtonBehavior:SetDialog(me)
+//        cancelButton:SetBehavior(cancelButtonBehavior)
+    end
+
+    action IsInitialized returns boolean
+        return initialized
+    end
+
+    action CreateNewFileControl() returns Control
+        Control createNewFileContainer
+        FlowLayout createNewFileLayout
+        createNewFileContainer:SetLayout(createNewFileLayout)
+        createNewFileContainer:SetBorderThickness(1)
+        createNewFileContainer:SetBorderColor(color:Black())
+        createNewFileContainer:SetPercentageWidth(1.0)   
+        createNewFileContainer:SetVerticalLayoutMode(createNewFileContainer:FIT_CONTENTS)
+
+        FlowLayout fileLayout
+        Control fileContainer
+        fileContainer:SetLayout(fileLayout)
+        fileContainer:SetPercentageWidth(1.0)
+        fileContainer:SetVerticalLayoutMode(fileContainer:FIT_CONTENTS)
+        fileContainer:SetLeftPadding(10)
+        fileContainer:SetTopPadding(6)
+        
+        Label fileName
+        fileName:SetText("File Name: ")
+        fileName:SetPercentageWidth(0.3)
+        fileContainer:Add(fileName)
+        
+        fileNameField:SetPercentageWidth(0.7)
+        fileContainer:Add(fileNameField)
+
+        createNewFileContainer:Add(fileContainer)
+
+        FlowLayout folderLayout
+        Control folderContainer
+        folderContainer:SetLayout(folderLayout)
+        folderContainer:SetPercentageWidth(1.0)
+        folderContainer:SetPixelWidth(-10)
+        folderContainer:SetVerticalLayoutMode(folderContainer:FIT_CONTENTS)
+        folderContainer:SetLeftPadding(10)
+        folderContainer:SetTopPadding(10)
+
+        Label folderLabel
+        folderLabel:SetText("Folder: ")
+        folderLabel:SetPercentageWidth(0.3)
+        folderContainer:Add(folderLabel)
+     
+        folderNameField:SetPercentageWidth(0.5)
+        folderContainer:Add(folderNameField)
+       
+        folderBrowseButton:SetName("Browse...")
+        folderBrowseButton:SetPercentageWidth(0.15)
+        folderBrowseButton:SetLeftPadding(6)
+        folderBrowseButton:SetBottomPadding(6)
+        folderContainer:Add(folderBrowseButton)
+        
+        createNewFileContainer:Add(folderContainer)
+
+        FlowLayout closingButtonsLayout
+        Control closingButtonsContainer
+        closingButtonsContainer:SetLayout(closingButtonsLayout)
+        closingButtonsContainer:SetPercentageWidth(1.0)
+        closingButtonsContainer:SetVerticalLayoutMode(closingButtonsContainer:FIT_CONTENTS)
+        closingButtonsContainer:SetLeftPadding(10)
+        closingButtonsContainer:SetTopPadding(20)
+        
+        Label whiteSpaceLabel
+        whiteSpaceLabel:SetText("                                                        ")
+        whiteSpaceLabel:SetPercentageWidth(0.5)
+        closingButtonsContainer:Add(whiteSpaceLabel)
+
+        okayButton:SetName("OK")
+        okayButton:SetPercentageWidth(0.2)
+        okayButton:SetRightPadding(6)
+        closingButtonsContainer:Add(okayButton)
+     
+        cancelButton:SetName("Cancel")
+        cancelButton:SetPercentageWidth(0.2)
+        closingButtonsContainer:Add(cancelButton)
+
+        createNewFileContainer:Add(closingButtonsContainer)
+
+        return createNewFileContainer
+    end
+
+    action CreateNewFile()
+        FileWriter writer
+        file:SetWorkingDirectory(project:GetExecutableName())
+        file:SetPath(fileNameField:GetText())
+        writer:OpenForWrite(file)
+    end
+end
