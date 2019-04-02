@@ -16,21 +16,41 @@ use Libraries.System.File
 use Libraries.System.FileWriter
 use Libraries.Interface.Controls.List
 use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Game.Graphics.Gradient
+use Libraries.Development.Environment.Studio.Behaviors.NewFileOkBehavior
 
 
 
 
 class NewFileDialog is Dialog
+
     boolean initialized = false
-    Color color 
+
+    // The current Quorum project that we're modifying the properties of.
+    // Set during the SetProperties(QuorumProject) action.
+    QuorumProject project = undefined   
+
+    //Variables for the NewFile Dialog
     TextField fileNameField
     TextField folderNameField
     Button folderBrowseButton
     Button okayButton
     Button cancelButton
     
+    //Behaviors used by the Browse, Ok, and Cancel Buttons
+    DialogCancelBehavior cancelBehavior
+    NewFileOkBehavior okayBehavior
+    //NewFileBrowseBehavior browseBehavior
+    
     File file
-    QuorumProject project = undefined
+    Color color 
+
+    on create
+        cancelBehavior:SetDialog(me)
+        okayBehavior:SetDialog(me)
+        //browseBehavior:SetDialog(me)
+    end
 
     action Initialize
         if initialized
@@ -40,7 +60,7 @@ class NewFileDialog is Dialog
         initialized = true
        
         SetName("New File")
-        SetPixelWidth(500)
+        SetPixelWidth(400)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
 
         LabelBoxView view
@@ -53,14 +73,12 @@ class NewFileDialog is Dialog
         FlowLayout newFileLayout
         panel:SetLayout(newFileLayout)
         panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(300)
+        panel:SetPixelHeight(200)
         panel:SetBorderColor(color:Black())
         panel:SetBorderThickness(1)
         panel:Add(CreateNewFileControl())
         panel:SetView2D(view)
-        Add(panel)
-
-           
+        Add(panel)          
     end
 
     action SetProperties(QuorumProject project)
@@ -70,10 +88,6 @@ class NewFileDialog is Dialog
         if executableName not= undefined
             folderNameField:SetText(executableName)
         end
-
-//        NewFileCancelButtonBehavior  cancelButtonBehavior
-//        cancelButtonBehavior:SetDialog(me)
-//        cancelButton:SetBehavior(cancelButtonBehavior)
     end
 
     action IsInitialized returns boolean
@@ -137,32 +151,50 @@ class NewFileDialog is Dialog
         closingButtonsContainer:SetLayout(closingButtonsLayout)
         closingButtonsContainer:SetPercentageWidth(1.0)
         closingButtonsContainer:SetVerticalLayoutMode(closingButtonsContainer:FIT_CONTENTS)
-        closingButtonsContainer:SetLeftPadding(10)
         closingButtonsContainer:SetTopPadding(20)
         
-        Label whiteSpaceLabel
-        whiteSpaceLabel:SetText("                                                        ")
-        whiteSpaceLabel:SetPercentageWidth(0.5)
-        closingButtonsContainer:Add(whiteSpaceLabel)
+        Control closingPadding
+        closingPadding:SetPercentageWidth(0.5)
+        closingPadding:SetPixelHeight(1)
+        closingButtonsContainer:Add(closingPadding)
+
+        cancelButton:SetName("Cancel")
+        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancelButton:SetPercentageWidth(0.2)
+        cancelButton:SetLeftPadding(0)
+        cancelButton:SetTopPadding(0)
+        cancelButton:SetBehavior(cancelBehavior)
+        closingButtonsContainer:Add(cancelButton)
+
+        Gradient okayGradient
+        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
+        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
+        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
 
         okayButton:SetName("OK")
+        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        okayButton:SetBackgroundColor(okayGradient)
         okayButton:SetPercentageWidth(0.2)
-        okayButton:SetRightPadding(6)
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(0)
+        okayButton:SetBehavior(okayBehavior)
         closingButtonsContainer:Add(okayButton)
-     
-        cancelButton:SetName("Cancel")
-        cancelButton:SetPercentageWidth(0.2)
-        closingButtonsContainer:Add(cancelButton)
 
         createNewFileContainer:Add(closingButtonsContainer)
 
         return createNewFileContainer
     end
 
+    action GetProject returns QuorumProject
+        return project
+    end
+
     action CreateNewFile()
-        FileWriter writer
-        file:SetWorkingDirectory(project:GetExecutableName())
-        file:SetPath(fileNameField:GetText())
-        writer:OpenForWrite(file)
+//        project:SetExecutableName(folderNameField:GetText())
+//        
+//        FileWriter writer
+//        file:SetWorkingDirectory(project:GetExecutableName())
+//        file:SetPath(fileNameField:GetText())
+//        writer:OpenForWrite(file)
     end
 end
