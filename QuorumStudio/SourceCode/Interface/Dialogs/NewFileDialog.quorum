@@ -19,6 +19,8 @@ use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
 use Libraries.Game.Graphics.Gradient
 use Libraries.Development.Environment.Studio.Behaviors.NewFileOkBehavior
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Studio.Behaviors.OpenBrowseFoldersBehavior
 
 
 
@@ -30,6 +32,7 @@ class NewFileDialog is Dialog
     // The current Quorum project that we're modifying the properties of.
     // Set during the SetProperties(QuorumProject) action.
     QuorumProject project = undefined   
+    ProjectManager manager = undefined
 
     //Variables for the NewFile Dialog
     TextField fileNameField
@@ -41,7 +44,7 @@ class NewFileDialog is Dialog
     //Behaviors used by the Browse, Ok, and Cancel Buttons
     DialogCancelBehavior cancelBehavior
     NewFileOkBehavior okayBehavior
-    //NewFileBrowseBehavior browseBehavior
+    OpenBrowseFoldersBehavior browseBehavior
     
     File file
     Color color 
@@ -49,7 +52,6 @@ class NewFileDialog is Dialog
     on create
         cancelBehavior:SetDialog(me)
         okayBehavior:SetDialog(me)
-        //browseBehavior:SetDialog(me)
     end
 
     action Initialize
@@ -83,11 +85,15 @@ class NewFileDialog is Dialog
 
     action SetProperties(QuorumProject project)
         me:project = project
-       
-        text executableName = project:GetProperty(project:EXECUTABLE_NAME):GetFirstValue()
+        //sets the project for the OpenBrowseFoldersBehavior
+        browseBehavior:SetProject(me:project)
+
+        //sets the folder name text field to the current QuorumProject in the 
+        //NewFileDialog
+        text executableName = project:GetExecutableName()
         if executableName not= undefined
             folderNameField:SetText(executableName)
-        end
+        end        
     end
 
     action IsInitialized returns boolean
@@ -139,9 +145,11 @@ class NewFileDialog is Dialog
         folderContainer:Add(folderNameField)
        
         folderBrowseButton:SetName("Browse...")
+        folderBrowseButton:SetBehavior(browseBehavior)
         folderBrowseButton:SetPercentageWidth(0.15)
         folderBrowseButton:SetLeftPadding(6)
         folderBrowseButton:SetBottomPadding(6)
+        //folderBrowseButton:SetBehavior(browseBehavior)
         folderContainer:Add(folderBrowseButton)
         
         createNewFileContainer:Add(folderContainer)
@@ -184,17 +192,23 @@ class NewFileDialog is Dialog
 
         return createNewFileContainer
     end
-
+    
+    //returns the current QuorumProject that the NewFile is being added to
     action GetProject returns QuorumProject
         return project
     end
 
     action CreateNewFile()
-//        project:SetExecutableName(folderNameField:GetText())
-//        
+        project:SetExecutableName(folderNameField:GetText())
 //        FileWriter writer
-//        file:SetWorkingDirectory(project:GetExecutableName())
-//        file:SetPath(fileNameField:GetText())
+        file:SetWorkingDirectory(project:GetExecutableName())
+        file:SetPath(fileNameField:GetText())
+        file:Write("")
+        file:Close()
 //        writer:OpenForWrite(file)
+//        writer:Close()
+
     end
+    
+
 end

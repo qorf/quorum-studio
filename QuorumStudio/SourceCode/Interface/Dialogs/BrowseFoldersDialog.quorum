@@ -1,0 +1,23 @@
+package Libraries.Development.Environment.Studio.Interface
+use Libraries.Interface.Controls.Dialog
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Interface.Controls.FileChooser
+use Libraries.System.File
+use Libraries.Interface.Controls.FileFilter
+
+
+class BrowseFoldersDialog is Dialog
+
+    FileChooser chooser
+    File projectFile
+    FileFilter filter
+
+    action Initialize(QuorumProject project) 
+        File file
+        projectFile = project:GetExecutableLocation()
+        file = chooser:OpenFileDialog(projectFile)
+        if file not= undefined
+            output file:GetAbsolutePath()
+        end
+    end
+end
