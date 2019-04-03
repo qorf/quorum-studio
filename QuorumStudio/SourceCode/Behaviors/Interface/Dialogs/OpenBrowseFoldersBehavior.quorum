@@ -10,27 +10,46 @@ use Libraries.Containers.Array
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Studio.Interface.BrowseFoldersDialog
+use Libraries.Interface.Controls.FileChooser
+use Libraries.Interface.Controls.FileFilter
+use Libraries.System.File
 
 
 class OpenBrowseFoldersBehavior is QuorumStudioBehavior 
+    
+    NewFileDialog dialog = undefined
+    text folderName = undefined
 
-    QuorumProject project = undefined
-    BrowseFoldersDialog dialog = undefined
-
-    //sets the QuorumProject for the OpenBrowseFoldersBehavior 
-    action SetProject(QuorumProject project)
-        me:project = project
+    action SetDialog(NewFileDialog dialog)
+        me:dialog = dialog
     end
 
-    //opens a new Browse Dialog based on the current QuorumProject location
+    action GetDialog returns NewFileDialog
+        return dialog
+    end
+
+    action SetFolder (text folderName)
+        me:folderName = folderName
+    end
+
+    action GetFolder returns text
+        return me:folderName
+    end
+
     action Run(BehaviorEvent event)
-        if dialog = undefined
-            BrowseFoldersDialog properties
-            dialog = properties
-            if project not= undefined
-                dialog:Initialize(project)
-            end
-        end
-    end
+        FileChooser chooser
+        FileFilter filter
+        filter:Empty()
+        filter:Add("")
+        filter:SetAcceptAll(false)
 
+        QuorumProject project = dialog:GetProject()
+        File file = chooser:OpenFileDialog(project:GetLocation(), filter)
+
+        if file not= undefined
+            me:folderName = file:GetFileName()
+        end
+
+        dialog:UpdateFolderName(folderName)
+    end
 end

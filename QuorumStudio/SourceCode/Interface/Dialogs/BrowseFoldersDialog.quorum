@@ -7,17 +7,29 @@ use Libraries.Interface.Controls.FileFilter
 
 
 class BrowseFoldersDialog is Dialog
+    boolean initialized = false
 
-    FileChooser chooser
-    File projectFile
-    FileFilter filter
+    File projectFile = undefined
 
-    action Initialize(QuorumProject project) 
+    action Initialize(QuorumProject project)
+        if initialized
+            output "WARNING: Re-initializing the BrowseFoldersDialog."
+        end
+
+        text executableName = project:GetExecutableName()
+        output "project executable name: " + executableName
+        initialized = true
+        
         File file
+        FileChooser chooser
         projectFile = project:GetExecutableLocation()
         file = chooser:OpenFileDialog(projectFile)
         if file not= undefined
             output file:GetAbsolutePath()
         end
+    end
+
+    action IsInitialized returns boolean
+        return initialized
     end
 end
