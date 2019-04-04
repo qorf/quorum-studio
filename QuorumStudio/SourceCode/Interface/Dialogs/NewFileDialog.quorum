@@ -23,6 +23,16 @@ use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Development.Environment.Studio.Behaviors.OpenBrowseFoldersBehavior
 use Libraries.Development.Environment.Projects.Project
 use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Resources
+use Libraries.Development.Environment.Studio.Behaviors.OpenTabBehavior
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.QuorumProjectView
+use Libraries.Development.Environment.Projects.ProjectView
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Containers.Array
+use Libraries.Containers.Iterator
+use Libraries.Game.GameStateManager
 
 
 
@@ -83,14 +93,16 @@ class NewFileDialog is Dialog
         panel:SetBorderThickness(1)
         panel:Add(CreateNewFileControl())
         panel:SetView2D(view)
-        Add(panel)          
+        Add(panel)
+
+        
     end
 
     //sets the folderNameField in the dialog to the default filepath for the
     //project (e.g. GameApplicaiton/SourceCode)
     action SetProperties(QuorumProject project)
         me:project = project
-        projectName = me:project:GetName() + "/" + me:project:PROJECT_SOURCES
+        projectName = me:project:PROJECT_SOURCES
         folderNameField:SetText(projectName)      
     end 
 
@@ -122,7 +134,8 @@ class NewFileDialog is Dialog
         fileContainer:Add(fileName)
         
         fileNameField:SetPercentageWidth(0.7)
-        fileNameField:SetText(" ")
+        fileNameField:SetText("")
+        fileNameField:Focus()
         fileContainer:Add(fileNameField)
 
         createNewFileContainer:Add(fileContainer)
@@ -203,26 +216,89 @@ class NewFileDialog is Dialog
     //used by the OpenBrowseFoldersBehavior
     action UpdateFolderName(text folderName)
         projectName = projectName + "/" + folderName
-        folderNameField:SetText(projectName)   
+        folderNameField:SetText(projectName)         
     end
 
     //creates the new file using the file path from the folderNameField in the
     //dialog
     action CreateNewFile()
         File file
-        File loc
-        loc:SetPath(folderNameField:GetText())
-        project:SetLocation(loc) 
-
-        file:SetWorkingDirectory(folderNameField:GetText())
-        file:SetPath(fileNameField:GetText())
+        File value = project:GetLocation()
+        text path = value:GetAbsolutePath():Trim()
+        path = path + "/" + folderNameField:GetText():Trim() + "/" + fileNameField:GetText():Trim() 
+        
+        file:SetAbsolutePath(path)
+        
         if file:GetFileExtension() = ""
-            file:SetPath(fileNameField:GetText() + ".quorum")
+            file:SetAbsolutePath(path + ".quorum")
         end
-        output file:GetAbsolutePath()
-        file:Write(" ")
-        file:Close()
-    end
-    
 
+        File mom = file:GetParentDirectory()
+        if not mom:Exists()
+            mom:CreateDirectories()
+        end
+
+        file:Write("")
+        file:Close()
+        AppendToProjectTree(file)
+        
+    end
+
+    action AppendToProjectTree(File file) 
+        Resources resource
+
+        QuorumProjectView projectView = cast(QuorumProjectView, project:GetProjectView())
+        TreeItem treeItem = projectView:GetLogicalTree()
+//        Iterator<TreeItem> iterator = treeItem:GetTreeItems()
+//
+//        boolean found = false
+//        TreeItem sourceCode = undefined
+//
+//        repeat while iterator:HasNext() and found = false
+//            sourceCode = iterator:Next()
+//            if sourceCode:GetName() = "SourceCode"
+//                found = true
+//            end
+//        end
+//
+//        if found = false
+//            output "Warning: Couldn't find Source Code for file " + file:GetPath()
+//            return now
+//        end
+//
+//        output "Creating TreeItem for " + file:GetPath() + "..."
+//
+//        ProjectTreeItem newFileTreeItem
+//
+//        newFileTreeItem:SetFile(file)
+//        newFileTreeItem:SetProject(project)
+//        newFileTreeItem:SetName(file:GetFileName())
+//        newFileTreeItem:SetIcon(resource:GetQuorumFile())
+//
+//        sourceCode:Add(cast(TreeItem, newFileTreeItem))
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+
+        ProjectTree projectTree = studio:GetProjectTree()
+        Iterator<TreeItem> items = projectTree:GetTreeItems()
+
+        boolean found = false
+        ProjectTreeItem oldProjectHeader = undefined
+
+        repeat while items:HasNext() and found = false
+            oldProjectHeader = cast(ProjectTreeItem, items:Next())
+            if oldProjectHeader:GetProject() = project
+                found = true
+            end
+        end
+
+        if found = false
+            output "Warning: Couldn't find Source Code for file " + file:GetPath()
+            return now
+        end
+
+        projectTree:Remove(cast(TreeItem, oldProjectHeader))
+        projectTree:Add(treeItem)
+    end
 end
