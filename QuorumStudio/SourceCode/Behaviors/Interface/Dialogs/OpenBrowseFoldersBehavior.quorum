@@ -37,18 +37,25 @@ class OpenBrowseFoldersBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
         FileChooser chooser
-        FileFilter filter
-        filter:Empty()
-        filter:Add("")
-        filter:SetAcceptAll(false)
+        //FileFilter filter
+        //filter:Empty()
+        //filter:Add("")
+        //filter:SetAcceptAll(true)
 
         QuorumProject project = dialog:GetProject()
-        File file = chooser:OpenFileDialog(project:GetLocation(), filter)
+        File location = project:GetLocation()
+        location:SetAbsolutePath(location:GetAbsolutePath() + "/SourceCode")
+        File folder = chooser:OpenFileDialog(location)
+        output folder:GetAbsolutePath()
 
-        if file not= undefined
-            me:folderName = file:GetFileName()
+        //need a file filter that will select a folder, not a file
+        //look into OpenFileDialogNative(), will not allow to select a folder as the destination
+
+        if folder not= undefined
+            me:folderName = folder:GetFileName()
+            dialog:UpdateFolderName(folderName)
         end
 
-        dialog:UpdateFolderName(folderName)
+        
     end
 end
