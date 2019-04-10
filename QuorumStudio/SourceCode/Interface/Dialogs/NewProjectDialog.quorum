@@ -10,20 +10,52 @@ use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Controls.Button
 use Libraries.Game.Graphics.Gradient
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Interface.Events.KeyboardListener
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.TabPane
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.ScrollPane
+use Libraries.Game.Graphics.Drawable
+use Libraries.Interface.Controls.Icon
 
-class NewProjectDialog is Dialog
+class NewProjectDialog is Dialog, KeyboardListener
 
     boolean initialized = false
     
+    GameStateManager gameManager
+    QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+
+
     //initialized with the blank application description, will change according to current focus
     TextBox descriptionText
-    TextField projectNameField
-    TextField projectLocationField
+    TextField nameField
+    TextField locationField
     Button browseButton
     Button cancelButton
     Button okayButton
     DialogCancelBehavior cancelBehavior
 
+    //Basic Tab Icons
+    Icon blankIcon
+    
+    //Advanced Tab Icons
+
+    text blankDescription = "A blank application in Quorum sets up a 
+default project with no source code inside 
+of it. As classes are optional in Quorum, 
+using a blank project works just as well 
+as an application for writing programs."
+    //text gameDescription
+
+    on create
+        //browseBehavior:SetDialog(me)
+        cancelBehavior:SetDialog(me)
+        //okayBehavior:SetDialog(me)
+        studio:AddKeyboardListener(me)
+    end
 
     action Initialize
         if initialized
@@ -32,7 +64,6 @@ class NewProjectDialog is Dialog
 
         initialized = true
 
-       
         SetName("New Project")
         SetPixelWidth(400)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
@@ -47,7 +78,7 @@ class NewProjectDialog is Dialog
         FlowLayout newFileLayout
         panel:SetLayout(newFileLayout)
         panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(200)
+        panel:SetPixelHeight(420)
         panel:SetBorderColor(color:Black())
         panel:SetBorderThickness(1)
         panel:Add(CreateNewProjectControl())
@@ -72,11 +103,17 @@ class NewProjectDialog is Dialog
         applicationsContainer:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
         applicationsContainer:SetTopPadding(6)
         applicationsContainer:SetLeftPadding(10)
+        applicationsContainer:SetRightPadding(10)
 
-        //either icons or menu items with different templates, set focus to the blank application
-        //each icon taking up a percentage of the width (with left padding(10) right padding(10)
-        //on last icon).
-
+        TabPane tabPane
+        FlowLayout tabLayout
+        tabPane:SetViewAreaLayout(tabLayout)
+        tabPane:SetPercentageWidth(1.0)
+        tabPane:SetPixelHeight(180)
+        tabPane:Add(BasicTab())
+        tabPane:Add(AdvancedTab())
+        tabPane:Select(0)
+        applicationsContainer:Add(tabPane)
         createNewProjectContainer:Add(applicationsContainer)
 
         FlowLayout descriptionLayout
@@ -86,63 +123,86 @@ class NewProjectDialog is Dialog
         descriptionContainer:SetVerticalLayoutMode(descriptionContainer:FIT_CONTENTS) //may need to change this to a set height
         descriptionContainer:SetTopPadding(10)
         descriptionContainer:SetLeftPadding(10)
+        descriptionContainer:SetRightPadding(10)
         
-        Label description
-        description:SetText("Description: ")
-        description:SetPercentageWidth(0.3)
+        Label descriptionLabel
+        descriptionLabel:SetText("Description: ")
+        descriptionLabel:SetPercentageWidth(0.3)
+        descriptionLabel:SetBottomPadding(6)
+        descriptionContainer:Add(descriptionLabel)
 
-        //descriptionText changes as the focus template selection changes
-        //focus is set to blank application by default
-        descriptionText:SetText("A blank application in Quorum sets up a 
-default project with no source code inside 
-of it. As classes are optional in Quorum, 
-using a blank project works just as well 
-as an application for writing programs.")
+        //descriptionList changes as the focus template selection changes
+        //focus is set to blankDescription by default
+        descriptionText:SetText(blankDescription)
         descriptionText:SetPercentageWidth(1.0)
-        descriptionText:SetRightPadding(10)
-        descriptionText:SetTopPadding(6)
-        descriptionText:SetPixelHeight(75)
-        descriptionContainer:Add(description)
+        descriptionText:SetPixelHeight(100)
+        descriptionText:HideCaret()
+        
         descriptionContainer:Add(descriptionText)
         
         createNewProjectContainer:Add(descriptionContainer)
 
-        FlowLayout projectDetailsLayout
-        Control projectDetailsContainer
-        projectDetailsContainer:SetLayout(projectDetailsLayout)
-        projectDetailsContainer:SetPercentageWidth(1.0)
-        projectDetailsContainer:SetVerticalLayoutMode(projectDetailsContainer:FIT_CONTENTS)
-        projectDetailsContainer:SetTopPadding(6)
-        projectDetailsContainer:SetLeftPadding(10)
+        FlowLayout projectNameLayout
+        Control projectNameContainer
+        projectNameContainer:SetLayout(projectNameLayout)
+        projectNameContainer:SetPercentageWidth(1.0)
+        projectNameContainer:SetVerticalLayoutMode(projectNameContainer:FIT_CONTENTS)
+        projectNameContainer:SetTopPadding(10)
+        projectNameContainer:SetLeftPadding(10)
+        projectNameContainer:SetRightPadding(10)
 
-        Label projectName
-        projectName:SetText("Project Name:")
-        projectName:SetPercentageWidth(0.3)
-        projectDetailsContainer:Add(projectName)
+        Label nameLabel
+        nameLabel:SetText("Name:")
+        nameLabel:SetRightPadding(37)
+        //nameLabel:SetPercentageWidth(0.3)
+        projectNameContainer:Add(nameLabel)
 
-        projectNameField:SetText("BlankQuorumApplication")  //text isn't centered in the text field? (e.g. can't see stem of 'p')
-        projectNameField:SetPercentageWidth(0.7)
-        projectNameField:SetBottomPadding(6)
-        projectDetailsContainer:Add(projectNameField)
+        nameField:SetText("BlankQuorumApplication") 
+        nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
+        //projectNameField:SetPercentageWidth(0.7)
+        nameField:SetBottomPadding(6)
+        nameField:SetFocusable(true)
+        nameField:Focus()
+        nameField:SetNextFocus(locationField)
+        //projectNameField:SetPreviousFocus()
+        projectNameContainer:Add(nameField)
+        createNewProjectContainer:Add(projectNameContainer)
 
-        Label projectLocation
-        projectLocation:SetTopPadding(6)
-        projectLocation:SetText("Project Location:")
-        projectLocation:SetPercentageWidth(0.3)
-        projectDetailsContainer:Add(projectLocation)
+        FlowLayout projectLocationLayout
+        Control projectLocationContainer
+        projectLocationContainer:SetLayout(projectLocationLayout)
+        projectLocationContainer:SetPercentageWidth(1.0)
+        projectLocationContainer:SetVerticalLayoutMode(projectLocationContainer:FIT_CONTENTS)
+        projectLocationContainer:SetTopPadding(6)
+        projectLocationContainer:SetLeftPadding(10)
+        //projectLocationContainer:SetRightPadding(10)
+
+        Label locationLabel
+        locationLabel:SetTopPadding(6)
+        locationLabel:SetText("Location:")
+        locationLabel:SetRightPadding(6)
+        //projectLocation:SetPercentageWidth(0.3)
+        projectLocationContainer:Add(locationLabel)
         
-        projectLocationField:SetText("")    //set to current directory?
-        projectLocationField:SetPercentageWidth(0.5)
-        projectLocationField:SetTopPadding(6)
-        projectDetailsContainer:Add(projectLocationField)
+        locationField:SetText("")    //set to current directory?
+        locationField:SetPercentageWidth(0.6)
+        locationField:SetTopPadding(6)
+        locationField:SetFocusable(true)
+        locationField:SetNextFocus(browseButton)
+        locationField:SetPreviousFocus(nameField)
+        projectLocationContainer:Add(locationField)
 
         browseButton:SetName("Browse...")
-        //browseButton:SetBehavior(browseBehavior)
-        browseButton:SetPercentageWidth(0.15)
+        browseButton:SetPercentageWidth(0.23)
+        browseButton:SetHorizontalLayoutMode(browseButton:parent:Libraries.Interface.Controls.Control:STANDARD)
         browseButton:SetLeftPadding(6)
-        projectDetailsContainer:Add(browseButton)
-        
-        createNewProjectContainer:Add(projectDetailsContainer)
+        browseButton:SetBottomPadding(6)
+        browseButton:SetFocusable(true)
+        browseButton:SetNextFocus(cancelButton)
+        browseButton:SetPreviousFocus(locationField)
+        //browseButton:SetBehavior(browseBehavior)
+        projectLocationContainer:Add(browseButton)
+        createNewProjectContainer:Add(projectLocationContainer)
 
         FlowLayout closingButtonsLayout
         Control closingButtonsContainer
@@ -152,7 +212,7 @@ as an application for writing programs.")
         closingButtonsContainer:SetTopPadding(20)
         
         Control closingPadding
-        closingPadding:SetPercentageWidth(0.5)
+        closingPadding:SetPercentageWidth(0.575)
         closingPadding:SetPixelHeight(1)
         closingButtonsContainer:Add(closingPadding)
 
@@ -161,6 +221,9 @@ as an application for writing programs.")
         cancelButton:SetPercentageWidth(0.2)
         cancelButton:SetLeftPadding(0)
         cancelButton:SetTopPadding(0)
+        cancelButton:SetFocusable(true)
+        cancelButton:SetNextFocus(okayButton)
+        cancelButton:SetPreviousFocus(browseButton)
         cancelButton:SetBehavior(cancelBehavior)
         closingButtonsContainer:Add(cancelButton)
 
@@ -175,13 +238,97 @@ as an application for writing programs.")
         okayButton:SetPercentageWidth(0.2)
         okayButton:SetLeftPadding(10)
         okayButton:SetTopPadding(0)
+        okayButton:SetFocusable(true)
+        okayButton:SetNextFocus(nameField)
+        okayButton:SetPreviousFocus(cancelButton)
         //okayButton:SetBehavior(okayBehavior)
         closingButtonsContainer:Add(okayButton)
-
         createNewProjectContainer:Add(closingButtonsContainer)
 
-        
        return createNewProjectContainer
+    end
+
+    action BasicTab returns Tab
+        Color color
+        Tab basicTab
+        basicTab:SetName("Basic")
+        basicTab:DisplayCloseButton(false)
+
+        FlowLayout scrollLayout
+        ScrollPane scrollPane
+        scrollPane:SetLayout(scrollLayout)
+        scrollPane:SetPercentageWidth(1.0)
+        scrollPane:SetPixelHeight(180)
+        basicTab:SetRelatedItem(scrollPane)
+
+        FlowLayout layout
+        Control panel
+        panel:SetLayout(layout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)        
+        scrollPane:Add(panel)
+
+        FlowLayout applicationsLayout
+        Control applicationsContainer
+        applicationsContainer:SetLayout(applicationsLayout)
+        applicationsContainer:SetPercentageWidth(1.0)
+        applicationsContainer:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
+        applicationsContainer:SetTopPadding(40)
+        applicationsContainer:SetBottomPadding(40)
+        applicationsContainer:SetRightPadding(40)
+        applicationsContainer:SetLeftPadding(40)
+
+//        blankIcon:LoadFilledRectangle(50, 50, color:Purple())
+//        blankIcon:SetHorizontalLayoutMode(blankIcon:parent:Libraries.Interface.Controls.Control:STANDARD)   
+//        blankIcon:SetRightPadding(40)
+//        blankIcon:SetPercentageWidth(0.3)
+//        applicationsContainer:Add(blankIcon)
+        
+
+        Label blankLabel
+        blankLabel:SetText("Blank")
+        blankLabel:SetHorizontalLayoutMode(blankLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        blankLabel:SetRightPadding(40)
+        blankLabel:SetPercentageWidth(0.3)
+        applicationsContainer:Add(blankLabel)
+      
+        panel:Add(applicationsContainer)
+        
+        return basicTab
+
+    end
+
+    action AdvancedTab returns Tab
+        Tab advancedTab
+        advancedTab:SetName("Advanced")
+        advancedTab:DisplayCloseButton(false)
+
+        ScrollPane scrollPane
+        scrollPane:SetPercentageWidth(1.0)
+        scrollPane:SetPixelHeight(180)
+        FlowLayout scrollLayout
+        scrollPane:SetLayout(scrollLayout)
+
+        advancedTab:SetRelatedItem(scrollPane)
+
+        Control panel
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)     
+
+        return advancedTab
+    end
+
+    action PressedKey (KeyboardEvent event)
+         if event:keyCode = event:ENTER
+            okayButton:Activate()
+            //CreateNewFile()
+            //Hide()
+        end
+
+        if event:keyCode = event:ESCAPE
+            cancelButton:Activate()
+            //Hide()
+        end
     end
 
 end

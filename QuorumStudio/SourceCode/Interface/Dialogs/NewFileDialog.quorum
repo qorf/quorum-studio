@@ -33,13 +33,16 @@ use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Containers.Array
 use Libraries.Containers.Iterator
 use Libraries.Game.GameStateManager
+use Libraries.Interface.Events.KeyboardListener
+use Libraries.Interface.Events.KeyboardEvent
 
 
+class NewFileDialog is Dialog, KeyboardListener
 
+    boolean initialized = false 
 
-class NewFileDialog is Dialog
-
-    boolean initialized = false
+    GameStateManager gameManager
+    QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
 
     // The current Quorum project that we're modifying the properties of.
     // Set during the SetProperties(QuorumProject) action.
@@ -49,22 +52,21 @@ class NewFileDialog is Dialog
     
     //Variables for the NewFile Dialog
     TextField fileNameField
-    TextField folderNameField
-    Button folderBrowseButton
+    TextField locationNameField
+    Button browseButton
     Button okayButton
     Button cancelButton
-    
     
     //Behaviors used by the Browse, Ok, and Cancel Buttons
     DialogCancelBehavior cancelBehavior
     NewFileOkBehavior okayBehavior
     OpenBrowseFoldersBehavior browseBehavior
 
-
     on create
         cancelBehavior:SetDialog(me)
         okayBehavior:SetDialog(me)
-        browseBehavior:SetDialog(me)
+        browseBehavior:SetDialog(me) 
+        studio:AddKeyboardListener(me) 
     end
 
     action Initialize
@@ -73,7 +75,7 @@ class NewFileDialog is Dialog
         end
 
         initialized = true
-       
+
         SetName("New File")
         SetPixelWidth(400)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
@@ -88,22 +90,20 @@ class NewFileDialog is Dialog
         FlowLayout newFileLayout
         panel:SetLayout(newFileLayout)
         panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(200)
+        panel:SetPixelHeight(110)
         panel:SetBorderColor(color:Black())
         panel:SetBorderThickness(1)
         panel:Add(CreateNewFileControl())
         panel:SetView2D(view)
         Add(panel)
-
-        
     end
 
     //sets the folderNameField in the dialog to the default filepath for the
-    //project (e.g. GameApplicaiton/SourceCode)
+    //project (e.g. GameApplication/SourceCode)
     action SetProperties(QuorumProject project)
         me:project = project
         projectName = me:project:PROJECT_SOURCES
-        folderNameField:SetText(projectName)      
+        locationNameField:SetText(projectName)      
     end 
 
     action IsInitialized returns boolean
@@ -126,45 +126,57 @@ class NewFileDialog is Dialog
         fileContainer:SetPercentageWidth(1.0)
         fileContainer:SetVerticalLayoutMode(fileContainer:FIT_CONTENTS)
         fileContainer:SetLeftPadding(10)
-        fileContainer:SetTopPadding(6)
+        fileContainer:SetRightPadding(40)
+        fileContainer:SetTopPadding(20)
         
         Label fileName
-        fileName:SetText("File Name: ")
-        fileName:SetPercentageWidth(0.3)
+        fileName:SetText("Name:")
+        fileName:SetRightPadding(37)   //when zooming the padding does not adjust correctly 
         fileContainer:Add(fileName)
         
-        fileNameField:SetPercentageWidth(0.7)
+        fileNameField:SetHorizontalLayoutMode(fileNameField:parent:Libraries.Interface.Controls.Control:FILL)
         fileNameField:SetText("")
+        fileNameField:SetFocusable(true)
+        fileNameField:SetNextFocus(locationNameField)
+        fileNameField:SetPreviousFocus(okayButton)
         fileNameField:Focus()
         fileContainer:Add(fileNameField)
 
         createNewFileContainer:Add(fileContainer)
 
-        FlowLayout folderLayout
-        Control folderContainer
-        folderContainer:SetLayout(folderLayout)
-        folderContainer:SetPercentageWidth(1.0)
-        folderContainer:SetPixelWidth(-10)
-        folderContainer:SetVerticalLayoutMode(folderContainer:FIT_CONTENTS)
-        folderContainer:SetLeftPadding(10)
-        folderContainer:SetTopPadding(10)
+        FlowLayout locationLayout
+        Control locationContainer
+        locationContainer:SetLayout(locationLayout)
+        locationContainer:SetPercentageWidth(1.0)
+        locationContainer:SetVerticalLayoutMode(locationContainer:FIT_CONTENTS)
+        locationContainer:SetLeftPadding(10)
+        locationContainer:SetTopPadding(10)
+        locationContainer:SetRightPadding(10)
 
-        Label folderLabel
-        folderLabel:SetText("Folder: ")
-        folderLabel:SetPercentageWidth(0.3)
-        folderContainer:Add(folderLabel)
+        Label locationName
+        locationName:SetText("Location:")
+        locationName:SetRightPadding(6)
+        locationContainer:Add(locationName)
      
-        folderNameField:SetPercentageWidth(0.5)
-        folderContainer:Add(folderNameField)
+        locationNameField:SetPercentageWidth(0.6)
+        locationNameField:SetFocusable(true)
+        locationNameField:SetNextFocus(browseButton)
+        locationNameField:SetPreviousFocus(fileNameField)
+        locationContainer:Add(locationNameField)
 
-        folderBrowseButton:SetName("Browse...")
-        folderBrowseButton:SetPercentageWidth(0.15)
-        folderBrowseButton:SetLeftPadding(6)
-        folderBrowseButton:SetBottomPadding(6)
-        folderBrowseButton:SetBehavior(browseBehavior)
-        folderContainer:Add(folderBrowseButton)
+        browseButton:SetName("Browse...")
+        //locationBrowseButton:SetHorizontalLayoutMode(locationBrowseButton:parent:Libraries.Interface.Controls.Control:FILL)
+        browseButton:SetHorizontalLayoutMode(browseButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        browseButton:SetPercentageWidth(0.2)
+        browseButton:SetLeftPadding(6)
+        browseButton:SetBottomPadding(6)
+        browseButton:SetFocusable(true)
+        browseButton:SetNextFocus(cancelButton)
+        browseButton:SetPreviousFocus(locationNameField)
+        browseButton:SetBehavior(browseBehavior)
+        locationContainer:Add(browseButton)
         
-        createNewFileContainer:Add(folderContainer)
+        createNewFileContainer:Add(locationContainer)
 
         FlowLayout closingButtonsLayout
         Control closingButtonsContainer
@@ -174,7 +186,7 @@ class NewFileDialog is Dialog
         closingButtonsContainer:SetTopPadding(20)
         
         Control closingPadding
-        closingPadding:SetPercentageWidth(0.5)
+        closingPadding:SetPercentageWidth(0.54)
         closingPadding:SetPixelHeight(1)
         closingButtonsContainer:Add(closingPadding)
 
@@ -183,6 +195,9 @@ class NewFileDialog is Dialog
         cancelButton:SetPercentageWidth(0.2)
         cancelButton:SetLeftPadding(0)
         cancelButton:SetTopPadding(0)
+        cancelButton:SetFocusable(true)
+        cancelButton:SetNextFocus(okayButton)
+        cancelButton:SetPreviousFocus(browseButton)
         cancelButton:SetBehavior(cancelBehavior)
         closingButtonsContainer:Add(cancelButton)
 
@@ -197,6 +212,9 @@ class NewFileDialog is Dialog
         okayButton:SetPercentageWidth(0.2)
         okayButton:SetLeftPadding(10)
         okayButton:SetTopPadding(0)
+        okayButton:SetFocusable(true)
+        okayButton:SetNextFocus(fileNameField)
+        okayButton:SetPreviousFocus(cancelButton)
         okayButton:SetBehavior(okayBehavior)
         closingButtonsContainer:Add(okayButton)
 
@@ -217,7 +235,7 @@ class NewFileDialog is Dialog
     action UpdateFolderName(text folderName)
         //folderNameField:AppendToText(folderName)    
         projectName = projectName + "/" + folderName
-        folderNameField:SetText(projectName)    
+        locationNameField:SetText(projectName)    
     end
 
     //creates the new file using the file path from the folderNameField in the
@@ -226,7 +244,7 @@ class NewFileDialog is Dialog
         File file
         File value = project:GetLocation()
         text path = value:GetAbsolutePath():Trim()
-        path = path + "/" + folderNameField:GetText():Trim() + "/" + fileNameField:GetText():Trim() 
+        path = path + "/" + locationNameField:GetText():Trim() + "/" + fileNameField:GetText():Trim() 
         
         file:SetAbsolutePath(path)
         
@@ -241,8 +259,7 @@ class NewFileDialog is Dialog
 
         file:Write("")
         file:Close()
-        AppendToProjectTree(file)
-        
+        AppendToProjectTree(file)        
     end
 
     action AppendToProjectTree(File file) 
@@ -278,8 +295,8 @@ class NewFileDialog is Dialog
 //
 //        sourceCode:Add(cast(TreeItem, newFileTreeItem))
 
-        GameStateManager manager
-        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+//        GameStateManager manager
+//        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
 
         ProjectTree projectTree = studio:GetProjectTree()
         Iterator<TreeItem> items = projectTree:GetTreeItems()
@@ -301,5 +318,24 @@ class NewFileDialog is Dialog
 
         projectTree:Remove(cast(TreeItem, oldProjectHeader))
         projectTree:Add(treeItem)
+    end
+
+    action PressedKey(KeyboardEvent event)
+        if event:keyCode = event:ENTER
+            okayButton:Activate()
+            //CreateNewFile()
+            //Hide()
+        end
+
+        if event:keyCode = event:ESCAPE
+            cancelButton:Activate()
+            //Hide()
+        end
+//
+//        if event:keyCode = event:SPACE
+//            if locationBrowseButton:IsFocused()
+//                
+//            end
+//        end
     end
 end
