@@ -1,0 +1,66 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Controls.FileChooser
+use Libraries.Interface.Controls.FileFilter
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.Interface.NewProjectDialog
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Projects.ProjectManager
+
+
+class NewProjectBrowseBehavior is QuorumStudioBehavior 
+    
+    NewProjectDialog dialog = undefined
+    text folderName = undefined
+    QuorumProject project = undefined
+    QuorumStudio studio = undefined
+    ProjectManager manager = undefined
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+        manager = studio:GetProjectManager()
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
+
+    action SetDialog(NewProjectDialog dialog)
+        me:dialog = dialog
+    end
+
+    action GetDialog returns NewProjectDialog
+        return dialog
+    end
+
+    action SetFolderName (text folderName)
+        me:folderName = folderName
+    end
+
+    action GetFolderName returns text
+        return me:folderName
+    end
+
+    action Run(BehaviorEvent event)
+        FileChooser chooser
+        File location
+        File file = chooser:OpenFileDialog(location)
+        if file not= undefined
+            output file:GetAbsolutePath()
+            //sets the locationPath variable for creating the new project
+            dialog:SetLocation(file)        
+            //boolean isProject = manager:IsProject(file)
+            me:folderName = file:GetFileName()
+            dialog:UpdateLocationName(folderName)
+            
+        end
+    end
+end

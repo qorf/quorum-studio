@@ -1,0 +1,38 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Development.Environment.Studio.Interface.NewProjectDialog
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.Button
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.System.File
+
+
+class NewProjectOkBehavior is QuorumStudioBehavior
+
+    QuorumProject project
+    NewProjectDialog dialog = undefined
+    Button button
+
+    action SetDialog(NewProjectDialog dialog)
+        me:dialog = dialog
+    end
+
+    action GetDialog returns NewProjectDialog
+        return me:dialog
+    end
+
+    action Run(BehaviorEvent event)
+        me:button = me:dialog:GetCurrentApplicationFocus()
+        me:dialog:SetTemplate(button)
+        me:project = me:dialog:CreateNewProject()
+        File file = me:project:GetMain()
+        me:project:Save() 
+        me:project:Load()
+        file:Write("//This is a Blank Quorum Application Template")
+        file:Close()
+        //me:dialog:AppendToProjectPane(me:project)
+        me:dialog:Hide()
+    end
+    
+
+
+end
