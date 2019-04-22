@@ -48,7 +48,7 @@ class NewProjectDialog is Dialog, KeyboardListener
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
     //FocusListener focusListener  //?? used to determine which tab is in focus for determining next/previous focus for the rest of the dialog
     HashTable<Button, text> descriptions
-    HashTable<text, File> projectTemplates
+    HashTable<Button, text> templates
 
     //Dialog Controls
     TextBox descriptionText
@@ -69,7 +69,8 @@ class NewProjectDialog is Dialog, KeyboardListener
     
     //set by the browseBehavior, used by the okayBehavior to set the QuorumProject location
     File locationPath
-    File templatePath //used when creating the Main.quorum and setting the project properties in CreateNewProject()
+    //set to blank application template by default. Changes based on user's application selection in the dialog
+    text templatePath = "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/New/Blank" 
 
 
     //Basic Tab Icons
@@ -174,6 +175,21 @@ these messages in any Java Container
         descriptions:Add(userInterfaceIcon, userInterfaceDescription)
         descriptions:Add(webServerIcon, webServerDescription)
 
+        templates:Add(blankIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/New/Blank")
+        templates:Add(gameIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/New/Game")
+        templates:Add(androidIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/New/Android")
+        templates:Add(legoIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/New/LEGO")
+        templates:Add(documentIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/Document")
+        templates:Add(imageSheetsIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/ImageSheets")
+        templates:Add(internetServicesIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/InternetServices")
+        templates:Add(legoMoveIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/LEGOMove")
+        templates:Add(physics2DIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/Physics2D")
+        templates:Add(physics3DIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/Physics3D")
+        templates:Add(sineWavesIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/SineWaves")
+        templates:Add(skyboxIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/Skybox")
+        templates:Add(userInterfaceIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/UserInterface")
+        templates:Add(webServerIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/WebServer")
+
         SetName("New Project")
         SetPixelWidth(400)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
@@ -211,6 +227,8 @@ these messages in any Java Container
     action UpdateDescription(ToggleButton button)
         descriptionText:SetText(descriptions:GetValue(button))
         descriptionText:HideCaret()
+        templatePath = templates:GetValue(button)
+
         button:SetToggleState(true)
     end
 
@@ -226,11 +244,8 @@ these messages in any Java Container
         locationField:SetText(location)
     end
 
-    action SetTemplate(Button button)
-        //Sets the template for the selected application on this project
-        //depending on which type of application is selected for the project
-        //could be set in UpdateDescription(), but may want to reconsider action name (SetProjectProperties()?)
-        //templatePath:SetAbsolutePath()
+    action GetTemplate returns text
+        return templatePath
     end
 
     action SetProjectType(Button button)
@@ -751,44 +766,49 @@ these messages in any Java Container
         QuorumProject project
         
         File file
-        File propertiesLocation
-        File sourceLocation
-        File mainLocation
-    //will need an option for each type of application option
-        File blankProperties //project template "project.qp" used to load the correct properties for this type of project   
-        blankProperties:SetAbsolutePath("/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/New/Blank/Project/Project.qp")
-        
+        File projectPath    //new project path 
+        File template       //template to copy from
+        File newProjectFolderLocation   
+        //template folders containing the files that need to be copied into the new project
+        //dependent on the type of application chosen by the user
+        template:SetAbsolutePath(templatePath)              
+        //New Project Path - this path may need to be adjusted?
         text path = locationPath:GetAbsolutePath():Trim() + "/Templates/New/" + nameField:GetText():Trim() + "/Main.quorum"
         file:SetAbsolutePath(path)
         project:SetLocation(file:GetParentDirectory())
-        project:LoadProperties(blankProperties)  
-        propertiesLocation = project:GetPropertiesLocation()
-        sourceLocation = project:GetLocation()
-        text mainPath = sourceLocation:GetAbsolutePath()
-        mainLocation:SetWorkingDirectory(mainPath)
-        mainLocation:SetPath(project:PROJECT_MAIN_LOCATION)
+        project:SetName(nameField:GetText():Trim())
 
-        File mom = file:GetParentDirectory()
-        if not mom:Exists()
-            mom:CreateDirectories()
+        projectPath = project:GetLocation()
+        text newProjectPath = projectPath:GetAbsolutePath()
+        newProjectFolderLocation:SetWorkingDirectory(newProjectPath)
+        boolean copySuccess = template:Copy(newProjectFolderLocation, true)
+        if copySuccess
+            output "Project copied Successfully"
+        else
+            output "Error copying Project"
         end
 
-        File dad = propertiesLocation:GetParentDirectory()
+        File dad = newProjectFolderLocation:GetParentDirectory()
         if not dad:Exists()
             dad:CreateDirectories()
-        end
-        
-        File stepMom = mainLocation:GetParentDirectory()
-        if not stepMom:Exists()
-            stepMom:CreateDirectories()
         end
 
         return project
     end
 
-
     action AppendToProjectPane(QuorumProject project)
-        //action to add the newly created project to the project ane in QuorumStudio
+        //action to add the newly created project to the project pane in QuorumStudio
+        Resources resource
+        resource:Load()
+
+        QuorumProjectView projectView = cast(QuorumProjectView, project:GetProjectView())
+        projectView:SetResources(resource)
+        TreeItem treeItem = projectView:GetLogicalTree()
+
+        ProjectTree projectTree = studio:GetProjectTree()
+        Iterator<TreeItem> items = projectTree:GetTreeItems()
+
+        projectTree:Add(treeItem)
     end
     
     action PressedKey (KeyboardEvent event)
