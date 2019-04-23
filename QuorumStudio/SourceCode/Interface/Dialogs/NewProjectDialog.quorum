@@ -70,7 +70,7 @@ class NewProjectDialog is Dialog, KeyboardListener
     //set by the browseBehavior, used by the okayBehavior to set the QuorumProject location
     File locationPath
     //set to blank application template by default. Changes based on user's application selection in the dialog
-    text templatePath = "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/New/Blank" 
+    text templatePath = "Templates/New/Blank" 
 
 
     //Basic Tab Icons
@@ -175,22 +175,25 @@ these messages in any Java Container
         descriptions:Add(userInterfaceIcon, userInterfaceDescription)
         descriptions:Add(webServerIcon, webServerDescription)
 
-        templates:Add(blankIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/New/Blank")
-        templates:Add(gameIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/New/Game")
-        templates:Add(androidIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/New/Android")
-        templates:Add(legoIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/New/LEGO")
-        templates:Add(documentIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/Document")
-        templates:Add(imageSheetsIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/ImageSheets")
-        templates:Add(internetServicesIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/InternetServices")
-        templates:Add(legoMoveIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/LEGOMove")
-        templates:Add(physics2DIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/Physics2D")
-        templates:Add(physics3DIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/Physics3D")
-        templates:Add(sineWavesIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/SineWaves")
-        templates:Add(skyboxIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/Skybox")
-        templates:Add(userInterfaceIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/UserInterface")
-        templates:Add(webServerIcon, "/Users/parks/NetBeansProjects/quorumstudio/QuorumStudio/Templates/Other/WebServer")
+        templates:Add(blankIcon, "Templates/New/Blank")
+        templates:Add(gameIcon, "Templates/New/Game")
+        templates:Add(androidIcon, "Templates/New/Android")
+        templates:Add(legoIcon, "Templates/New/LEGO")
+        templates:Add(documentIcon, "Templates/Other/Document")
+        templates:Add(imageSheetsIcon, "Templates/Other/ImageSheets")
+        templates:Add(internetServicesIcon, "Templates/Other/InternetServices")
+        templates:Add(legoMoveIcon, "Templates/Other/LEGOMove")
+        templates:Add(physics2DIcon, "Templates/Other/Physics2D")
+        templates:Add(physics3DIcon, "Templates/Other/Physics3D")
+        templates:Add(sineWavesIcon, "Templates/Other/SineWaves")
+        templates:Add(skyboxIcon, "Templates/Other/Skybox")
+        templates:Add(userInterfaceIcon, "Templates/Other/UserInterface")
+        templates:Add(webServerIcon, "Templates/Other/WebServer")
 
         SetName("New Project")
+        
+//        SetPixelWidth(studio:GetScreenWidth() / 3)
+//        SetPixelHeight(studio:GetScreenHeight() / 3)
         SetPixelWidth(400)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
 
@@ -228,7 +231,6 @@ these messages in any Java Container
         descriptionText:SetText(descriptions:GetValue(button))
         descriptionText:HideCaret()
         templatePath = templates:GetValue(button)
-
         button:SetToggleState(true)
     end
 
@@ -280,7 +282,14 @@ these messages in any Java Container
         tabPane:Add(AdvancedTab())
         tabPane:Select(0)
         tabPane:SetFocusable(true)
-        tabPane:SetNextFocus(basicTab)
+//      //Add a TabChangeListener
+//        if tabPane:GetSelection():GetTab() = basicTab
+//            tabPane:SetNextFocus(blankIcon)
+//        elseif tabPane:GetSelection():GetTab() = advancedTab
+//            tabPane:SetNextFocus(documentIcon)
+//        end
+        
+        
         tabPane:SetPreviousFocus(okayButton)
         applicationsContainer:Add(tabPane)
         createNewProjectContainer:Add(applicationsContainer)
@@ -329,8 +338,13 @@ these messages in any Java Container
         nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
         nameField:SetBottomPadding(6)
         nameField:SetFocusable(true)
-        nameField:SetNextFocus(locationField)   
-        nameField:SetPreviousFocus(webServerIcon)
+        nameField:SetNextFocus(locationField)
+//        //Add TabChangeListener
+//        if tabPane:GetSelection():GetTab() = basicTab
+//            nameField:SetPreviousFocus(legoIcon)
+//        elseif tabPane:GetSelection():GetTab() = advancedTab
+//            nameField:SetPreviousFocus(webServerIcon)
+//        end
         nameField:HideCaret()
         projectNameContainer:Add(nameField)
         createNewProjectContainer:Add(projectNameContainer)
@@ -411,21 +425,21 @@ these messages in any Java Container
         closingButtonsContainer:Add(okayButton)
         createNewProjectContainer:Add(closingButtonsContainer)
 
-       return createNewProjectContainer
+        return createNewProjectContainer
     end
 
     action BasicTab returns Tab
         basicTab:SetName("Basic")
         basicTab:DisplayCloseButton(false)        
-        basicTab:SetFocusable(true)
-        basicTab:SetNextFocus(blankIcon)
-        basicTab:SetPreviousFocus(tabPane)
+//        basicTab:SetFocusable(true)
+//        basicTab:SetNextFocus(blankIcon)
+//        basicTab:SetPreviousFocus(tabPane)
 
         FlowLayout scrollLayout
         ScrollPane scrollPane
         scrollPane:SetLayout(scrollLayout)
         scrollPane:SetPercentageWidth(1.0)
-        scrollPane:SetPixelHeight(180)
+        scrollPane:SetPixelHeight(180)       
         basicTab:SetRelatedItem(scrollPane)
 
         FlowLayout layout
@@ -445,7 +459,6 @@ these messages in any Java Container
         applicationsContainer:SetRightPadding(40)
         applicationsContainer:SetLeftPadding(40)
 
-        blankIcon:SetName("Blank")
         blankIcon:SetHorizontalLayoutMode(blankIcon:parent:Libraries.Interface.Controls.Control:STANDARD)   
         blankIcon:SetRightPadding(80)
         blankIcon:SetLeftPadding(40)
@@ -457,7 +470,7 @@ these messages in any Java Container
         blankIcon:SetButtonGroup(toggleButtons)
         applicationsContainer:Add(blankIcon)
 
-        gameIcon:SetName("Game")
+        //gameIcon:SetName("Game")
         gameIcon:SetHorizontalLayoutMode(gameIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
         gameIcon:SetPercentageWidth(0.4)
         gameIcon:SetFocusable(true)
@@ -482,8 +495,8 @@ these messages in any Java Container
         gameLabel:SetLeftPadding(100)
         gameLabel:SetPercentageWidth(0.4)
         applicationsContainer:Add(gameLabel)
-        
-        androidIcon:SetName("Android")
+
+        //androidIcon:SetName("Android")
         androidIcon:SetHorizontalLayoutMode(androidIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
         androidIcon:SetTopPadding(80)
         androidIcon:SetRightPadding(80)
@@ -496,12 +509,12 @@ these messages in any Java Container
         androidIcon:SetButtonGroup(toggleButtons)
         applicationsContainer:Add(androidIcon)
         
-        legoIcon:SetName("Lego")
+        //legoIcon:SetName("Lego")
         legoIcon:SetHorizontalLayoutMode(legoIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
         legoIcon:SetTopPadding(80)
         legoIcon:SetPercentageWidth(0.4)
         legoIcon:SetFocusable(true)
-        legoIcon:SetNextFocus(advancedTab)
+        legoIcon:SetNextFocus(tabPane)
         legoIcon:SetPreviousFocus(androidIcon)
         legoIcon:SetBehavior(buttonsBehavior)
         legoIcon:SetButtonGroup(toggleButtons)
@@ -531,9 +544,9 @@ these messages in any Java Container
     action AdvancedTab returns Tab
         advancedTab:SetName("Advanced")
         advancedTab:DisplayCloseButton(false)
-        advancedTab:SetFocusable(true)
-        advancedTab:SetPreviousFocus(legoIcon)
-        advancedTab:SetNextFocus(documentIcon)
+//        advancedTab:SetFocusable(true)
+//        advancedTab:SetPreviousFocus(legoIcon)
+//        advancedTab:SetNextFocus(documentIcon)
 
         ScrollPane scrollPane
         scrollPane:SetPercentageWidth(1.0)
@@ -567,7 +580,7 @@ these messages in any Java Container
         documentIcon:SetPercentageWidth(0.4)
         documentIcon:SetFocusable(true)
         documentIcon:SetNextFocus(imageSheetsIcon)
-        documentIcon:SetPreviousFocus(advancedTab)
+        documentIcon:SetPreviousFocus(tabPane)
         documentIcon:SetBehavior(buttonsBehavior)
         documentIcon:SetButtonGroup(toggleButtons)
         applicationsContainer:Add(documentIcon)
@@ -771,9 +784,9 @@ these messages in any Java Container
         File newProjectFolderLocation   
         //template folders containing the files that need to be copied into the new project
         //dependent on the type of application chosen by the user
-        template:SetAbsolutePath(templatePath)              
-        //New Project Path - this path may need to be adjusted?
-        text path = locationPath:GetAbsolutePath():Trim() + "/Templates/New/" + nameField:GetText():Trim() + "/Main.quorum"
+        template:SetPath(templatePath)              
+        
+        text path = locationPath:GetAbsolutePath():Trim() + "/" + nameField:GetText():Trim() + "/Main.quorum"
         file:SetAbsolutePath(path)
         project:SetLocation(file:GetParentDirectory())
         project:SetName(nameField:GetText():Trim())
