@@ -35,6 +35,7 @@ use Libraries.Containers.Iterator
 use Libraries.Game.GameStateManager
 use Libraries.Interface.Events.KeyboardListener
 use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Selections.TreeSelection
 
 
 class NewFileDialog is Dialog, KeyboardListener
@@ -67,6 +68,7 @@ class NewFileDialog is Dialog, KeyboardListener
         okayBehavior:SetDialog(me)
         browseBehavior:SetDialog(me) 
         studio:AddKeyboardListener(me) 
+        fileNameField:Focus()
     end
 
     action Initialize
@@ -102,8 +104,19 @@ class NewFileDialog is Dialog, KeyboardListener
     //project (e.g. GameApplication/SourceCode)
     action SetProperties(QuorumProject project)
         me:project = project
-        projectName = me:project:PROJECT_SOURCES
-        locationNameField:SetText(projectName)      
+        //Sets the locationNameField to the path of the current folder in focus in the ProjectTree
+        File file
+        ProjectTree tree = studio:GetProjectTree()
+        TreeSelection selection = tree:GetSelection()   
+        Array<TreeItem> items = selection:GetPath()
+        i = items:GetSize()-1
+        repeat while i > 0
+            TreeItem item = items:Get(i)
+            projectName = item:GetName() + "/" + projectName
+            i = i - 1
+        end
+
+        locationNameField:SetText(projectName:Trim())  
     end 
 
     action IsInitialized returns boolean
@@ -139,7 +152,6 @@ class NewFileDialog is Dialog, KeyboardListener
         fileNameField:SetFocusable(true)
         fileNameField:SetNextFocus(locationNameField)
         fileNameField:SetPreviousFocus(okayButton)
-        fileNameField:Focus()
         fileContainer:Add(fileNameField)
 
         createNewFileContainer:Add(fileContainer)
@@ -229,12 +241,11 @@ class NewFileDialog is Dialog, KeyboardListener
         return me:project
     end
 
-    //updates the folderNameField to the new file path that the file will be added to
+    //updates the locationNameField to the file path that the new file will be added to
     //(e.g. GameApplication/SourceCode to GameApplication/SourceCode/images)
     //used by the OpenBrowseFoldersBehavior
-    action UpdateFolderName(text folderName)
-        //folderNameField:AppendToText(folderName)    
-        projectName = projectName + "/" + folderName
+    action UpdateFolderName(text folderName)  
+        projectName = projectName + "/" + folderName    
         locationNameField:SetText(projectName)    
     end
 
@@ -267,37 +278,6 @@ class NewFileDialog is Dialog, KeyboardListener
 
         QuorumProjectView projectView = cast(QuorumProjectView, project:GetProjectView())
         TreeItem treeItem = projectView:GetLogicalTree()
-//        Iterator<TreeItem> iterator = treeItem:GetTreeItems()
-//
-//        boolean found = false
-//        TreeItem sourceCode = undefined
-//
-//        repeat while iterator:HasNext() and found = false
-//            sourceCode = iterator:Next()
-//            if sourceCode:GetName() = "SourceCode"
-//                found = true
-//            end
-//        end
-//
-//        if found = false
-//            output "Warning: Couldn't find Source Code for file " + file:GetPath()
-//            return now
-//        end
-//
-//        output "Creating TreeItem for " + file:GetPath() + "..."
-//
-//        ProjectTreeItem newFileTreeItem
-//
-//        newFileTreeItem:SetFile(file)
-//        newFileTreeItem:SetProject(project)
-//        newFileTreeItem:SetName(file:GetFileName())
-//        newFileTreeItem:SetIcon(resource:GetQuorumFile())
-//
-//        sourceCode:Add(cast(TreeItem, newFileTreeItem))
-
-//        GameStateManager manager
-//        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
-
         ProjectTree projectTree = studio:GetProjectTree()
         Iterator<TreeItem> items = projectTree:GetTreeItems()
 

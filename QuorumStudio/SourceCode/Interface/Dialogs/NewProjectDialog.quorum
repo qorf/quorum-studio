@@ -20,6 +20,25 @@ use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Controls.ScrollPane
 use Libraries.Game.Graphics.Drawable
 use Libraries.Interface.Controls.Icon
+use Libraries.Interface.Events.FocusListener
+use Libraries.Interface.Events.FocusEvent
+use Libraries.Interface.Controls.ButtonGroup
+use Libraries.Development.Environment.Studio.Behaviors.NewProjectApplicationsBehavior
+use Libraries.Containers.HashTable
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Game.FocusManager
+use Libraries.Development.Environment.Studio.Behaviors.NewProjectBrowseBehavior
+use Libraries.Interface.Controls.ToggleButton
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.Behaviors.NewProjectOkBehavior
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Projects.QuorumProjectView
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Containers.Iterator
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Resources
+
 
 class NewProjectDialog is Dialog, KeyboardListener
 
@@ -27,49 +46,158 @@ class NewProjectDialog is Dialog, KeyboardListener
     
     GameStateManager gameManager
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+    //FocusListener focusListener  //?? used to determine which tab is in focus for determining next/previous focus for the rest of the dialog
+    HashTable<Button, text> descriptions
+    HashTable<Button, text> templates
 
-
-    //initialized with the blank application description, will change according to current focus
+    //Dialog Controls
     TextBox descriptionText
     TextField nameField
     TextField locationField
     Button browseButton
     Button cancelButton
     Button okayButton
+    TabPane tabPane
+    Tab advancedTab
+    Tab basicTab
+
+    //Dialog Behaviors
     DialogCancelBehavior cancelBehavior
+    NewProjectApplicationsBehavior buttonsBehavior
+    NewProjectBrowseBehavior browseBehavior
+    NewProjectOkBehavior okayBehavior
+    
+    //set by the browseBehavior, used by the okayBehavior to set the QuorumProject location
+    File locationPath
+    //set to blank application template by default. Changes based on user's application selection in the dialog
+    text templatePath = "Templates/New/Blank" 
+
 
     //Basic Tab Icons
-    Icon blankIcon
+    ButtonGroup toggleButtons
+    ToggleButton blankIcon
+    ToggleButton gameIcon
+    ToggleButton androidIcon
+    ToggleButton legoIcon
     
     //Advanced Tab Icons
+    ToggleButton documentIcon
+    ToggleButton imageSheetsIcon
+    ToggleButton internetServicesIcon
+    ToggleButton legoMoveIcon
+    ToggleButton physics2DIcon
+    ToggleButton physics3DIcon
+    ToggleButton sineWavesIcon
+    ToggleButton skyboxIcon
+    ToggleButton userInterfaceIcon
+    ToggleButton webServerIcon    
 
+    //Application Descriptions
     text blankDescription = "A blank application in Quorum sets up a 
 default project with no source code inside 
 of it. As classes are optional in Quorum, 
 using a blank project works just as well 
 as an application for writing programs."
-    //text gameDescription
+    text gameDescription = "This project type creates a template for 
+creating a computer game in Quorum. This 
+includes creating a game object, setting 
+up its actions for use in the game, and 
+starting an application window that a game 
+will draw in. Auditory games may also be 
+built using the same framework."
+    text legoDescription = "This project creates a default Lego Quorum 
+application. In this case, if a Lego robot 
+is connected to the system, Quorum will 
+automatically send the built project to the 
+robot. If no Lego robot is connected, the 
+system will detect this and build the 
+project normally."
+    text androidDescription = "This project creates a default class for 
+creating a game in Quorum with tags set 
+appropriately to generate Android 
+Applications. This includes creating a 
+game object, setting up its actions for 
+use in the game,and loading a window for 
+a game to be displayed in."    
+    text documentDescription = "In a documentation application, building 
+the project creates a web page in HTML 
+for the project. In this default case, 
+it will create an HTML file for the 
+class Main."
+    text imageSheetsDescription = "Needs Description: Pig Shooter"
+    text internetServicesDescription = "Needs Description: Response Events"
+    text legoMoveDescription = "Needs Description: Lego Motor"
+    text physics2DDescription = "Needs Description: Game using 2D physics"
+    text physics3DDescription = "Needs Description: Game using 3D physics"
+    text sineWavesDescription = "Needs Description: Sine Waves through 
+Audio"
+    text skyboxDescription = "Needs Description: Game using Skybox"
+    text userInterfaceDescription = "Needs Description: Game using User 
+Interface (Buttons)"
+    text webServerDescription = "This class shows how to setup a Quorum Web 
+Server. We receive messages with the 
+Respond action and respond with a 
+WebResponse Object. We can receive 
+these messages in any Java Container 
+(e.g., Tomcat, Glassfish)."
 
     on create
-        //browseBehavior:SetDialog(me)
+        browseBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
-        //okayBehavior:SetDialog(me)
+        buttonsBehavior:SetDialog(me)
+        okayBehavior:SetDialog(me)
         studio:AddKeyboardListener(me)
+        tabPane:Focus()       
     end
 
     action Initialize
+        Color color
         if initialized
             output "WARNING: Re-initializing the NewFileDialog."
         end
 
         initialized = true
 
+        //HashTable for Applications and their descriptions, used for loading the correct description
+        //dependent on the current application selection
+        descriptions:Add(blankIcon, blankDescription)
+        descriptions:Add(gameIcon, gameDescription)
+        descriptions:Add(androidIcon, androidDescription)
+        descriptions:Add(legoIcon, legoDescription)
+        descriptions:Add(documentIcon, documentDescription)
+        descriptions:Add(imageSheetsIcon, imageSheetsDescription)
+        descriptions:Add(internetServicesIcon, internetServicesDescription)
+        descriptions:Add(legoMoveIcon, legoMoveDescription)
+        descriptions:Add(physics2DIcon, physics2DDescription)
+        descriptions:Add(physics3DIcon, physics3DDescription)
+        descriptions:Add(sineWavesIcon, sineWavesDescription)
+        descriptions:Add(skyboxIcon, skyboxDescription)
+        descriptions:Add(userInterfaceIcon, userInterfaceDescription)
+        descriptions:Add(webServerIcon, webServerDescription)
+
+        templates:Add(blankIcon, "Templates/New/Blank")
+        templates:Add(gameIcon, "Templates/New/Game")
+        templates:Add(androidIcon, "Templates/New/Android")
+        templates:Add(legoIcon, "Templates/New/LEGO")
+        templates:Add(documentIcon, "Templates/Other/Document")
+        templates:Add(imageSheetsIcon, "Templates/Other/ImageSheets")
+        templates:Add(internetServicesIcon, "Templates/Other/InternetServices")
+        templates:Add(legoMoveIcon, "Templates/Other/LEGOMove")
+        templates:Add(physics2DIcon, "Templates/Other/Physics2D")
+        templates:Add(physics3DIcon, "Templates/Other/Physics3D")
+        templates:Add(sineWavesIcon, "Templates/Other/SineWaves")
+        templates:Add(skyboxIcon, "Templates/Other/Skybox")
+        templates:Add(userInterfaceIcon, "Templates/Other/UserInterface")
+        templates:Add(webServerIcon, "Templates/Other/WebServer")
+
         SetName("New Project")
+        
+//        SetPixelWidth(studio:GetScreenWidth() / 3)
+//        SetPixelHeight(studio:GetScreenHeight() / 3)
         SetPixelWidth(400)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
 
         LabelBoxView view
-        Color color
         view:SetBorderThickness(1)
         view:SetBorderStyle(view:ALL - view:TOP)
         view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
@@ -85,9 +213,50 @@ as an application for writing programs."
         panel:SetView2D(view)
         Add(panel)
     end
+    
+    //action to obtain the current button that has the focus
+    //used by the NewProjectApplicationBehavior to update
+    //the description text box to the correct description for
+    //the application/template type in focus
+    action GetCurrentApplicationFocus returns Button
+        Button currentFocus
+        currentFocus = cast(Button, studio:GetCurrentFocus())
+        return currentFocus
+    end
 
+    //called by the NewProjectApplicationBehavior to update
+    //the description text box to the correct description for
+    //the application/template Button in focus
+    action UpdateDescription(ToggleButton button)
+        descriptionText:SetText(descriptions:GetValue(button))
+        descriptionText:HideCaret()
+        templatePath = templates:GetValue(button)
+        button:SetToggleState(true)
+    end
+
+    action GetLocation returns File
+        return locationPath
+    end
+
+    action SetLocation(File file)
+        locationPath = file
+    end
+
+    action UpdateLocationName(text location)
+        locationField:SetText(location)
+    end
+
+    action GetTemplate returns text
+        return templatePath
+    end
+
+    action SetProjectType(Button button)
+        projectType = button:GetName()
+    end
+    
     action CreateNewProjectControl returns Control
         Color color
+        
         Control createNewProjectContainer
         FlowLayout createNewProjectLayout
         createNewProjectContainer:SetLayout(createNewProjectLayout)
@@ -104,8 +273,7 @@ as an application for writing programs."
         applicationsContainer:SetTopPadding(6)
         applicationsContainer:SetLeftPadding(10)
         applicationsContainer:SetRightPadding(10)
-
-        TabPane tabPane
+       
         FlowLayout tabLayout
         tabPane:SetViewAreaLayout(tabLayout)
         tabPane:SetPercentageWidth(1.0)
@@ -113,6 +281,16 @@ as an application for writing programs."
         tabPane:Add(BasicTab())
         tabPane:Add(AdvancedTab())
         tabPane:Select(0)
+        tabPane:SetFocusable(true)
+//      //Add a TabChangeListener
+//        if tabPane:GetSelection():GetTab() = basicTab
+//            tabPane:SetNextFocus(blankIcon)
+//        elseif tabPane:GetSelection():GetTab() = advancedTab
+//            tabPane:SetNextFocus(documentIcon)
+//        end
+        
+        
+        tabPane:SetPreviousFocus(okayButton)
         applicationsContainer:Add(tabPane)
         createNewProjectContainer:Add(applicationsContainer)
 
@@ -154,17 +332,20 @@ as an application for writing programs."
         Label nameLabel
         nameLabel:SetText("Name:")
         nameLabel:SetRightPadding(37)
-        //nameLabel:SetPercentageWidth(0.3)
         projectNameContainer:Add(nameLabel)
 
         nameField:SetText("BlankQuorumApplication") 
         nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
-        //projectNameField:SetPercentageWidth(0.7)
         nameField:SetBottomPadding(6)
         nameField:SetFocusable(true)
-        nameField:Focus()
         nameField:SetNextFocus(locationField)
-        //projectNameField:SetPreviousFocus()
+//        //Add TabChangeListener
+//        if tabPane:GetSelection():GetTab() = basicTab
+//            nameField:SetPreviousFocus(legoIcon)
+//        elseif tabPane:GetSelection():GetTab() = advancedTab
+//            nameField:SetPreviousFocus(webServerIcon)
+//        end
+        nameField:HideCaret()
         projectNameContainer:Add(nameField)
         createNewProjectContainer:Add(projectNameContainer)
 
@@ -175,21 +356,20 @@ as an application for writing programs."
         projectLocationContainer:SetVerticalLayoutMode(projectLocationContainer:FIT_CONTENTS)
         projectLocationContainer:SetTopPadding(6)
         projectLocationContainer:SetLeftPadding(10)
-        //projectLocationContainer:SetRightPadding(10)
 
         Label locationLabel
         locationLabel:SetTopPadding(6)
         locationLabel:SetText("Location:")
         locationLabel:SetRightPadding(6)
-        //projectLocation:SetPercentageWidth(0.3)
         projectLocationContainer:Add(locationLabel)
         
-        locationField:SetText("")    //set to current directory?
+        locationField:SetText(locationPath:GetPath())    //set to current directory?
         locationField:SetPercentageWidth(0.6)
         locationField:SetTopPadding(6)
         locationField:SetFocusable(true)
         locationField:SetNextFocus(browseButton)
         locationField:SetPreviousFocus(nameField)
+        locationField:HideCaret()
         projectLocationContainer:Add(locationField)
 
         browseButton:SetName("Browse...")
@@ -200,7 +380,7 @@ as an application for writing programs."
         browseButton:SetFocusable(true)
         browseButton:SetNextFocus(cancelButton)
         browseButton:SetPreviousFocus(locationField)
-        //browseButton:SetBehavior(browseBehavior)
+        browseButton:SetBehavior(browseBehavior)
         projectLocationContainer:Add(browseButton)
         createNewProjectContainer:Add(projectLocationContainer)
 
@@ -239,26 +419,27 @@ as an application for writing programs."
         okayButton:SetLeftPadding(10)
         okayButton:SetTopPadding(0)
         okayButton:SetFocusable(true)
-        okayButton:SetNextFocus(nameField)
+        okayButton:SetNextFocus(tabPane)
         okayButton:SetPreviousFocus(cancelButton)
-        //okayButton:SetBehavior(okayBehavior)
+        okayButton:SetBehavior(okayBehavior)
         closingButtonsContainer:Add(okayButton)
         createNewProjectContainer:Add(closingButtonsContainer)
 
-       return createNewProjectContainer
+        return createNewProjectContainer
     end
 
     action BasicTab returns Tab
-        Color color
-        Tab basicTab
         basicTab:SetName("Basic")
-        basicTab:DisplayCloseButton(false)
+        basicTab:DisplayCloseButton(false)        
+//        basicTab:SetFocusable(true)
+//        basicTab:SetNextFocus(blankIcon)
+//        basicTab:SetPreviousFocus(tabPane)
 
         FlowLayout scrollLayout
         ScrollPane scrollPane
         scrollPane:SetLayout(scrollLayout)
         scrollPane:SetPercentageWidth(1.0)
-        scrollPane:SetPixelHeight(180)
+        scrollPane:SetPixelHeight(180)       
         basicTab:SetRelatedItem(scrollPane)
 
         FlowLayout layout
@@ -278,30 +459,94 @@ as an application for writing programs."
         applicationsContainer:SetRightPadding(40)
         applicationsContainer:SetLeftPadding(40)
 
-//        blankIcon:LoadFilledRectangle(50, 50, color:Purple())
-//        blankIcon:SetHorizontalLayoutMode(blankIcon:parent:Libraries.Interface.Controls.Control:STANDARD)   
-//        blankIcon:SetRightPadding(40)
-//        blankIcon:SetPercentageWidth(0.3)
-//        applicationsContainer:Add(blankIcon)
-        
+        blankIcon:SetHorizontalLayoutMode(blankIcon:parent:Libraries.Interface.Controls.Control:STANDARD)   
+        blankIcon:SetRightPadding(80)
+        blankIcon:SetLeftPadding(40)
+        blankIcon:SetPercentageWidth(0.4)
+        blankIcon:SetFocusable(true)
+        blankIcon:SetNextFocus(gameIcon)
+        blankIcon:SetBehavior(buttonsBehavior)
+        blankIcon:SetPreviousFocus(basicTab)
+        blankIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(blankIcon)
+
+        //gameIcon:SetName("Game")
+        gameIcon:SetHorizontalLayoutMode(gameIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        gameIcon:SetPercentageWidth(0.4)
+        gameIcon:SetFocusable(true)
+        gameIcon:SetNextFocus(androidIcon)
+        gameIcon:SetPreviousFocus(blankIcon)
+        gameIcon:SetBehavior(buttonsBehavior)
+        gameIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(gameIcon)
 
         Label blankLabel
         blankLabel:SetText("Blank")
         blankLabel:SetHorizontalLayoutMode(blankLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        blankLabel:SetRightPadding(40)
-        blankLabel:SetPercentageWidth(0.3)
+        blankLabel:SetRightPadding(100)
+        blankLabel:SetLeftPadding(100)
+        blankLabel:SetPercentageWidth(0.4)
         applicationsContainer:Add(blankLabel)
+
+        Label gameLabel
+        gameLabel:SetText("Game")
+        gameLabel:SetHorizontalLayoutMode(gameLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        gameLabel:SetRightPadding(100)
+        gameLabel:SetLeftPadding(100)
+        gameLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(gameLabel)
+
+        //androidIcon:SetName("Android")
+        androidIcon:SetHorizontalLayoutMode(androidIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        androidIcon:SetTopPadding(80)
+        androidIcon:SetRightPadding(80)
+        androidIcon:SetLeftPadding(40)
+        androidIcon:SetPercentageWidth(0.4)
+        androidIcon:SetFocusable(true)
+        androidIcon:SetNextFocus(legoIcon)
+        androidIcon:SetPreviousFocus(gameIcon)
+        androidIcon:SetBehavior(buttonsBehavior)
+        androidIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(androidIcon)
+        
+        //legoIcon:SetName("Lego")
+        legoIcon:SetHorizontalLayoutMode(legoIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        legoIcon:SetTopPadding(80)
+        legoIcon:SetPercentageWidth(0.4)
+        legoIcon:SetFocusable(true)
+        legoIcon:SetNextFocus(tabPane)
+        legoIcon:SetPreviousFocus(androidIcon)
+        legoIcon:SetBehavior(buttonsBehavior)
+        legoIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(legoIcon)
+
+        Label androidLabel
+        androidLabel:SetText("Android")
+        androidLabel:SetHorizontalLayoutMode(androidLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        androidLabel:SetRightPadding(100)
+        androidLabel:SetLeftPadding(100)
+        androidLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(androidLabel)
+
+        Label legoLabel
+        legoLabel:SetText("Lego")
+        legoLabel:SetHorizontalLayoutMode(legoLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        legoLabel:SetRightPadding(100)
+        legoLabel:SetLeftPadding(100)
+        legoLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(legoLabel)
       
         panel:Add(applicationsContainer)
         
         return basicTab
-
     end
 
     action AdvancedTab returns Tab
-        Tab advancedTab
         advancedTab:SetName("Advanced")
         advancedTab:DisplayCloseButton(false)
+//        advancedTab:SetFocusable(true)
+//        advancedTab:SetPreviousFocus(legoIcon)
+//        advancedTab:SetNextFocus(documentIcon)
 
         ScrollPane scrollPane
         scrollPane:SetPercentageWidth(1.0)
@@ -311,24 +556,284 @@ as an application for writing programs."
 
         advancedTab:SetRelatedItem(scrollPane)
 
+        FlowLayout layout
         Control panel
+        panel:SetLayout(layout)
         panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)     
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS) 
+        scrollPane:Add(panel)
 
+        FlowLayout applicationsLayout
+        Control applicationsContainer
+        applicationsContainer:SetLayout(applicationsLayout)
+        applicationsContainer:SetPercentageWidth(1.0)
+        applicationsContainer:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
+        applicationsContainer:SetTopPadding(40)
+        applicationsContainer:SetBottomPadding(40)
+        applicationsContainer:SetRightPadding(40)
+        applicationsContainer:SetLeftPadding(40)
+
+        documentIcon:SetName("Document")
+        documentIcon:SetHorizontalLayoutMode(documentIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        documentIcon:SetRightPadding(80)
+        documentIcon:SetLeftPadding(40)
+        documentIcon:SetPercentageWidth(0.4)
+        documentIcon:SetFocusable(true)
+        documentIcon:SetNextFocus(imageSheetsIcon)
+        documentIcon:SetPreviousFocus(tabPane)
+        documentIcon:SetBehavior(buttonsBehavior)
+        documentIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(documentIcon)
+       
+        imageSheetsIcon:SetName("Image Sheets")
+        imageSheetsIcon:SetHorizontalLayoutMode(documentIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        imageSheetsIcon:SetPercentageWidth(0.4)
+        imageSheetsIcon:SetFocusable(true)
+        imageSheetsIcon:SetNextFocus(internetServicesIcon)
+        imageSheetsIcon:SetPreviousFocus(documentIcon)
+        imageSheetsIcon:SetBehavior(buttonsBehavior)
+        imageSheetsIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(imageSheetsIcon) 
+
+        Label documentLabel
+        documentLabel:SetText("Document")
+        documentLabel:SetHorizontalLayoutMode(documentLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        documentLabel:SetRightPadding(100)
+        documentLabel:SetLeftPadding(100)
+        documentLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(documentLabel)
+
+        Label imageSheetsLabel
+        imageSheetsLabel:SetText("Image Sheets")
+        imageSheetsLabel:SetHorizontalLayoutMode(imageSheetsLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        imageSheetsLabel:SetRightPadding(100)
+        imageSheetsLabel:SetLeftPadding(100)
+        imageSheetsLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(imageSheetsLabel)
+
+        internetServicesIcon:SetName("Internet Services")
+        internetServicesIcon:SetHorizontalLayoutMode(internetServicesIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        internetServicesIcon:SetTopPadding(80)
+        internetServicesIcon:SetRightPadding(80)
+        internetServicesIcon:SetLeftPadding(40)
+        internetServicesIcon:SetPercentageWidth(0.4)
+        internetServicesIcon:SetFocusable(true)
+        internetServicesIcon:SetNextFocus(legoMoveIcon)
+        internetServicesIcon:SetPreviousFocus(imageSheetsIcon)
+        internetServicesIcon:SetBehavior(buttonsBehavior)
+        internetServicesIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(internetServicesIcon)
+
+        legoMoveIcon:SetName("Lego Move")
+        legoMoveIcon:SetHorizontalLayoutMode(legoMoveIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        legoMoveIcon:SetTopPadding(80)
+        legoMoveIcon:SetPercentageWidth(0.4)
+        legoMoveIcon:SetFocusable(true)
+        legoMoveIcon:SetNextFocus(physics2DIcon)
+        legoMoveIcon:SetPreviousFocus(internetServicesIcon)
+        legoMoveIcon:SetBehavior(buttonsBehavior)
+        legoMoveIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(legoMoveIcon)
+
+        Label internetServicesLabel
+        internetServicesLabel:SetText("Internet Services")
+        internetServicesLabel:SetHorizontalLayoutMode(internetServicesLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        internetServicesLabel:SetRightPadding(100)
+        internetServicesLabel:SetLeftPadding(100)
+        internetServicesLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(internetServicesLabel)
+
+        Label legoMoveLabel
+        legoMoveLabel:SetText("Lego Move")
+        legoMoveLabel:SetHorizontalLayoutMode(legoMoveLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        legoMoveLabel:SetRightPadding(100)
+        legoMoveLabel:SetLeftPadding(100)
+        legoMoveLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(legoMoveLabel)
+
+        physics2DIcon:SetName("Physics 2D")
+        physics2DIcon:SetHorizontalLayoutMode(physics2DIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        physics2DIcon:SetTopPadding(80)
+        physics2DIcon:SetRightPadding(80)
+        physics2DIcon:SetLeftPadding(40)
+        physics2DIcon:SetPercentageWidth(0.4)
+        physics2DIcon:SetFocusable(true)
+        physics2DIcon:SetNextFocus(physics3DIcon)
+        physics2DIcon:SetPreviousFocus(legoMoveIcon)
+        physics2DIcon:SetBehavior(buttonsBehavior)
+        physics2DIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(physics2DIcon)
+
+        physics3DIcon:SetName("Physics 3D")
+        physics3DIcon:SetHorizontalLayoutMode(physics3DIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        physics3DIcon:SetTopPadding(80)
+        physics3DIcon:SetPercentageWidth(0.4)
+        physics3DIcon:SetFocusable(true)
+        physics3DIcon:SetNextFocus(sineWavesIcon)
+        physics3DIcon:SetPreviousFocus(physics2DIcon)
+        physics3DIcon:SetBehavior(buttonsBehavior)
+        physics3DIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(physics3DIcon)
+
+        Label physics2DLabel
+        physics2DLabel:SetText("Physics 2D")
+        physics2DLabel:SetHorizontalLayoutMode(physics2DLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        physics2DLabel:SetRightPadding(100)
+        physics2DLabel:SetLeftPadding(100)
+        physics2DLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(physics2DLabel)
+
+        Label physics3DLabel
+        physics3DLabel:SetText("Physics 3D")
+        physics3DLabel:SetHorizontalLayoutMode(physics3DLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        physics3DLabel:SetRightPadding(100)
+        physics3DLabel:SetLeftPadding(100)
+        physics3DLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(physics3DLabel)
+
+        sineWavesIcon:SetName("Sine Waves")
+        sineWavesIcon:SetHorizontalLayoutMode(sineWavesIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        sineWavesIcon:SetTopPadding(80)
+        sineWavesIcon:SetRightPadding(80)
+        sineWavesIcon:SetLeftPadding(40)
+        sineWavesIcon:SetPercentageWidth(0.4)
+        sineWavesIcon:SetFocusable(true)
+        sineWavesIcon:SetNextFocus(skyboxIcon)
+        sineWavesIcon:SetPreviousFocus(physics3DIcon)
+        sineWavesIcon:SetBehavior(buttonsBehavior)
+        sineWavesIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(sineWavesIcon)
+
+        skyboxIcon:SetName("Skybox")
+        skyboxIcon:SetHorizontalLayoutMode(skyboxIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        skyboxIcon:SetTopPadding(80)
+        skyboxIcon:SetPercentageWidth(0.4)
+        skyboxIcon:SetFocusable(true)
+        skyboxIcon:SetNextFocus(userInterfaceIcon)
+        skyboxIcon:SetPreviousFocus(sineWavesIcon)
+        skyboxIcon:SetBehavior(buttonsBehavior)
+        skyboxIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(skyboxIcon)
+
+        Label sineWavesLabel
+        sineWavesLabel:SetText("Sine Waves")
+        sineWavesLabel:SetHorizontalLayoutMode(sineWavesLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        sineWavesLabel:SetRightPadding(100)
+        sineWavesLabel:SetLeftPadding(100)
+        sineWavesLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(sineWavesLabel)
+
+        Label skyboxLabel
+        skyboxLabel:SetText("Skybox")
+        skyboxLabel:SetHorizontalLayoutMode(legoMoveLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        skyboxLabel:SetRightPadding(100)
+        skyboxLabel:SetLeftPadding(100)
+        skyboxLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(skyboxLabel)  
+
+        userInterfaceIcon:SetName("User Interface")
+        userInterfaceIcon:SetHorizontalLayoutMode(userInterfaceIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        userInterfaceIcon:SetTopPadding(80)
+        userInterfaceIcon:SetRightPadding(80)
+        userInterfaceIcon:SetLeftPadding(40)
+        userInterfaceIcon:SetPercentageWidth(0.4)
+        userInterfaceIcon:SetFocusable(true)
+        userInterfaceIcon:SetNextFocus(webServerIcon)
+        userInterfaceIcon:SetPreviousFocus(skyboxIcon)
+        userInterfaceIcon:SetBehavior(buttonsBehavior)
+        userInterfaceIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(userInterfaceIcon)
+
+        webServerIcon:SetName("Web Server")
+        webServerIcon:SetHorizontalLayoutMode(webServerIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
+        webServerIcon:SetTopPadding(80)
+        webServerIcon:SetPercentageWidth(0.4)
+        webServerIcon:SetFocusable(true)
+        webServerIcon:SetNextFocus(nameField)
+        webServerIcon:SetPreviousFocus(userInterfaceIcon)
+        webServerIcon:SetBehavior(buttonsBehavior)
+        webServerIcon:SetButtonGroup(toggleButtons)
+        applicationsContainer:Add(webServerIcon)
+
+        Label userInterfaceLabel
+        userInterfaceLabel:SetText("User Interface")
+        userInterfaceLabel:SetHorizontalLayoutMode(userInterfaceLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        userInterfaceLabel:SetRightPadding(100)
+        userInterfaceLabel:SetLeftPadding(100)
+        userInterfaceLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(userInterfaceLabel)
+
+        Label webServerLabel
+        webServerLabel:SetText("Web Server")
+        webServerLabel:SetHorizontalLayoutMode(webServerLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
+        webServerLabel:SetRightPadding(100)
+        webServerLabel:SetLeftPadding(100)
+        webServerLabel:SetPercentageWidth(0.4)
+        applicationsContainer:Add(webServerLabel)       
+
+        panel:Add(applicationsContainer)
         return advancedTab
+    end   
+
+    action CreateNewProject returns QuorumProject
+        QuorumProject project
+        
+        File file
+        File projectPath    //new project path 
+        File template       //template to copy from
+        File newProjectFolderLocation   
+        //template folders containing the files that need to be copied into the new project
+        //dependent on the type of application chosen by the user
+        template:SetPath(templatePath)              
+        
+        text path = locationPath:GetAbsolutePath():Trim() + "/" + nameField:GetText():Trim() + "/Main.quorum"
+        file:SetAbsolutePath(path)
+        project:SetLocation(file:GetParentDirectory())
+        project:SetName(nameField:GetText():Trim())
+
+        projectPath = project:GetLocation()
+        text newProjectPath = projectPath:GetAbsolutePath()
+        newProjectFolderLocation:SetWorkingDirectory(newProjectPath)
+        boolean copySuccess = template:Copy(newProjectFolderLocation, true)
+        if copySuccess
+            output "Project copied Successfully"
+        else
+            output "Error copying Project"
+        end
+
+        File dad = newProjectFolderLocation:GetParentDirectory()
+        if not dad:Exists()
+            dad:CreateDirectories()
+        end
+
+        return project
     end
 
+    action AppendToProjectPane(QuorumProject project)
+        //action to add the newly created project to the project pane in QuorumStudio
+        Resources resource
+        resource:Load()
+
+        QuorumProjectView projectView = cast(QuorumProjectView, project:GetProjectView())
+        projectView:SetResources(resource)
+        TreeItem treeItem = projectView:GetLogicalTree()
+
+        ProjectTree projectTree = studio:GetProjectTree()
+        Iterator<TreeItem> items = projectTree:GetTreeItems()
+
+        projectTree:Add(treeItem)
+    end
+    
     action PressedKey (KeyboardEvent event)
-         if event:keyCode = event:ENTER
+        if event:keyCode = event:ENTER
             okayButton:Activate()
-            //CreateNewFile()
-            //Hide()
         end
 
         if event:keyCode = event:ESCAPE
-            cancelButton:Activate()
-            //Hide()
+            cancelButton:Activate()            
         end
+
+            
     end
 
 end
