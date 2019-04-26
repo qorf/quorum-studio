@@ -1,0 +1,217 @@
+use Libraries.System.Properties
+use Libraries.System.File
+use Libraries.Containers.List
+use Libraries.Containers.Array
+use Libraries.Concurrency.ProcessRunner
+
+class AndroidSupport 
+    text FILE_SEPARATOR = "/"
+    constant text PATH_TO_MAIN = FILE_SEPARATOR + "app" + FILE_SEPARATOR + "src" + FILE_SEPARATOR + "main" + FILE_SEPARATOR
+    constant text PATH_TO_MAIN_XML = PATH_TO_MAIN + "AndroidManifest.xml"
+    constant text PATH_TO_APP_BUILD_GRADLE = FILE_SEPARATOR + "app" + FILE_SEPARATOR  + "build.gradle"
+    constant text PATH_TO_LAYOUT = PATH_TO_MAIN + "res" + FILE_SEPARATOR + "layout" + FILE_SEPARATOR
+    constant text PATH_TO_LAYOUT_XML = PATH_TO_LAYOUT + "activity_main.xml"
+    constant text PATH_TO_PACKAGE = PATH_TO_MAIN + "java" + FILE_SEPARATOR
+    constant text PACKAGES_FOLDER = "packagesfolder"
+    constant text FOLDER_NAME = "Android"
+
+    text androidSDKPath = ""
+    on create
+        androidSDKPath = GetDefaultAndroidSDKPath()
+    end
+
+    action GetAndroidPath returns text
+        return androidSDKPath
+    end
+
+    action SetAndroidPath(text path)
+        androidSDKPath = path
+    end
+
+    action GetDefaultAndroidSDKPath returns text
+        Properties properties
+        text home = properties:GetProperty("user.home")
+        
+        if properties:IsWindows()
+            home = home + FILE_SEPARATOR + "AppData" + FILE_SEPARATOR + "Local" + FILE_SEPARATOR + "Android"+ FILE_SEPARATOR +"sdk"
+        else
+            home = home + FILE_SEPARATOR + "Library/Android/sdk"
+        end
+        
+        return home
+    end
+
+    action CopyAndRename(text templateLocation, text pathToRunFolder, text applicationName, text jdkPath)
+        text pathToBuildAndroidFolder = pathToRunFolder + FILE_SEPARATOR + FOLDER_NAME
+
+        // Copy project into new folder with appropriate name
+        CopyFolder(pathToBuildAndroidFolder, templateLocation)
+
+        SetSDKLocation(pathToBuildAndroidFolder)
+        SetNDKLocation(pathToBuildAndroidFolder)
+
+
+        if jdkPath not= undefined and not jdkPath:IsEmpty()
+            SetJDKLocation(pathToBuildAndroidFolder, jdkPath)
+        end
+        
+        // Change Application Name
+        ChangeApplicationName(pathToBuildAndroidFolder, applicationName)
+//    
+//        // Clean the generated files that might conflict with the renamings
+        CleanGeneratedFiles(pathToBuildAndroidFolder)
+    end
+    
+    action ChangeApplicationName(text projectPath, text applicationName)
+        text pathToMain = projectPath + PATH_TO_MAIN_XML
+        text dq = pathToMain:GetDoubleQuote()
+
+        ReplaceLineTextInFile(pathToMain, "android:label=" + dq + "Android" + dq, "android:label=" + dq + applicationName + dq)
+        
+        text pathToBuild = projectPath + PATH_TO_APP_BUILD_GRADLE
+        ReplaceLineTextInFile(pathToBuild, "api files('libs/Default.jar')", "    api files('libs/"+applicationName+".jar')")
+    end
+
+    action CleanGeneratedFiles(text projectPath)
+        Properties properties
+        ProcessRunner process
+        Array<text> parameters
+        if properties:IsWindows()
+            process:SetProcessName("cmd")
+
+            parameters:Add("/C")
+            text dq = ""
+            dq = dq:GetDoubleQuote()
+            parameters:Add(dq + dq + " " + projectPath + "\gradlew.bat -p " + projectPath + " clean & exit")
+            process:SetParameters(parameters)
+            process:Run()
+        elseif properties:IsMac()
+            File file
+            file:SetAbsolutePath(projectPath + "/gradlew")
+            if file:Exists()
+                file:SetExecutable(true)
+            end
+
+            process:SetDirectory(file:GetParentDirectory())
+            process:SetProcessName("/gradlew")
+            parameters:Add("-p")
+            parameters:Add(projectPath)
+            parameters:Add(" clean & exit")
+            process:Run()
+        else
+            File file
+            file:SetAbsolutePath(projectPath + "/gradlew")
+
+            process:SetDirectory(file:GetParentDirectory())
+            process:SetProcessName("/gradlew")
+            parameters:Add("-p")
+            parameters:Add(projectPath)
+            parameters:Add(" clean & exit")
+            process:Run()
+        end
+    end
+
+    action SetJDKLocation(text pathToBuildAndroidFolder, text jdkPath)
+        text pathToLocalProperties = pathToBuildAndroidFolder + FILE_SEPARATOR + "gradle.properties"
+        text sdkLocation = jdkPath
+
+        Properties properties
+        if properties:IsWindows()
+            sdkLocation = ""
+            i = 0
+            repeat while i < jdkPath:GetSize()
+                sdkLocation = sdkLocation + jdkPath:GetCharacter(i)
+                if jdkPath:GetCharacter(i) = "\"
+                    sdkLocation = sdkLocation + "\\"
+                end
+                i = i + 1
+            end
+        end
+
+        AppendLineToFile(pathToLocalProperties, "org.gradle.java.home="+sdkLocation)
+    end
+
+    private action CopyFolder(text from, text to)
+        File toFile
+        File fromFile
+
+        toFile:SetAbsolutePath(to)
+        fromFile:SetAbsolutePath(from)
+
+        if toFile:Exists()
+            toFile:Delete(true)
+        end
+
+        fromFile:Copy(toFile, true)
+    end
+
+    action SetSDKLocation(text pathToBuildAndroidFolder)
+        text pathToLocalProperties = pathToBuildAndroidFolder + FILE_SEPARATOR + "local.properties"
+        text sdkLocation = androidSDKPath
+
+        Properties properties
+        if properties:IsWindows()
+            sdkLocation = ""
+            i = 0
+            repeat while i < androidSDKPath:GetSize()
+                sdkLocation = sdkLocation + androidSDKPath:GetCharacter(i)
+                if androidSDKPath:GetCharacter(i) = "\"
+                    sdkLocation = sdkLocation + "\\\"
+                end
+                i = i + 1
+            end
+        end
+
+        ReplaceLineTextInFile(pathToLocalProperties, "sdk.dir=", "sdk.dir="+sdkLocation)
+    end
+
+    action SetNDKLocation(text pathToBuildAndroidFolder)
+        text pathToLocalProperties = pathToBuildAndroidFolder + FILE_SEPARATOR + "local.properties"
+        text ndkLocation = androidSDKPath + FILE_SEPARATOR + "ndk-bundle"
+        text sdkLocation = ndkLocation
+
+        Properties properties
+        if properties:IsWindows()
+            sdkLocation = ""
+            i = 0
+            repeat while i < ndkLocation:GetSize()
+                sdkLocation = sdkLocation + ndkLocation:GetCharacter(i)
+                if ndkLocation:GetCharacter(i) = "\"
+                    sdkLocation = sdkLocation + "\\\"
+                end
+                i = i + 1
+            end
+        end
+
+        AppendLineToFile(pathToLocalProperties, "ndk.dir="+sdkLocation)
+    end
+
+    action AppendLineToFile(text path, text line)
+        File file
+        file:SetAbsolutePath(path)
+        text value = file:Read()
+        value = value:GetLineFeed() + line
+
+        file:Write(value)
+    end
+
+    action ReplaceLineTextInFile(text filePath, text toReplace, text newString)
+        File file
+        file:SetAbsolutePath(filePath)
+        text value = file:Read()
+        Array<text> lines = value:SplitIntoLines()
+
+        text finalValue = ""
+        i = 0
+        repeat while i < lines:GetSize()
+            text line = lines:Get(i)
+            if line:Contains(toReplace)
+                lines:Set(i, newString)
+            end
+
+            finalValue = finalValue + lines:Get(i) + finalValue:GetLineFeed()
+            i = i + 1
+        end
+        file:Write(finalValue)
+    end
+end
