@@ -22,6 +22,8 @@ class OpenNewFileBehavior is QuorumStudioBehavior
         TreeSelection selection = tree:GetSelection()
         if not selection:IsEmpty()
             Array<TreeItem> items = selection:GetPath()
+            integer size = items:GetSize()
+            ProjectTreeItem subFolder = cast(ProjectTreeItem, items:Get(size - 1))
             ProjectTreeItem value = cast(ProjectTreeItem, items:Get(0))
             QuorumProject project = value:GetProject()
 
@@ -33,8 +35,6 @@ class OpenNewFileBehavior is QuorumStudioBehavior
             
             dialog:SetProperties(project)
             dialog:Show()
-
-            output "New File is " + project:GetName()
         end
     end
 end

@@ -16,21 +16,60 @@ use Libraries.System.File
 use Libraries.System.FileWriter
 use Libraries.Interface.Controls.List
 use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Game.Graphics.Gradient
+use Libraries.Development.Environment.Studio.Behaviors.NewFileOkBehavior
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Studio.Behaviors.OpenBrowseFoldersBehavior
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Resources
+use Libraries.Development.Environment.Studio.Behaviors.OpenTabBehavior
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.QuorumProjectView
+use Libraries.Development.Environment.Projects.ProjectView
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Containers.Array
+use Libraries.Containers.Iterator
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Events.KeyboardListener
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Selections.TreeSelection
 
 
+class NewFileDialog is Dialog, KeyboardListener
 
+    boolean initialized = false 
 
-class NewFileDialog is Dialog
-    boolean initialized = false
-    Color color 
+    GameStateManager gameManager
+    QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+
+    // The current Quorum project that we're modifying the properties of.
+    // Set during the SetProperties(QuorumProject) action.
+    QuorumProject project = undefined   
+    ProjectManager manager = undefined
+    text projectName = ""
+    
+    //Variables for the NewFile Dialog
     TextField fileNameField
-    TextField folderNameField
-    Button folderBrowseButton
+    TextField locationNameField
+    Button browseButton
     Button okayButton
     Button cancelButton
     
-    File file
-    QuorumProject project = undefined
+    //Behaviors used by the Browse, Ok, and Cancel Buttons
+    DialogCancelBehavior cancelBehavior
+    NewFileOkBehavior okayBehavior
+    OpenBrowseFoldersBehavior browseBehavior
+
+    on create
+        cancelBehavior:SetDialog(me)
+        okayBehavior:SetDialog(me)
+        browseBehavior:SetDialog(me) 
+        studio:AddKeyboardListener(me) 
+        fileNameField:Focus()
+    end
 
     action Initialize
         if initialized
@@ -38,9 +77,9 @@ class NewFileDialog is Dialog
         end
 
         initialized = true
-       
+
         SetName("New File")
-        SetPixelWidth(500)
+        SetPixelWidth(400)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
 
         LabelBoxView view
@@ -53,34 +92,39 @@ class NewFileDialog is Dialog
         FlowLayout newFileLayout
         panel:SetLayout(newFileLayout)
         panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(300)
+        panel:SetPixelHeight(110)
         panel:SetBorderColor(color:Black())
         panel:SetBorderThickness(1)
         panel:Add(CreateNewFileControl())
         panel:SetView2D(view)
         Add(panel)
-
-           
     end
 
+    //sets the folderNameField in the dialog to the default filepath for the
+    //project (e.g. GameApplication/SourceCode)
     action SetProperties(QuorumProject project)
         me:project = project
-       
-        text executableName = project:GetProperty(project:EXECUTABLE_NAME):GetFirstValue()
-        if executableName not= undefined
-            folderNameField:SetText(executableName)
+        //Sets the locationNameField to the path of the current folder in focus in the ProjectTree
+        File file
+        ProjectTree tree = studio:GetProjectTree()
+        TreeSelection selection = tree:GetSelection()   
+        Array<TreeItem> items = selection:GetPath()
+        i = items:GetSize()-1
+        repeat while i > 0
+            TreeItem item = items:Get(i)
+            projectName = item:GetName() + "/" + projectName
+            i = i - 1
         end
 
-//        NewFileCancelButtonBehavior  cancelButtonBehavior
-//        cancelButtonBehavior:SetDialog(me)
-//        cancelButton:SetBehavior(cancelButtonBehavior)
-    end
+        locationNameField:SetText(projectName:Trim())  
+    end 
 
     action IsInitialized returns boolean
         return initialized
     end
 
     action CreateNewFileControl() returns Control
+        Color color
         Control createNewFileContainer
         FlowLayout createNewFileLayout
         createNewFileContainer:SetLayout(createNewFileLayout)
@@ -95,74 +139,183 @@ class NewFileDialog is Dialog
         fileContainer:SetPercentageWidth(1.0)
         fileContainer:SetVerticalLayoutMode(fileContainer:FIT_CONTENTS)
         fileContainer:SetLeftPadding(10)
-        fileContainer:SetTopPadding(6)
+        fileContainer:SetRightPadding(40)
+        fileContainer:SetTopPadding(20)
         
         Label fileName
-        fileName:SetText("File Name: ")
-        fileName:SetPercentageWidth(0.3)
+        fileName:SetText("Name:")
+        fileName:SetRightPadding(37)   //when zooming the padding does not adjust correctly 
         fileContainer:Add(fileName)
         
-        fileNameField:SetPercentageWidth(0.7)
+        fileNameField:SetHorizontalLayoutMode(fileNameField:parent:Libraries.Interface.Controls.Control:FILL)
+        fileNameField:SetText("")
+        fileNameField:SetFocusable(true)
+        fileNameField:SetNextFocus(locationNameField)
+        fileNameField:SetPreviousFocus(okayButton)
         fileContainer:Add(fileNameField)
 
         createNewFileContainer:Add(fileContainer)
 
-        FlowLayout folderLayout
-        Control folderContainer
-        folderContainer:SetLayout(folderLayout)
-        folderContainer:SetPercentageWidth(1.0)
-        folderContainer:SetPixelWidth(-10)
-        folderContainer:SetVerticalLayoutMode(folderContainer:FIT_CONTENTS)
-        folderContainer:SetLeftPadding(10)
-        folderContainer:SetTopPadding(10)
+        FlowLayout locationLayout
+        Control locationContainer
+        locationContainer:SetLayout(locationLayout)
+        locationContainer:SetPercentageWidth(1.0)
+        locationContainer:SetVerticalLayoutMode(locationContainer:FIT_CONTENTS)
+        locationContainer:SetLeftPadding(10)
+        locationContainer:SetTopPadding(10)
+        locationContainer:SetRightPadding(10)
 
-        Label folderLabel
-        folderLabel:SetText("Folder: ")
-        folderLabel:SetPercentageWidth(0.3)
-        folderContainer:Add(folderLabel)
+        Label locationName
+        locationName:SetText("Location:")
+        locationName:SetRightPadding(6)
+        locationContainer:Add(locationName)
      
-        folderNameField:SetPercentageWidth(0.5)
-        folderContainer:Add(folderNameField)
-       
-        folderBrowseButton:SetName("Browse...")
-        folderBrowseButton:SetPercentageWidth(0.15)
-        folderBrowseButton:SetLeftPadding(6)
-        folderBrowseButton:SetBottomPadding(6)
-        folderContainer:Add(folderBrowseButton)
+        locationNameField:SetPercentageWidth(0.6)
+        locationNameField:SetFocusable(true)
+        locationNameField:SetNextFocus(browseButton)
+        locationNameField:SetPreviousFocus(fileNameField)
+        locationContainer:Add(locationNameField)
+
+        browseButton:SetName("Browse...")
+        //locationBrowseButton:SetHorizontalLayoutMode(locationBrowseButton:parent:Libraries.Interface.Controls.Control:FILL)
+        browseButton:SetHorizontalLayoutMode(browseButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        browseButton:SetPercentageWidth(0.2)
+        browseButton:SetLeftPadding(6)
+        browseButton:SetBottomPadding(6)
+        browseButton:SetFocusable(true)
+        browseButton:SetNextFocus(cancelButton)
+        browseButton:SetPreviousFocus(locationNameField)
+        browseButton:SetBehavior(browseBehavior)
+        locationContainer:Add(browseButton)
         
-        createNewFileContainer:Add(folderContainer)
+        createNewFileContainer:Add(locationContainer)
 
         FlowLayout closingButtonsLayout
         Control closingButtonsContainer
         closingButtonsContainer:SetLayout(closingButtonsLayout)
         closingButtonsContainer:SetPercentageWidth(1.0)
         closingButtonsContainer:SetVerticalLayoutMode(closingButtonsContainer:FIT_CONTENTS)
-        closingButtonsContainer:SetLeftPadding(10)
         closingButtonsContainer:SetTopPadding(20)
         
-        Label whiteSpaceLabel
-        whiteSpaceLabel:SetText("                                                        ")
-        whiteSpaceLabel:SetPercentageWidth(0.5)
-        closingButtonsContainer:Add(whiteSpaceLabel)
+        Control closingPadding
+        closingPadding:SetPercentageWidth(0.54)
+        closingPadding:SetPixelHeight(1)
+        closingButtonsContainer:Add(closingPadding)
+
+        cancelButton:SetName("Cancel")
+        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancelButton:SetPercentageWidth(0.2)
+        cancelButton:SetLeftPadding(0)
+        cancelButton:SetTopPadding(0)
+        cancelButton:SetFocusable(true)
+        cancelButton:SetNextFocus(okayButton)
+        cancelButton:SetPreviousFocus(browseButton)
+        cancelButton:SetBehavior(cancelBehavior)
+        closingButtonsContainer:Add(cancelButton)
+
+        Gradient okayGradient
+        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
+        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
+        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
 
         okayButton:SetName("OK")
+        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        okayButton:SetBackgroundColor(okayGradient)
         okayButton:SetPercentageWidth(0.2)
-        okayButton:SetRightPadding(6)
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(0)
+        okayButton:SetFocusable(true)
+        okayButton:SetNextFocus(fileNameField)
+        okayButton:SetPreviousFocus(cancelButton)
+        okayButton:SetBehavior(okayBehavior)
         closingButtonsContainer:Add(okayButton)
-     
-        cancelButton:SetName("Cancel")
-        cancelButton:SetPercentageWidth(0.2)
-        closingButtonsContainer:Add(cancelButton)
 
         createNewFileContainer:Add(closingButtonsContainer)
 
         return createNewFileContainer
     end
+    
+    //returns the current QuorumProject that the NewFile is being added to
+    //used by the OpenBrowseFoldersBehavior
+    action GetProject returns QuorumProject
+        return me:project
+    end
 
+    //updates the locationNameField to the file path that the new file will be added to
+    //(e.g. GameApplication/SourceCode to GameApplication/SourceCode/images)
+    //used by the OpenBrowseFoldersBehavior
+    action UpdateFolderName(text folderName)  
+        projectName = projectName + "/" + folderName    
+        locationNameField:SetText(projectName)    
+    end
+
+    //creates the new file using the file path from the folderNameField in the
+    //dialog
     action CreateNewFile()
-        FileWriter writer
-        file:SetWorkingDirectory(project:GetExecutableName())
-        file:SetPath(fileNameField:GetText())
-        writer:OpenForWrite(file)
+        File file
+        File value = project:GetLocation()
+        text path = value:GetAbsolutePath():Trim()
+        path = path + "/" + locationNameField:GetText():Trim() + "/" + fileNameField:GetText():Trim() 
+        
+        file:SetAbsolutePath(path)
+        
+        if file:GetFileExtension() = ""
+            file:SetAbsolutePath(path + ".quorum")
+        end
+
+        File mom = file:GetParentDirectory()
+        if not mom:Exists()
+            mom:CreateDirectories()
+        end
+
+        file:Write("")
+        file:Close()
+        AppendToProjectTree(file)        
+    end
+
+    action AppendToProjectTree(File file) 
+        Resources resource
+
+        QuorumProjectView projectView = cast(QuorumProjectView, project:GetProjectView())
+        TreeItem treeItem = projectView:GetLogicalTree()
+        ProjectTree projectTree = studio:GetProjectTree()
+        Iterator<TreeItem> items = projectTree:GetTreeItems()
+
+        boolean found = false
+        ProjectTreeItem oldProjectHeader = undefined
+
+        repeat while items:HasNext() and found = false
+            oldProjectHeader = cast(ProjectTreeItem, items:Next())
+            if oldProjectHeader:GetProject() = project
+                found = true
+            end
+        end
+
+        if found = false
+            output "Warning: Couldn't find Source Code for file " + file:GetPath()
+            return now
+        end
+
+        projectTree:Remove(cast(TreeItem, oldProjectHeader))
+        projectTree:Add(treeItem)
+    end
+
+    action PressedKey(KeyboardEvent event)
+        if event:keyCode = event:ENTER
+            okayButton:Activate()
+            //CreateNewFile()
+            //Hide()
+        end
+
+        if event:keyCode = event:ESCAPE
+            cancelButton:Activate()
+            //Hide()
+        end
+//
+//        if event:keyCode = event:SPACE
+//            if locationBrowseButton:IsFocused()
+//                
+//            end
+//        end
     end
 end

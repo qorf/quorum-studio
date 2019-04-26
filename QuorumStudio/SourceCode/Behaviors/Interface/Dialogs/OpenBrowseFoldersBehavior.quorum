@@ -1,0 +1,61 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.NewFileDialog
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Controls.FileChooser
+use Libraries.Interface.Controls.FileFilter
+use Libraries.System.File
+
+
+class OpenBrowseFoldersBehavior is QuorumStudioBehavior 
+    
+    NewFileDialog dialog = undefined
+    text folderName = undefined
+
+    action SetDialog(NewFileDialog dialog)
+        me:dialog = dialog
+    end
+
+    action GetDialog returns NewFileDialog
+        return dialog
+    end
+
+    action SetFolderName (text folderName)
+        me:folderName = folderName
+    end
+
+    action GetFolderName returns text
+        return me:folderName
+    end
+
+    action Run(BehaviorEvent event)
+        FileChooser chooser
+        //FileFilter filter
+        //filter:Empty()
+        //filter:Add("")
+        //filter:SetAcceptAll(true)
+
+        QuorumProject project = dialog:GetProject()
+        File location = project:GetLocation()
+        location:SetAbsolutePath(location:GetAbsolutePath() + "/SourceCode")
+        File folder = chooser:OpenFileDialog(location)
+        output folder:GetAbsolutePath()
+
+        //need a file filter that will select a folder, not a file
+        //look into OpenFileDialogNative(), will not allow to select a folder as the destination
+
+        if folder not= undefined
+            me:folderName = folder:GetFileName()
+            dialog:UpdateFolderName(folderName)
+        end
+
+        
+    end
+end

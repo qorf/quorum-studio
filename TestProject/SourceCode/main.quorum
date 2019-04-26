@@ -1,0 +1,46 @@
+use Libraries.Game.Game
+use Libraries.Interface.Controls.TextBox
+use Libraries.System.File
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Events.FocusListener
+use Libraries.Interface.Events.FocusEvent
+
+class Main1 is Game, FocusListener
+
+    action Main
+        StartGame()
+    end
+
+    action CreateGame
+        FlowLayout layout
+        SetLayout(layout)
+
+        File file
+        file:SetPath("SourceCode/main.quorum")
+        text value = file:Read()
+
+        Button button1
+        button1:SetName("First")
+        Add(button1)
+
+        button1:Focus()
+
+        Button button2
+        button2:SetName("Second")
+        Add(button2)
+
+        button1:SetNextFocus(button2)
+        button1:SetPreviousFocus(button2)
+        button2:SetNextFocus(button1)
+        button2:SetPreviousFocus(button1)
+
+        AddFocusListener(me)
+    end
+
+    action GainedFocus(FocusEvent event)
+        output event:GetLastFocus():GetName() + " lost focus, " + event:GetNewFocus():GetName() + " gained focus."
+    end
+
+end
