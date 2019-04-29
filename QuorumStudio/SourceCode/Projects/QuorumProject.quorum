@@ -79,6 +79,13 @@ class QuorumProject is Project
     public constant text MOBILE_ASSETS = "MobileAssets"
     public constant text IPHONE_PROVISIONING_KEY = "IphoneProvisioningKey"
     public constant text IPHONE_SIGNING_IDENTITY = "IphoneSigningIdentity"
+    public constant text ANDROID_PATH = "AndroidPath"
+    public constant text ANDROID_ALTERNATE_JDK_PATH = "AndroidAlternateJDKPath"
+    public constant text ANDROID_KEYSTORE_PATH = "AndroidKeystorePath"
+    public constant text ANDROID_KEYSTORE_PASSWORD = "AndroidKeystorePassword"
+    public constant text ANDROID_KEY_ALIAS = "AndroidKeyAlias"
+    public constant text ANDROID_KEY_PASSWORD = "AndroidKeyPassword"
+    
     Logger logger
 
     /* This is the file that references the standard library.*/
@@ -179,6 +186,71 @@ class QuorumProject is Project
     /* This action sets the build path for image sheets. */
     action SetMobileAssetsPath(text path)
         SetPropertyValue(MOBILE_ASSETS, path)
+    end
+
+    
+    private action GetPropertyText(ProjectProperty property) returns text
+        if property = undefined
+            return undefined
+        else
+            return property:GetFirstValue()
+        end
+    end
+
+    /* This action returns the android path */
+    action GetAndroidPath returns text
+        ProjectProperty property = GetProperty(ANDROID_PATH)
+        return GetPropertyText(property)
+    end
+    /* This action returns the alternate JDK path */
+    action GetAndroidAlternateJDKPath returns text
+        ProjectProperty property = GetProperty(ANDROID_ALTERNATE_JDK_PATH)
+        return GetPropertyText(property)
+    end
+    /* This action returns the keystore path */
+    action GetAndroidKeystorePath returns text
+        ProjectProperty property = GetProperty(ANDROID_KEYSTORE_PATH)
+        return GetPropertyText(property)
+    end
+    /* This action returns the keystore password */
+    action GetAndroidKeystorePassword returns text
+        ProjectProperty property = GetProperty(ANDROID_KEYSTORE_PASSWORD)
+        return GetPropertyText(property)
+    end
+    /* This action returns the android key alias */
+    action GetAndroidKeyAlias returns text
+        ProjectProperty property = GetProperty(ANDROID_KEY_ALIAS)
+        return GetPropertyText(property)
+    end
+    /* This action returns the android key password */
+    action GetAndroidKeyPassword returns text
+        ProjectProperty property = GetProperty(ANDROID_KEY_PASSWORD)
+        return GetPropertyText(property)
+    end
+
+    /* This sets the android path */
+    action SetAndroidPath(text path)
+        SetPropertyValue(ANDROID_PATH, path)
+    end
+    /* This action sets the alternate JDK path */
+    action SetAndroidAlternateJDKPath(text path)
+        SetPropertyValue(ANDROID_ALTERNATE_JDK_PATH, path)
+    end
+    /* This action sets the keystore path */
+    action SetAndroidKeystorePath(text path)
+        SetPropertyValue(ANDROID_KEYSTORE_PATH, path)
+    end
+    /* This action sets the keystore password*/
+    action SetAndroidKeystorePassword(text path)
+        SetPropertyValue(ANDROID_KEYSTORE_PASSWORD, path)
+    end
+    /* This action sets the android key alias */
+    action SetAndroidKeyAlias (text path)
+        SetPropertyValue(ANDROID_KEY_ALIAS, path)
+    end
+    /* This action sets the android key password. */
+    action SetAndroidKeyPassword (text path)
+        SetPropertyValue(ANDROID_KEY_PASSWORD, path)
     end
 
     /* This action returns the build path for image sheets. */
@@ -732,6 +804,42 @@ class QuorumProject is Project
             end
             AddProperty(key, object:GetText())
         elseif key = IPHONE_PROVISIONING_KEY
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = ANDROID_PATH
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = ANDROID_ALTERNATE_JDK_PATH
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = ANDROID_KEYSTORE_PATH
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = ANDROID_KEYSTORE_PASSWORD
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = ANDROID_KEY_ALIAS
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = ANDROID_KEY_PASSWORD
             if not object:IsText()
                 logger:Log(textMessage)
                 return now

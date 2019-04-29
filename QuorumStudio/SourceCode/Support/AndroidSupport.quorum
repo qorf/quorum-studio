@@ -18,8 +18,267 @@ class AndroidSupport
     constant text FOLDER_NAME = "Android"
 
     text androidSDKPath = ""
+
+    //these come from Run Android
+    text PATH_TO_LIBS = FILE_SEPARATOR + "app" + FILE_SEPARATOR + "libs"
+    text ASSEMBLED_APK_FOR_RELEASE = FILE_SEPARATOR + "app" + FILE_SEPARATOR + "build" + FILE_SEPARATOR + "outputs" + FILE_SEPARATOR + "apk" + FILE_SEPARATOR + "release" + FILE_SEPARATOR + "app-release-unsigned.apk"
+    
+    text keyStorePath = ""
+    text keyStorePassword = ""
+    text keyAlias = "key0"
+    text keyPassword = ""
+    
+    text toolPath = FILE_SEPARATOR +  "build-tools" + FILE_SEPARATOR + "27.0.3" + FILE_SEPARATOR
+    text zipalignPath = toolPath + "zipalign"
+    text zipalignOptions = "-v -p 4"
+    text apksignerPath = toolPath + "apksigner"
+    text pathToRunFolder = ""
+    
+    text pathToBuildAndroidFolder = "./TestApplication"
+    
+    Array<text> librarySources 
+    Array<text> libraryDestinations
+
     on create
         androidSDKPath = GetDefaultAndroidSDKPath()
+    end
+
+    action Setup(text pathToRunFolder, text jarName)
+        androidSDKPath = GetDefaultAndroidSDKPath()
+        me:pathToRunFolder = pathToRunFolder
+        me:pathToBuildAndroidFolder = pathToRunFolder + FILE_SEPARATOR + FOLDER_NAME
+
+        librarySources:Add(FILE_SEPARATOR + jarName)
+        librarySources:Add(FILE_SEPARATOR + "QuorumStandardLibrary.jar")
+        librarySources:Add(FILE_SEPARATOR + "QuorumStandardPlugins.jar")
+
+        libraryDestinations:Add(me:pathToBuildAndroidFolder + PATH_TO_LIBS + FILE_SEPARATOR + jarName)
+        libraryDestinations:Add(me:pathToBuildAndroidFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardLibrary.jar")
+        libraryDestinations:Add(me:pathToBuildAndroidFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardPlugins.jar")
+
+        Properties properties
+        if properties:IsWindows()
+            zipalignPath = zipalignPath + ".exe"
+        end
+    end
+
+    action HasKeystoreInfo returns boolean
+        if  keyStorePath = undefined or keyStorePath:IsEmpty() or 
+            keyStorePassword = undefined or keyStorePassword:IsEmpty() or 
+            keyPassword = undefined or keyPassword:IsEmpty() or 
+            keyAlias = undefined or keyAlias:IsEmpty()
+            return false
+        end
+
+        return true
+    end
+
+    action CopyAssets(File mediaFolder, text value)
+        if not mediaFolder:Exists()
+            return now
+        end //bail if it isn't there
+
+        File assetsFolder
+        assetsFolder:SetAbsolutePath(pathToBuildAndroidFolder + FILE_SEPARATOR + "app"+ FILE_SEPARATOR + "src" + FILE_SEPARATOR + "main" + FILE_SEPARATOR+ "assets" + FILE_SEPARATOR + value)
+        if not assetsFolder:Exists()
+            assetsFolder:CreateDirectories()
+        end
+
+        mediaFolder:Copy(assetsFolder, true)
+    end
+
+    action CopyLibraries 
+        CopyLibraries(librarySources, libraryDestinations)
+    end
+
+    action CopyLibraries(Array<text> sourcePaths, Array<text> destinationPaths)
+        File libFolder
+        libFolder:SetAbsolutePath(pathToBuildAndroidFolder + PATH_TO_LIBS)
+
+        if not libFolder:Exists()
+            libFolder:CreateDirectories()
+        end
+
+        i = 0
+        repeat while i < sourcePaths:GetSize()
+            CopyLibrary(sourcePaths:Get(i), destinationPaths:Get(i))
+            i = i + 1
+        end
+    end
+
+    action CopyLibrary(text sourcePath, text destinationPath)
+        File from
+        File to
+        from:SetAbsolutePath(sourcePath)
+        to:SetAbsolutePath(destinationPath)
+
+        from:Copy(to)
+    end
+
+    action GetAPKDebugBuildProcess returns ProcessRunner
+        Properties properties
+        ProcessRunner process
+        if properties:IsWindows()
+            Array<text> params = BuildDebugAPKWindows()
+            process:SetProcessName(params:Get(0))
+            params:RemoveAt(0)
+            process:SetParameters(params)
+            process:Run()
+        elseif properties:IsMac()
+            File file
+            file:SetAbsolutePath(pathToBuildAndroidFolder + "/gradlew")
+            if file:Exists()
+                file:SetExecutable(true)
+            end
+            Array<text> params = BuildDebugAPK()
+            process:SetParameters(params)
+            process:Run()
+        else
+            Array<text> params = BuildDebugAPK()
+            process:SetParameters(params)
+            process:Run()
+        end
+
+        return process
+    end
+
+    private action BuildDebugAPKWindows returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+        Array<text> params
+        params:Add("cmd")
+        params:Add("/c")
+        params:Add(dq + dq)
+        params:Add(pathToBuildAndroidFolder+"\\gradlew.bat")
+        params:Add("-p")  
+        params:Add(pathToBuildAndroidFolder)
+        params:Add("assembleDebug")
+        params:Add("&")
+        params:Add("exit")
+        return params
+    end
+
+    private action BuildDebugAPK returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+        Array<text> params
+        params:Add(pathToBuildAndroidFolder+"\\gradlew.bat")
+        params:Add("-p")  
+        params:Add(pathToBuildAndroidFolder)
+        params:Add("assembleDebug")
+        return params
+    end
+
+    action GetDebugInstallProcess returns ProcessRunner
+        Properties properties
+        ProcessRunner process
+        if properties:IsWindows()
+            Array<text> params = BuildDebugInstallAPKWindows()
+            process:SetProcessName(params:Get(0))
+            params:RemoveAt(0)
+            process:SetParameters(params)
+            process:Run()
+        elseif properties:IsMac()
+            File file
+            file:SetAbsolutePath(pathToBuildAndroidFolder + "/gradlew")
+            if file:Exists()
+                file:SetExecutable(true)
+            end
+            Array<text> params = BuildDebugInstallAPK()
+            process:SetParameters(params)
+            process:Run()
+        else
+            Array<text> params = BuildDebugInstallAPK()
+            process:SetParameters(params)
+            process:Run()
+        end
+
+        return process
+    end
+
+    private action BuildDebugInstallAPKWindows returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+        Array<text> params
+        params:Add("cmd")
+        params:Add("/c")
+        params:Add(dq + dq)
+        params:Add(pathToBuildAndroidFolder+"\\gradlew.bat")
+        params:Add("-p")  
+        params:Add(pathToBuildAndroidFolder)
+        params:Add("installDebug")
+        params:Add("&")
+        params:Add("exit")
+        return params
+    end
+
+    private action BuildDebugInstallAPK returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+        Array<text> params
+        params:Add(pathToBuildAndroidFolder+"\\gradlew.bat")
+        params:Add("-p")  
+        params:Add(pathToBuildAndroidFolder)
+        params:Add("installDebug")
+        return params
+    end
+
+    action GetZipAlignProcess returns ProcessRunner
+        Properties properties
+        ProcessRunner process
+        if properties:IsWindows()
+            Array<text> params = BuildZipAlignCommandWindows()
+            process:SetProcessName(params:Get(0))
+            params:RemoveAt(0)
+            process:SetParameters(params)
+            process:Run()
+        elseif properties:IsMac()
+            File file
+            file:SetAbsolutePath(androidSDKPath + zipalignPath)
+            if file:Exists()
+                file:SetExecutable(true)
+            end
+            Array<text> params = BuildZipAlignCommand()
+            process:SetParameters(params)
+            process:Run()
+        else
+            Array<text> params = BuildZipAlignCommand()
+            process:SetParameters(params)
+            process:Run()
+        end
+
+        return process
+    end
+
+    action BuildZipAlignCommandWindows returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+        Array<text> params
+        params:Add("cmd")
+        params:Add("/c")
+        params:Add(dq + dq)
+        params:Add(androidSDKPath + zipalignPath)
+        params:Add("-v")
+        params:Add("-p")  
+        params:Add("4")
+        params:Add(pathToBuildAndroidFolder + ASSEMBLED_APK_FOR_RELEASE)
+        params:Add(pathToRunFolder + FILE_SEPARATOR + "Assembled.apk")
+        params:Add("&")
+        params:Add("exit")
+        return params
+    end
+
+    action BuildZipAlignCommand returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+        Array<text> params
+        params:Add(androidSDKPath + zipalignPath)
+        params:Add("-v")
+        params:Add("-p")  
+        params:Add("4")
+        params:Add(pathToBuildAndroidFolder + ASSEMBLED_APK_FOR_RELEASE)
+        params:Add(pathToRunFolder + FILE_SEPARATOR + "Assembled.apk")
+        return params
     end
 
     action GetAndroidPath returns text
@@ -47,7 +306,7 @@ class AndroidSupport
         text pathToBuildAndroidFolder = pathToRunFolder + FILE_SEPARATOR + FOLDER_NAME
 
         // Copy project into new folder with appropriate name
-        CopyFolder(pathToBuildAndroidFolder, templateLocation)
+        CopyFolder(templateLocation, pathToBuildAndroidFolder)
 
         SetSDKLocation(pathToBuildAndroidFolder)
         SetNDKLocation(pathToBuildAndroidFolder)
