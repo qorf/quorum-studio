@@ -38,6 +38,11 @@ use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Containers.Iterator
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Resources
+use Libraries.Interface.Events.TabChangeListener
+use Libraries.Interface.Events.TabChangeEvent
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Development.Environment.Studio.Behaviors.NewProjectTabBehavior
+use Libraries.Game.Graphics.Font
 
 
 class NewProjectDialog is Dialog, KeyboardListener
@@ -46,10 +51,10 @@ class NewProjectDialog is Dialog, KeyboardListener
     
     GameStateManager gameManager
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
-    //FocusListener focusListener  //?? used to determine which tab is in focus for determining next/previous focus for the rest of the dialog
     HashTable<Button, text> descriptions
     HashTable<Button, text> templates
-
+    Resources resources
+    
     //Dialog Controls
     TextBox descriptionText
     TextField nameField
@@ -66,21 +71,21 @@ class NewProjectDialog is Dialog, KeyboardListener
     NewProjectApplicationsBehavior buttonsBehavior
     NewProjectBrowseBehavior browseBehavior
     NewProjectOkBehavior okayBehavior
+    NewProjectTabBehavior tabBehavior
     
     //set by the browseBehavior, used by the okayBehavior to set the QuorumProject location
     File locationPath
     //set to blank application template by default. Changes based on user's application selection in the dialog
     text templatePath = "Templates/New/Blank" 
 
-
-    //Basic Tab Icons
+    //Basic Tab ToggleButtons
     ButtonGroup toggleButtons
     ToggleButton blankIcon
     ToggleButton gameIcon
     ToggleButton androidIcon
     ToggleButton legoIcon
     
-    //Advanced Tab Icons
+    //Advanced Tab ToggleButtons
     ToggleButton documentIcon
     ToggleButton imageSheetsIcon
     ToggleButton internetServicesIcon
@@ -93,71 +98,62 @@ class NewProjectDialog is Dialog, KeyboardListener
     ToggleButton webServerIcon    
 
     //Application Descriptions
-    text blankDescription = "A blank application in Quorum sets up a 
-default project with no source code inside 
-of it. As classes are optional in Quorum, 
-using a blank project works just as well 
-as an application for writing programs."
-    text gameDescription = "This project type creates a template for 
-creating a computer game in Quorum. This 
-includes creating a game object, setting 
-up its actions for use in the game, and 
-starting an application window that a game 
-will draw in. Auditory games may also be 
-built using the same framework."
-    text legoDescription = "This project creates a default Lego Quorum 
-application. In this case, if a Lego robot 
-is connected to the system, Quorum will 
-automatically send the built project to the 
-robot. If no Lego robot is connected, the 
-system will detect this and build the 
-project normally."
-    text androidDescription = "This project creates a default class for 
-creating a game in Quorum with tags set 
-appropriately to generate Android 
-Applications. This includes creating a 
-game object, setting up its actions for 
-use in the game,and loading a window for 
+    text blankDescription = 
+"A blank application in Quorum sets up a default project with no source code 
+inside of it. As classes are optional in Quorum, using a blank project works 
+just as well as an application for writing programs."
+    text gameDescription = 
+"This project type creates a template for creating a computer game in Quorum. 
+This includes creating a game object, setting up its actions for use in the 
+game, and starting an application window that a game will draw in. Auditory 
+games may also be built using the same framework."
+    text legoDescription = 
+"This project creates a default Lego Quorum application. In this case, if a Lego 
+robot is connected to the system, Quorum will automatically send the built 
+project to the robot. If no Lego robot is connected, the system will detect this 
+and build the project normally."
+    text androidDescription = 
+"This project creates a default class for creating a game in Quorum with tags 
+set appropriately to generate Android Applications. This includes creating a 
+game object, setting up its actions for use in the game,and loading a window for 
 a game to be displayed in."    
-    text documentDescription = "In a documentation application, building 
-the project creates a web page in HTML 
-for the project. In this default case, 
-it will create an HTML file for the 
+    text documentDescription = 
+"In a documentation application, building the project creates a web page in HTML 
+for the project. In this default case, it will create an HTML file for the 
 class Main."
     text imageSheetsDescription = "Needs Description: Pig Shooter"
     text internetServicesDescription = "Needs Description: Response Events"
     text legoMoveDescription = "Needs Description: Lego Motor"
     text physics2DDescription = "Needs Description: Game using 2D physics"
     text physics3DDescription = "Needs Description: Game using 3D physics"
-    text sineWavesDescription = "Needs Description: Sine Waves through 
-Audio"
+    text sineWavesDescription = "Needs Description: Sine Waves through Audio"
     text skyboxDescription = "Needs Description: Game using Skybox"
-    text userInterfaceDescription = "Needs Description: Game using User 
-Interface (Buttons)"
-    text webServerDescription = "This class shows how to setup a Quorum Web 
-Server. We receive messages with the 
-Respond action and respond with a 
-WebResponse Object. We can receive 
-these messages in any Java Container 
-(e.g., Tomcat, Glassfish)."
+    text userInterfaceDescription = 
+"Needs Description: Game using User Interface (Buttons)"
+    text webServerDescription = 
+"This class shows how to setup a Quorum Web Server. We receive messages with the 
+Respond action and respond with a WebResponse Object. We can receive these 
+messages in any Java Container (e.g., Tomcat, Glassfish)."
 
     on create
+        tabBehavior:SetDialog(me)
         browseBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
         buttonsBehavior:SetDialog(me)
         okayBehavior:SetDialog(me)
         studio:AddKeyboardListener(me)
-        tabPane:Focus()       
+        basicTab:SetBehavior(tabBehavior)
+        basicTab:Activate()
     end
 
     action Initialize
         Color color
         if initialized
-            output "WARNING: Re-initializing the NewFileDialog."
+            output "WARNING: Re-initializing the NewProjectDialog."
         end
 
         initialized = true
-
+       
         //HashTable for Applications and their descriptions, used for loading the correct description
         //dependent on the current application selection
         descriptions:Add(blankIcon, blankDescription)
@@ -175,6 +171,8 @@ these messages in any Java Container
         descriptions:Add(userInterfaceIcon, userInterfaceDescription)
         descriptions:Add(webServerIcon, webServerDescription)
 
+        //HashTable for Applications and their template path, used for adding the current files and folders
+        //dependent on the application selection
         templates:Add(blankIcon, "Templates/New/Blank")
         templates:Add(gameIcon, "Templates/New/Game")
         templates:Add(androidIcon, "Templates/New/Android")
@@ -190,11 +188,8 @@ these messages in any Java Container
         templates:Add(userInterfaceIcon, "Templates/Other/UserInterface")
         templates:Add(webServerIcon, "Templates/Other/WebServer")
 
-        SetName("New Project")
-        
-//        SetPixelWidth(studio:GetScreenWidth() / 3)
-//        SetPixelHeight(studio:GetScreenHeight() / 3)
-        SetPixelWidth(400)
+        SetName("New Project")       
+        SetPixelWidth(900)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
 
         LabelBoxView view
@@ -203,65 +198,23 @@ these messages in any Java Container
         view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
         
         Control panel
-        FlowLayout newFileLayout
-        panel:SetLayout(newFileLayout)
+        FlowLayout newProjectLayout
+        panel:SetLayout(newProjectLayout)
         panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(420)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
         panel:SetBorderColor(color:Black())
         panel:SetBorderThickness(1)
         panel:Add(CreateNewProjectControl())
         panel:SetView2D(view)
         Add(panel)
     end
-    
-    //action to obtain the current button that has the focus
-    //used by the NewProjectApplicationBehavior to update
-    //the description text box to the correct description for
-    //the application/template type in focus
-    action GetCurrentApplicationFocus returns Button
-        Button currentFocus
-        currentFocus = cast(Button, studio:GetCurrentFocus())
-        return currentFocus
-    end
 
-    //called by the NewProjectApplicationBehavior to update
-    //the description text box to the correct description for
-    //the application/template Button in focus
-    action UpdateDescription(ToggleButton button)
-        descriptionText:SetText(descriptions:GetValue(button))
-        descriptionText:HideCaret()
-        templatePath = templates:GetValue(button)
-        button:SetToggleState(true)
-    end
-
-    action GetLocation returns File
-        return locationPath
-    end
-
-    action SetLocation(File file)
-        locationPath = file
-    end
-
-    action UpdateLocationName(text location)
-        locationField:SetText(location)
-    end
-
-    action GetTemplate returns text
-        return templatePath
-    end
-
-    action SetProjectType(Button button)
-        projectType = button:GetName()
-    end
-    
-    action CreateNewProjectControl returns Control
+    private action CreateNewProjectControl returns Control
         Color color
-        
+    
         Control createNewProjectContainer
         FlowLayout createNewProjectLayout
         createNewProjectContainer:SetLayout(createNewProjectLayout)
-        createNewProjectContainer:SetBorderThickness(1)
-        createNewProjectContainer:SetBorderColor(color:Black())
         createNewProjectContainer:SetPercentageWidth(1.0)   
         createNewProjectContainer:SetVerticalLayoutMode(createNewProjectContainer:FIT_CONTENTS)
 
@@ -280,17 +233,9 @@ these messages in any Java Container
         tabPane:SetPixelHeight(180)
         tabPane:Add(BasicTab())
         tabPane:Add(AdvancedTab())
-        tabPane:Select(0)
-        tabPane:SetFocusable(true)
-//      //Add a TabChangeListener
-//        if tabPane:GetSelection():GetTab() = basicTab
-//            tabPane:SetNextFocus(blankIcon)
-//        elseif tabPane:GetSelection():GetTab() = advancedTab
-//            tabPane:SetNextFocus(documentIcon)
-//        end
-        
-        
-        tabPane:SetPreviousFocus(okayButton)
+        tabPane:Select(BasicTab())
+        tabPane:SetLeftPadding(20)
+        tabPane:SetRightPadding(20)
         applicationsContainer:Add(tabPane)
         createNewProjectContainer:Add(applicationsContainer)
 
@@ -313,6 +258,8 @@ these messages in any Java Container
         //focus is set to blankDescription by default
         descriptionText:SetText(blankDescription)
         descriptionText:SetPercentageWidth(1.0)
+        descriptionText:SetLeftPadding(20)
+        descriptionText:SetRightPadding(20)
         descriptionText:SetPixelHeight(100)
         descriptionText:HideCaret()
         
@@ -324,10 +271,12 @@ these messages in any Java Container
         Control projectNameContainer
         projectNameContainer:SetLayout(projectNameLayout)
         projectNameContainer:SetPercentageWidth(1.0)
-        projectNameContainer:SetVerticalLayoutMode(projectNameContainer:FIT_CONTENTS)
-        projectNameContainer:SetTopPadding(10)
+        projectNameContainer:SetPixelHeight(30)
+        //projectNameContainer:SetVerticalLayoutMode(projectNameContainer:FIT_CONTENTS)
+        projectNameContainer:SetTopPadding(50)
         projectNameContainer:SetLeftPadding(10)
         projectNameContainer:SetRightPadding(10)
+        projectNameContainer:SetBottomPadding(10)
 
         Label nameLabel
         nameLabel:SetText("Name:")
@@ -335,17 +284,9 @@ these messages in any Java Container
         projectNameContainer:Add(nameLabel)
 
         nameField:SetText("BlankQuorumApplication") 
-        nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
-        nameField:SetBottomPadding(6)
-        nameField:SetFocusable(true)
-        nameField:SetNextFocus(locationField)
-//        //Add TabChangeListener
-//        if tabPane:GetSelection():GetTab() = basicTab
-//            nameField:SetPreviousFocus(legoIcon)
-//        elseif tabPane:GetSelection():GetTab() = advancedTab
-//            nameField:SetPreviousFocus(webServerIcon)
-//        end
-        nameField:HideCaret()
+        //nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
+        nameField:SetPercentageWidth(0.92)
+        //nameField:SetBottomPadding(6)
         projectNameContainer:Add(nameField)
         createNewProjectContainer:Add(projectNameContainer)
 
@@ -353,34 +294,32 @@ these messages in any Java Container
         Control projectLocationContainer
         projectLocationContainer:SetLayout(projectLocationLayout)
         projectLocationContainer:SetPercentageWidth(1.0)
-        projectLocationContainer:SetVerticalLayoutMode(projectLocationContainer:FIT_CONTENTS)
-        projectLocationContainer:SetTopPadding(6)
+        projectLocationContainer:SetPixelHeight(80)
+        //projectLocationContainer:SetVerticalLayoutMode(projectLocationContainer:FIT_CONTENTS)
+        projectLocationContainer:SetTopPadding(10)
         projectLocationContainer:SetLeftPadding(10)
+        projectLocationContainer:SetRightPadding(10)
+        projectLocationContainer:SetBottomPadding(10)
 
         Label locationLabel
-        locationLabel:SetTopPadding(6)
+        //locationLabel:SetTopPadding(6)
         locationLabel:SetText("Location:")
         locationLabel:SetRightPadding(6)
         projectLocationContainer:Add(locationLabel)
         
         locationField:SetText(locationPath:GetPath())    //set to current directory?
-        locationField:SetPercentageWidth(0.6)
-        locationField:SetTopPadding(6)
-        locationField:SetFocusable(true)
-        locationField:SetNextFocus(browseButton)
-        locationField:SetPreviousFocus(nameField)
-        locationField:HideCaret()
+        //set to a larger height for textfields 
+        locationField:SetPercentageWidth(0.82)
+        locationField:SetPixelHeight(100)
+        locationField:SetRightPadding(10)
+        //locationField:SetTopPadding(50)
         projectLocationContainer:Add(locationField)
 
         browseButton:SetName("Browse...")
-        browseButton:SetPercentageWidth(0.23)
+        browseButton:SetPercentageWidth(0.1)
         browseButton:SetHorizontalLayoutMode(browseButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        browseButton:SetLeftPadding(6)
-        browseButton:SetBottomPadding(6)
-        browseButton:SetFocusable(true)
-        browseButton:SetNextFocus(cancelButton)
-        browseButton:SetPreviousFocus(locationField)
-        browseButton:SetBehavior(browseBehavior)
+        //browseButton:SetLeftPadding(6)
+        //browseButton:SetBottomPadding(6)
         projectLocationContainer:Add(browseButton)
         createNewProjectContainer:Add(projectLocationContainer)
 
@@ -390,21 +329,18 @@ these messages in any Java Container
         closingButtonsContainer:SetPercentageWidth(1.0)
         closingButtonsContainer:SetVerticalLayoutMode(closingButtonsContainer:FIT_CONTENTS)
         closingButtonsContainer:SetTopPadding(20)
+        closingButtonsContainer:SetBottomPadding(50)
         
         Control closingPadding
-        closingPadding:SetPercentageWidth(0.575)
+        closingPadding:SetPercentageWidth(0.78)
         closingPadding:SetPixelHeight(1)
         closingButtonsContainer:Add(closingPadding)
 
         cancelButton:SetName("Cancel")
         cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        cancelButton:SetPercentageWidth(0.2)
+        cancelButton:SetPercentageWidth(0.1)
         cancelButton:SetLeftPadding(0)
         cancelButton:SetTopPadding(0)
-        cancelButton:SetFocusable(true)
-        cancelButton:SetNextFocus(okayButton)
-        cancelButton:SetPreviousFocus(browseButton)
-        cancelButton:SetBehavior(cancelBehavior)
         closingButtonsContainer:Add(cancelButton)
 
         Gradient okayGradient
@@ -415,31 +351,29 @@ these messages in any Java Container
         okayButton:SetName("OK")
         okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
         okayButton:SetBackgroundColor(okayGradient)
-        okayButton:SetPercentageWidth(0.2)
+        okayButton:SetPercentageWidth(0.1)
         okayButton:SetLeftPadding(10)
         okayButton:SetTopPadding(0)
-        okayButton:SetFocusable(true)
-        okayButton:SetNextFocus(tabPane)
-        okayButton:SetPreviousFocus(cancelButton)
-        okayButton:SetBehavior(okayBehavior)
         closingButtonsContainer:Add(okayButton)
         createNewProjectContainer:Add(closingButtonsContainer)
 
+        SetupBehaviors()
+        SetupFocus()
         return createNewProjectContainer
     end
 
-    action BasicTab returns Tab
+    private action BasicTab returns Tab
+        Icon icon
+        Color color
+
         basicTab:SetName("Basic")
-        basicTab:DisplayCloseButton(false)        
-//        basicTab:SetFocusable(true)
-//        basicTab:SetNextFocus(blankIcon)
-//        basicTab:SetPreviousFocus(tabPane)
+        basicTab:DisplayCloseButton(false)
 
         FlowLayout scrollLayout
         ScrollPane scrollPane
         scrollPane:SetLayout(scrollLayout)
         scrollPane:SetPercentageWidth(1.0)
-        scrollPane:SetPixelHeight(180)       
+        scrollPane:SetPixelHeight(200)       
         basicTab:SetRelatedItem(scrollPane)
 
         FlowLayout layout
@@ -454,103 +388,121 @@ these messages in any Java Container
         applicationsContainer:SetLayout(applicationsLayout)
         applicationsContainer:SetPercentageWidth(1.0)
         applicationsContainer:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
-        applicationsContainer:SetTopPadding(40)
-        applicationsContainer:SetBottomPadding(40)
+        applicationsContainer:SetTopPadding(6)
+        applicationsContainer:SetBottomPadding(20)
         applicationsContainer:SetRightPadding(40)
         applicationsContainer:SetLeftPadding(40)
 
-        blankIcon:SetHorizontalLayoutMode(blankIcon:parent:Libraries.Interface.Controls.Control:STANDARD)   
-        blankIcon:SetRightPadding(80)
-        blankIcon:SetLeftPadding(40)
-        blankIcon:SetPercentageWidth(0.4)
-        blankIcon:SetFocusable(true)
-        blankIcon:SetNextFocus(gameIcon)
-        blankIcon:SetBehavior(buttonsBehavior)
-        blankIcon:SetPreviousFocus(basicTab)
-        blankIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(blankIcon)
+        Control buttonPadding
+        buttonPadding:SetPercentageWidth(0.04)
+        buttonPadding:SetPixelHeight(1)
 
-        //gameIcon:SetName("Game")
-        gameIcon:SetHorizontalLayoutMode(gameIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        gameIcon:SetPercentageWidth(0.4)
-        gameIcon:SetFocusable(true)
-        gameIcon:SetNextFocus(androidIcon)
-        gameIcon:SetPreviousFocus(blankIcon)
-        gameIcon:SetBehavior(buttonsBehavior)
-        gameIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(gameIcon)
+        icon:LoadFilledRectangle(70, 70, color:Gray())
+        FlowLayout buttonLayout1
+        Control buttonContainer1
+        buttonContainer1:SetLayout(buttonLayout1)
+        buttonContainer1:SetPercentageWidth(0.2)
+        buttonContainer1:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
+        buttonContainer1:Add(SetupApplicationButtons(blankIcon, "Blank", icon))
 
-        Label blankLabel
-        blankLabel:SetText("Blank")
-        blankLabel:SetHorizontalLayoutMode(blankLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        blankLabel:SetRightPadding(100)
-        blankLabel:SetLeftPadding(100)
-        blankLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(blankLabel)
+        FlowLayout buttonLayout2
+        Control buttonContainer2
+        buttonContainer2:SetLayout(buttonLayout2)
+        buttonContainer2:SetPercentageWidth(0.2)
+        buttonContainer2:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
+        buttonContainer2:Add(SetupApplicationButtons(gameIcon, "Game", icon))
 
-        Label gameLabel
-        gameLabel:SetText("Game")
-        gameLabel:SetHorizontalLayoutMode(gameLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        gameLabel:SetRightPadding(100)
-        gameLabel:SetLeftPadding(100)
-        gameLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(gameLabel)
+        FlowLayout buttonLayout3
+        Control buttonContainer3
+        buttonContainer3:SetLayout(buttonLayout3)
+        buttonContainer3:SetPercentageWidth(0.2)
+        buttonContainer3:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
+        buttonContainer3:Add(SetupApplicationButtons(androidIcon, "Android", icon))
 
-        //androidIcon:SetName("Android")
-        androidIcon:SetHorizontalLayoutMode(androidIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        androidIcon:SetTopPadding(80)
-        androidIcon:SetRightPadding(80)
-        androidIcon:SetLeftPadding(40)
-        androidIcon:SetPercentageWidth(0.4)
-        androidIcon:SetFocusable(true)
-        androidIcon:SetNextFocus(legoIcon)
-        androidIcon:SetPreviousFocus(gameIcon)
-        androidIcon:SetBehavior(buttonsBehavior)
-        androidIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(androidIcon)
-        
-        //legoIcon:SetName("Lego")
-        legoIcon:SetHorizontalLayoutMode(legoIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        legoIcon:SetTopPadding(80)
-        legoIcon:SetPercentageWidth(0.4)
-        legoIcon:SetFocusable(true)
-        legoIcon:SetNextFocus(tabPane)
-        legoIcon:SetPreviousFocus(androidIcon)
-        legoIcon:SetBehavior(buttonsBehavior)
-        legoIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(legoIcon)
-
-        Label androidLabel
-        androidLabel:SetText("Android")
-        androidLabel:SetHorizontalLayoutMode(androidLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        androidLabel:SetRightPadding(100)
-        androidLabel:SetLeftPadding(100)
-        androidLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(androidLabel)
-
-        Label legoLabel
-        legoLabel:SetText("Lego")
-        legoLabel:SetHorizontalLayoutMode(legoLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        legoLabel:SetRightPadding(100)
-        legoLabel:SetLeftPadding(100)
-        legoLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(legoLabel)
+        FlowLayout buttonLayout4
+        Control buttonContainer4
+        buttonContainer4:SetLayout(buttonLayout4)
+        buttonContainer4:SetPercentageWidth(0.2)
+        buttonContainer4:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
+        buttonContainer4:Add(SetupApplicationButtons(legoIcon, "Lego", icon))
       
+        applicationsContainer:Add(buttonPadding)
+        applicationsContainer:Add(buttonContainer1)
+        applicationsContainer:Add(buttonPadding)
+        applicationsContainer:Add(buttonContainer2)
+        applicationsContainer:Add(buttonPadding)
+        applicationsContainer:Add(buttonContainer3)
+        applicationsContainer:Add(buttonPadding)
+        applicationsContainer:Add(buttonContainer4)
+
         panel:Add(applicationsContainer)
+
+        FlowLayout labelsLayout
+        Control labelsContainer
+        labelsContainer:SetLayout(labelsLayout)
+        labelsContainer:SetPercentageWidth(1.0)
+        labelsContainer:SetVerticalLayoutMode(labelsContainer:FIT_CONTENTS)
+        labelsContainer:SetTopPadding(6)
+        labelsContainer:SetBottomPadding(20)
+        labelsContainer:SetRightPadding(40)
+        labelsContainer:SetLeftPadding(40)
+
+        Control labelPadding
+        labelPadding:SetPercentageWidth(0.04)
+        labelPadding:SetPixelHeight(1)
+
+        FlowLayout labelLayout1
+        Control labelContainer1
+        labelContainer1:SetLayout(labelLayout1)
+        labelContainer1:SetPercentageWidth(0.2)
+        labelContainer1:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
+        labelContainer1:Add(SetupApplicationLabels("Blank"))        
         
+        FlowLayout labelLayout2
+        Control labelContainer2
+        labelContainer2:SetLayout(labelLayout2)
+        labelContainer2:SetPercentageWidth(0.2)
+        labelContainer2:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
+        labelContainer2:Add(SetupApplicationLabels("Game")) 
+
+        FlowLayout labelLayout3
+        Control labelContainer3
+        labelContainer3:SetLayout(labelLayout3)
+        labelContainer3:SetPercentageWidth(0.2)
+        labelContainer3:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
+        labelContainer3:Add(SetupApplicationLabels("Android")) 
+
+        FlowLayout labelLayout4
+        Control labelContainer4
+        labelContainer4:SetLayout(labelLayout4)
+        labelContainer4:SetPercentageWidth(0.2)
+        labelContainer4:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
+        labelContainer4:Add(SetupApplicationLabels("Lego")) 
+
+        labelsContainer:Add(labelPadding)
+        labelsContainer:Add(labelContainer1)
+        labelsContainer:Add(labelPadding)
+        labelsContainer:Add(labelContainer2)
+        labelsContainer:Add(labelPadding)
+        labelsContainer:Add(labelContainer3)
+        labelsContainer:Add(labelPadding)
+        labelsContainer:Add(labelContainer4)
+
+        panel:Add(labelsContainer)
+       
         return basicTab
     end
 
-    action AdvancedTab returns Tab
+    private action AdvancedTab returns Tab
+        Icon icon
+        Color color
+
         advancedTab:SetName("Advanced")
         advancedTab:DisplayCloseButton(false)
-//        advancedTab:SetFocusable(true)
-//        advancedTab:SetPreviousFocus(legoIcon)
-//        advancedTab:SetNextFocus(documentIcon)
 
         ScrollPane scrollPane
         scrollPane:SetPercentageWidth(1.0)
-        scrollPane:SetPixelHeight(180)
+        scrollPane:SetPixelHeight(200)
         FlowLayout scrollLayout
         scrollPane:SetLayout(scrollLayout)
 
@@ -563,217 +515,418 @@ these messages in any Java Container
         panel:SetVerticalLayoutMode(panel:FIT_CONTENTS) 
         scrollPane:Add(panel)
 
-        FlowLayout applicationsLayout
-        Control applicationsContainer
-        applicationsContainer:SetLayout(applicationsLayout)
-        applicationsContainer:SetPercentageWidth(1.0)
-        applicationsContainer:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
-        applicationsContainer:SetTopPadding(40)
-        applicationsContainer:SetBottomPadding(40)
-        applicationsContainer:SetRightPadding(40)
-        applicationsContainer:SetLeftPadding(40)
+        FlowLayout applicationsLayout1
+        Control applicationsContainer1
+        applicationsContainer1:SetLayout(applicationsLayout1)
+        applicationsContainer1:SetPercentageWidth(1.0)
+        applicationsContainer1:SetVerticalLayoutMode(applicationsContainer1:FIT_CONTENTS)
+        applicationsContainer1:SetTopPadding(6)
+        applicationsContainer1:SetBottomPadding(20)
+        applicationsContainer1:SetRightPadding(40)
+        applicationsContainer1:SetLeftPadding(40)
 
-        documentIcon:SetName("Document")
-        documentIcon:SetHorizontalLayoutMode(documentIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        documentIcon:SetRightPadding(80)
-        documentIcon:SetLeftPadding(40)
-        documentIcon:SetPercentageWidth(0.4)
-        documentIcon:SetFocusable(true)
-        documentIcon:SetNextFocus(imageSheetsIcon)
-        documentIcon:SetPreviousFocus(tabPane)
-        documentIcon:SetBehavior(buttonsBehavior)
-        documentIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(documentIcon)
-       
-        imageSheetsIcon:SetName("Image Sheets")
-        imageSheetsIcon:SetHorizontalLayoutMode(documentIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        imageSheetsIcon:SetPercentageWidth(0.4)
-        imageSheetsIcon:SetFocusable(true)
-        imageSheetsIcon:SetNextFocus(internetServicesIcon)
-        imageSheetsIcon:SetPreviousFocus(documentIcon)
-        imageSheetsIcon:SetBehavior(buttonsBehavior)
-        imageSheetsIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(imageSheetsIcon) 
+        Control buttonPadding
+        buttonPadding:SetPercentageWidth(0.04)
+        buttonPadding:SetPixelHeight(1)
 
-        Label documentLabel
-        documentLabel:SetText("Document")
-        documentLabel:SetHorizontalLayoutMode(documentLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        documentLabel:SetRightPadding(100)
-        documentLabel:SetLeftPadding(100)
-        documentLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(documentLabel)
+        icon:LoadFilledRectangle(70, 70, color:Gray())
+        FlowLayout buttonLayout1
+        Control buttonContainer1
+        buttonContainer1:SetLayout(buttonLayout1)
+        buttonContainer1:SetPercentageWidth(0.2)
+        buttonContainer1:SetVerticalLayoutMode(buttonContainer1:FIT_CONTENTS)
+        buttonContainer1:Add(SetupApplicationButtons(documentIcon, "Document", icon))
 
-        Label imageSheetsLabel
-        imageSheetsLabel:SetText("Image Sheets")
-        imageSheetsLabel:SetHorizontalLayoutMode(imageSheetsLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        imageSheetsLabel:SetRightPadding(100)
-        imageSheetsLabel:SetLeftPadding(100)
-        imageSheetsLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(imageSheetsLabel)
+        FlowLayout buttonLayout2
+        Control buttonContainer2
+        buttonContainer2:SetLayout(buttonLayout2)
+        buttonContainer2:SetPercentageWidth(0.2)
+        buttonContainer2:SetVerticalLayoutMode(buttonContainer2:FIT_CONTENTS)
+        buttonContainer2:Add(SetupApplicationButtons(imageSheetsIcon, "Image", icon))
 
-        internetServicesIcon:SetName("Internet Services")
-        internetServicesIcon:SetHorizontalLayoutMode(internetServicesIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        internetServicesIcon:SetTopPadding(80)
-        internetServicesIcon:SetRightPadding(80)
-        internetServicesIcon:SetLeftPadding(40)
-        internetServicesIcon:SetPercentageWidth(0.4)
-        internetServicesIcon:SetFocusable(true)
-        internetServicesIcon:SetNextFocus(legoMoveIcon)
-        internetServicesIcon:SetPreviousFocus(imageSheetsIcon)
-        internetServicesIcon:SetBehavior(buttonsBehavior)
-        internetServicesIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(internetServicesIcon)
+        FlowLayout buttonLayout3
+        Control buttonContainer3
+        buttonContainer3:SetLayout(buttonLayout3)
+        buttonContainer3:SetPercentageWidth(0.2)
+        buttonContainer3:SetVerticalLayoutMode(buttonContainer3:FIT_CONTENTS)
+        buttonContainer3:Add(SetupApplicationButtons(internetServicesIcon, "Internet", icon))
 
-        legoMoveIcon:SetName("Lego Move")
-        legoMoveIcon:SetHorizontalLayoutMode(legoMoveIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        legoMoveIcon:SetTopPadding(80)
-        legoMoveIcon:SetPercentageWidth(0.4)
-        legoMoveIcon:SetFocusable(true)
-        legoMoveIcon:SetNextFocus(physics2DIcon)
-        legoMoveIcon:SetPreviousFocus(internetServicesIcon)
-        legoMoveIcon:SetBehavior(buttonsBehavior)
-        legoMoveIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(legoMoveIcon)
+        FlowLayout buttonLayout4
+        Control buttonContainer4
+        buttonContainer4:SetLayout(buttonLayout4)
+        buttonContainer4:SetPercentageWidth(0.2)
+        buttonContainer4:SetVerticalLayoutMode(buttonContainer4:FIT_CONTENTS)
+        buttonContainer4:Add(SetupApplicationButtons(legoMoveIcon, "Lego Move", icon))
+      
+        applicationsContainer1:Add(buttonPadding)
+        applicationsContainer1:Add(buttonContainer1)
+        applicationsContainer1:Add(buttonPadding)
+        applicationsContainer1:Add(buttonContainer2)
+        applicationsContainer1:Add(buttonPadding)
+        applicationsContainer1:Add(buttonContainer3)
+        applicationsContainer1:Add(buttonPadding)
+        applicationsContainer1:Add(buttonContainer4)
 
-        Label internetServicesLabel
-        internetServicesLabel:SetText("Internet Services")
-        internetServicesLabel:SetHorizontalLayoutMode(internetServicesLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        internetServicesLabel:SetRightPadding(100)
-        internetServicesLabel:SetLeftPadding(100)
-        internetServicesLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(internetServicesLabel)
+        panel:Add(applicationsContainer1)
 
-        Label legoMoveLabel
-        legoMoveLabel:SetText("Lego Move")
-        legoMoveLabel:SetHorizontalLayoutMode(legoMoveLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        legoMoveLabel:SetRightPadding(100)
-        legoMoveLabel:SetLeftPadding(100)
-        legoMoveLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(legoMoveLabel)
+        FlowLayout labelsLayout1
+        Control labelsContainer1
+        labelsContainer1:SetLayout(labelsLayout1)
+        labelsContainer1:SetPercentageWidth(1.0)
+        labelsContainer1:SetVerticalLayoutMode(labelsContainer1:FIT_CONTENTS)
+        labelsContainer1:SetTopPadding(6)
+        labelsContainer1:SetBottomPadding(20)
+        labelsContainer1:SetRightPadding(40)
+        labelsContainer1:SetLeftPadding(40)
 
-        physics2DIcon:SetName("Physics 2D")
-        physics2DIcon:SetHorizontalLayoutMode(physics2DIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        physics2DIcon:SetTopPadding(80)
-        physics2DIcon:SetRightPadding(80)
-        physics2DIcon:SetLeftPadding(40)
-        physics2DIcon:SetPercentageWidth(0.4)
-        physics2DIcon:SetFocusable(true)
-        physics2DIcon:SetNextFocus(physics3DIcon)
-        physics2DIcon:SetPreviousFocus(legoMoveIcon)
-        physics2DIcon:SetBehavior(buttonsBehavior)
-        physics2DIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(physics2DIcon)
+        Control labelPadding
+        labelPadding:SetPercentageWidth(0.04)
+        labelPadding:SetPixelHeight(1)
 
-        physics3DIcon:SetName("Physics 3D")
-        physics3DIcon:SetHorizontalLayoutMode(physics3DIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        physics3DIcon:SetTopPadding(80)
-        physics3DIcon:SetPercentageWidth(0.4)
-        physics3DIcon:SetFocusable(true)
-        physics3DIcon:SetNextFocus(sineWavesIcon)
-        physics3DIcon:SetPreviousFocus(physics2DIcon)
-        physics3DIcon:SetBehavior(buttonsBehavior)
-        physics3DIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(physics3DIcon)
+        FlowLayout labelLayout1
+        Control labelContainer1
+        labelContainer1:SetLayout(labelLayout1)
+        labelContainer1:SetPercentageWidth(0.2)
+        labelContainer1:SetVerticalLayoutMode(labelContainer1:FIT_CONTENTS)
+        labelContainer1:Add(SetupApplicationLabels("Document"))        
+        
+        FlowLayout labelLayout2
+        Control labelContainer2
+        labelContainer2:SetLayout(labelLayout2)
+        labelContainer2:SetPercentageWidth(0.2)
+        labelContainer2:SetVerticalLayoutMode(labelContainer2:FIT_CONTENTS)
+        labelContainer2:Add(SetupApplicationLabels("Image Sheets")) 
 
-        Label physics2DLabel
-        physics2DLabel:SetText("Physics 2D")
-        physics2DLabel:SetHorizontalLayoutMode(physics2DLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        physics2DLabel:SetRightPadding(100)
-        physics2DLabel:SetLeftPadding(100)
-        physics2DLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(physics2DLabel)
+        FlowLayout labelLayout3
+        Control labelContainer3
+        labelContainer3:SetLayout(labelLayout3)
+        labelContainer3:SetPercentageWidth(0.2)
+        labelContainer3:SetVerticalLayoutMode(labelContainer3:FIT_CONTENTS)
+        labelContainer3:Add(SetupApplicationLabels("Internet")) 
 
-        Label physics3DLabel
-        physics3DLabel:SetText("Physics 3D")
-        physics3DLabel:SetHorizontalLayoutMode(physics3DLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        physics3DLabel:SetRightPadding(100)
-        physics3DLabel:SetLeftPadding(100)
-        physics3DLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(physics3DLabel)
+        FlowLayout labelLayout4
+        Control labelContainer4
+        labelContainer4:SetLayout(labelLayout4)
+        labelContainer4:SetPercentageWidth(0.2)
+        labelContainer4:SetVerticalLayoutMode(labelContainer4:FIT_CONTENTS)
+        labelContainer4:Add(SetupApplicationLabels("Lego Move")) 
 
-        sineWavesIcon:SetName("Sine Waves")
-        sineWavesIcon:SetHorizontalLayoutMode(sineWavesIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        sineWavesIcon:SetTopPadding(80)
-        sineWavesIcon:SetRightPadding(80)
-        sineWavesIcon:SetLeftPadding(40)
-        sineWavesIcon:SetPercentageWidth(0.4)
-        sineWavesIcon:SetFocusable(true)
-        sineWavesIcon:SetNextFocus(skyboxIcon)
-        sineWavesIcon:SetPreviousFocus(physics3DIcon)
-        sineWavesIcon:SetBehavior(buttonsBehavior)
-        sineWavesIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(sineWavesIcon)
+        labelsContainer1:Add(labelPadding)
+        labelsContainer1:Add(labelContainer1)
+        labelsContainer1:Add(labelPadding)
+        labelsContainer1:Add(labelContainer2)
+        labelsContainer1:Add(labelPadding)
+        labelsContainer1:Add(labelContainer3)
+        labelsContainer1:Add(labelPadding)
+        labelsContainer1:Add(labelContainer4)
 
-        skyboxIcon:SetName("Skybox")
-        skyboxIcon:SetHorizontalLayoutMode(skyboxIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        skyboxIcon:SetTopPadding(80)
-        skyboxIcon:SetPercentageWidth(0.4)
-        skyboxIcon:SetFocusable(true)
-        skyboxIcon:SetNextFocus(userInterfaceIcon)
-        skyboxIcon:SetPreviousFocus(sineWavesIcon)
-        skyboxIcon:SetBehavior(buttonsBehavior)
-        skyboxIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(skyboxIcon)
+        panel:Add(labelsContainer1)
 
-        Label sineWavesLabel
-        sineWavesLabel:SetText("Sine Waves")
-        sineWavesLabel:SetHorizontalLayoutMode(sineWavesLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        sineWavesLabel:SetRightPadding(100)
-        sineWavesLabel:SetLeftPadding(100)
-        sineWavesLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(sineWavesLabel)
+        FlowLayout applicationsLayout2
+        Control applicationsContainer2
+        applicationsContainer2:SetLayout(applicationsLayout2)
+        applicationsContainer2:SetPercentageWidth(1.0)
+        applicationsContainer2:SetVerticalLayoutMode(applicationsContainer2:FIT_CONTENTS)
+        applicationsContainer2:SetTopPadding(6)
+        applicationsContainer2:SetBottomPadding(20)
+        applicationsContainer2:SetRightPadding(40)
+        applicationsContainer2:SetLeftPadding(40)
 
-        Label skyboxLabel
-        skyboxLabel:SetText("Skybox")
-        skyboxLabel:SetHorizontalLayoutMode(legoMoveLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        skyboxLabel:SetRightPadding(100)
-        skyboxLabel:SetLeftPadding(100)
-        skyboxLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(skyboxLabel)  
+        FlowLayout buttonLayout5
+        Control buttonContainer5
+        buttonContainer5:SetLayout(buttonLayout5)
+        buttonContainer5:SetPercentageWidth(0.2)
+        buttonContainer5:SetVerticalLayoutMode(buttonContainer5:FIT_CONTENTS)
+        buttonContainer5:Add(SetupApplicationButtons(physics2DIcon, "Physics 2D", icon))
 
-        userInterfaceIcon:SetName("User Interface")
-        userInterfaceIcon:SetHorizontalLayoutMode(userInterfaceIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        userInterfaceIcon:SetTopPadding(80)
-        userInterfaceIcon:SetRightPadding(80)
-        userInterfaceIcon:SetLeftPadding(40)
-        userInterfaceIcon:SetPercentageWidth(0.4)
-        userInterfaceIcon:SetFocusable(true)
-        userInterfaceIcon:SetNextFocus(webServerIcon)
-        userInterfaceIcon:SetPreviousFocus(skyboxIcon)
-        userInterfaceIcon:SetBehavior(buttonsBehavior)
-        userInterfaceIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(userInterfaceIcon)
+        FlowLayout buttonLayout6
+        Control buttonContainer6
+        buttonContainer6:SetLayout(buttonLayout6)
+        buttonContainer6:SetPercentageWidth(0.2)
+        buttonContainer6:SetVerticalLayoutMode(buttonContainer6:FIT_CONTENTS)
+        buttonContainer6:Add(SetupApplicationButtons(physics3DIcon, "Physics 3D", icon))
 
-        webServerIcon:SetName("Web Server")
-        webServerIcon:SetHorizontalLayoutMode(webServerIcon:parent:Libraries.Interface.Controls.Control:STANDARD)
-        webServerIcon:SetTopPadding(80)
-        webServerIcon:SetPercentageWidth(0.4)
-        webServerIcon:SetFocusable(true)
-        webServerIcon:SetNextFocus(nameField)
-        webServerIcon:SetPreviousFocus(userInterfaceIcon)
-        webServerIcon:SetBehavior(buttonsBehavior)
-        webServerIcon:SetButtonGroup(toggleButtons)
-        applicationsContainer:Add(webServerIcon)
+        FlowLayout buttonLayout7
+        Control buttonContainer7
+        buttonContainer7:SetLayout(buttonLayout7)
+        buttonContainer7:SetPercentageWidth(0.2)
+        buttonContainer7:SetVerticalLayoutMode(buttonContainer7:FIT_CONTENTS)
+        buttonContainer7:Add(SetupApplicationButtons(sineWavesIcon, "Sine Waves", icon))
 
-        Label userInterfaceLabel
-        userInterfaceLabel:SetText("User Interface")
-        userInterfaceLabel:SetHorizontalLayoutMode(userInterfaceLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        userInterfaceLabel:SetRightPadding(100)
-        userInterfaceLabel:SetLeftPadding(100)
-        userInterfaceLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(userInterfaceLabel)
+        FlowLayout buttonLayout8
+        Control buttonContainer8
+        buttonContainer8:SetLayout(buttonLayout8)
+        buttonContainer8:SetPercentageWidth(0.2)
+        buttonContainer8:SetVerticalLayoutMode(buttonContainer8:FIT_CONTENTS)
+        buttonContainer8:Add(SetupApplicationButtons(skyboxIcon, "SkyBox", icon))
+      
+        applicationsContainer2:Add(buttonPadding)
+        applicationsContainer2:Add(buttonContainer5)
+        applicationsContainer2:Add(buttonPadding)
+        applicationsContainer2:Add(buttonContainer6)
+        applicationsContainer2:Add(buttonPadding)
+        applicationsContainer2:Add(buttonContainer7)
+        applicationsContainer2:Add(buttonPadding)
+        applicationsContainer2:Add(buttonContainer8)
 
-        Label webServerLabel
-        webServerLabel:SetText("Web Server")
-        webServerLabel:SetHorizontalLayoutMode(webServerLabel:parent:Libraries.Interface.Controls.Control:STANDARD)
-        webServerLabel:SetRightPadding(100)
-        webServerLabel:SetLeftPadding(100)
-        webServerLabel:SetPercentageWidth(0.4)
-        applicationsContainer:Add(webServerLabel)       
+        panel:Add(applicationsContainer2)
 
-        panel:Add(applicationsContainer)
+        FlowLayout labelsLayout2
+        Control labelsContainer2
+        labelsContainer2:SetLayout(labelsLayout2)
+        labelsContainer2:SetPercentageWidth(1.0)
+        labelsContainer2:SetVerticalLayoutMode(labelsContainer2:FIT_CONTENTS)
+        labelsContainer2:SetTopPadding(6)
+        labelsContainer2:SetBottomPadding(20)
+        labelsContainer2:SetRightPadding(40)
+        labelsContainer2:SetLeftPadding(40)
+
+        FlowLayout labelLayout5
+        Control labelContainer5
+        labelContainer5:SetLayout(labelLayout5)
+        labelContainer5:SetPercentageWidth(0.2)
+        labelContainer5:SetVerticalLayoutMode(labelContainer5:FIT_CONTENTS)
+        labelContainer5:Add(SetupApplicationLabels("Physics 2D"))        
+        
+        FlowLayout labelLayout6
+        Control labelContainer6
+        labelContainer6:SetLayout(labelLayout6)
+        labelContainer6:SetPercentageWidth(0.2)
+        labelContainer6:SetVerticalLayoutMode(labelContainer6:FIT_CONTENTS)
+        labelContainer6:Add(SetupApplicationLabels("Physics 3D")) 
+
+        FlowLayout labelLayout7
+        Control labelContainer7
+        labelContainer7:SetLayout(labelLayout7)
+        labelContainer7:SetPercentageWidth(0.2)
+        labelContainer7:SetVerticalLayoutMode(labelContainer7:FIT_CONTENTS)
+        labelContainer7:Add(SetupApplicationLabels("Sine Waves")) 
+
+        FlowLayout labelLayout8
+        Control labelContainer8
+        labelContainer8:SetLayout(labelLayout8)
+        labelContainer8:SetPercentageWidth(0.2)
+        labelContainer8:SetVerticalLayoutMode(labelContainer4:FIT_CONTENTS)
+        labelContainer8:Add(SetupApplicationLabels("Skybox")) 
+
+        labelsContainer2:Add(labelPadding)
+        labelsContainer2:Add(labelContainer5)
+        labelsContainer2:Add(labelPadding)
+        labelsContainer2:Add(labelContainer6)
+        labelsContainer2:Add(labelPadding)
+        labelsContainer2:Add(labelContainer7)
+        labelsContainer2:Add(labelPadding)
+        labelsContainer2:Add(labelContainer8)
+
+        panel:Add(labelsContainer2)
+
+
+        FlowLayout applicationsLayout3
+        Control applicationsContainer3
+        applicationsContainer3:SetLayout(applicationsLayout3)
+        applicationsContainer3:SetPercentageWidth(1.0)
+        applicationsContainer3:SetVerticalLayoutMode(applicationsContainer3:FIT_CONTENTS)
+        applicationsContainer3:SetTopPadding(6)
+        applicationsContainer3:SetBottomPadding(20)
+        applicationsContainer3:SetRightPadding(40)
+        applicationsContainer3:SetLeftPadding(40)
+
+        FlowLayout buttonLayout9
+        Control buttonContainer9
+        buttonContainer9:SetLayout(buttonLayout9)
+        buttonContainer9:SetPercentageWidth(0.2)
+        buttonContainer9:SetVerticalLayoutMode(buttonContainer9:FIT_CONTENTS)
+        buttonContainer9:Add(SetupApplicationButtons(userInterfaceIcon, "User Interface", icon))
+
+        FlowLayout buttonLayout10
+        Control buttonContainer10
+        buttonContainer10:SetLayout(buttonLayout10)
+        buttonContainer10:SetPercentageWidth(0.2)
+        buttonContainer10:SetVerticalLayoutMode(buttonContainer10:FIT_CONTENTS)
+        buttonContainer10:Add(SetupApplicationButtons(webServerIcon, "Web Server", icon))
+      
+        applicationsContainer3:Add(buttonPadding)
+        applicationsContainer3:Add(buttonContainer9)
+        applicationsContainer3:Add(buttonPadding)
+        applicationsContainer3:Add(buttonContainer10)
+
+        panel:Add(applicationsContainer3)
+
+        FlowLayout labelsLayout3
+        Control labelsContainer3
+        labelsContainer3:SetLayout(labelsLayout3)
+        labelsContainer3:SetPercentageWidth(1.0)
+        labelsContainer3:SetVerticalLayoutMode(labelsContainer3:FIT_CONTENTS)
+        labelsContainer3:SetTopPadding(6)
+        labelsContainer3:SetBottomPadding(20)
+        labelsContainer3:SetRightPadding(40)
+        labelsContainer3:SetLeftPadding(40)
+
+        FlowLayout labelLayout9
+        Control labelContainer9
+        labelContainer9:SetLayout(labelLayout9)
+        labelContainer9:SetPercentageWidth(0.2)
+        labelContainer9:SetVerticalLayoutMode(labelContainer9:FIT_CONTENTS)
+        labelContainer9:Add(SetupApplicationLabels("User Interface"))        
+        
+        FlowLayout labelLayout10
+        Control labelContainer10
+        labelContainer10:SetLayout(labelLayout10)
+        labelContainer10:SetPercentageWidth(0.2)
+        labelContainer10:SetVerticalLayoutMode(labelContainer10:FIT_CONTENTS)
+        labelContainer10:Add(SetupApplicationLabels("Web Server")) 
+
+        labelsContainer3:Add(labelPadding)
+        labelsContainer3:Add(labelContainer9)
+        labelsContainer3:Add(labelPadding)
+        labelsContainer3:Add(labelContainer10)
+
+        panel:Add(labelsContainer3)
+
         return advancedTab
-    end   
+    end 
+
+    private action SetupApplicationButtons(ToggleButton button, text name, Icon icon) returns ToggleButton
+        Font font = undefined   
+        button:SetName(name)
+        button:SetHorizontalLayoutMode(button:parent:Libraries.Interface.Controls.Control:STANDARD)
+        button:SetFont(font)
+        button:SetTopPadding(50)
+        button:SetLeftPadding(50)
+        button:SetRightPadding(50)
+        button:SetIcon(icon)
+        button:SetButtonGroup(toggleButtons)
+        button:SetBehavior(buttonsBehavior)
+        return button
+    end
+
+    private action SetupApplicationLabels(text name) returns Label
+        Label label
+        label:SetText(name)
+        //label:SetWidth(120)
+        label:SetHorizontalLayoutMode(label:parent:Libraries.Interface.Controls.Control:STANDARD)
+        label:SetRightPadding(50)
+        label:SetLeftPadding(50)
+        return label
+    end
+
+//    private action AddApplicationButton(Icon icon, File templatePath, text description, text name)
+//        resources:GetNewProject()
+//        
+//    end
+
+    private action SetupFocus
+        tabPane:SetFocusable(true)
+        nameField:SetFocusable(true)
+        locationField:SetFocusable(true)
+        browseButton:SetFocusable(true)
+        cancelButton:SetFocusable(true)
+        okayButton:SetFocusable(true)
+
+        blankIcon:SetFocusable(true)
+        gameIcon:SetFocusable(true)
+        androidIcon:SetFocusable(true)
+        legoIcon:SetFocusable(true)
+
+        documentIcon:SetFocusable(true)
+        imageSheetsIcon:SetFocusable(true)
+        internetServicesIcon:SetFocusable(true)
+        legoMoveIcon:SetFocusable(true)
+        physics2DIcon:SetFocusable(true)
+        physics3DIcon:SetFocusable(true)
+        sineWavesIcon:SetFocusable(true)
+        skyboxIcon:SetFocusable(true)
+        userInterfaceIcon:SetFocusable(true)
+        webServerIcon:SetFocusable(true)
+
+        nameField:SetNextFocus(locationField)
+        locationField:SetNextFocus(browseButton)
+        browseButton:SetNextFocus(cancelButton)
+        cancelButton:SetNextFocus(okayButton)
+        okayButton:SetNextFocus(tabPane)
+
+        blankIcon:SetNextFocus(gameIcon)
+        gameIcon:SetNextFocus(androidIcon)
+        androidIcon:SetNextFocus(legoIcon)
+        legoIcon:SetNextFocus(nameField)
+
+        documentIcon:SetNextFocus(imageSheetsIcon)
+        imageSheetsIcon:SetNextFocus(internetServicesIcon)
+        internetServicesIcon:SetNextFocus(legoMoveIcon)
+        legoMoveIcon:SetNextFocus(physics2DIcon)
+        physics2DIcon:SetNextFocus(physics3DIcon)
+        physics3DIcon:SetNextFocus(sineWavesIcon)
+        sineWavesIcon:SetNextFocus(skyboxIcon)
+        skyboxIcon:SetNextFocus(userInterfaceIcon)
+        userInterfaceIcon:SetNextFocus(webServerIcon)
+        webServerIcon:SetNextFocus(nameField)
+
+        tabPane:SetPreviousFocus(okayButton)
+        locationField:SetPreviousFocus(nameField)
+        browseButton:SetPreviousFocus(locationField)
+        cancelButton:SetPreviousFocus(browseButton)
+        okayButton:SetPreviousFocus(cancelButton)
+
+        blankIcon:SetPreviousFocus(tabPane)
+        gameIcon:SetPreviousFocus(blankIcon)
+        androidIcon:SetPreviousFocus(gameIcon)
+        legoIcon:SetPreviousFocus(androidIcon)
+
+        documentIcon:SetPreviousFocus(tabPane)
+        imageSheetsIcon:SetPreviousFocus(documentIcon)
+        internetServicesIcon:SetPreviousFocus(imageSheetsIcon)
+        legoMoveIcon:SetPreviousFocus(internetServicesIcon)
+        physics2DIcon:SetPreviousFocus(legoMoveIcon)
+        physics3DIcon:SetPreviousFocus(physics2DIcon)
+        sineWavesIcon:SetPreviousFocus(physics3DIcon)
+        skyboxIcon:SetPreviousFocus(sineWavesIcon)
+        userInterfaceIcon:SetPreviousFocus(skyboxIcon)
+        webServerIcon:SetPreviousFocus(userInterfaceIcon)
+    end
+
+    private action SetupBehaviors
+        advancedTab:SetBehavior(tabBehavior)
+
+        browseButton:SetBehavior(browseBehavior)
+        cancelButton:SetBehavior(cancelBehavior)
+        okayButton:SetBehavior(okayBehavior)
+    end
+    
+    //action to obtain the current button that has the focus
+    //used by the NewProjectApplicationBehavior to update
+    //the description text box to the correct description for
+    //the application/template type in focus
+    action GetCurrentApplicationFocus returns Button
+        Button currentFocus
+        currentFocus = cast(Button, studio:GetCurrentFocus())
+        return currentFocus
+    end
+
+    //called by the NewProjectApplicationBehavior to update
+    //the description text box to the correct description for
+    //the application/template Button in focus
+    action UpdateDescription(ToggleButton button)
+        descriptionText:SetText(descriptions:GetValue(button))
+        descriptionText:HideCaret()
+        templatePath = templates:GetValue(button)
+        button:SetToggleState(true)
+    end
+
+//    action GetLocation returns File
+//        return locationPath
+//    end
+
+    action SetLocation(File file)
+        locationPath = file
+    end
+
+    action UpdateLocationName(text location)
+        locationField:SetText(location)
+    end
+
+    action SetProjectType(Button button)
+        projectType = button:GetName()
+    end
 
     action CreateNewProject returns QuorumProject
         QuorumProject project
@@ -832,8 +985,22 @@ these messages in any Java Container
         if event:keyCode = event:ESCAPE
             cancelButton:Activate()            
         end
+    end
 
-            
+    action GetCurrentTabFocus returns Tab
+        return tabPane:GetSelection():GetTab()
+    end
+
+    action UpdateFocus(Tab tab)
+        if tab = basicTab
+            tabPane:SetNextFocus(blankIcon)
+            blankIcon:Focus()
+            nameField:SetPreviousFocus(legoIcon)            
+        elseif tab = advancedTab
+            tabPane:SetNextFocus(documentIcon)
+            documentIcon:Focus()
+            nameField:SetPreviousFocus(webServerIcon)
+        end
     end
 
 end
