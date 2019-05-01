@@ -4,12 +4,14 @@ use Libraries.Development.Environment.Studio.Interface.NewProjectDialog
 use Libraries.Interface.Controls.Button
 use Libraries.Interface.Controls.ToggleButton
 use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.TabPane
 
-class NewProjectApplicationsBehavior is QuorumStudioBehavior
+class NewProjectTabBehavior is QuorumStudioBehavior
     
     NewProjectDialog dialog = undefined
     Button button
-    ToggleButton toggleButton
+    Tab tab
+    TabPane tabPane
 
     action SetDialog(NewProjectDialog dialog)
         me:dialog = dialog
@@ -21,8 +23,7 @@ class NewProjectApplicationsBehavior is QuorumStudioBehavior
     
 
     action Run(BehaviorEvent event)
-        me:button = dialog:GetCurrentApplicationFocus()
-        me:toggleButton = cast(ToggleButton, me:button)
-        dialog:UpdateDescription(me:toggleButton)
+        me:tab = dialog:GetCurrentTabFocus()
+        dialog:UpdateFocus(me:tab)
     end
 end

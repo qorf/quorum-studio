@@ -55,6 +55,7 @@ use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Language.Compile.Lexer
 use Libraries.Language.Compile.CodeCompletionRequest
 use Libraries.Language.Compile.CodeCompletionResult
+use Libraries.Development.Environment.Studio.Android.AndroidSupport
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -684,6 +685,81 @@ class BuildManager is DebuggerListener, ProcessListener
     action CleanAndBuild(BuildInformation info)
         Clean(info)
         Build(info)
+    end
+
+    action SendToAndroidDebugMode(BuildInformation info)
+        QuorumProject project = info:project
+        OutputTab out = info:outputTab
+        if project:IsLegoType()
+            out:Append("The project is currently in LEGO mode. I cannot send a LEGO project to an Android Device. Please compile in Standard mode.")
+            return now
+        end
+
+        if project:IsServerType()
+            out:Append("The project is currently in Server mode. I cannot send a Server project to an Android Device. Please compile in Standard mode.")
+            return now
+        end
+
+        if project:IsJavascriptType()
+            out:Append("The project is currently in Web Client mode. I cannot send a Web client project to an Android Device. Please compile in Standard mode.")
+            return now
+        end
+        Build(info)
+
+        CompilerResult result = info:result
+        SymbolTable table = result:symbolTable
+        CompilerErrorManager errors = result:compilerErrorManager
+        if errors:IsCompilationErrorFree()
+            out:Append("Sending Program to Android Device")
+        else 
+            return now
+        end
+
+        text run = project:GetLocation():GetAbsolutePath() + "/Run"
+        
+        File runDirectory// = project:Get
+        runDirectory:SetAbsolutePath(run)
+        File parentDirectory = runDirectory:GetParentDirectory()
+
+        text media = parentDirectory:GetAbsolutePath() + "/" + project:GetMobileAssetsPath()
+        File mediaDirectory
+        mediaDirectory:SetAbsolutePath(media)
+
+        //Get the paths for the android project, if the user has customized them
+        text androidPath = project:GetAndroidPath()
+        text androidAlternateJDK = project:GetAndroidAlternateJDKPath()
+        text jarName = project:GetExecutableName() + ".jar"
+        text applicationName = project:GetExecutableName()
+        File androidLocation
+        androidLocation:SetPath("External/Android")
+
+        AndroidSupport android
+        android:Setup(runDirectory:GetAbsolutePath(), jarName)
+
+        if androidPath not= undefined and not androidPath:IsEmpty()
+            android:SetAndroidPath(androidPath)
+        end
+
+        android:CopyAndRename(androidLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName, androidAlternateJDK)
+        android:CopyLibraries()
+
+        if mediaDirectory:Exists()
+            android:CopyAssets(mediaDirectory, project:GetMobileAssetsPath())
+        end
+
+        ProcessRunner debug = android:GetAPKDebugBuildProcess()
+        debug:Run()
+
+        ProcessRunner install = android:GetDebugInstallProcess()
+        install:Run()
+
+        //for the signed version
+//        text androidPath = project:GetAndroidPath()
+//        text androidKeystorePath = project:GetAndroidKeystorePath()
+//        text androidKeystorePassword = project:GetAndroidKeystorePassword()
+//        text androidKeyAlias = project:GetAndroidKeyAlias()
+//        text androidKeyPassword = project:GetAndroidKeyPassword()
+//        text androidAlternateJDK = project:GetAndroidAlternateJDKPath()
     end
 
     action Debug(BuildInformation info)
