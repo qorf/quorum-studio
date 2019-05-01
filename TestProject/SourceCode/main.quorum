@@ -6,6 +6,8 @@ use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Controls.Button
 use Libraries.Interface.Events.FocusListener
 use Libraries.Interface.Events.FocusEvent
+use Libraries.Interface.Controls.MenuBar
+use Libraries.Interface.Controls.MenuItem
 
 class Main1 is Game, FocusListener
 
@@ -17,24 +19,123 @@ class Main1 is Game, FocusListener
         FlowLayout layout
         SetLayout(layout)
 
+        OutputBehavior outputBehavior
+
+        MenuBar bar
+        MenuItem item1
+        item1:SetName("Primary")
+        bar:Add(item1)
+
+        MenuItem item2
+        item2:SetName("Secondary")
+        bar:Add(item2)
+
+        MenuItem item3
+        item3:SetName("Tertiary")
+        bar:Add(item3)
+
+        MenuItem subItem1A
+        subItem1A:SetName("Hello")
+        subItem1A:SetBehavior(outputBehavior)
+        item1:Add(subItem1A)
+
+        MenuItem subItem1B
+        subItem1B:SetName("World")
+        subItem1B:SetBehavior(outputBehavior)
+        item1:Add(subItem1B)
+
+        MenuItem subItem2A
+        subItem2A:SetName("Quorum")
+        subItem2A:SetBehavior(outputBehavior)
+        item2:Add(subItem2A)
+
+        MenuItem subItem2B
+        subItem2B:SetName("Programming")
+        subItem2B:SetBehavior(outputBehavior)
+        item2:Add(subItem2B)
+
+        MenuItem subItem2C
+        subItem2C:SetName("Language")
+        subItem2C:SetBehavior(outputBehavior)
+        item2:Add(subItem2C)
+
+        MenuItem subItem3A
+        subItem3A:SetName("Never gonna...")
+        item3:Add(subItem3A)
+
+        MenuItem lyricA1
+        lyricA1:SetName("Give you up")
+        lyricA1:SetBehavior(outputBehavior)
+        subItem3A:Add(lyricA1)
+
+        MenuItem lyricA2
+        lyricA2:SetName("Let you down")
+        lyricA2:SetBehavior(outputBehavior)
+        subItem3A:Add(lyricA2)
+
+        MenuItem lyricA3
+        lyricA3:SetName("Run around and desert you")
+        lyricA3:SetBehavior(outputBehavior)
+        subItem3A:Add(lyricA3)
+
+        MenuItem lyricA4
+        lyricA4:SetName("Make you cry")
+        lyricA4:SetBehavior(outputBehavior)
+        subItem3A:Add(lyricA4)
+
+        MenuItem lyricA5
+        lyricA5:SetName("Say goodbye")
+        lyricA5:SetBehavior(outputBehavior)
+        subItem3A:Add(lyricA5)
+
+        MenuItem lyricA6
+        lyricA6:SetName("Tell a lie and hurt you")
+        lyricA6:SetBehavior(outputBehavior)
+        subItem3A:Add(lyricA6)
+
+        MenuItem subItem3B
+        subItem3B:SetName("Stop...")
+        item3:Add(subItem3B)
+
+        MenuItem lyricB1
+        lyricB1:SetName("Hammer Time")
+        lyricB1:SetBehavior(outputBehavior)
+        subItem3B:Add(lyricB1)
+
+        MenuItem lyricB2
+        lyricB2:SetName("Collaborate & Listen")
+        lyricB2:SetBehavior(outputBehavior)
+        subItem3B:Add(lyricB2)
+
+        Add(bar)
+
         File file
         file:SetPath("SourceCode/main.quorum")
         text value = file:Read()
 
         Button button1
         button1:SetName("First")
+        button1:SetBehavior(outputBehavior)
         Add(button1)
 
         button1:Focus()
 
         Button button2
         button2:SetName("Second")
+        button2:SetBehavior(outputBehavior)
         Add(button2)
 
+        TextBox box
+        box:SetPixelWidth(400)
+        box:SetPixelHeight(250)
+        Add(box)
+
         button1:SetNextFocus(button2)
-        button1:SetPreviousFocus(button2)
-        button2:SetNextFocus(button1)
+        button1:SetPreviousFocus(box)
+        button2:SetNextFocus(box)
         button2:SetPreviousFocus(button1)
+        box:SetNextFocus(button1)
+        box:SetPreviousFocus(button2)
 
         AddFocusListener(me)
     end
