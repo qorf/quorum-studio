@@ -43,6 +43,7 @@ use Libraries.Interface.Events.TabChangeEvent
 use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Development.Environment.Studio.Behaviors.NewProjectTabBehavior
 use Libraries.Game.Graphics.Font
+use Libraries.Interface.Layouts.TabFlowLayout
 
 
 class NewProjectDialog is Dialog, KeyboardListener
@@ -123,9 +124,17 @@ for the project. In this default case, it will create an HTML file for the
 class Main."
     text imageSheetsDescription = "Needs Description: Pig Shooter"
     text internetServicesDescription = "Needs Description: Response Events"
-    text legoMoveDescription = "Needs Description: Lego Motor"
-    text physics2DDescription = "Needs Description: Game using 2D physics"
-    text physics3DDescription = "Needs Description: Game using 3D physics"
+    text legoMoveDescription = 
+"This project creates a Lego Quorum application using the motor on the Lego 
+robot. If a Lego robot is connected to the system, Quorum will automatically 
+send the built project to the robot. If no Lego robot is connected, the system 
+will detect this and build the project normally."
+    text physics2DDescription = 
+"This project creates a game using 2-Dimensional physics. The objects in the 
+game will interact with one another and respond to collision events and an 
+approximated gravitational pull within the game."
+    text physics3DDescription = 
+"Needs Description: Game using 3D physics"
     text sineWavesDescription = "Needs Description: Sine Waves through Audio"
     text skyboxDescription = "Needs Description: Game using Skybox"
     text userInterfaceDescription = 
@@ -189,7 +198,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         templates:Add(webServerIcon, "Templates/Other/WebServer")
 
         SetName("New Project")       
-        SetPixelWidth(900)
+        SetPixelWidth(850)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
 
         LabelBoxView view
@@ -230,7 +239,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         FlowLayout tabLayout
         tabPane:SetViewAreaLayout(tabLayout)
         tabPane:SetPercentageWidth(1.0)
-        tabPane:SetPixelHeight(180)
+        tabPane:SetPixelHeight(300)
         tabPane:Add(BasicTab())
         tabPane:Add(AdvancedTab())
         tabPane:Select(BasicTab())
@@ -252,6 +261,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         descriptionLabel:SetText("Description: ")
         descriptionLabel:SetPercentageWidth(0.3)
         descriptionLabel:SetBottomPadding(6)
+        descriptionLabel:SetLeftPadding(20)
         descriptionContainer:Add(descriptionLabel)
 
         //descriptionList changes as the focus template selection changes
@@ -299,7 +309,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         projectLocationContainer:SetTopPadding(10)
         projectLocationContainer:SetLeftPadding(10)
         projectLocationContainer:SetRightPadding(10)
-        projectLocationContainer:SetBottomPadding(10)
+        //projectLocationContainer:SetBottomPadding(6)
 
         Label locationLabel
         //locationLabel:SetTopPadding(6)
@@ -310,7 +320,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         locationField:SetText(locationPath:GetPath())    //set to current directory?
         //set to a larger height for textfields 
         locationField:SetPercentageWidth(0.82)
-        locationField:SetPixelHeight(100)
+        //locationField:SetPixelHeight(100)
         locationField:SetRightPadding(10)
         //locationField:SetTopPadding(50)
         projectLocationContainer:Add(locationField)
@@ -328,7 +338,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         closingButtonsContainer:SetLayout(closingButtonsLayout)
         closingButtonsContainer:SetPercentageWidth(1.0)
         closingButtonsContainer:SetVerticalLayoutMode(closingButtonsContainer:FIT_CONTENTS)
-        closingButtonsContainer:SetTopPadding(20)
+        //closingButtonsContainer:SetTopPadding(6)
         closingButtonsContainer:SetBottomPadding(50)
         
         Control closingPadding
@@ -339,8 +349,8 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         cancelButton:SetName("Cancel")
         cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
         cancelButton:SetPercentageWidth(0.1)
-        cancelButton:SetLeftPadding(0)
-        cancelButton:SetTopPadding(0)
+        //cancelButton:SetLeftPadding(0)
+        //cancelButton:SetTopPadding(0)
         closingButtonsContainer:Add(cancelButton)
 
         Gradient okayGradient
@@ -353,7 +363,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         okayButton:SetBackgroundColor(okayGradient)
         okayButton:SetPercentageWidth(0.1)
         okayButton:SetLeftPadding(10)
-        okayButton:SetTopPadding(0)
+        //okayButton:SetTopPadding(0)
         closingButtonsContainer:Add(okayButton)
         createNewProjectContainer:Add(closingButtonsContainer)
 
@@ -366,32 +376,61 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         Icon icon
         Color color
 
+        Icon blank
+        Icon game
+        Icon android
+        Icon lego
+
+        File blankFile
+        File gameFile 
+        File androidFile
+        File legoFile
+
+        blankFile:SetPath("/Resources/Graphics/Projects/BlankIcon.png")
+        gameFile:SetPath("/Resources/Graphics/Projects/GameIcon.png")
+        androidFile:SetPath("/Resources/Graphics/Projects/AndroidIcon.png")
+        legoFile:SetPath("/Resources/Graphics/Projects/LegoIcon.png")
+
+        blank:Load(blankFile)
+        game:Load(gameFile)
+        android:Load(androidFile)
+        lego:Load(legoFile)
+
         basicTab:SetName("Basic")
         basicTab:DisplayCloseButton(false)
 
-        FlowLayout scrollLayout
-        ScrollPane scrollPane
-        scrollPane:SetLayout(scrollLayout)
-        scrollPane:SetPercentageWidth(1.0)
-        scrollPane:SetPixelHeight(200)       
-        basicTab:SetRelatedItem(scrollPane)
+        LabelBoxView view
+        //view:SetBorderThickness(1)
+        //view:SetBorderStyle(view:ALL)
+        view:Initialize(color:White(), color:White())
+
+//        FlowLayout scrollLayout
+//        ScrollPane scrollPane
+//        scrollPane:SetLayout(scrollLayout)
+//        scrollPane:SetPercentageWidth(1.0)
+//        scrollPane:SetPixelHeight(200)       
+//        basicTab:SetRelatedItem(scrollPane)
 
         FlowLayout layout
         Control panel
         panel:SetLayout(layout)
         panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)        
-        scrollPane:Add(panel)
+        panel:SetPixelHeight(300) 
+        panel:SetView2D(view)
+        basicTab:SetRelatedItem(panel)
+        //scrollPane:Add(panel)
 
         FlowLayout applicationsLayout
         Control applicationsContainer
         applicationsContainer:SetLayout(applicationsLayout)
         applicationsContainer:SetPercentageWidth(1.0)
         applicationsContainer:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
-        applicationsContainer:SetTopPadding(6)
+        applicationsContainer:SetTopPadding(100)
         applicationsContainer:SetBottomPadding(20)
         applicationsContainer:SetRightPadding(40)
         applicationsContainer:SetLeftPadding(40)
+        
+        
 
         Control buttonPadding
         buttonPadding:SetPercentageWidth(0.04)
@@ -403,28 +442,28 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         buttonContainer1:SetLayout(buttonLayout1)
         buttonContainer1:SetPercentageWidth(0.2)
         buttonContainer1:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
-        buttonContainer1:Add(SetupApplicationButtons(blankIcon, "Blank", icon))
+        buttonContainer1:Add(SetupApplicationButtons(blankIcon, "Blank", blank))
 
         FlowLayout buttonLayout2
         Control buttonContainer2
         buttonContainer2:SetLayout(buttonLayout2)
         buttonContainer2:SetPercentageWidth(0.2)
         buttonContainer2:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
-        buttonContainer2:Add(SetupApplicationButtons(gameIcon, "Game", icon))
+        buttonContainer2:Add(SetupApplicationButtons(gameIcon, "Game", game))
 
         FlowLayout buttonLayout3
         Control buttonContainer3
         buttonContainer3:SetLayout(buttonLayout3)
         buttonContainer3:SetPercentageWidth(0.2)
         buttonContainer3:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
-        buttonContainer3:Add(SetupApplicationButtons(androidIcon, "Android", icon))
+        buttonContainer3:Add(SetupApplicationButtons(androidIcon, "Android", android))
 
         FlowLayout buttonLayout4
         Control buttonContainer4
         buttonContainer4:SetLayout(buttonLayout4)
         buttonContainer4:SetPercentageWidth(0.2)
         buttonContainer4:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
-        buttonContainer4:Add(SetupApplicationButtons(legoIcon, "Lego", icon))
+        buttonContainer4:Add(SetupApplicationButtons(legoIcon, "Lego", lego))
       
         applicationsContainer:Add(buttonPadding)
         applicationsContainer:Add(buttonContainer1)
@@ -494,15 +533,61 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
     end
 
     private action AdvancedTab returns Tab
-        Icon icon
         Color color
+
+        Icon document
+        Icon image
+        Icon internet
+        Icon lego
+        Icon physics2D
+        Icon physics3D        
+        Icon sine
+        Icon skybox
+        Icon userInterface
+        Icon server
+
+        File documentFile
+        File imageFile
+        File internetFile
+        File legoFile
+        File physics2DFile
+        File physics3DFile
+        File sineFile
+        File skyboxFile
+        File userInterfaceFile
+        File serverFile
+
+        documentFile:SetPath("/Resources/Graphics/Projects/DocumentIcon.png")
+        imageFile:SetPath("/Resources/Graphics/Projects/ImageSheetsIcon.png")
+        internetFile:SetPath("/Resources/Graphics/Projects/InternetIcon.png")
+        legoFile:SetPath("/Resources/Graphics/Projects/LegoMoveIcon.png")
+        physics2DFile:SetPath("/Resources/Graphics/Projects/Physics2DIcon.png")
+        physics3DFile:SetPath("/Resources/Graphics/Projects/Physics3DIcon.png")
+        sineFile:SetPath("/Resources/Graphics/Projects/SineWavesIcon.png")
+        skyboxFile:SetPath("/Resources/Graphics/Projects/SkyboxIcon.png")
+        userInterfaceFile:SetPath("/Resources/Graphics/Projects/UserInterfaceIcon.png")
+        serverFile:SetPath("/Resources/Graphics/Projects/WebServerIcon.png")
+
+        document:Load(documentFile)
+        image:Load(imageFile)
+        internet:Load(internetFile)
+        internet:SetSize(50, 50)
+        lego:Load(legoFile)
+        lego:SetSize(50, 50)
+        physics2D:Load(physics2DFile)
+        physics3D:Load(physics3DFile)
+        sine:Load(sineFile)
+        skybox:Load(skyboxFile)
+        userInterface:Load(userInterfaceFile)
+        server:Load(serverFile)
 
         advancedTab:SetName("Advanced")
         advancedTab:DisplayCloseButton(false)
 
         ScrollPane scrollPane
         scrollPane:SetPercentageWidth(1.0)
-        scrollPane:SetPixelHeight(200)
+        scrollPane:SetPixelHeight(300)
+        //scrollPane:SetVerticalLayoutMode(scrollPane:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
         FlowLayout scrollLayout
         scrollPane:SetLayout(scrollLayout)
 
@@ -512,7 +597,8 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         Control panel
         panel:SetLayout(layout)
         panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS) 
+        //panel:SetPixelHeight(800)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
         scrollPane:Add(panel)
 
         FlowLayout applicationsLayout1
@@ -529,34 +615,33 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         buttonPadding:SetPercentageWidth(0.04)
         buttonPadding:SetPixelHeight(1)
 
-        icon:LoadFilledRectangle(70, 70, color:Gray())
         FlowLayout buttonLayout1
         Control buttonContainer1
         buttonContainer1:SetLayout(buttonLayout1)
         buttonContainer1:SetPercentageWidth(0.2)
         buttonContainer1:SetVerticalLayoutMode(buttonContainer1:FIT_CONTENTS)
-        buttonContainer1:Add(SetupApplicationButtons(documentIcon, "Document", icon))
+        buttonContainer1:Add(SetupApplicationButtons(documentIcon, "Document", document))
 
         FlowLayout buttonLayout2
         Control buttonContainer2
         buttonContainer2:SetLayout(buttonLayout2)
         buttonContainer2:SetPercentageWidth(0.2)
         buttonContainer2:SetVerticalLayoutMode(buttonContainer2:FIT_CONTENTS)
-        buttonContainer2:Add(SetupApplicationButtons(imageSheetsIcon, "Image", icon))
+        buttonContainer2:Add(SetupApplicationButtons(imageSheetsIcon, "Image", image))
 
         FlowLayout buttonLayout3
         Control buttonContainer3
         buttonContainer3:SetLayout(buttonLayout3)
         buttonContainer3:SetPercentageWidth(0.2)
         buttonContainer3:SetVerticalLayoutMode(buttonContainer3:FIT_CONTENTS)
-        buttonContainer3:Add(SetupApplicationButtons(internetServicesIcon, "Internet", icon))
+        buttonContainer3:Add(SetupApplicationButtons(internetServicesIcon, "Internet", internet))
 
         FlowLayout buttonLayout4
         Control buttonContainer4
         buttonContainer4:SetLayout(buttonLayout4)
         buttonContainer4:SetPercentageWidth(0.2)
         buttonContainer4:SetVerticalLayoutMode(buttonContainer4:FIT_CONTENTS)
-        buttonContainer4:Add(SetupApplicationButtons(legoMoveIcon, "Lego Move", icon))
+        buttonContainer4:Add(SetupApplicationButtons(legoMoveIcon, "Lego Move", lego))
       
         applicationsContainer1:Add(buttonPadding)
         applicationsContainer1:Add(buttonContainer1)
@@ -586,6 +671,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         FlowLayout labelLayout1
         Control labelContainer1
         labelContainer1:SetLayout(labelLayout1)
+        //labelContainer1:SetCenterX(document:GetCenterX())
         labelContainer1:SetPercentageWidth(0.2)
         labelContainer1:SetVerticalLayoutMode(labelContainer1:FIT_CONTENTS)
         labelContainer1:Add(SetupApplicationLabels("Document"))        
@@ -600,6 +686,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         FlowLayout labelLayout3
         Control labelContainer3
         labelContainer3:SetLayout(labelLayout3)
+        //labelContainer3:SetCenterX(internet:GetCenterX())
         labelContainer3:SetPercentageWidth(0.2)
         labelContainer3:SetVerticalLayoutMode(labelContainer3:FIT_CONTENTS)
         labelContainer3:Add(SetupApplicationLabels("Internet")) 
@@ -607,6 +694,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         FlowLayout labelLayout4
         Control labelContainer4
         labelContainer4:SetLayout(labelLayout4)
+        //labelContainer4:SetCenterX(lego:GetCenterX())
         labelContainer4:SetPercentageWidth(0.2)
         labelContainer4:SetVerticalLayoutMode(labelContainer4:FIT_CONTENTS)
         labelContainer4:Add(SetupApplicationLabels("Lego Move")) 
@@ -637,28 +725,28 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         buttonContainer5:SetLayout(buttonLayout5)
         buttonContainer5:SetPercentageWidth(0.2)
         buttonContainer5:SetVerticalLayoutMode(buttonContainer5:FIT_CONTENTS)
-        buttonContainer5:Add(SetupApplicationButtons(physics2DIcon, "Physics 2D", icon))
+        buttonContainer5:Add(SetupApplicationButtons(physics2DIcon, "Physics 2D", physics2D))
 
         FlowLayout buttonLayout6
         Control buttonContainer6
         buttonContainer6:SetLayout(buttonLayout6)
         buttonContainer6:SetPercentageWidth(0.2)
         buttonContainer6:SetVerticalLayoutMode(buttonContainer6:FIT_CONTENTS)
-        buttonContainer6:Add(SetupApplicationButtons(physics3DIcon, "Physics 3D", icon))
+        buttonContainer6:Add(SetupApplicationButtons(physics3DIcon, "Physics 3D", physics3D))
 
         FlowLayout buttonLayout7
         Control buttonContainer7
         buttonContainer7:SetLayout(buttonLayout7)
         buttonContainer7:SetPercentageWidth(0.2)
         buttonContainer7:SetVerticalLayoutMode(buttonContainer7:FIT_CONTENTS)
-        buttonContainer7:Add(SetupApplicationButtons(sineWavesIcon, "Sine Waves", icon))
+        buttonContainer7:Add(SetupApplicationButtons(sineWavesIcon, "Sine Waves", sine))
 
         FlowLayout buttonLayout8
         Control buttonContainer8
         buttonContainer8:SetLayout(buttonLayout8)
         buttonContainer8:SetPercentageWidth(0.2)
         buttonContainer8:SetVerticalLayoutMode(buttonContainer8:FIT_CONTENTS)
-        buttonContainer8:Add(SetupApplicationButtons(skyboxIcon, "SkyBox", icon))
+        buttonContainer8:Add(SetupApplicationButtons(skyboxIcon, "SkyBox", skybox))
       
         applicationsContainer2:Add(buttonPadding)
         applicationsContainer2:Add(buttonContainer5)
@@ -736,14 +824,14 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         buttonContainer9:SetLayout(buttonLayout9)
         buttonContainer9:SetPercentageWidth(0.2)
         buttonContainer9:SetVerticalLayoutMode(buttonContainer9:FIT_CONTENTS)
-        buttonContainer9:Add(SetupApplicationButtons(userInterfaceIcon, "User Interface", icon))
+        buttonContainer9:Add(SetupApplicationButtons(userInterfaceIcon, "User Interface", userInterface))
 
         FlowLayout buttonLayout10
         Control buttonContainer10
         buttonContainer10:SetLayout(buttonLayout10)
         buttonContainer10:SetPercentageWidth(0.2)
         buttonContainer10:SetVerticalLayoutMode(buttonContainer10:FIT_CONTENTS)
-        buttonContainer10:Add(SetupApplicationButtons(webServerIcon, "Web Server", icon))
+        buttonContainer10:Add(SetupApplicationButtons(webServerIcon, "Web Server", server))
       
         applicationsContainer3:Add(buttonPadding)
         applicationsContainer3:Add(buttonContainer9)
@@ -803,7 +891,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
     private action SetupApplicationLabels(text name) returns Label
         Label label
         label:SetText(name)
-        //label:SetWidth(120)
         label:SetHorizontalLayoutMode(label:parent:Libraries.Interface.Controls.Control:STANDARD)
         label:SetRightPadding(50)
         label:SetLeftPadding(50)
