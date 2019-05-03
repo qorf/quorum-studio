@@ -5,8 +5,13 @@ use Libraries.System.File
 use Libraries.Containers.List
 use Libraries.Containers.Array
 use Libraries.Concurrency.ProcessRunner
+use Libraries.Concurrency.ProcessListener
+use Libraries.Concurrency.ProcessOutputEvent
+use Libraries.Concurrency.ProcessErrorEvent
+use Libraries.Concurrency.ProcessStoppedEvent
+use Libraries.Concurrency.ProcessStartedEvent
 
-class AndroidSupport 
+class AndroidSupport is ProcessListener
     text FILE_SEPARATOR = "/"
     constant text PATH_TO_MAIN = FILE_SEPARATOR + "app" + FILE_SEPARATOR + "src" + FILE_SEPARATOR + "main" + FILE_SEPARATOR
     constant text PATH_TO_MAIN_XML = PATH_TO_MAIN + "AndroidManifest.xml"
@@ -41,6 +46,22 @@ class AndroidSupport
 
     on create
         androidSDKPath = GetDefaultAndroidSDKPath()
+    end
+
+    action Run(ProcessStartedEvent event)
+        a = 5
+    end
+
+    action Run(ProcessStoppedEvent event)
+        a = 5
+    end
+
+    action Run(ProcessErrorEvent event)
+        a = 5
+    end
+
+    action Run(ProcessOutputEvent event)
+        a = 5
     end
 
     action Setup(text pathToRunFolder, text jarName)
@@ -337,13 +358,14 @@ class AndroidSupport
         Properties properties
         ProcessRunner process
         Array<text> parameters
+        process:SetParameters(parameters)
         if properties:IsWindows()
             process:SetProcessName("cmd")
 
             parameters:Add("/C")
             text dq = ""
             dq = dq:GetDoubleQuote()
-            parameters:Add(dq + dq + " " + projectPath + "\gradlew.bat -p " + projectPath + " clean & exit")
+            parameters:Add(dq + dq + " " + projectPath + "\gradlew.bat -p " + projectPath + " clean")
             process:SetParameters(parameters)
             process:Run()
         elseif properties:IsMac()
@@ -353,11 +375,13 @@ class AndroidSupport
                 file:SetExecutable(true)
             end
 
-            process:SetDirectory(file:GetParentDirectory())
-            process:SetProcessName("/gradlew")
+            process:AddListener(me)
+            File value = file:GetParentDirectory()
+            process:SetDirectory(value)
+            process:SetProcessName("./gradlew")
             parameters:Add("-p")
             parameters:Add(projectPath)
-            parameters:Add(" clean & exit")
+            parameters:Add(" clean")
             process:Run()
         else
             File file
@@ -367,7 +391,7 @@ class AndroidSupport
             process:SetProcessName("/gradlew")
             parameters:Add("-p")
             parameters:Add(projectPath)
-            parameters:Add(" clean & exit")
+            parameters:Add(" clean")
             process:Run()
         end
     end

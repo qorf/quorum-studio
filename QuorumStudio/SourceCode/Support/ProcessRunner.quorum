@@ -51,6 +51,20 @@ class ProcessRunner
         end
     end
 
+    action FireProcessErrorEvent(text value)
+        i = 0
+        repeat while i < listeners:GetSize()
+            ProcessListener listener = listeners:Get(i)
+            ProcessErrorEvent event
+            event:SetName(name)
+            event:SetParameters(flags)
+            event:SetProcess(me)
+            event:SetOutput(value)
+            listener:Run(event)
+            i = i + 1
+        end
+    end
+
     action FireProcessOutputEvent(text value)
         i = 0
         repeat while i < listeners:GetSize()
