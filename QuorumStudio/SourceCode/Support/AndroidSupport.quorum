@@ -49,19 +49,19 @@ class AndroidSupport is ProcessListener
     end
 
     action Run(ProcessStartedEvent event)
-        a = 5
+        output "Staring " + event:GetName()
     end
 
     action Run(ProcessStoppedEvent event)
-        a = 5
+        output "Stopping " + event:GetName()
     end
 
     action Run(ProcessErrorEvent event)
-        a = 5
+        output event:GetOutput()
     end
 
     action Run(ProcessOutputEvent event)
-        a = 5
+        output event:GetOutput()
     end
 
     action Setup(text pathToRunFolder, text jarName)
@@ -122,42 +122,38 @@ class AndroidSupport is ProcessListener
 
         i = 0
         repeat while i < sourcePaths:GetSize()
-            CopyLibrary(sourcePaths:Get(i), destinationPaths:Get(i))
+            File from
+            File to
+            from:SetAbsolutePath(pathToRunFolder + sourcePaths:Get(i))
+            to:SetAbsolutePath(destinationPaths:Get(i))
+            from:Copy(to)
             i = i + 1
         end
-    end
-
-    action CopyLibrary(text sourcePath, text destinationPath)
-        File from
-        File to
-        from:SetAbsolutePath(sourcePath)
-        to:SetAbsolutePath(destinationPath)
-
-        from:Copy(to)
     end
 
     action GetAPKDebugBuildProcess returns ProcessRunner
         Properties properties
         ProcessRunner process
+        File directory
+        directory:SetAbsolutePath(pathToBuildAndroidFolder)
+        process:SetDirectory(directory)
         if properties:IsWindows()
             Array<text> params = BuildDebugAPKWindows()
-            process:SetProcessName(params:Get(0))
-            params:RemoveAt(0)
+            process:SetProcessName("cmd")
             process:SetParameters(params)
-            process:Run()
         elseif properties:IsMac()
             File file
             file:SetAbsolutePath(pathToBuildAndroidFolder + "/gradlew")
             if file:Exists()
                 file:SetExecutable(true)
             end
+            process:SetProcessName("./gradlew")
             Array<text> params = BuildDebugAPK()
             process:SetParameters(params)
-            process:Run()
         else
+            process:SetProcessName("./gradlew")
             Array<text> params = BuildDebugAPK()
             process:SetParameters(params)
-            process:Run()
         end
 
         return process
@@ -183,7 +179,6 @@ class AndroidSupport is ProcessListener
         text value = ""
         text dq = value:GetDoubleQuote()
         Array<text> params
-        params:Add(pathToBuildAndroidFolder+"\\gradlew.bat")
         params:Add("-p")  
         params:Add(pathToBuildAndroidFolder)
         params:Add("assembleDebug")
@@ -193,25 +188,26 @@ class AndroidSupport is ProcessListener
     action GetDebugInstallProcess returns ProcessRunner
         Properties properties
         ProcessRunner process
+        File directory
+        directory:SetAbsolutePath(pathToBuildAndroidFolder)
+        process:SetDirectory(directory)
         if properties:IsWindows()
+            process:SetProcessName("cmd")
             Array<text> params = BuildDebugInstallAPKWindows()
-            process:SetProcessName(params:Get(0))
-            params:RemoveAt(0)
             process:SetParameters(params)
-            process:Run()
         elseif properties:IsMac()
             File file
             file:SetAbsolutePath(pathToBuildAndroidFolder + "/gradlew")
             if file:Exists()
                 file:SetExecutable(true)
             end
+            process:SetProcessName("./gradlew")
             Array<text> params = BuildDebugInstallAPK()
             process:SetParameters(params)
-            process:Run()
         else
+            process:SetProcessName("./gradlew")
             Array<text> params = BuildDebugInstallAPK()
             process:SetParameters(params)
-            process:Run()
         end
 
         return process
@@ -221,7 +217,7 @@ class AndroidSupport is ProcessListener
         text value = ""
         text dq = value:GetDoubleQuote()
         Array<text> params
-        params:Add("cmd")
+        //params:Add("cmd")
         params:Add("/c")
         params:Add(dq + dq)
         params:Add(pathToBuildAndroidFolder+"\\gradlew.bat")
@@ -237,7 +233,6 @@ class AndroidSupport is ProcessListener
         text value = ""
         text dq = value:GetDoubleQuote()
         Array<text> params
-        params:Add(pathToBuildAndroidFolder+"\\gradlew.bat")
         params:Add("-p")  
         params:Add(pathToBuildAndroidFolder)
         params:Add("installDebug")
@@ -375,7 +370,6 @@ class AndroidSupport is ProcessListener
                 file:SetExecutable(true)
             end
 
-            process:AddListener(me)
             File value = file:GetParentDirectory()
             process:SetDirectory(value)
             process:SetProcessName("./gradlew")
@@ -475,8 +469,7 @@ class AndroidSupport is ProcessListener
         File file
         file:SetAbsolutePath(path)
         text value = file:Read()
-        value = value:GetLineFeed() + line
-
+        value = value + line + value:GetLineFeed()
         file:Write(value)
     end
 

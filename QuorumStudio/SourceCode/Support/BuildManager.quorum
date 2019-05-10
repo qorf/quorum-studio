@@ -709,9 +709,7 @@ class BuildManager is DebuggerListener, ProcessListener
         CompilerResult result = info:result
         SymbolTable table = result:symbolTable
         CompilerErrorManager errors = result:compilerErrorManager
-        if errors:IsCompilationErrorFree()
-            out:Append("Sending Program to Android Device")
-        else 
+        if not errors:IsCompilationErrorFree()
             return now
         end
 
@@ -732,7 +730,6 @@ class BuildManager is DebuggerListener, ProcessListener
         text applicationName = project:GetExecutableName()
         File androidLocation
         androidLocation:SetPath("External/Android")
-
         AndroidSupport android
         android:Setup(runDirectory:GetAbsolutePath(), jarName)
 
@@ -740,18 +737,24 @@ class BuildManager is DebuggerListener, ProcessListener
             android:SetAndroidPath(androidPath)
         end
 
+        out:Append("Building Android Version of your Quorum Program. This can take a few minutes. Please wait.")
         android:CopyAndRename(androidLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName, androidAlternateJDK)
         android:CopyLibraries()
-
+        
         if mediaDirectory:Exists()
+            out:Append("Copying Assets")
             android:CopyAssets(mediaDirectory, project:GetMobileAssetsPath())
         end
 
-        ProcessRunner debug = android:GetAPKDebugBuildProcess()
-        debug:Run()
+        ProcessRunner build = android:GetAPKDebugBuildProcess()
+        //build:AddListener(android)
+        build:Run()
 
+        out:Append("Installing program (if device is found)")
         ProcessRunner install = android:GetDebugInstallProcess()
+        //install:AddListener(android)
         install:Run()
+        out:Append("Android Build Complete")
 
         //for the signed version
 //        text androidPath = project:GetAndroidPath()
