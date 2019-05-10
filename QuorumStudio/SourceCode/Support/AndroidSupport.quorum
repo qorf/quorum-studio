@@ -163,8 +163,7 @@ class AndroidSupport is ProcessListener
         text value = ""
         text dq = value:GetDoubleQuote()
         Array<text> params
-        params:Add("cmd")
-        params:Add("/c")
+        params:Add("/C")
         params:Add(dq + dq)
         params:Add(pathToBuildAndroidFolder+"\\gradlew.bat")
         params:Add("-p")  
@@ -217,8 +216,7 @@ class AndroidSupport is ProcessListener
         text value = ""
         text dq = value:GetDoubleQuote()
         Array<text> params
-        //params:Add("cmd")
-        params:Add("/c")
+        params:Add("/C")
         params:Add(dq + dq)
         params:Add(pathToBuildAndroidFolder+"\\gradlew.bat")
         params:Add("-p")  
@@ -355,13 +353,22 @@ class AndroidSupport is ProcessListener
         Array<text> parameters
         process:SetParameters(parameters)
         if properties:IsWindows()
+            File directory
+            directory:SetAbsolutePath(projectPath)
+            process:SetDirectory(directory)
             process:SetProcessName("cmd")
 
             parameters:Add("/C")
-            text dq = ""
-            dq = dq:GetDoubleQuote()
-            parameters:Add(dq + dq + " " + projectPath + "\gradlew.bat -p " + projectPath + " clean")
+            //text dq = ""
+            //dq = dq:GetDoubleQuote()
+            parameters:Add("./gradlew.bat")
+            //parameters:Add("gradlew.bat")
+            parameters:Add("-p")
+            parameters:Add(projectPath)
+            parameters:Add(" clean")
+            //parameters:Add(dq + dq + " " + projectPath + "\gradlew.bat -p " + projectPath + " clean")
             process:SetParameters(parameters)
+            process:AddListener(me)
             process:Run()
         elseif properties:IsMac()
             File file
@@ -433,9 +440,13 @@ class AndroidSupport is ProcessListener
             sdkLocation = ""
             i = 0
             repeat while i < androidSDKPath:GetSize()
-                sdkLocation = sdkLocation + androidSDKPath:GetCharacter(i)
-                if androidSDKPath:GetCharacter(i) = "\"
-                    sdkLocation = sdkLocation + "\\\"
+                text character = androidSDKPath:GetCharacter(i)
+                if character = "\"
+                    sdkLocation = sdkLocation + "\\"
+                elseif character = "/"
+                    sdkLocation = sdkLocation + "\\"
+                else 
+                    sdkLocation = sdkLocation + character
                 end
                 i = i + 1
             end
@@ -447,22 +458,24 @@ class AndroidSupport is ProcessListener
     action SetNDKLocation(text pathToBuildAndroidFolder)
         text pathToLocalProperties = pathToBuildAndroidFolder + FILE_SEPARATOR + "local.properties"
         text ndkLocation = androidSDKPath + FILE_SEPARATOR + "ndk-bundle"
-        text sdkLocation = ndkLocation
-
+        text final = ""
         Properties properties
         if properties:IsWindows()
-            sdkLocation = ""
             i = 0
             repeat while i < ndkLocation:GetSize()
-                sdkLocation = sdkLocation + ndkLocation:GetCharacter(i)
-                if ndkLocation:GetCharacter(i) = "\"
-                    sdkLocation = sdkLocation + "\\\"
+                text character = ndkLocation:GetCharacter(i)
+                if character = "\"
+                    final = final + "\\"
+                elseif character = "/"
+                    final = final + "\\"
+                else 
+                    final = final + character
                 end
                 i = i + 1
             end
         end
 
-        AppendLineToFile(pathToLocalProperties, "ndk.dir="+sdkLocation)
+        AppendLineToFile(pathToLocalProperties, "ndk.dir="+final)
     end
 
     action AppendLineToFile(text path, text line)
