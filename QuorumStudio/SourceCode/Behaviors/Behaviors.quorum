@@ -46,6 +46,7 @@ class Behaviors
     constant text TOGGLE_BREAKPOINT = "Toggle Breakpoint"
     constant text ADD_INPUT_TO_PROCESS = "Add Input To Process"
     constant text ANDROID_DEBUG_BEHAVIOR = "Add Input To Process"
+    constant text BOOTSTRAP = "Bootstrap"
 
     BuildProjectBehavior buildProjectBehavior
     CleanBuildProjectBehavior cleanBuildProjectBehavior
@@ -62,6 +63,7 @@ class Behaviors
     ToggleBreakpointBehavior toggleBreakpointBehavior
     InputBehavior inputBehavior
     SendToAndroidDebugModeBehavior androidDebugBehavior
+    BootstrapBehavior bootstrapBehavior
 
     //Windows Menu
     constant text FOCUS_BREAKPOINTS_WINDOW = "Focus Break Points Window"
@@ -109,6 +111,7 @@ class Behaviors
     ThreadedBehavior threadedPause
     ThreadedBehavior threadedContinue
     ThreadedBehavior threadedSendToAndroidDebug
+    ThreadedBehavior threadedBootstrapBehavior
     ScanLibraryBehavior scanner
 
     // Interface scaling.
@@ -174,6 +177,7 @@ class Behaviors
         inputBehavior:SetBuildManager(builder)
         androidDebugBehavior:SetBuildManager(builder)
         codeCompletionBehavior:SetBuildManager(builder)
+        bootstrapBehavior:SetBuildManager(builder)
 
         //Threaded redirects for the build system
         threadedBuild:SetNestedBehavior(buildProjectBehavior)
@@ -202,6 +206,8 @@ class Behaviors
         threadedContinue:SetThreadRunner(buildSystemRunner)
         threadedSendToAndroidDebug:SetNestedBehavior(androidDebugBehavior)
         threadedSendToAndroidDebug:SetThreadRunner(buildSystemRunner)
+        threadedBootstrapBehavior:SetNestedBehavior(bootstrapBehavior)
+        threadedBootstrapBehavior:SetThreadRunner(buildSystemRunner)
 
         // Set direction and magnitude of interface scaling behaviors.
         interfaceScaleUp:SetScaleUp(true)
@@ -225,6 +231,7 @@ class Behaviors
         behaviors:Add(TOGGLE_BREAKPOINT, toggleBreakpointBehavior)
         behaviors:Add(ADD_INPUT_TO_PROCESS, inputBehavior) //
         behaviors:Add(ANDROID_DEBUG_BEHAVIOR, threadedSendToAndroidDebug)
+        behaviors:Add(BOOTSTRAP, threadedBootstrapBehavior)
 
         behaviors:Add(FOCUS_BREAKPOINTS_WINDOW, focusBreakpointsBehavior)
         behaviors:Add(FOCUS_CALL_STACK_WINDOW, focusCallStackBehavior)
@@ -325,6 +332,14 @@ class Behaviors
 
     action GetDebugProjectBehavior returns DebugProjectBehavior
         return debugProjectBehavior
+    end
+
+    action GetThreadedBootstrapBehavior returns ThreadedBehavior
+        return threadedBootstrapBehavior
+    end
+
+    action GetBootstrapehavior returns BootstrapBehavior
+        return bootstrapBehavior
     end
 
     action GetThreadedRunProjectBehavior returns ThreadedBehavior

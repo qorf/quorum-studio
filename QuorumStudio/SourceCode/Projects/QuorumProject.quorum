@@ -153,17 +153,23 @@ class QuorumProject is Project
     action GetSources returns Array<File>
         Array<File> files
         File root = GetSourceLocation()
-        RecursiveArrayFill(root, files)
+        FillSourceFilesIntoArray(root, files)
         return files
     end
 
-    private action RecursiveArrayFill(File root, Array<File> files)
+    /*  
+        This function takes a folder, possibly related and possibly not, 
+        to the current project. It then looks recursively through the folder 
+        to try and find any relevant source files. If it finds them, it adds
+        them to the array passed to the system.
+    */
+    action FillSourceFilesIntoArray(File root, Array<File> files)
         Array<File> sub = root:GetDirectoryListing()
         i = 0
         repeat while i < sub:GetSize()
             File file = sub:Get(i)
             if file:IsDirectory()
-                RecursiveArrayFill(file, files)
+                FillSourceFilesIntoArray(file, files)
             else
                 if file:GetFileExtension() = DEFAULT_FILE_EXTENSION
                     files:Add(file)
@@ -683,6 +689,19 @@ class QuorumProject is Project
         return mainFile
     end
 
+    action SetMain(text path)
+        SetPropertyValue(PROJECT_MAIN_LOCATION, path)
+        File location = GetLocation()
+        File newMain
+        newMain:SetWorkingDirectory(location:GetAbsolutePath())
+        newMain:SetPath(path)
+
+        if not newMain:Exists()
+            alert("Set Main file to a file that does not exist")
+        end
+        mainFile = newMain
+    end
+
     action GetExecutableLocation returns File
         text path = GetLocation():GetAbsolutePath()// + "/Run/" + project:GetExecutableName() + ".jar"
         File file
@@ -798,7 +817,6 @@ class QuorumProject is Project
             ProjectProperty mainProperty = GetProperty(PROJECT_MAIN)
             mainFile:SetWorkingDirectory(location:GetAbsolutePath())
             mainFile:SetPath(mainProperty:GetFirstValue())
-            //compiler:SetMain(mainFile)
         elseif key = JAR_DEPENDENCIES
             AddMultivalueTextProperty(object)
             SetJarDependenciesToCompiler()

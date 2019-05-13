@@ -9,16 +9,19 @@ use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Controls.PopupMenu
 use Libraries.Interface.Controls.MenuItem
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 
 class QuorumProjectView is ProjectView
     QuorumProject project = undefined
     Resources resources = undefined
     CodeEditorTabPane pane = undefined
     QuorumStudio studio = undefined
+    Behaviors behaviors = undefined
 
     constant text SOURCE_FOLDER_NAME = "Source Code"
     action SetMainApplication(QuorumStudio studio)
         me:studio = studio
+        behaviors = studio:GetBehaviors()
     end
 
     action GetMainApplication returns QuorumStudio
@@ -45,48 +48,47 @@ class QuorumProjectView is ProjectView
 
     private action GeneratePopupMenu returns PopupMenu
         PopupMenu menu
-
         MenuItem build
         build:SetName("Build")
+        build:SetBehavior(behaviors:GetThreadedBuildProjectBehavior())
         menu:Add(build)
-
-        MenuItem cleanAndBuild
-        cleanAndBuild:SetName("Clean and Build")
-        menu:Add(cleanAndBuild)
 
         MenuItem clean
         clean:SetName("Clean")
+        clean:SetBehavior(behaviors:GetThreadedCleanProjectBehavior())
         menu:Add(clean)
+
+        MenuItem cleanAndBuild
+        cleanAndBuild:SetName("Clean and Build")
+        cleanAndBuild:SetBehavior(behaviors:GetThreadedCleanBuildProjectBehavior())
+        menu:Add(cleanAndBuild)
 
         MenuItem run
         run:SetName("Run")
+        run:SetBehavior(behaviors:GetThreadedRunProjectBehavior())
         menu:Add(run)
 
         MenuItem debug
         debug:SetName("Debug")
+        debug:SetBehavior(behaviors:GetThreadedDebugProjectBehavior())
         menu:Add(debug)
-
-        MenuItem document
-        document:SetName("Document")
-        menu:Add(document)
 
         MenuItem close
         close:SetName("Close")
+        close:SetBehavior(behaviors:GetCloseProjectBehavior())
         menu:Add(close)
-
-        MenuItem delete
-        delete:SetName("Delete")
-        menu:Add(delete)
 
         boolean bootstrap = project:IsCompilerProject()
         if bootstrap
             MenuItem bootstrapItem
             bootstrapItem:SetName("Bootstrap")
+            bootstrapItem:SetBehavior(behaviors:GetThreadedBootstrapBehavior())
             menu:Add(bootstrapItem)
         end
 
         MenuItem properties
         properties:SetName("Properties")
+        properties:SetBehavior(behaviors:GetOpenProjectPropertiesBehavior())
         menu:Add(properties)
         return menu
     end

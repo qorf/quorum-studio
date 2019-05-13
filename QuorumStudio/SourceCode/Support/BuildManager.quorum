@@ -432,7 +432,9 @@ class BuildManager is DebuggerListener, ProcessListener
             return now
         end
         OutputTab out = info:outputTab
-        out:Empty()
+        if info:clearOutput
+            out:Empty()
+        end
 
         Array<File> sources = project:GetSources()
         Iterator<text> extraSourceIterator = project:GetQuorumDependencies()
@@ -509,10 +511,154 @@ class BuildManager is DebuggerListener, ProcessListener
         recentCompilerResults:Add(value, result)
     end
 
-    action Build(BuildInformation info)
+    action Bootstrap(BuildInformation info)
+        //first we build the program with Library.quorum
         QuorumProject project = info:project
         OutputTab out = info:outputTab
         out:Empty()
+
+        out:Append("Starting to Bootstrap")
+        out:Append("Compiling Library.quorum")
+        //now we run it and check for errors
+        project:SetMain("SourceCode/Library.quorum")
+        Run(info)
+        
+        out:Append("Compiling Main.quorum")
+        //Now we rebuild with main.quorum
+        project:SetMain("SourceCode/main.quorum")
+        Build(info)
+
+        //Now we do the equivalent of the old sh/bat script
+        
+        BootstrapCopy(info)
+    end
+
+    private action BootstrapCopy(BuildInformation info)
+        QuorumProject project = info:project
+        OutputTab out = info:outputTab
+        out:Append("Starting Copy Scripts")
+
+        
+        File location = project:GetLocation()
+
+        text copyFolderName = "Quorum3Compiler"
+        text runFolderName = "Run"
+        text libraryFolderName = "Library"
+        text sourceCodeFolderName = "SourceCode"
+
+        File copyFolder
+        copyFolder:SetWorkingDirectory(location:GetAbsolutePath())
+        copyFolder:SetPath(copyFolderName)
+
+        File runFolder
+        runFolder:SetWorkingDirectory(location:GetAbsolutePath())
+        runFolder:SetPath(runFolderName)
+
+        File libraryFolder
+        libraryFolder:SetWorkingDirectory(location:GetAbsolutePath())
+        libraryFolder:SetPath(libraryFolderName)
+
+        File sourceCodeFolder
+        sourceCodeFolder:SetWorkingDirectory(location:GetAbsolutePath())
+        sourceCodeFolder:SetPath(sourceCodeFolderName)
+        
+        File newLibraryFolder
+        newLibraryFolder:SetWorkingDirectory(copyFolder:GetAbsolutePath())
+        newLibraryFolder:SetPath(libraryFolderName)
+        
+        if copyFolder:Exists()
+            copyFolder:Delete(true)
+        end
+        
+        
+        copyFolder:CreateDirectories()
+
+        runFolder:Copy(copyFolder, true)
+        libraryFolder:Copy(newLibraryFolder, true)
+        sourceCodeFolder:Copy(copyFolder, true)
+
+        Array<File> sourceFiles = project:GetSources()
+
+        //now setup a process that will compile the compiler
+        out:Append("Compiling Quorum Next in Quorum")
+        RunCompilerProcess(out, copyFolder, location, sourceCodeFolder, sourceFiles, 
+            "/Default.jar")
+        
+        //now recursively copy the folder in Run up a folder
+        File newRunFolder
+        newRunFolder:SetWorkingDirectory(copyFolder:GetAbsolutePath())
+        newRunFolder:SetPath(runFolderName)
+        newRunFolder:Copy(copyFolder, true)
+        newRunFolder:Delete(true)
+
+        out:Append("Recompiling Quorum Next in Quorum next")
+        RunCompilerProcess(out, copyFolder, location, sourceCodeFolder, sourceFiles, 
+            "/Quorum.jar")
+
+        out:Append("Copying to Development Environments")
+
+        out:Append("Creating Deployment Packages")
+        a = 5
+    end
+
+    private action RunCompilerProcess(
+        OutputTab out, File copyFolder, File location, File sourceCodeFolder, 
+        Array<File> sourceFiles, text compilerName)
+        ProcessRunner runner
+        runner:SetOutputTab(out)
+
+        runner:AddListener(me)
+        runner:SetDirectory(copyFolder)
+        Properties properties
+        text os = properties:GetOperatingSystemName()
+        text java = properties:GetProperty("java.home")
+        java = java + "/" + "bin" + "/" + "java"
+
+        text value = location:GetAbsolutePath()
+        if processes:HasKey(value) //kill it, if you have to
+            ProcessRunner old = processes:RemoveKey(value)
+            old:Cancel()
+        end
+
+        text run = copyFolder:GetAbsolutePath() + compilerName
+
+
+        Array<text> flags
+        flags:Add("-Dsodbeans=1")
+        flags:Add("-jar")
+        flags:Add(run)
+        flags:Add("-name")
+        flags:Add("Quorum")
+        flags:Add("-compile")
+        flags:Add("main.quorum") //add the main in first
+
+        integer size = sourceCodeFolder:GetAbsolutePath():GetSize()
+        //now add in all of the rest of the files, but as text
+        Iterator<File> iterator = sourceFiles:GetIterator()
+        repeat while iterator:HasNext()
+            File file = iterator:Next()
+            if file:GetFileName() not= "main.quorum"
+                //calculate its path relative to this folder
+                text absolutePath = file:GetAbsolutePath()
+                text relativePath = absolutePath:GetSubtext(size)
+                //toss this in as a flag
+                flags:Add(relativePath)
+            end
+        end
+
+        runner:SetProcessName(java)
+        runner:SetParameters(flags)
+        runner:Run()
+        //add it into the list of running processes
+        processes:Add(value, runner)
+    end
+
+    action Build(BuildInformation info)
+        QuorumProject project = info:project
+        OutputTab out = info:outputTab
+        if info:clearOutput
+            out:Empty()
+        end
 
         //do image sheet manipulation here
         if project:IsImageSheetsEnabled() and project:IsRecompileImageSheetsOnBuild()
@@ -715,7 +861,7 @@ class BuildManager is DebuggerListener, ProcessListener
 
         text run = project:GetLocation():GetAbsolutePath() + "/Run"
         
-        File runDirectory// = project:Get
+        File runDirectory
         runDirectory:SetAbsolutePath(run)
         File parentDirectory = runDirectory:GetParentDirectory()
 
