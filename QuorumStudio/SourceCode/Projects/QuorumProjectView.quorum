@@ -43,6 +43,54 @@ class QuorumProjectView is ProjectView
         me:resources = resources
     end
 
+    private action GeneratePopupMenu returns PopupMenu
+        PopupMenu menu
+
+        MenuItem build
+        build:SetName("Build")
+        menu:Add(build)
+
+        MenuItem cleanAndBuild
+        cleanAndBuild:SetName("Clean and Build")
+        menu:Add(cleanAndBuild)
+
+        MenuItem clean
+        clean:SetName("Clean")
+        menu:Add(clean)
+
+        MenuItem run
+        run:SetName("Run")
+        menu:Add(run)
+
+        MenuItem debug
+        debug:SetName("Debug")
+        menu:Add(debug)
+
+        MenuItem document
+        document:SetName("Document")
+        menu:Add(document)
+
+        MenuItem close
+        close:SetName("Close")
+        menu:Add(close)
+
+        MenuItem delete
+        delete:SetName("Delete")
+        menu:Add(delete)
+
+        boolean bootstrap = project:IsCompilerProject()
+        if bootstrap
+            MenuItem bootstrapItem
+            bootstrapItem:SetName("Bootstrap")
+            menu:Add(bootstrapItem)
+        end
+
+        MenuItem properties
+        properties:SetName("Properties")
+        menu:Add(properties)
+        return menu
+    end
+
     action GetLogicalTree returns TreeItem
         if project = undefined
             output "GetLogicalTree: project = undefined"
@@ -50,34 +98,17 @@ class QuorumProjectView is ProjectView
         end
 
         ProjectTreeItem projectItem
+        PopupMenu menu = GeneratePopupMenu()
+        projectItem:SetPopupMenu(menu)
+
         Array<ProjectTreeItem> folders
-        
-        
 
         projectItem:SetProject(project)
         File sources = project:GetSourceLocation()
         ProjectTreeItem source = GetItem(sources)
         folders:Add(source)
-//        Array<File> files = sources:GetDirectoryListing()
-//        Array<ProjectTreeItem> items
-//        i = 0
-//        repeat while i < files:GetSize()
-//            File file = files:Get(i)
-//            if file:IsDirectory()
-//                
-//            else
-//                ProjectTreeItem item
-//                item:SetFile(file)
-//                OpenTabBehavior behavior
-//                behavior:SetMainApplication(studio)
-//                behavior:SetFile(file)
-//                item:SetDoubleClickBehavior(behavior)
-//                item:Initialize(file:GetFileName(), resources:GetQuorumFile())
-//                items:Add(item)
-//            end
-//            i = i + 1
-//        end
-//        source:Initialize(SOURCE_FOLDER_NAME, resources:GetFolder(), items)
+
+
         projectItem:SetName(project:GetName())
         projectItem:SetIcon(resources:GetProjectLogo())
         projectItem:Add(folders)
@@ -119,7 +150,7 @@ class QuorumProjectView is ProjectView
                 item:SetIcon(resources:GetQuorumFile())
                 items:Add(item)
 
-                item:SetContextMenu(exampleContextMenu)
+                item:SetPopupMenu(exampleContextMenu)
             end
             i = i + 1
         end
@@ -138,7 +169,7 @@ class QuorumProjectView is ProjectView
             MenuItem directory2
             directory2:SetName("Example for " + dq + source:GetPath() + dq)
             exampleContextMenu:Add(directory2)
-            value:SetContextMenu(exampleContextMenu)
+            value:SetPopupMenu(exampleContextMenu)
         else
             value:SetIcon(resources:GetQuorumFile())
         end

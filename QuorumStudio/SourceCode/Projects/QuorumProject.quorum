@@ -85,6 +85,11 @@ class QuorumProject is Project
     public constant text ANDROID_KEYSTORE_PASSWORD = "AndroidKeystorePassword"
     public constant text ANDROID_KEY_ALIAS = "AndroidKeyAlias"
     public constant text ANDROID_KEY_PASSWORD = "AndroidKeyPassword"
+
+    /* This property checks if this is the Quorum compiler. If it is, the project
+        Can be boostrapped and extra menu options appear.
+    */
+    public constant text QUORUM_COMPILER = "QuorumCompiler"
     
     Logger logger
 
@@ -174,6 +179,23 @@ class QuorumProject is Project
 
     action SetCompiler(Compiler compiler)
         me:compiler = compiler
+    end
+
+    private action GetBooleanPropertyFirstValue(ProjectProperty property) returns boolean
+        if property = undefined
+            return false
+        end
+
+        text value = property:GetFirstValue()
+        if value = "true"
+            return true
+        else
+            return false
+        end
+    end
+    action IsCompilerProject returns boolean
+        ProjectProperty property = GetProperty(QUORUM_COMPILER)
+        return GetBooleanPropertyFirstValue(property)
     end
 
     /* This action returns the build path for image sheets. */
@@ -296,16 +318,7 @@ class QuorumProject is Project
     /* This action asks whether image sheets are enabled on the project. */
     action IsImageSheetsEnabled returns boolean
         ProjectProperty property = GetProperty(IMAGE_SHEET_ENABLED)
-        if property = undefined
-            return false
-        end
-
-        text value = property:GetFirstValue()
-        if value = "true"
-            return true
-        end
-
-        return false
+        return GetBooleanPropertyFirstValue(property)
     end
 
     /* This action returns the build path for image sheets. */
@@ -332,12 +345,7 @@ class QuorumProject is Project
     */
     action IsRecompileImageSheetsOnBuild returns boolean
         ProjectProperty property = GetProperty(IMAGE_SHEET_REBUILD_ON_COMPILE)
-        text value = property:GetFirstValue()
-        if value = "true"
-            return true
-        end
-
-        return false
+        return GetBooleanPropertyFirstValue(property)
     end
 
     /*
@@ -550,6 +558,9 @@ class QuorumProject is Project
 
     action IsBytecodeType returns boolean
         ProjectProperty property = GetProperty(PROJECT_TYPE)
+        if property = undefined
+            return false
+        end
         text value = property:GetFirstValue()
         if value = JAVA_COMPILE_TYPE
             return true
@@ -560,6 +571,9 @@ class QuorumProject is Project
 
     action IsJavascriptType returns boolean
         ProjectProperty property = GetProperty(PROJECT_TYPE)
+        if property = undefined
+            return false
+        end
         text value = property:GetFirstValue()
         if value = JAVASCRIPT_COMPILE_TYPE
             return true
@@ -570,6 +584,9 @@ class QuorumProject is Project
 
     action IsServerType returns boolean
         ProjectProperty property = GetProperty(PROJECT_TYPE)
+        if property = undefined
+            return false
+        end
         text value = property:GetFirstValue()
         if value = SERVER_COMPILE_TYPE
             return true
@@ -580,6 +597,9 @@ class QuorumProject is Project
 
     action IsLegoType returns boolean
         ProjectProperty property = GetProperty(PROJECT_TYPE)
+        if property = undefined
+            return false
+        end
         text value = property:GetFirstValue()
         if value = LEGO_COMPILE_TYPE
             return true
@@ -590,6 +610,9 @@ class QuorumProject is Project
 
     action IsIphoneType returns boolean
         ProjectProperty property = GetProperty(PROJECT_TYPE)
+        if property = undefined
+            return false
+        end
         text value = property:GetFirstValue()
         if value = IPHONE_COMPILE_TYPE
             return true
@@ -600,6 +623,9 @@ class QuorumProject is Project
 
     action IsAndroidType returns boolean
         ProjectProperty property = GetProperty(PROJECT_TYPE)
+        if property = undefined
+            return false
+        end
         text value = property:GetFirstValue()
         if value = ANDROID_COMPILE_TYPE
             return true
@@ -610,6 +636,9 @@ class QuorumProject is Project
 
     action IsDocumentationType returns boolean
         ProjectProperty property = GetProperty(PROJECT_TYPE)
+        if property = undefined
+            return false
+        end
         text value = property:GetFirstValue()
         if value = DOCUMENTATION_COMPILE_TYPE
             return true
@@ -620,6 +649,9 @@ class QuorumProject is Project
 
     action IsDocumentationStandardLibraryType returns boolean
         ProjectProperty property = GetProperty(PROJECT_TYPE)
+        if property = undefined
+            return false
+        end
         text value = property:GetFirstValue()
         if value = DOCUMENTATION_STANDARD_LIBRARY_TYPE
             return true
@@ -780,6 +812,12 @@ class QuorumProject is Project
         elseif key = IMAGE_SHEETS
             CreateImageSheets(object)
         elseif key = IMAGE_SHEET_ENABLED
+            if not object:IsBoolean()
+                logger:Log(booleanMessage)
+                return now
+            end
+            AddProperty(key, "" + object:GetBoolean())
+        elseif key = QUORUM_COMPILER
             if not object:IsBoolean()
                 logger:Log(booleanMessage)
                 return now
