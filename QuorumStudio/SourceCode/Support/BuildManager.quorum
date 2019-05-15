@@ -982,22 +982,28 @@ class BuildManager is DebuggerListener, ProcessListener
             android:SetAndroidPath(androidPath)
         end
 
-        out:Append("Building Android Version of your Quorum Program. This can take a few minutes. Please wait.")
+        out:Append("")
+        out:Append("Starting Android Generator")
+        out:Append("Generating Template Android Project")
         android:CopyAndRename(androidLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName, androidAlternateJDK)
+        out:Append("Copying Information")
         android:CopyLibraries()
         
         if mediaDirectory:Exists()
             out:Append("Copying Assets")
             android:CopyAssets(mediaDirectory, project:GetMobileAssetsPath())
+        else
+            out:Append("No assets requested for copying")
         end
 
+        out:Append("Requesting build from Android System. This can take a few minutes. Please wait.")
         ProcessRunner build = android:GetAPKDebugBuildProcess()
-//        build:AddListener(android)
+        build:AddListener(android)
         build:Run()
 
         out:Append("Installing program (if device is found)")
         ProcessRunner install = android:GetDebugInstallProcess()
-//        install:AddListener(android)
+        install:AddListener(android)
         install:Run()
         out:Append("Android Build Complete")
 
