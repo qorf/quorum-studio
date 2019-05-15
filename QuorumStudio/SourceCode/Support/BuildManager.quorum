@@ -529,11 +529,12 @@ class BuildManager is DebuggerListener, ProcessListener
         Build(info)
 
         //Now we do the equivalent of the old sh/bat script
-        
         BootstrapCopy(info)
     end
 
     private action BootstrapCopy(BuildInformation info)
+        DateTime date
+        number start = date:GetEpochTime()
         QuorumProject project = info:project
         OutputTab out = info:outputTab
         out:Append("Starting Copy Scripts")
@@ -545,6 +546,25 @@ class BuildManager is DebuggerListener, ProcessListener
         text runFolderName = "Run"
         text libraryFolderName = "Library"
         text sourceCodeFolderName = "SourceCode"
+        
+
+        File sodbeansReleaseFolder
+        sodbeansReleaseFolder:SetAbsolutePath(location:GetAbsolutePath())
+        sodbeansReleaseFolder = sodbeansReleaseFolder:GetParentDirectory():GetParentDirectory()
+        sodbeansReleaseFolder:SetPath("sodbeans/Sodbeans/Quorum/release/")
+
+        File sodbeansExtFolder
+        sodbeansExtFolder = sodbeansReleaseFolder:GetParentDirectory():GetParentDirectory()
+        sodbeansExtFolder:SetPath("Quorum/release/modules/ext/")
+
+        File sodbeansLibraryFolder
+        sodbeansLibraryFolder = sodbeansReleaseFolder:GetParentDirectory():GetParentDirectory()
+        sodbeansLibraryFolder:SetPath("Quorum/release/modules/Library")
+
+        File quorumStudioLibraryFolder
+        quorumStudioLibraryFolder:SetAbsolutePath(location:GetAbsolutePath())
+        quorumStudioLibraryFolder = quorumStudioLibraryFolder:GetParentDirectory():GetParentDirectory()
+        quorumStudioLibraryFolder:SetPath("quorumstudio/QuorumStudio/Library")
 
         File copyFolder
         copyFolder:SetWorkingDirectory(location:GetAbsolutePath())
@@ -597,8 +617,87 @@ class BuildManager is DebuggerListener, ProcessListener
 
         out:Append("Copying to Development Environments")
 
+        constant text quorumJarName = "Quorum.jar"
+        constant text quorumStandardLibraryJarName = "QuorumStandardLibrary.jar"
+        constant text quorumStandardPluginsJarName = "QuorumStandardPlugins.jar"
+
+        //first copy in the compiler and the standard library
+
+        File compiledQuorumJar
+        compiledQuorumJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
+        compiledQuorumJar:SetPath(quorumJarName)
+
+        File compiledStandardLibraryJar
+        compiledStandardLibraryJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
+        compiledStandardLibraryJar:SetPath(quorumStandardLibraryJarName)
+
+        File compiledStandardPluginsJar
+        compiledStandardPluginsJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
+        compiledStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
+
+        File sodbeansQuorumJar
+        sodbeansQuorumJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
+        sodbeansQuorumJar:SetPath(quorumJarName)
+
+        File sodbeansStandardLibraryJar
+        sodbeansStandardLibraryJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
+        sodbeansStandardLibraryJar:SetPath(quorumStandardLibraryJarName)
+
+        File sodbeansStandardPluginsJar
+        sodbeansStandardPluginsJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
+        sodbeansStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
+
+        //copy the jar files
+        compiledQuorumJar:Copy(sodbeansQuorumJar)
+        compiledStandardLibraryJar:Copy(sodbeansStandardLibraryJar)
+        compiledStandardPluginsJar:Copy(sodbeansStandardPluginsJar)
+
+        //delete library folders if they exist
+        if sodbeansLibraryFolder:Exists()
+            sodbeansLibraryFolder:Delete(true)
+        end
+
+        if quorumStudioLibraryFolder:Exists()
+            quorumStudioLibraryFolder:Delete(true)
+        end
+
+        //copy the standard library all fresh and new
+        libraryFolder:Copy(sodbeansLibraryFolder, true)
+        libraryFolder:Copy(quorumStudioLibraryFolder, true)
+
         out:Append("Creating Deployment Packages")
-        a = 5
+        constant text deployName = "Deploy"
+        File deployFolder
+        deployFolder:SetWorkingDirectory(location:GetAbsolutePath())
+        deployFolder:SetPath(deployName)
+
+        if deployFolder:Exists()
+            deployFolder:Delete(true)
+        end
+
+        deployFolder:CreateDirectories()
+
+        File deploymentQuorumJar
+        deploymentQuorumJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
+        deploymentQuorumJar:SetPath(quorumJarName)
+
+        File deploymentStandardLibraryJar
+        deploymentStandardLibraryJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
+        deploymentStandardLibraryJar:SetPath(quorumStandardLibraryJarName)
+
+        File deploymentStandardPluginsJar
+        deploymentStandardPluginsJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
+        deploymentStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
+        
+        //copy into the deploy folder
+        compiledQuorumJar:Copy(deploymentQuorumJar)
+        compiledStandardLibraryJar:Copy(deploymentStandardLibraryJar)
+        compiledStandardPluginsJar:Copy(deploymentStandardPluginsJar)
+
+        number finish = date:GetEpochTime()
+        number total = finish - start
+        total = total / 1000.0
+        out:Append("Bootstrapping complete in " + total + " seconds.")
     end
 
     private action RunCompilerProcess(
