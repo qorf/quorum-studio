@@ -121,6 +121,9 @@ class QuorumProjectView is ProjectView
     private action GetItem(File source) returns ProjectTreeItem
         ProjectTreeItem value
         Array<File> files = source:GetDirectoryListing()
+
+        FileSorter sorter
+        files:Sort(sorter)
         Array<ProjectTreeItem> items
         i = 0
         repeat while i < files:GetSize()
@@ -164,13 +167,13 @@ class QuorumProjectView is ProjectView
             text dq = ""
             dq = dq:GetDoubleQuote()
 
-            MenuItem directory1
-            directory1:SetName("Rename Directory")
-            exampleContextMenu:Add(directory1)
+            MenuItem newFileMenuItem
+            newFileMenuItem:SetName("New File")
+            exampleContextMenu:Add(newFileMenuItem)
 
-            MenuItem directory2
-            directory2:SetName("Example for " + dq + source:GetPath() + dq)
-            exampleContextMenu:Add(directory2)
+            MenuItem renameMenuItem
+            renameMenuItem:SetName("Rename Folder")
+            exampleContextMenu:Add(renameMenuItem)
             value:SetPopupMenu(exampleContextMenu)
         else
             value:SetIcon(resources:GetQuorumFile())

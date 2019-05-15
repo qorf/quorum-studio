@@ -1,0 +1,20 @@
+package Libraries.Development.Environment.Projects
+use Libraries.Containers.Support.Comparison
+use Libraries.System.File
+use Libraries.Language.Support.CompareResult
+
+class FileSorter is Comparison
+    action Compare(Object a, Object b) returns integer
+        File left = cast(File, a)
+        File right = cast(File, b)
+
+        if left:IsDirectory() and not right:IsDirectory()
+            return -1
+        elseif not left:IsDirectory() and right:IsDirectory()
+            return 1
+        else //they are either both files or both directories, so compare their file names
+            CompareResult value = left:GetFileName():Compare(right:GetFileName())
+            return value:result
+        end
+    end
+end
