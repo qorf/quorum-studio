@@ -54,18 +54,15 @@ class ImageSheet
        values = value
     end
 
-    action Compare(Object object) returns CompareResult
-        CompareResult result
-        
+    action Compare(Object object) returns integer
         ImageSheet other = cast(ImageSheet, object)
         if GetName() > other:GetName()
-            result:result = result:LARGER
+            return 1
         elseif GetName() < other:GetName()
-            result:result = result:SMALLER
+            return -1
         else
-            result:result = result:EQUAL
+            return 0
         end
-        return result
     end
 
     action Save(File file)
