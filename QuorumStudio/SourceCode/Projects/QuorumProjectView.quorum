@@ -107,9 +107,21 @@ class QuorumProjectView is ProjectView
 
         projectItem:SetProject(project)
         File sources = project:GetSourceLocation()
-        ProjectTreeItem source = GetItem(sources)
-        folders:Add(source)
+        //ProjectTreeItem source = GetItem(sources)
+        
+        File projectFolder = sources:GetParentDirectory()
+        Array<File> projectFolders = projectFolder:GetDirectoryListing()
+        i = 0
+        repeat while i < projectFolders:GetSize()
+            File sub = projectFolders:Get(i)
+            if (sub:IsDirectory() and sub:GetFileName() not= "Project")
+                ProjectTreeItem folder = GetItem(sub)
+                folders:Add(folder)
+            end
+            i = i + 1
+        end
 
+        //folders:Add(source)
 
         projectItem:SetName(project:GetName())
         projectItem:SetIcon(resources:GetProjectLogo())
