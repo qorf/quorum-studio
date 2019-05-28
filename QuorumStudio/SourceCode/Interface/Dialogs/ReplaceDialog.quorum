@@ -1,0 +1,250 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+
+class ReplaceDialog is Dialog
+    boolean initialized = false
+
+    //ReplaceDialog Controls
+    TextField findField
+    TextField replaceField
+    Label matches
+    Checkbox wholeWord
+    Checkbox matchCase
+    Button previous
+    Button next
+    Button replace
+    Button replaceAll
+
+    //ReplaceDialog Control Behaviors
+
+
+    on create
+        findField:Focus()
+    end
+
+    action Initialize
+        if initialized
+            output "WARNING: Re-initializing the FindDialog."
+        end
+
+        initialized = true
+
+        SetName("Find and Replace")
+        SetPixelWidth(300)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL - view:TOP)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        
+        Control panel
+        FlowLayout replaceLayout
+        panel:SetLayout(replaceLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetPixelHeight(200)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+        panel:Add(CreateReplaceControl())
+        panel:SetView2D(view)
+        Add(panel)
+    end
+
+    private action CreateReplaceControl returns Control
+        Color color
+        Control createReplaceContainer
+        FlowLayout createReplaceLayout
+        createReplaceContainer:SetLayout(createReplaceLayout)
+        createReplaceContainer:SetBorderThickness(1)
+        createReplaceContainer:SetBorderColor(color:Black())
+        createReplaceContainer:SetPercentageWidth(1.0)
+        createReplaceContainer:SetVerticalLayoutMode(createReplaceContainer:FIT_CONTENTS)
+
+        FlowLayout findLayout
+        Control findContainer
+        findContainer:SetLayout(findLayout)
+        findContainer:SetPercentageWidth(1.0)
+        findContainer:SetVerticalLayoutMode(findContainer:FIT_CONTENTS)
+        findContainer:SetLeftPadding(20)
+        findContainer:SetTopPadding(20)
+        findContainer:SetRightPadding(30)
+
+        Label findLabel
+        findLabel:SetText("Find:")
+        findLabel:SetRightPadding(52)
+        findContainer:Add(findLabel)
+        
+        findField:SetHorizontalLayoutMode(findField:parent:Libraries.Interface.Controls.Control:FILL)
+        findField:SetText("")
+        findField:SetFocusable(true)
+        findField:SetNextFocus(replaceField)
+        findField:SetPreviousFocus(replaceAll)
+        findContainer:Add(findField)
+
+        createReplaceContainer:Add(findContainer)
+
+        FlowLayout replaceLayout
+        Control replaceContainer
+        replaceContainer:SetLayout(replaceLayout)
+        replaceContainer:SetPercentageWidth(1.0)
+        replaceContainer:SetVerticalLayoutMode(replaceContainer:FIT_CONTENTS)
+        replaceContainer:SetLeftPadding(20)
+        replaceContainer:SetTopPadding(20)
+        replaceContainer:SetRightPadding(30)
+
+        Label replaceLabel
+        replaceLabel:SetText("Replace:")
+        replaceLabel:SetRightPadding(6)
+        replaceContainer:Add(replaceLabel)
+
+        replaceField:SetHorizontalLayoutMode(replaceField:parent:Libraries.Interface.Controls.Control:FILL)
+        replaceField:SetText("")
+        replaceField:SetFocusable(true)
+        replaceField:SetNextFocus(wholeWord)
+        replaceField:SetPreviousFocus(findField)
+        replaceContainer:Add(replaceField)
+
+        createReplaceContainer:Add(replaceContainer)
+
+        FlowLayout optionsLayout
+        Control optionsContainer
+        optionsContainer:SetLayout(optionsLayout)
+        optionsContainer:SetPercentageWidth(1.0)
+        optionsContainer:SetVerticalLayoutMode(optionsContainer:FIT_CONTENTS)
+        optionsContainer:SetLeftPadding(20)
+        optionsContainer:SetRightPadding(10)
+        optionsContainer:SetTopPadding(50)
+        
+        FlowLayout checkBoxLayout
+        Control checkBoxContainer
+        checkBoxContainer:SetLayout(checkBoxLayout)
+        checkBoxContainer:SetPercentageWidth(0.3)
+        checkBoxContainer:SetVerticalLayoutMode(checkBoxContainer:FIT_CONTENTS)
+        
+        wholeWord:SetName("Whole Word")
+        //wholeWord:SetLeftPadding(6)
+        //wholeWord:SetRightPadding(6)
+        wholeWord:SetPercentageWidth(1.0)
+        wholeWord:SetFocusable(true)
+        wholeWord:SetNextFocus(matchCase)
+        wholeWord:SetPreviousFocus(replaceField)
+        checkBoxContainer:Add(wholeWord)
+
+//        Control buttonsPadding
+//        buttonsPadding:SetPercentageWidth(0.15)
+//        buttonsPadding:SetPixelHeight(1)
+//        optionsContainer:Add(buttonsPadding)
+
+        matchCase:SetName("Match Case")
+        //matchCase:SetLeftPadding(6)
+        //matchCase:SetRightPadding(6)
+        matchCase:SetPercentageWidth(1.0)
+        matchCase:SetFocusable(true)
+        matchCase:SetNextFocus(previous)
+        matchCase:SetPreviousFocus(wholeWord)
+        checkBoxContainer:Add(matchCase)
+
+        optionsContainer:Add(checkBoxContainer)
+
+        FlowLayout buttons1Layout
+        Control buttons1Container
+        buttons1Container:SetLayout(buttons1Layout)
+        buttons1Container:SetPercentageWidth(0.3)
+        buttons1Container:SetVerticalLayoutMode(buttons1Container:FIT_CONTENTS)
+
+        previous:SetName("Previous")
+        //previous:SetRightPadding(6)
+        //previous:SetLeftPadding(6)
+        //previous:SetBottomPadding(10)
+        //previous:SetHorizontalLayoutMode(previous:parent:Libraries.Interface.Controls.Control:FILL)
+        previous:SetPercentageWidth(1.0)
+        previous:SetFocusable(true)
+        previous:SetNextFocus(next)
+        previous:SetPreviousFocus(matchCase)
+        buttons1Container:Add(previous)
+
+        replace:SetName("Replace")
+        //replace:SetRightPadding(6)
+        //replace:SetLeftPadding(6)
+        //replace:SetTopPadding(10)
+        //replace:SetHorizontalLayoutMode(replace:parent:Libraries.Interface.Controls.Control:FILL)
+        replace:SetPercentageWidth(1.0)
+        replace:SetFocusable(true)
+        replace:SetNextFocus(replaceAll)
+        replace:SetPreviousFocus(next)
+        buttons1Container:Add(replace)
+        
+        optionsContainer:Add(buttons1Container)
+
+        FlowLayout buttons2Layout
+        Control buttons2Container
+        buttons2Container:SetLayout(buttons2Layout)
+        buttons2Container:SetPercentageWidth(0.3)
+        buttons2Container:SetVerticalLayoutMode(buttons2Container:FIT_CONTENTS)
+
+        next:SetName("Next")
+        //next:SetRightPadding(6)
+        //next:SetLeftPadding(6)
+        //next:SetBottomPadding(10)
+        next:SetPercentageWidth(next:parent:Libraries.Interface.Controls.Control:FILL)
+        next:SetFocusable(true)
+        next:SetNextFocus(replace)
+        next:SetPreviousFocus(previous)
+        buttons2Container:Add(next)
+        
+        replaceAll:SetName("Replace All")
+        //replaceAll:SetRightPadding(6)
+        //replaceAll:SetLeftPadding(6)
+        //replaceAll:SetTopPadding(10)
+        replaceAll:SetPercentageWidth(replaceAll:parent:Libraries.Interface.Controls.Control:FILL)
+        replaceAll:SetFocusable(true)
+        replaceAll:SetNextFocus(findField)
+        replaceAll:SetPreviousFocus(replace)
+        buttons2Container:Add(replaceAll)
+        
+        optionsContainer:Add(buttons2Container)
+        
+        createReplaceContainer:Add(optionsContainer)
+
+        FlowLayout matchesLayout
+        Control matchesContainer
+        matchesContainer:SetLayout(matchesLayout)
+        matchesContainer:SetPercentageWidth(1.0)
+        matchesContainer:SetVerticalLayoutMode(matchesContainer:FIT_CONTENTS)
+        matchesContainer:SetTopPadding(50)
+        matchesContainer:SetRightPadding(10)
+        matchesContainer:SetLeftPadding(20)
+
+        matches:SetText("")
+        matches:SetPercentageWidth(0.1)
+        matches:SetPixelHeight(20)
+        matches:SetLeftPadding(6)
+        matches:SetRightPadding(6)
+        matchesContainer:Add(matches)
+
+        Label matchesFound
+        matchesFound:SetText("Matches Found")
+        matchesFound:SetPixelHeight(20)
+        matchesFound:SetLeftPadding(6)
+        matchesFound:SetRightPadding(6)
+        matchesFound:SetPercentageWidth(0.3)
+        matchesContainer:Add(matchesFound)
+
+        createReplaceContainer:Add(matchesContainer)
+        
+        return createReplaceContainer
+    end
+
+    action IsInitialized returns boolean
+        return initialized
+    end
+end

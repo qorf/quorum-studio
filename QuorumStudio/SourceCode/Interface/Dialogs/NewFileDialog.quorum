@@ -244,8 +244,9 @@ class NewFileDialog is Dialog, KeyboardListener
     //updates the locationNameField to the file path that the new file will be added to
     //(e.g. GameApplication/SourceCode to GameApplication/SourceCode/images)
     //used by the OpenBrowseFoldersBehavior
-    action UpdateFolderName(text folderName)  
-        projectName = projectName + "/" + folderName    
+    action UpdateFolderName(text folderName)
+        //locationNameField:Empty()
+        projectName = projectName + "/" + folderName
         locationNameField:SetText(projectName)    
     end
 
@@ -255,7 +256,7 @@ class NewFileDialog is Dialog, KeyboardListener
         File file
         File value = project:GetLocation()
         text path = value:GetAbsolutePath():Trim()
-        path = path + "/" + locationNameField:GetText():Trim() + "/" + fileNameField:GetText():Trim() 
+        path = path + "/" + fileNameField:GetText():Trim() 
         
         file:SetAbsolutePath(path)
         
@@ -278,6 +279,7 @@ class NewFileDialog is Dialog, KeyboardListener
 
         QuorumProjectView projectView = cast(QuorumProjectView, project:GetProjectView())
         TreeItem treeItem = projectView:GetLogicalTree()
+
         ProjectTree projectTree = studio:GetProjectTree()
         Iterator<TreeItem> items = projectTree:GetTreeItems()
 
@@ -303,19 +305,10 @@ class NewFileDialog is Dialog, KeyboardListener
     action PressedKey(KeyboardEvent event)
         if event:keyCode = event:ENTER
             okayButton:Activate()
-            //CreateNewFile()
-            //Hide()
         end
 
         if event:keyCode = event:ESCAPE
             cancelButton:Activate()
-            //Hide()
         end
-//
-//        if event:keyCode = event:SPACE
-//            if locationBrowseButton:IsFocused()
-//                
-//            end
-//        end
     end
 end

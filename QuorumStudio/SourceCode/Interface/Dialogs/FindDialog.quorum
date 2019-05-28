@@ -1,0 +1,176 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+
+class FindDialog is Dialog
+    boolean initialized = false
+
+    //FindDialog Controls
+    TextField findField
+    Label matches
+    Checkbox wholeWord
+    Checkbox matchCase
+    Button previous
+    Button next    
+
+    //FindDialog Control Behaviors
+
+
+    on create
+        findField:Focus()
+    end
+
+    action Initialize
+        if initialized
+            output "WARNING: Re-initializing the FindDialog."
+        end
+
+        initialized = true
+
+        SetName("Find")
+        SetPixelWidth(300)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL - view:TOP)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        
+        Control panel
+        FlowLayout findLayout
+        panel:SetLayout(findLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetPixelHeight(150)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+        panel:Add(CreateFindControl())
+        panel:SetView2D(view)
+        Add(panel)
+    end
+
+    private action CreateFindControl returns Control
+        Color color
+        Control createFindContainer
+        FlowLayout createFindLayout
+        createFindContainer:SetLayout(createFindLayout)
+        createFindContainer:SetBorderThickness(1)
+        createFindContainer:SetBorderColor(color:Black())
+        createFindContainer:SetPercentageWidth(1.0)
+        createFindContainer:SetVerticalLayoutMode(createFindContainer:FIT_CONTENTS)
+
+        FlowLayout findLayout
+        Control findContainer
+        findContainer:SetLayout(findLayout)
+        findContainer:SetPercentageWidth(1.0)
+        findContainer:SetVerticalLayoutMode(findContainer:FIT_CONTENTS)
+        findContainer:SetLeftPadding(20)
+        findContainer:SetTopPadding(20)
+        findContainer:SetRightPadding(30)
+
+        Label findLabel
+        findLabel:SetText("Find:")
+        findLabel:SetRightPadding(10)
+        findContainer:Add(findLabel)
+        
+        findField:SetHorizontalLayoutMode(findField:parent:Libraries.Interface.Controls.Control:FILL)
+        findField:SetText("")
+        findField:SetFocusable(true)
+        findField:SetNextFocus(wholeWord)
+        findField:SetPreviousFocus(next)
+        findContainer:Add(findField)
+
+        createFindContainer:Add(findContainer)
+
+        FlowLayout optionsLayout
+        Control optionsContainer
+        optionsContainer:SetLayout(optionsLayout)
+        optionsContainer:SetPercentageWidth(1.0)
+        optionsContainer:SetVerticalLayoutMode(optionsContainer:FIT_CONTENTS)
+        optionsContainer:SetLeftPadding(20)
+        optionsContainer:SetRightPadding(10)
+        optionsContainer:SetTopPadding(50)
+        
+        wholeWord:SetName("Whole Word")
+        wholeWord:SetLeftPadding(6)
+        wholeWord:SetRightPadding(6)
+        wholeWord:SetPercentageWidth(0.5)
+        wholeWord:SetFocusable(true)
+        wholeWord:SetNextFocus(matchCase)
+        wholeWord:SetPreviousFocus(findField)
+        optionsContainer:Add(wholeWord)
+
+        Control buttonsPadding
+        buttonsPadding:SetPercentageWidth(0.15)
+        buttonsPadding:SetPixelHeight(1)
+        optionsContainer:Add(buttonsPadding)
+
+
+        previous:SetName("Previous")
+        previous:SetRightPadding(6)
+        previous:SetLeftPadding(6)
+        previous:SetPercentageWidth(0.15)
+        previous:SetFocusable(true)
+        previous:SetNextFocus(next)
+        previous:SetPreviousFocus(matchCase)
+        optionsContainer:Add(previous)
+        
+        next:SetName("Next")
+        next:SetRightPadding(6)
+        next:SetLeftPadding(6)
+        next:SetPercentageWidth(next:parent:Libraries.Interface.Controls.Control:FILL)
+        next:SetFocusable(true)
+        next:SetNextFocus(findField)
+        next:SetPreviousFocus(previous)
+        optionsContainer:Add(next)
+
+        matchCase:SetName("Match Case")
+        matchCase:SetLeftPadding(6)
+        matchCase:SetPercentageWidth(0.5)
+        matchCase:SetFocusable(true)
+        matchCase:SetNextFocus(previous)
+        matchCase:SetPreviousFocus(wholeWord)
+        optionsContainer:Add(matchCase)
+
+        createFindContainer:Add(optionsContainer)
+
+        FlowLayout matchesLayout
+        Control matchesContainer
+        matchesContainer:SetLayout(matchesLayout)
+        matchesContainer:SetPercentageWidth(1.0)
+        matchesContainer:SetVerticalLayoutMode(matchesContainer:FIT_CONTENTS)
+        matchesContainer:SetTopPadding(50)
+        matchesContainer:SetRightPadding(10)
+        matchesContainer:SetLeftPadding(20)
+
+        matches:SetText("")
+        matches:SetPercentageWidth(0.1)
+        matches:SetPixelHeight(20)
+        matches:SetLeftPadding(6)
+        matches:SetRightPadding(6)
+        matchesContainer:Add(matches)
+
+        Label matchesFound
+        matchesFound:SetText("Matches Found")
+        matchesFound:SetPixelHeight(20)
+        matchesFound:SetLeftPadding(6)
+        matchesFound:SetRightPadding(6)
+        matchesFound:SetPercentageWidth(0.3)
+        matchesContainer:Add(matchesFound)
+
+        createFindContainer:Add(matchesContainer)
+        
+        return createFindContainer
+    end
+
+    action IsInitialized returns boolean
+        return initialized
+    end
+end
