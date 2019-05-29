@@ -8,23 +8,42 @@ use Libraries.Interface.Views.LabelBoxView
 use Libraries.Game.Graphics.Color
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Game.Graphics.Label
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Events.TextChangeListener
+use Libraries.Interface.Selections.TextBoxSelection
+use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Containers.Array
+use Libraries.Containers.MultipleLineText
 
-class FindDialog is Dialog
+
+class FindDialog is Dialog, TextChangeListener
     boolean initialized = false
 
+    // The TextBox that we're searching through.
+    CodeTextBox textBox = undefined
+
+    Array<TextBoxSelection> selections      //array of the matches
+
+    integer matchesCounter = 0
+
+    // The text that we are searching for
+    text find = ""
+    
     //FindDialog Controls
     TextField findField
     Label matches
     Checkbox wholeWord
     Checkbox matchCase
     Button previous
-    Button next    
+    Button next  
 
     //FindDialog Control Behaviors
 
 
     on create
         findField:Focus()
+        findField:AddTextChangeListener(me)     
+        SetModal(false)
     end
 
     action Initialize
@@ -48,7 +67,7 @@ class FindDialog is Dialog
         FlowLayout findLayout
         panel:SetLayout(findLayout)
         panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(150)
+        panel:SetPixelHeight(140)
         panel:SetBorderColor(color:Black())
         panel:SetBorderThickness(1)
         panel:Add(CreateFindControl())
@@ -93,12 +112,14 @@ class FindDialog is Dialog
         Control optionsContainer
         optionsContainer:SetLayout(optionsLayout)
         optionsContainer:SetPercentageWidth(1.0)
+        optionsContainer:SetHorizontalLayoutMode(optionsContainer:STANDARD)
         optionsContainer:SetVerticalLayoutMode(optionsContainer:FIT_CONTENTS)
-        optionsContainer:SetLeftPadding(20)
+        optionsContainer:SetLeftPadding(10)
         optionsContainer:SetRightPadding(10)
-        optionsContainer:SetTopPadding(50)
+        optionsContainer:SetTopPadding(30)
         
         wholeWord:SetName("Whole Word")
+        wholeWord:SetFontSize(14)
         wholeWord:SetLeftPadding(6)
         wholeWord:SetRightPadding(6)
         wholeWord:SetPercentageWidth(0.5)
@@ -112,26 +133,30 @@ class FindDialog is Dialog
         buttonsPadding:SetPixelHeight(1)
         optionsContainer:Add(buttonsPadding)
 
-
         previous:SetName("Previous")
+        previous:SetFontSize(14)
         previous:SetRightPadding(6)
         previous:SetLeftPadding(6)
-        previous:SetPercentageWidth(0.15)
+        previous:SetHorizontalLayoutMode(previous:parent:Libraries.Interface.Controls.Control:STANDARD)
+        previous:SetPercentageWidth(0.22)
         previous:SetFocusable(true)
         previous:SetNextFocus(next)
         previous:SetPreviousFocus(matchCase)
         optionsContainer:Add(previous)
         
         next:SetName("Next")
+        next:SetFontSize(14)
         next:SetRightPadding(6)
         next:SetLeftPadding(6)
-        next:SetPercentageWidth(next:parent:Libraries.Interface.Controls.Control:FILL)
+        next:SetHorizontalLayoutMode(next:parent:Libraries.Interface.Controls.Control:STANDARD)
+        next:SetPercentageWidth(0.22)
         next:SetFocusable(true)
         next:SetNextFocus(findField)
         next:SetPreviousFocus(previous)
         optionsContainer:Add(next)
 
         matchCase:SetName("Match Case")
+        matchCase:SetFontSize(14)
         matchCase:SetLeftPadding(6)
         matchCase:SetPercentageWidth(0.5)
         matchCase:SetFocusable(true)
@@ -150,7 +175,7 @@ class FindDialog is Dialog
         matchesContainer:SetRightPadding(10)
         matchesContainer:SetLeftPadding(20)
 
-        matches:SetText("")
+        matches:SetText(cast(text, matchesCounter))
         matches:SetPercentageWidth(0.1)
         matches:SetPixelHeight(20)
         matches:SetLeftPadding(6)
@@ -173,4 +198,46 @@ class FindDialog is Dialog
     action IsInitialized returns boolean
         return initialized
     end
+
+    action Show
+        if textBox not= undefined
+            LayoutProperties properties = GetDefaultLayoutProperties()
+            properties:SetPercentageX(0)
+            properties:SetPercentageY(0)
+            properties:SetPercentageOriginX(1)
+            properties:SetPercentageOriginY(1)
+            properties:SetPixelX(textBox:GetGlobalX() + textBox:GetWidth() - 20)
+            properties:SetPixelY(textBox:GetGlobalY() + textBox:GetHeight() - 39)
+        end
+
+        parent:Dialog:Show()
+    end
+
+    action SetTextBox(CodeTextBox code)
+        textBox = code
+    end
+
+    action GetTextBox returns CodeTextBox
+        return textBox
+    end
+
+    action FindText()
+      
+    end
+
+    action TextChanged(TextChangeEvent event)
+        if event:GetEventType() = event:ADDED
+            find = find + event:GetAddedText()
+            FindText()
+        elseif event:GetEventType() = event:DELETED
+            find = findField:GetText() 
+            FindText()
+        elseif event:GetEventType() = event:MODIFIED
+            find = findField:GetText()
+            FindText()
+        end
+        
+    end
+
+
 end

@@ -3,9 +3,15 @@ package Libraries.Development.Environment.Studio.Behaviors
 use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
 use Libraries.Development.Environment.Studio.Interface.FindDialog
 use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Interface.Item2D
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 
 class OpenFindDialogBehavior is QuorumStudioBehavior 
     FindDialog dialog = undefined
+    GameStateManager manager
 
     action Run(BehaviorEvent event)
         if dialog = undefined
@@ -14,6 +20,13 @@ class OpenFindDialogBehavior is QuorumStudioBehavior
             dialog:Initialize()
         end
 
-        dialog:Show()
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        CodeEditorTabPane tabPane = studio:GetTabPane()
+        Item2D tabbedItem = tabPane:GetCurrentItem()
+
+        if tabbedItem is CodeTextBox
+            dialog:SetTextBox(cast(CodeTextBox, tabbedItem))
+            dialog:Show()
+        end
     end
 end

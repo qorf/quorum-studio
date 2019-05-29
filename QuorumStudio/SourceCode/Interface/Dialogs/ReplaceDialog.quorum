@@ -8,9 +8,13 @@ use Libraries.Interface.Views.LabelBoxView
 use Libraries.Game.Graphics.Color
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Game.Graphics.Label
+use Libraries.Interface.Layouts.LayoutProperties
 
 class ReplaceDialog is Dialog
     boolean initialized = false
+
+    // The TextBox that we're searching through.
+    CodeTextBox textBox = undefined
 
     //ReplaceDialog Controls
     TextField findField
@@ -28,6 +32,7 @@ class ReplaceDialog is Dialog
 
     on create
         findField:Focus()
+        SetModal(false)
     end
 
     action Initialize
@@ -51,7 +56,7 @@ class ReplaceDialog is Dialog
         FlowLayout replaceLayout
         panel:SetLayout(replaceLayout)
         panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(200)
+        panel:SetPixelHeight(170)
         panel:SetBorderColor(color:Black())
         panel:SetBorderThickness(1)
         panel:Add(CreateReplaceControl())
@@ -119,34 +124,32 @@ class ReplaceDialog is Dialog
         Control optionsContainer
         optionsContainer:SetLayout(optionsLayout)
         optionsContainer:SetPercentageWidth(1.0)
+        optionsContainer:SetHorizontalLayoutMode(optionsContainer:STANDARD)
         optionsContainer:SetVerticalLayoutMode(optionsContainer:FIT_CONTENTS)
-        optionsContainer:SetLeftPadding(20)
+        optionsContainer:SetLeftPadding(10)
         optionsContainer:SetRightPadding(10)
-        optionsContainer:SetTopPadding(50)
+        optionsContainer:SetTopPadding(30)
         
         FlowLayout checkBoxLayout
         Control checkBoxContainer
         checkBoxContainer:SetLayout(checkBoxLayout)
-        checkBoxContainer:SetPercentageWidth(0.3)
+        checkBoxContainer:SetPercentageWidth(0.35)
+        checkBoxContainer:SetLeftPadding(6)
+        checkBoxContainer:SetRightPadding(20)
+        checkBoxContainer:SetHorizontalLayoutMode(checkBoxContainer:STANDARD)
         checkBoxContainer:SetVerticalLayoutMode(checkBoxContainer:FIT_CONTENTS)
         
         wholeWord:SetName("Whole Word")
-        //wholeWord:SetLeftPadding(6)
-        //wholeWord:SetRightPadding(6)
+        wholeWord:SetFontSize(14)
         wholeWord:SetPercentageWidth(1.0)
         wholeWord:SetFocusable(true)
         wholeWord:SetNextFocus(matchCase)
         wholeWord:SetPreviousFocus(replaceField)
         checkBoxContainer:Add(wholeWord)
 
-//        Control buttonsPadding
-//        buttonsPadding:SetPercentageWidth(0.15)
-//        buttonsPadding:SetPixelHeight(1)
-//        optionsContainer:Add(buttonsPadding)
-
         matchCase:SetName("Match Case")
-        //matchCase:SetLeftPadding(6)
-        //matchCase:SetRightPadding(6)
+        matchCase:SetFontSize(14)
+        matchCase:SetTopPadding(20)
         matchCase:SetPercentageWidth(1.0)
         matchCase:SetFocusable(true)
         matchCase:SetNextFocus(previous)
@@ -158,29 +161,29 @@ class ReplaceDialog is Dialog
         FlowLayout buttons1Layout
         Control buttons1Container
         buttons1Container:SetLayout(buttons1Layout)
-        buttons1Container:SetPercentageWidth(0.3)
+        buttons1Container:SetPercentageWidth(0.24)
+        buttons1Container:SetLeftPadding(20)
+        buttons1Container:SetHorizontalLayoutMode(buttons1Container:STANDARD)
         buttons1Container:SetVerticalLayoutMode(buttons1Container:FIT_CONTENTS)
 
         previous:SetName("Previous")
-        //previous:SetRightPadding(6)
-        //previous:SetLeftPadding(6)
-        //previous:SetBottomPadding(10)
-        //previous:SetHorizontalLayoutMode(previous:parent:Libraries.Interface.Controls.Control:FILL)
+        previous:SetFontSize(14)
+        previous:SetBottomPadding(10)
+        previous:SetHorizontalLayoutMode(previous:parent:Libraries.Interface.Controls.Control:STANDARD)
         previous:SetPercentageWidth(1.0)
         previous:SetFocusable(true)
         previous:SetNextFocus(next)
         previous:SetPreviousFocus(matchCase)
-        buttons1Container:Add(previous)
-
+        
         replace:SetName("Replace")
-        //replace:SetRightPadding(6)
-        //replace:SetLeftPadding(6)
-        //replace:SetTopPadding(10)
-        //replace:SetHorizontalLayoutMode(replace:parent:Libraries.Interface.Controls.Control:FILL)
+        replace:SetFontSize(14)
+        replace:SetTopPadding(10)
+        replace:SetHorizontalLayoutMode(replace:parent:Libraries.Interface.Controls.Control:STANDARD)
         replace:SetPercentageWidth(1.0)
         replace:SetFocusable(true)
         replace:SetNextFocus(replaceAll)
         replace:SetPreviousFocus(next)
+        buttons1Container:Add(previous)
         buttons1Container:Add(replace)
         
         optionsContainer:Add(buttons1Container)
@@ -188,27 +191,29 @@ class ReplaceDialog is Dialog
         FlowLayout buttons2Layout
         Control buttons2Container
         buttons2Container:SetLayout(buttons2Layout)
-        buttons2Container:SetPercentageWidth(0.3)
+        buttons2Container:SetPercentageWidth(0.32)
+        buttons2Container:SetLeftPadding(10)
+        buttons2Container:SetHorizontalLayoutMode(buttons2Container:STANDARD)
         buttons2Container:SetVerticalLayoutMode(buttons2Container:FIT_CONTENTS)
 
         next:SetName("Next")
-        //next:SetRightPadding(6)
-        //next:SetLeftPadding(6)
-        //next:SetBottomPadding(10)
-        next:SetPercentageWidth(next:parent:Libraries.Interface.Controls.Control:FILL)
+        next:SetFontSize(14)
+        next:SetBottomPadding(10)
+        next:SetHorizontalLayoutMode(next:parent:Libraries.Interface.Controls.Control:STANDARD)
+        next:SetPercentageWidth(1.0)
         next:SetFocusable(true)
         next:SetNextFocus(replace)
         next:SetPreviousFocus(previous)
-        buttons2Container:Add(next)
         
         replaceAll:SetName("Replace All")
-        //replaceAll:SetRightPadding(6)
-        //replaceAll:SetLeftPadding(6)
-        //replaceAll:SetTopPadding(10)
-        replaceAll:SetPercentageWidth(replaceAll:parent:Libraries.Interface.Controls.Control:FILL)
+        replaceAll:SetFontSize(14)
+        replaceAll:SetTopPadding(10)
+        replaceAll:SetPercentageWidth(1.0)
+        replaceAll:SetHorizontalLayoutMode(replaceAll:parent:Libraries.Interface.Controls.Control:STANDARD)
         replaceAll:SetFocusable(true)
         replaceAll:SetNextFocus(findField)
         replaceAll:SetPreviousFocus(replace)
+        buttons2Container:Add(next)
         buttons2Container:Add(replaceAll)
         
         optionsContainer:Add(buttons2Container)
@@ -219,13 +224,14 @@ class ReplaceDialog is Dialog
         Control matchesContainer
         matchesContainer:SetLayout(matchesLayout)
         matchesContainer:SetPercentageWidth(1.0)
+        matchesContainer:SetHorizontalLayoutMode(matchesContainer:STANDARD)
         matchesContainer:SetVerticalLayoutMode(matchesContainer:FIT_CONTENTS)
-        matchesContainer:SetTopPadding(50)
+        matchesContainer:SetTopPadding(30)
         matchesContainer:SetRightPadding(10)
         matchesContainer:SetLeftPadding(20)
 
         matches:SetText("")
-        matches:SetPercentageWidth(0.1)
+        matches:SetPercentageWidth(0.2)
         matches:SetPixelHeight(20)
         matches:SetLeftPadding(6)
         matches:SetRightPadding(6)
@@ -236,7 +242,7 @@ class ReplaceDialog is Dialog
         matchesFound:SetPixelHeight(20)
         matchesFound:SetLeftPadding(6)
         matchesFound:SetRightPadding(6)
-        matchesFound:SetPercentageWidth(0.3)
+        matchesFound:SetPercentageWidth(matchesFound:parent:Libraries.Interface.Controls.Control:STANDARD)
         matchesContainer:Add(matchesFound)
 
         createReplaceContainer:Add(matchesContainer)
@@ -246,5 +252,27 @@ class ReplaceDialog is Dialog
 
     action IsInitialized returns boolean
         return initialized
+    end
+
+    action Show
+        if textBox not= undefined
+            LayoutProperties properties = GetDefaultLayoutProperties()
+            properties:SetPercentageX(0)
+            properties:SetPercentageY(0)
+            properties:SetPercentageOriginX(1)
+            properties:SetPercentageOriginY(1)
+            properties:SetPixelX(textBox:GetGlobalX() + textBox:GetWidth() - 20)
+            properties:SetPixelY(textBox:GetGlobalY() + textBox:GetHeight() - 39)
+        end
+
+        parent:Dialog:Show()
+    end
+
+    action SetTextBox(CodeTextBox code)
+        textBox = code
+    end
+
+    action GetTextBox returns CodeTextBox
+        return textBox
     end
 end
