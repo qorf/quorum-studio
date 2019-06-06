@@ -276,7 +276,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         descriptionLabel:SetLeftPadding(20)
         descriptionContainer:Add(descriptionLabel)
 
-        //descriptionList changes as the focus template selection changes
+        //descriptionText changes as the focus template selection changes
         //focus is set to blankDescription by default
         descriptionText:SetText(blankDescription)
         descriptionText:SetPercentageWidth(1.0)
@@ -294,7 +294,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         projectNameContainer:SetLayout(projectNameLayout)
         projectNameContainer:SetPercentageWidth(1.0)
         projectNameContainer:SetPixelHeight(30)
-        //projectNameContainer:SetVerticalLayoutMode(projectNameContainer:FIT_CONTENTS)
         projectNameContainer:SetTopPadding(50)
         projectNameContainer:SetLeftPadding(10)
         projectNameContainer:SetRightPadding(10)
@@ -306,9 +305,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         projectNameContainer:Add(nameLabel)
 
         nameField:SetText("BlankQuorumApplication") 
-        //nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
         nameField:SetPercentageWidth(0.92)
-        //nameField:SetBottomPadding(6)
         projectNameContainer:Add(nameField)
         createNewProjectContainer:Add(projectNameContainer)
 
@@ -317,31 +314,23 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         projectLocationContainer:SetLayout(projectLocationLayout)
         projectLocationContainer:SetPercentageWidth(1.0)
         projectLocationContainer:SetPixelHeight(80)
-        //projectLocationContainer:SetVerticalLayoutMode(projectLocationContainer:FIT_CONTENTS)
         projectLocationContainer:SetTopPadding(10)
         projectLocationContainer:SetLeftPadding(10)
         projectLocationContainer:SetRightPadding(10)
-        //projectLocationContainer:SetBottomPadding(6)
 
         Label locationLabel
-        //locationLabel:SetTopPadding(6)
         locationLabel:SetText("Location:")
         locationLabel:SetRightPadding(6)
         projectLocationContainer:Add(locationLabel)
         
         locationField:SetText(locationPath:GetPath())    //set to current directory?
-        //set to a larger height for textfields 
         locationField:SetPercentageWidth(0.82)
-        //locationField:SetPixelHeight(100)
         locationField:SetRightPadding(10)
-        //locationField:SetTopPadding(50)
         projectLocationContainer:Add(locationField)
 
         browseButton:SetName("Browse...")
         browseButton:SetPercentageWidth(0.1)
         browseButton:SetHorizontalLayoutMode(browseButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        //browseButton:SetLeftPadding(6)
-        //browseButton:SetBottomPadding(6)
         projectLocationContainer:Add(browseButton)
         createNewProjectContainer:Add(projectLocationContainer)
 
@@ -350,7 +339,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         closingButtonsContainer:SetLayout(closingButtonsLayout)
         closingButtonsContainer:SetPercentageWidth(1.0)
         closingButtonsContainer:SetVerticalLayoutMode(closingButtonsContainer:FIT_CONTENTS)
-        //closingButtonsContainer:SetTopPadding(6)
         closingButtonsContainer:SetBottomPadding(50)
         
         Control closingPadding
@@ -361,8 +349,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         cancelButton:SetName("Cancel")
         cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
         cancelButton:SetPercentageWidth(0.1)
-        //cancelButton:SetLeftPadding(0)
-        //cancelButton:SetTopPadding(0)
         closingButtonsContainer:Add(cancelButton)
 
         Gradient okayGradient
@@ -412,16 +398,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         basicTab:DisplayCloseButton(false)
 
         LabelBoxView view
-        //view:SetBorderThickness(1)
-        //view:SetBorderStyle(view:ALL)
         view:Initialize(color:White(), color:White())
-
-//        FlowLayout scrollLayout
-//        ScrollPane scrollPane
-//        scrollPane:SetLayout(scrollLayout)
-//        scrollPane:SetPercentageWidth(1.0)
-//        scrollPane:SetPixelHeight(200)       
-//        basicTab:SetRelatedItem(scrollPane)
 
         FlowLayout layout
         Control panel
@@ -440,9 +417,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         applicationsContainer:SetTopPadding(100)
         applicationsContainer:SetBottomPadding(20)
         applicationsContainer:SetRightPadding(40)
-        applicationsContainer:SetLeftPadding(40)
-        
-        
+        applicationsContainer:SetLeftPadding(40)       
 
         Control buttonPadding
         buttonPadding:SetPercentageWidth(0.04)
@@ -980,7 +955,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
 
     private action SetupBehaviors
         advancedTab:SetBehavior(tabBehavior)
-
         browseButton:SetBehavior(browseBehavior)
         cancelButton:SetBehavior(cancelBehavior)
         okayButton:SetBehavior(okayBehavior)
@@ -1038,11 +1012,11 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         text newProjectPath = projectPath:GetAbsolutePath()
         newProjectFolderLocation:SetWorkingDirectory(newProjectPath)
         boolean copySuccess = template:Copy(newProjectFolderLocation, true)
-        if copySuccess
-            output "Project copied Successfully"
-        else
-            output "Error copying Project"
-        end
+//        if not copySuccess
+//            output "Project copied Successfully"
+//        else
+//            output "Error copying Project"
+//        end
 
         File dad = newProjectFolderLocation:GetParentDirectory()
         if not dad:Exists()
