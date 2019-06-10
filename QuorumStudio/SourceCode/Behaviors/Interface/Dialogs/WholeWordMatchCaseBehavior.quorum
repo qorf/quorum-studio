@@ -1,0 +1,52 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.FindDialog
+use Libraries.Interface.Controls.Dialog
+use Libraries.Development.Environment.Studio.Interface.ReplaceDialog
+use Libraries.Interface.Controls.Checkbox
+
+class WholeWordMatchCaseBehavior is QuorumStudioBehavior
+    Dialog dialog = undefined
+    text word = ""
+    text dialogType = ""
+
+    action SetDialog(Dialog dialog)
+        me:dialog = dialog
+    end
+
+    action SetDialogType(text type)
+        dialogType = type
+    end 
+
+    action Run (BehaviorEvent event)
+        FindDialog findDialog
+        ReplaceDialog replaceDialog
+        
+        if dialogType:Equals("findDialog")
+            findDialog = cast(FindDialog, me:dialog)
+            me:word = findDialog:GetCurrentWord()
+            findDialog:FindText(me:word)
+        elseif dialogType:Equals("replaceDialog")
+            replaceDialog = cast(ReplaceDialog, me:dialog)
+//            me:word = replaceDialog:GetCurrentWord()
+//            replaceDialog:FindText(me:word)
+        end
+    end
+
+    action Dispose
+        FindDialog findDialog
+        ReplaceDialog replaceDialog
+
+        if dialogType:Equals("findDialog")
+            findDialog = cast(FindDialog, me:dialog)
+            me:word = findDialog:GetCurrentWord()
+            findDialog:FindText(me:word)
+        elseif dialogType:Equals("replaceDialog")
+            replaceDialog = cast(ReplaceDialog, me:dialog)
+//            me:word = replaceDialog:GetCurrentWord()
+//            replaceDialog:FindText(me:word)
+        end
+    end
+end
