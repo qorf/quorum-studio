@@ -17,6 +17,7 @@ use Libraries.Containers.MultipleLineText
 use Libraries.Interface.Controls.TextStyles.TextStyle
 use Libraries.Containers.Support.Pair
 use Libraries.Interface.Controls.TextStyles.ColoredHighlight
+use Libraries.Development.Environment.Studio.Behaviors.WholeWordMatchCaseBehavior
 
 class FindDialog is Dialog, TextChangeListener
     boolean initialized = false
@@ -40,11 +41,14 @@ class FindDialog is Dialog, TextChangeListener
     Button next  
 
     //FindDialog Control Behaviors
+    WholeWordMatchCaseBehavior wholeWordMatchCaseBehavior
     
 
     on create
         findField:Focus()
         findField:AddTextChangeListener(me)
+        wholeWordMatchCaseBehavior:SetDialog(cast(Dialog, me))
+        wholeWordMatchCaseBehavior:SetDialogType("findDialog")
         SetModal(false)
     end
 
@@ -128,6 +132,7 @@ class FindDialog is Dialog, TextChangeListener
         wholeWord:SetFocusable(true)
         wholeWord:SetNextFocus(matchCase)
         wholeWord:SetPreviousFocus(findField)
+        wholeWord:SetBehavior(wholeWordMatchCaseBehavior)
         optionsContainer:Add(wholeWord)
 
         Control buttonsPadding
@@ -164,6 +169,7 @@ class FindDialog is Dialog, TextChangeListener
         matchCase:SetFocusable(true)
         matchCase:SetNextFocus(previous)
         matchCase:SetPreviousFocus(wholeWord)
+        matchCase:SetBehavior(wholeWordMatchCaseBehavior)
         optionsContainer:Add(matchCase)
 
         createFindContainer:Add(optionsContainer)
@@ -231,44 +237,45 @@ class FindDialog is Dialog, TextChangeListener
     //If WholeWord is selected, calls WholeWordFindText() to eliminate any Pair of indices taht does not meet the WholeWord criteria
     //Calls UpdateMatches() to update the matches counter to reflect the number of instances in the dialog
     //Calls UpdateSelections() to update the highlighted instances in the textBox
-    private action FindText(text find)
+    action FindText(text find)
         integer findIndex = 0
         integer findSize = find:GetSize()
         integer endIndex = textValue:GetSize() - 1
-        
-        removeIndices = indices:CopyToArray()
-        indices:Empty()
-        
-        if removeIndices:GetSize() not= 0 
-            RemoveSelections()
-        end
+        if find not= ""
+            removeIndices = indices:CopyToArray()
+            indices:Empty()
 
-        if textValue:GetSize() not= 0
-            repeat while (findIndex >= 0) and (findIndex + findSize <= endIndex)
-                Pair<integer> index
-                if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
-                    if findIndex >= 0
-                        index:Set(findIndex, (findIndex + (findSize - 1)))
-                        indices:Add(index)
-                        findIndex = findIndex + findSize
-                    end
-                else
-                    findIndex = findIndex + 1
-                end
+            if removeIndices:GetSize() not= 0 
+                RemoveSelections()
             end
-            matchesCounter = indices:GetSize()
-        end
 
-        if matchCase:GetToggleState()
-            MatchCaseFindText(find)
-        end
+            if textValue:GetSize() not= 0
+                repeat while (findIndex >= 0) and (findIndex + findSize <= endIndex)
+                    Pair<integer> index
+                    if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
+                        if findIndex >= 0
+                            index:Set(findIndex, (findIndex + (findSize - 1)))
+                            indices:Add(index)
+                            findIndex = findIndex + findSize
+                        end
+                    else
+                        findIndex = findIndex + 1
+                    end
+                end
+                matchesCounter = indices:GetSize()
+            end
 
-        if wholeWord:GetToggleState()
-            WholeWordFindText(find)
-        end
+            if matchCase:GetToggleState()
+                MatchCaseFindText(find)
+            end
 
-        UpdateSelections()
-        UpdateMatches()
+            if wholeWord:GetToggleState()
+                WholeWordFindText(find)
+            end
+
+            UpdateSelections()
+            UpdateMatches()
+        end
     end
 
     //If there are any instances of find that do not meet the MatchCase criteria then the Pair<startIndex, endIndex> are added
@@ -290,9 +297,15 @@ class FindDialog is Dialog, TextChangeListener
         end 
     end
 
+    action GetCurrentWord() returns text
+        return findField:GetText()
+    end
+
     //If there are any instances of find that do not meet the WholeWord criteria then the Pair<startIndex, endIndex> are added
     //to the removeIndices array 
     private action WholeWordFindText(text find)
+        text break = "
+"
         integer startIndex = 0
         integer endIndex = 0
         integer previousIndex = 0
@@ -309,9 +322,15 @@ class FindDialog is Dialog, TextChangeListener
                 previousCharacter = textValue:GetCharacter(previousIndex)
                 nextCharacter = textValue:GetCharacter(nextIndex)
             
-                if not(((previousCharacter = " " or previousCharacter = "." or previousCharacter = "/" or previousCharacter = "*" or previousCharacter = "(" or previousCharacter = ")" or previousCharacter = "+" or previousCharacter = "-" or previousCharacter = ">" or previousCharacter = "<" or previousCharacter = "=" or previousCharacter = "
-")) and ((nextCharacter = " " or nextCharacter = "." or nextCharacter = "/" or nextCharacter = "*" or nextCharacter = "(" or nextCharacter = ")" or nextCharacter = "+" or nextCharacter = "-" or nextCharacter = ">" or nextCharacter = "<" or nextCharacter = "=" or nextCharacter = "
-")))
+                if not((previousCharacter = " ") or (previousCharacter = ".") or (previousCharacter = "/")
+                or (previousCharacter = "*") or (previousCharacter = "(") or (previousCharacter = ")") or (previousCharacter = "+") 
+                or (previousCharacter = "-") or (previousCharacter = ">") or (previousCharacter = "<") or (previousCharacter = "=") 
+                or (previousCharacter = break))
+                    removeIndices:Add(indices:Get(i))
+                elseif not ((nextCharacter = " ") or (nextCharacter = ".") or (nextCharacter = "/") 
+                or (nextCharacter = "*") or (nextCharacter = "(") or (nextCharacter = ")") or (nextCharacter = "+") 
+                or (nextCharacter = "-") or (nextCharacter = ">") or (nextCharacter = "<") or (nextCharacter = "=") 
+                or (nextCharacter = break))
                     removeIndices:Add(indices:Get(i))               
                 end
             i = i + 1
@@ -369,16 +388,7 @@ class FindDialog is Dialog, TextChangeListener
         removeIndices:Empty()       
     end
 
-    action UpdateMatchCase()
-        text find = findField:GetText()
-        RemoveSelections()
-        //matchesCounter = 0
-        UpdateMatches()
-        if find not= ""
-            FindText(find)
-        end
-    end
-
+    
     action TextChanged(TextChangeEvent event)
         text find = ""
 
@@ -405,4 +415,5 @@ class FindDialog is Dialog, TextChangeListener
             end
         end        
     end
+
 end
