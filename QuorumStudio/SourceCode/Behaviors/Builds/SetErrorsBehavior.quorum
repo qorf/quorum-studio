@@ -1,0 +1,88 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.System.SystemHelper
+use Libraries.System.DateTime
+use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Language.Compile.CompilerErrorManager
+use Libraries.Containers.Iterator
+use Libraries.Language.Compile.CompilerError
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+
+class SetErrorsBehavior is Behavior
+    ErrorTab errorTab = undefined
+    OutputEditorTabPane outputTabs = undefined
+    CompilerErrorManager errors = undefined
+    OutputTab out = undefined
+    text message = ""
+    boolean finished = false
+
+    action SetMessage(text bm)
+        message = bm
+    end
+
+    action GetMessage returns text
+        return message
+    end
+
+    action SetOutputTab(OutputTab bm)
+        out = bm
+    end
+
+    action GetOutputTab returns OutputTab
+        return out
+    end
+
+    action SetErrorTab(ErrorTab bm)
+        errorTab = bm
+    end
+
+    action GetErrorTab returns ErrorTab
+        return errorTab
+    end
+
+    action SetOutputEditorTabPane(OutputEditorTabPane bm)
+        outputTabs = bm
+    end
+
+    action GetOutputEditorTabPane returns OutputEditorTabPane
+        return outputTabs
+    end
+
+    action SetCompilerErrorManager(CompilerErrorManager bm)
+        errors = bm
+    end
+
+    action GetCompilerErrorManager returns CompilerErrorManager
+        return errors
+    end
+
+    action Update(number seconds)
+        if not finished
+            if errors:IsCompilationErrorFree()
+                out:Append(message)
+                errorTab:Empty()
+                errorTab:Resize()
+                outputTabs:Select(out)
+            else
+                errorTab:Empty()
+                out:Append("I found " + errors:GetErrorAmount() + " errors and have listed them in the errors tab.")
+                Iterator<CompilerError> iterator = errors:GetIterator()
+                repeat while iterator:HasNext()
+                    CompilerError error = iterator:Next()
+                    errorTab:AddError(error)
+                end
+                errorTab:Resize()
+                outputTabs:Select(errorTab)
+            end
+            finished = true
+        end
+    end
+    
+    action IsFinished returns boolean
+        return finished
+    end
+end

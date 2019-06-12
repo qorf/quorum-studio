@@ -56,6 +56,7 @@ use Libraries.Language.Compile.Lexer
 use Libraries.Language.Compile.CodeCompletionRequest
 use Libraries.Language.Compile.CodeCompletionResult
 use Libraries.Development.Environment.Studio.Android.AndroidSupport
+use Libraries.Development.Environment.Studio.Behaviors.SetErrorsBehavior
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -840,22 +841,13 @@ class BuildManager is DebuggerListener, ProcessListener
         OutputTab out = info:outputTab
         ErrorTab errorTab = info:errorTab
 
-        if errors:IsCompilationErrorFree()
-            out:Append(message)
-            errorTab:Empty()
-            errorTab:Resize()
-            outputTabs:Select(out)
-        else
-            errorTab:Empty()
-            out:Append("I found " + errors:GetErrorAmount() + " errors and have listed them in the errors tab.")
-            Iterator<CompilerError> iterator = errors:GetIterator()
-            repeat while iterator:HasNext()
-                CompilerError error = iterator:Next()
-                errorTab:AddError(error)
-            end
-            errorTab:Resize()
-            outputTabs:Select(errorTab)
-        end
+        SetErrorsBehavior behavior
+        behavior:SetCompilerErrorManager(errors)
+        behavior:SetErrorTab(errorTab)
+        behavior:SetOutputEditorTabPane(outputTabs)
+        behavior:SetOutputTab(out)
+        behavior:SetMessage(message)
+        errorTab:AddBehavior(behavior)
     end
 
     private action GetFormattedTime(number start, number finish) returns text

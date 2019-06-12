@@ -10,6 +10,7 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Controls.PopupMenu
 use Libraries.Interface.Controls.MenuItem
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Development.Environment.Studio.Behaviors.OpenNewFileBehavior
 
 class QuorumProjectView is ProjectView
     QuorumProject project = undefined
@@ -114,7 +115,11 @@ class QuorumProjectView is ProjectView
         i = 0
         repeat while i < projectFolders:GetSize()
             File sub = projectFolders:Get(i)
-            if (sub:IsDirectory() and sub:GetFileName() not= "Project")
+            text name = sub:GetFileName()
+            if (sub:IsDirectory() and name not= "Project"
+                and name not= "Run"
+                and name not= "Build")
+
                 ProjectTreeItem folder = GetItem(sub)
                 folders:Add(folder)
             end
@@ -179,8 +184,10 @@ class QuorumProjectView is ProjectView
             text dq = ""
             dq = dq:GetDoubleQuote()
 
+            OpenNewFileBehavior openNewFileBehavior
             MenuItem newFileMenuItem
             newFileMenuItem:SetName("New File")
+            newFileMenuItem:SetBehavior(openNewFileBehavior)
             exampleContextMenu:Add(newFileMenuItem)
 
             MenuItem renameMenuItem
