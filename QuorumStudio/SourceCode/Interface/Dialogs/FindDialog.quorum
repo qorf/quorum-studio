@@ -18,17 +18,26 @@ use Libraries.Interface.Controls.TextStyles.TextStyle
 use Libraries.Containers.Support.Pair
 use Libraries.Interface.Controls.TextStyles.ColoredHighlight
 use Libraries.Development.Environment.Studio.Behaviors.WholeWordMatchCaseBehavior
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Containers.Iterator
+use Libraries.Development.Environment.Studio.Behaviors.NextBehavior
+use Libraries.Development.Environment.Studio.Behaviors.PreviousBehavior
 
 class FindDialog is Dialog, TextChangeListener
     boolean initialized = false
+
+    GameStateManager gameManager
+    QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
 
     // The TextBox that we're searching through.
     CodeTextBox textBox = undefined
 
     Array<Pair<integer>> indices
     Array<Pair<integer>> removeIndices
+    integer selection = -1       //tracks which selection of the matches is currently selected
 
-    integer matchesCounter = 0
+    //integer matchesCounter = 0
 
     text textValue = "" 
 
@@ -42,13 +51,19 @@ class FindDialog is Dialog, TextChangeListener
 
     //FindDialog Control Behaviors
     WholeWordMatchCaseBehavior wholeWordMatchCaseBehavior
+    PreviousBehavior previousBehavior
+    NextBehavior nextBehavior
     
 
     on create
         findField:Focus()
         findField:AddTextChangeListener(me)
         wholeWordMatchCaseBehavior:SetDialog(cast(Dialog, me))
-        wholeWordMatchCaseBehavior:SetDialogType("findDialog")
+        wholeWordMatchCaseBehavior:SetDialogType(wholeWordMatchCaseBehavior:FIND)
+        previousBehavior:SetDialog(cast(Dialog, me))
+        previousBehavior:SetDialogType(previousBehavior:FIND)
+        nextBehavior:SetDialog(cast(Dialog, me))
+        nextBehavior:SetDialogType(nextBehavior:FIND)
         SetModal(false)
     end
 
@@ -149,6 +164,7 @@ class FindDialog is Dialog, TextChangeListener
         previous:SetFocusable(true)
         previous:SetNextFocus(next)
         previous:SetPreviousFocus(matchCase)
+        previous:SetBehavior(previousBehavior)
         optionsContainer:Add(previous)
         
         next:SetName("Next")
@@ -160,6 +176,7 @@ class FindDialog is Dialog, TextChangeListener
         next:SetFocusable(true)
         next:SetNextFocus(findField)
         next:SetPreviousFocus(previous)
+        next:SetBehavior(nextBehavior)
         optionsContainer:Add(next)
 
         matchCase:SetName("Match Case")
@@ -183,7 +200,7 @@ class FindDialog is Dialog, TextChangeListener
         matchesContainer:SetRightPadding(10)
         matchesContainer:SetLeftPadding(20)
 
-        matches:SetText(cast(text, matchesCounter))
+        //matches:SetText(cast(text, 0))
         matches:SetHorizontalLayoutMode(matches:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
         matches:SetPercentageWidth(0.2)
         matches:SetPixelHeight(20)
@@ -191,13 +208,13 @@ class FindDialog is Dialog, TextChangeListener
         matches:SetRightPadding(30)
         matchesContainer:Add(matches)
 
-        Label matchesFound
-        matchesFound:SetText("Matches Found")
-        matchesFound:SetPixelHeight(20)
-        matchesFound:SetLeftPadding(6)
-        matchesFound:SetRightPadding(6)
-        matchesFound:SetPercentageWidth(0.3)
-        matchesContainer:Add(matchesFound)
+        //Label matchesFound
+        //matchesFound:SetText("Matches Found")
+        //matchesFound:SetPixelHeight(20)
+        //matchesFound:SetLeftPadding(6)
+        //matchesFound:SetRightPadding(6)
+        //matchesFound:SetPercentageWidth(0.3)
+        //matchesContainer:Add(matchesFound)
 
         createFindContainer:Add(matchesContainer)
         
@@ -225,6 +242,7 @@ class FindDialog is Dialog, TextChangeListener
     action SetTextBox(CodeTextBox code)
         textBox = code
         textValue = textBox:GetText()
+        textBox:AddTextChangeListener(me)
     end
 
     action GetTextBox returns CodeTextBox
@@ -238,6 +256,13 @@ class FindDialog is Dialog, TextChangeListener
     //Calls UpdateMatches() to update the matches counter to reflect the number of instances in the dialog
     //Calls UpdateSelections() to update the highlighted instances in the textBox
     action FindText(text find)
+        integer caretIndex = textBox:GetCaretPosition()
+        //removes the selection highlighting before updating the indices
+        if selection >= 0
+            integer wordStartIndex = indices:Get(selection):GetFirstValue()
+            textBox:RemoveTextStyle("selectionHighlight" + wordStartIndex)
+        end
+        selection = -1
         integer findIndex = 0
         integer findSize = find:GetSize()
         integer endIndex = textValue:GetSize() - 1
@@ -250,6 +275,7 @@ class FindDialog is Dialog, TextChangeListener
             end
 
             if textValue:GetSize() not= 0
+                findIndex = caretIndex
                 repeat while (findIndex >= 0) and (findIndex + findSize <= endIndex)
                     Pair<integer> index
                     if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
@@ -260,8 +286,35 @@ class FindDialog is Dialog, TextChangeListener
                         end
                     else
                         findIndex = findIndex + 1
-                    end
+                    end                   
                 end
+                
+                findIndex = 0
+                repeat while (findIndex >= 0) and (findIndex + findSize <= caretIndex)
+                    Pair<integer> index
+                    if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
+                        if findIndex >= 0
+                            index:Set(findIndex, (findIndex + (findSize - 1)))
+                            indices:Add(index)
+                            findIndex = findIndex + findSize
+                        end
+                    else
+                        findIndex = findIndex + 1
+                    end                   
+                end
+
+//                repeat while (findIndex >= 0) and (findIndex + findSize <= endIndex)
+//                    Pair<integer> index
+//                    if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
+//                        if findIndex >= 0
+//                            index:Set(findIndex, (findIndex + (findSize - 1)))
+//                            indices:Add(index)
+//                            findIndex = findIndex + findSize
+//                        end
+//                    else
+//                        findIndex = findIndex + 1
+//                    end
+//                end
                 matchesCounter = indices:GetSize()
             end
 
@@ -339,7 +392,22 @@ class FindDialog is Dialog, TextChangeListener
 
     //Updates the matches label on the Dialog to reflect how many instances of "find" were found in the textBox
     private action UpdateMatches()
-        matches:SetText(cast(text, indices:GetSize()))
+        integer matchCount = indices:GetSize()
+        if findField:GetText() not= ""
+            if matchCount = 0
+                matches:SetText("No matches")
+            elseif matchCount = 1
+                matches:SetText(cast(text, matchCount) + " match")
+            else
+                if selection >= 0
+                    matches:SetText(cast(text, (selection + 1)) + " of " + cast(text, matchCount) + " matches")
+                else
+                    matches:SetText(cast(text, matchCount) + " matches")
+                end
+            end
+        else 
+            matches:SetText("") 
+        end
     end
 
     //Updates the highlighted instances of "find" in the textBox
@@ -373,8 +441,9 @@ class FindDialog is Dialog, TextChangeListener
         end
         UpdateMatches()
     end
+    
 
-    //Removes the insances of "find" taht are no longer applicable due to MatchCase 
+    //Removes the insances of "find" that are no longer applicable due to MatchCase 
     //criteria, WholeWord criteria, or a TextChange event
     private action RemoveSelections()
         integer startIndex = 0
@@ -385,35 +454,142 @@ class FindDialog is Dialog, TextChangeListener
             textBox:RemoveTextStyle("highlight" + startIndex)
             i = i + 1
         end
-        removeIndices:Empty()       
+        removeIndices:Empty() 
     end
 
+    action NextSelection()
+        integer previousSelection = selection
+        selection = selection + 1
+        UpdateCurrentSelection(previousSelection)
+    end
+
+    action PreviousSelection()
+        integer previousSelection = selection
+        selection = selection - 1
+        UpdateCurrentSelection(previousSelection)
+    end
     
+    //called by PreviousSelection() and NextSelection() to update the current selection
+    //in the array of indices. Highlights the line of the current selection in 
+    //light blue (currently not working as expected), highlights the current selection in a darker shade of blue, and
+    //updates the current matches counter on the dialog to say something like 
+    //1 of 10 matches.
+    private action UpdateCurrentSelection(integer previousSelection)
+        if selection < 0
+            selection = (indices:GetSize() - 1)
+        end
+        if selection >= indices:GetSize()
+            selection = 0
+        end
+
+        integer wordStartIndex =  indices:Get(selection):GetFirstValue()
+        integer wordEndIndex = indices:Get(selection):GetSecondValue()        
+
+        integer lineStartIndex = textBox:GetLineIndexOfCharacter(wordStartIndex)
+        textBox:GoToLine(lineStartIndex)
+        textBox:SetCaretPosition(lineStartIndex)
+        text lineText = textBox:GetCurrentLineText()
+        integer lineSize = lineText:GetSize()
+
+        ColoredHighlight highlight
+        ColoredHighlight selectionHighlight
+        ColoredHighlight lineHighlight 
+        TextStyle textStyle
+        TextStyle word
+        TextStyle line
+        Color color
+        Color lightBlue
+        Color blue
+        lightBlue:SetColor(0, 0, 0.3, 0.2)
+        blue:SetColor(0, 0, 0.4, 0.2)
+        highlight:SetColor(color:Orange())
+        lineHighlight:SetColor(lightBlue)
+        selectionHighlight:SetColor(blue)
+
+
+        if previousSelection >= 0 
+            integer previousStartIndex = indices:Get(previousSelection):GetFirstValue()
+            integer previousEndIndex = indices:Get(previousSelection):GetSecondValue()
+//            integer previousLineStartIndex = textBox:GetLineIndexOfCharacter(previousStartIndex)
+            textStyle:SetIndex(previousStartIndex)
+            textStyle:SetSize((previousEndIndex - previousStartIndex) + 1)
+            textStyle:SetHighlight(highlight)
+
+        //resets the previous selection back to the orange highlight and removes the line highlight
+            if not textBox:HasTextStyle("highlight" + previousStartIndex)
+                textBox:AddTextStyle("highlight" + previousStartIndex, textStyle)
+            end
+            if textBox:HasTextStyle("selectionHighlight" + previousStartIndex)
+                textBox:RemoveTextStyle("seelctionHighlight" + previousStartIndex)
+            end
+//            if textBox:HasTextStyle("lineHighlight" + previousLineStartIndex)
+//                    textBox:RemoveTextStyle("lineHighlight" + previousLineStartIndex)
+//            end
+            
+        end
+
+        word:SetIndex(wordStartIndex)
+        word:SetSize((wordEndIndex - wordStartIndex)+ 1)
+        word:SetHighlight(selectionHighlight)
+
+        //sets the current selection to blue highlight
+        textBox:RemoveTextStyle("highlight" + wordStartIndex)       //remove the orange highlight
+        textBox:AddTextStyle("selectionHighlight" + wordStartIndex, word)    //add the blue highlight for current selection
+
+//        line:SetIndex(lineStartIndex)
+//        line:SetSize(lineSize)
+//        line:SetHighlight(lineHighlight)
+//        textBox:AddTextStyle("lineHighlight" + lineStartIndex, line)
+
+        UpdateMatches()
+
+    end
+
+    //Listens for text change within the findField and text change events in the 
+    //current textBox that is being searched. Calls to update the selections if
+    //there is a text change event that occurs.
     action TextChanged(TextChangeEvent event)
         text find = ""
+        if event:GetControl():Equals(cast(Object, findField)) 
+            if event:GetEventType() = event:ADDED
+                find = findField:GetText()
+                if find not= ""
+                    FindText(find)
+                end
+            elseif event:GetEventType() = event:DELETED
+                find = findField:GetText()
 
-        if event:GetEventType() = event:ADDED
-            find = findField:GetText()
-            if find not= ""
-                FindText(find)
+                if find = ""
+                    removeIndices = indices:CopyToArray()
+                    indices:Empty()
+                    RemoveSelections()
+                    UpdateMatches()
+                elseif find not= ""
+                    FindText(find)
+                end
+            elseif event:GetEventType() = event:MODIFIED
+                find = findField:GetText()
+                if find not= ""
+                    FindText(find)
+                end
             end
-        elseif event:GetEventType() = event:DELETED
-            find = findField:GetText()
-            
-            if find = ""
-                removeIndices = indices:CopyToArray()
-                indices:Empty()
-                RemoveSelections()
-                UpdateMatches()
-            elseif find not= ""
-                FindText(find)
+        end
+        
+        if textBox not= undefined
+            if event:GetControl():Equals(cast(Object, GetTextBox()))
+                if event:GetEventType() = event:ADDED
+                    textValue = textBox:GetText()
+                elseif event:GetEventType() = event:DELETED
+                    textValue = textBox:GetText()
+                elseif event:GetEventType() = event:MODIFIED   
+                    textValue = textBox:GetText()
+                end
+                find = findField:GetText()
+                if find not= ""
+                    FindText(find)
+                end
             end
-        elseif event:GetEventType() = event:MODIFIED
-            find = findField:GetText()
-            if find not= ""
-                FindText(find)
-            end
-        end        
+        end
     end
 
 end

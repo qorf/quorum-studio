@@ -7,7 +7,7 @@ use Libraries.Interface.Controls.Dialog
 use Libraries.Development.Environment.Studio.Interface.ReplaceDialog
 use Libraries.Interface.Controls.Checkbox
 
-class WholeWordMatchCaseBehavior is QuorumStudioBehavior
+class PreviousBehavior is QuorumStudioBehavior
     Dialog dialog = undefined
     text word = ""
 
@@ -30,27 +30,25 @@ class WholeWordMatchCaseBehavior is QuorumStudioBehavior
         
         if dialogType = FIND
             findDialog = cast(FindDialog, me:dialog)
-            me:word = findDialog:GetCurrentWord()
-            findDialog:FindText(me:word)
+            findDialog:PreviousSelection()
         elseif dialogType = REPLACE
             replaceDialog = cast(ReplaceDialog, me:dialog)
 //            me:word = replaceDialog:GetCurrentWord()
 //            replaceDialog:FindText(me:word)
         end
     end
-
-    action Dispose
-        FindDialog findDialog
-        ReplaceDialog replaceDialog
-
-        if dialogType = FIND
-            findDialog = cast(FindDialog, me:dialog)
-            me:word = findDialog:GetCurrentWord()
-            findDialog:FindText(me:word)
-        elseif dialogType = REPLACE
-            replaceDialog = cast(ReplaceDialog, me:dialog)
-//            me:word = replaceDialog:GetCurrentWord()
-//            replaceDialog:FindText(me:word)
-        end
-    end
+//
+//    action Dispose
+//        FindDialog findDialog
+//        ReplaceDialog replaceDialog
+//
+//        if dialogType = FIND
+//            findDialog = cast(FindDialog, me:dialog)
+//            findDialog:UpdateCurrentSelection()
+//        elseif dialogType = REPLACE
+//            replaceDialog = cast(ReplaceDialog, me:dialog)
+////            me:word = replaceDialog:GetCurrentWord()
+////            replaceDialog:FindText(me:word)
+//        end
+//        end
 end
