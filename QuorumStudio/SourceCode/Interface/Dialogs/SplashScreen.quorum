@@ -2,37 +2,74 @@ package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Dialog
 use Libraries.Game.Graphics.Label
-use Libraries.Development.Environment.Studio.Build.ScanListener
 use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Game.Graphics.Drawable
+use Libraries.Interface.Controls.Icon
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.LayoutProperties
 
-class SplashScreen is Dialog, ScanListener
+class SplashScreen is Dialog
+    boolean initialized = false
     //Label loading = undefined
     //GameStateManager manager
-    Drawable logo
+    Icon logo
+    Label studio
+    Label loading
     on create
-        //SetName("Properties")
-        //SetPixelWidth(400)
+        SetModal(true)
+        SetTopBarVisible(false)
+    end
+
+    action Initialize
+        if initialized
+            output "WARNING: Re-initializing the FindDialog."
+        end
+
+        initialized = true
+
+        SetName("Loading Screen for Quorum Studio")
+        SetPixelWidth(400)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
         
-        //SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        
-    end
-
-    action Started
-    end
-
-    action Stopped
-        Hide()
-    end
-
-    action Show
         logo:Load("Resources/Graphics/Interface/Quorum.png")
-        logo:Scale(0.35)
-        Add(logo)
 
-        logo:SetPosition(100, -200)
-        parent:Dialog:Show()
+        LayoutProperties properties
+        Control panel
+        FlowLayout findLayout
+        logo:SetPercentageHeight(0.75)
+        logo:SetPercentageWidth(1)
+        logo:SetHorizontalLayoutMode (properties:MAINTAIN_ASPECT_RATIO)
+        logo:SetLeftPadding(40)
+        logo:SetTopPadding(50)
+
+        studio:SetText("Quorum Studio 1.0 Beta")
+        studio:SetFontSize(20)
+        studio:SetTopPadding(85)
+        studio:SetLeftPadding(40)
+        loading:SetText("Loading ...")
+        loading:SetLeftPadding(257)
+        loading:SetTopPadding(-70)
+        panel:SetLayout(findLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetPixelHeight(140)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+        panel:Add(logo)
+
+
+        panel:Add(studio)
+        panel:Add(loading)
+        panel:SetView2D(view)
+        Add(panel)
     end
 
     action Update(number seconds)

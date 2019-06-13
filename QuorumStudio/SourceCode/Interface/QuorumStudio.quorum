@@ -41,8 +41,9 @@ use Libraries.Game.Graphics.FramesPerSecondLabel
 use Libraries.Interface.Controls.Dialog
 use Libraries.Game.Graphics.Label
 use Libraries.Development.Environment.Studio.Interface.SplashScreen
+use Libraries.Development.Environment.Studio.Build.ScanListener
 
-class QuorumStudio is Game, FocusListener
+class QuorumStudio is Game, FocusListener, ScanListener
     constant number VERSION = 1.0
     constant text NAME = "Quorum Studio " + VERSION
     integer DEFAULT_WINDOW_WIDTH = 2500
@@ -74,7 +75,7 @@ class QuorumStudio is Game, FocusListener
     SystemHelper helper
     BuildLoop buildLoop
     SplashScreen splashScreen = undefined
-
+    boolean splashScreenHide = false
     action Start
         DesktopConfiguration config = GetDesktopConfiguration()
         config:title = NAME
@@ -159,6 +160,13 @@ class QuorumStudio is Game, FocusListener
         return focus
     end
 
+    action Started
+    end
+
+    action Stopped
+        splashScreenHide = true
+    end
+
     action CreateGame
         SetInterfaceScale(2)
         FlowLayout flowLayout
@@ -167,6 +175,7 @@ class QuorumStudio is Game, FocusListener
         
         SplashScreen splash
         splashScreen = splash
+        splashScreen:Initialize()
         splashScreen:Show()
 
         options:SetMainApplication(me)
@@ -193,7 +202,7 @@ class QuorumStudio is Game, FocusListener
 
         //now that we're all setup, tell the library scanner to run
         ScanLibraryBehavior scanner = behaviors:GetScanLibraryBehavior()
-        scanner:Add(splashScreen)
+        scanner:Add(me)
         BuildManager builder = behaviors:GetBuildManager()
         ThreadRunner buildThreadRunner = behaviors:GetBuildThreadRunner()
         ThreadRunner indexThread = behaviors:GetBuildIndexingThread()
@@ -406,5 +415,9 @@ class QuorumStudio is Game, FocusListener
 
     action Update(number seconds)
         //helper:Sleep(25) //hard cap FPS for now
+        if splashScreenHide 
+            splashScreen:Hide()
+            splashScreenHide = false
+        end
     end
 end
