@@ -16,10 +16,21 @@ use Libraries.Containers.Array
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.System.DateTime
+use Libraries.Development.Environment.Studio.Build.ScanListener
+use Libraries.Development.Environment.Studio.Build.ScanListener
 
 class ScanLibraryBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
     DateTime time
+    Array<ScanListener> listeners
+
+    action Add(ScanListener listener)
+        listeners:Add(listener)
+    end
+
+    action Remove(ScanListener listener)
+        listeners:Remove(listener)
+    end
 
     action GetBuildManager returns BuildManager
         return builder
@@ -30,8 +41,21 @@ class ScanLibraryBehavior is QuorumStudioBehavior
     end
 
     action Run(BehaviorEvent event)
+        i = 0
+        repeat while i < listeners:GetSize()
+            ScanListener listener = listeners:Get(i)
+            listener:Started()
+            i = i + 1
+        end
         number value = time:GetEpochTime()
         builder:Scan()
         number value2 = time:GetEpochTime()
+
+        i = 0
+        repeat while i < listeners:GetSize()
+            ScanListener listener = listeners:Get(i)
+            listener:Stopped()
+            i = i + 1
+        end
     end
 end

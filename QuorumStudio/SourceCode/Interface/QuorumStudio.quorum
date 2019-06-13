@@ -38,6 +38,9 @@ use Libraries.Game.InputMonitor
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Development.Environment.Studio.Behaviors.BuildLoop
 use Libraries.Game.Graphics.FramesPerSecondLabel
+use Libraries.Interface.Controls.Dialog
+use Libraries.Game.Graphics.Label
+use Libraries.Development.Environment.Studio.Interface.SplashScreen
 
 class QuorumStudio is Game, FocusListener
     constant number VERSION = 1.0
@@ -70,6 +73,7 @@ class QuorumStudio is Game, FocusListener
     Item previousFocus = undefined
     SystemHelper helper
     BuildLoop buildLoop
+    SplashScreen splashScreen = undefined
 
     action Start
         DesktopConfiguration config = GetDesktopConfiguration()
@@ -160,6 +164,11 @@ class QuorumStudio is Game, FocusListener
         FlowLayout flowLayout
         SetLayout(flowLayout)
 
+        
+        SplashScreen splash
+        splashScreen = splash
+        splashScreen:Show()
+
         options:SetMainApplication(me)
         GameStateManager gameStateManager
         GraphicsManager graphics = gameStateManager:GetGameGraphics()
@@ -184,6 +193,7 @@ class QuorumStudio is Game, FocusListener
 
         //now that we're all setup, tell the library scanner to run
         ScanLibraryBehavior scanner = behaviors:GetScanLibraryBehavior()
+        scanner:Add(splashScreen)
         BuildManager builder = behaviors:GetBuildManager()
         ThreadRunner buildThreadRunner = behaviors:GetBuildThreadRunner()
         ThreadRunner indexThread = behaviors:GetBuildIndexingThread()
