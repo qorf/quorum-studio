@@ -12,17 +12,17 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Layouts.Layout
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Concurrency.ThreadRunner
+use Libraries.Development.Environment.Studio.Behaviors.ProjectLoadBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ThreadedBehavior
 
 class ProjectTree is Tree, SelectionListener, ProjectListener
     ProjectManager manager = undefined
     Resources resources = undefined
     QuorumStudio studio = undefined
-
+    
     on create
         SetName("Projects")
-//        LayoutProperties properties = GetDefaultLayoutProperties()
-//        properties:SetPercentageOriginY(1)
-//        properties:SetPercentageY(1)
     end
 
     action SetMainApplication(QuorumStudio studio)
@@ -53,14 +53,28 @@ class ProjectTree is Tree, SelectionListener, ProjectListener
     end
 
      action OpenedProject(QuorumProject project)
-        QuorumProjectView view = cast(QuorumProjectView, project:GetProjectView())
-        view:SetMainApplication(studio)
 
-        view:SetResources(resources)
-        TreeItem item = view:GetLogicalTree()
+        ThreadRunner runner
+        ThreadedBehavior threadBehavior
+        
+        ProjectLoadBehavior behave
+        behave:SetTree(me)
+        behave:SetProject(project)
+        behave:SetResources(resources)
+        behave:SetMainApplication(studio)
+        behave:SetThread(runner)
+        //runner:Add(behave)
+        AddBehavior(behave)
 
-        Add(item)
-        Resize()
+
+//        QuorumProjectView view = cast(QuorumProjectView, project:GetProjectView())
+//        view:SetMainApplication(studio)
+//
+//        view:SetResources(resources)
+//        TreeItem item = view:GetLogicalTree()
+//
+//        Add(item)
+//        Resize()
     end
 
     action ClosedProject(QuorumProject project)

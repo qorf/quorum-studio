@@ -1,0 +1,92 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Projects.QuorumProjectView
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Resources
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Concurrency.ThreadRunner
+
+class ProjectLoadBehavior is Behavior
+    QuorumProject project = undefined
+    Resources resources = undefined
+    QuorumStudio studio = undefined
+    ProjectTree tree = undefined
+    ThreadRunner runner = undefined
+    TreeItem item = undefined
+    boolean finished = false
+    boolean loaded = false
+    boolean loading = false
+    boolean updatingUI = false
+
+    action GetThread returns ThreadRunner
+        return runner
+    end
+
+    action SetThread(ThreadRunner run)
+        runner = run
+    end
+
+    action GetTree returns ProjectTree
+        return tree
+    end
+
+    action SetTree(ProjectTree tree)
+        me:tree = tree
+    end
+
+    action GetProject returns QuorumProject
+        return project
+    end
+
+    action SetProject(QuorumProject project)
+        me:project = project
+    end
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
+
+    action GetResources returns Resources
+        return resources
+    end
+
+    action SetResources(Resources resources)
+        me:resources = resources
+    end
+
+    action Run(BehaviorEvent event)
+        if runner not= undefined and not loaded and not loading
+            loading = true
+            runner:Add(me)
+        elseif loading
+            QuorumProjectView view = cast(QuorumProjectView, project:GetProjectView())
+            view:SetMainApplication(studio)
+
+            view:SetResources(resources)
+            item = view:GetLogicalTree()
+            loaded = true
+            loading = false
+        end
+    end
+
+    action Update(number seconds)
+        if loaded and not finished and not updatingUI
+            updatingUI = true
+            tree:Add(item)
+            tree:Resize()
+            finished = false
+            runner:ShutDown()
+        end
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+end
