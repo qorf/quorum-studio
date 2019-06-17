@@ -42,6 +42,7 @@ use Libraries.Interface.Controls.Dialog
 use Libraries.Game.Graphics.Label
 use Libraries.Development.Environment.Studio.Interface.SplashScreen
 use Libraries.Development.Environment.Studio.Build.ScanListener
+use Attack.FakeFocusManager
 
 class QuorumStudio is Game, FocusListener, ScanListener
     constant number VERSION = 1.0
@@ -168,6 +169,9 @@ class QuorumStudio is Game, FocusListener, ScanListener
     end
 
     action CreateGame
+
+        FakeFocusManager fake
+        SetFocusManager(fake)
         SetInterfaceScale(2)
         FlowLayout flowLayout
         SetLayout(flowLayout)
@@ -211,14 +215,12 @@ class QuorumStudio is Game, FocusListener, ScanListener
 
         indexThread:Add(buildLoop)
         FocusWindow()
-        SetFocus(projectTree)
 
         FramesPerSecondLabel fps
         fps:SetSize(50)
 
         //get the current Layer2D and turn off depth buffer sorting for Quorum Studio
         Layer2D currentLayer2 = GetCurrentLayer2D()
-        currentLayer2:SetDepthBufferSorting(false)
         SetColliding(false)
 
         Layer2D fpsLayerOfAwesome
@@ -413,6 +415,7 @@ class QuorumStudio is Game, FocusListener, ScanListener
         //helper:Sleep(25) //hard cap FPS for now
         if splashScreenHide 
             splashScreen:Hide()
+            SetFocus(projectTree)
             splashScreenHide = false
         end
     end

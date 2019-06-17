@@ -30,23 +30,9 @@ class Toolbar is ToolBar
     Array<Button> buttons
 
     on create
-//        gradient:Set(color:LightGray(), color:LightGray(), color:White(), color:White())
-//        SetFocusable(true)
-//        SetName("Toolbar")
-//        SetAccessibilityCode(parent:Item:TOOLBAR)
-//
-//        FlowLayout toolbarLayout
-//        SetLayout(toolbarLayout)
-//
-//        LayoutProperties toolbarProperties = GetDefaultLayoutProperties()
-//        toolbarProperties:SetHorizontalLayoutMode(toolbarProperties:STANDARD)
-//        toolbarProperties:SetVerticalLayoutMode(toolbarProperties:STANDARD)
-////        toolbarProperties:SetVerticalLayoutMode(toolbarProperties:FIT_CONTENTS)
-//        // Width is the full width of the screen.
-//        // Height is determined by the toolbar's contents.
-//        toolbarProperties:SetPercentageWidth(1)
-//        toolbarProperties:SetPixelHeight(30)
+        SetFocusable(true)
     end
+
 
     action SetBehaviors(Behaviors behaviors)
         me:behaviors = behaviors
@@ -81,19 +67,21 @@ class Toolbar is ToolBar
     end
 
     action GainedFocus(FocusEvent event)
-        Button button = buttons:Get(0)
-        button:Focus()
+        a = 5 
+//        Button button = buttons:Get(0)
+//        button:Focus()
+    end
+    
+
+    action GetPreviousFocus returns Item
+        return parent:Item:GetPreviousFocus()
+    end
+
+    action GetNextFocus returns Item
+        return parent:Item:GetNextFocus()
     end
 
     action Setup
-//        LabelBoxView content
-//        content:Initialize(gradient, color:Black(), "")
-//        content:SetBorderThickness(0)
-//        SetView2D(content)
-//        
-//        FlowLayout layout
-//        SetLayout(layout)
-
         AddButtonToToolbar(resources:GetNewProject(), undefined, "New Project")
         AddButtonToToolbar(resources:GetNewFile(), undefined, "New File")
         AddButtonToToolbar(resources:GetOpenProject(), behaviors:GetOpenProjectBehavior(), "Open Project")
@@ -129,12 +117,12 @@ class Toolbar is ToolBar
         Button last = buttons:Get(buttons:GetSize() - 1)
         first:SetPreviousFocus(last)
         last:SetNextFocus(first)
+
+        SetNextFocus(first)
+        SetPreviousFocus(last)
     end
 
     private action AddButtonToToolbar(Icon image, Behavior behavior, text name)
-//        ImageControlView buttonContent
-//        buttonContent:Load(image)
-        
         Button button
         button:SetFont(undefined)
         button:SetIcon(image)
