@@ -210,6 +210,7 @@ class FindDialog is Dialog, TextChangeListener
         return createFindContainer
     end
 
+
     action IsInitialized returns boolean
         return initialized
     end
@@ -230,7 +231,7 @@ class FindDialog is Dialog, TextChangeListener
 
     action SetTextBox(CodeTextBox code)
         textBox = code
-        textValue = textBox:GetText()
+        textValue = textBox:GetText() + " "
         textBox:AddTextChangeListener(me)
     end
 
@@ -267,7 +268,7 @@ class FindDialog is Dialog, TextChangeListener
 
             if textValue:GetSize() not= 0           //indices array starts with the first instance of the word after the caret 
                 findIndex = caretIndex
-                repeat while (findIndex >= 0) and (findIndex + findSize <= endIndex)
+                repeat while (findIndex >= 0) and ((findIndex + findSize) <= (endIndex + 1))
                     Pair<integer> index
                     if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
                         if findIndex >= 0
@@ -281,7 +282,7 @@ class FindDialog is Dialog, TextChangeListener
                 end
                 
                 findIndex = 0                   //loop back around to the beginning of the textBox to add any instances of the word that occur before the caret position in the textBox
-                repeat while (findIndex >= 0) and (findIndex + findSize <= caretIndex) 
+                repeat while (findIndex >= 0) and ((findIndex + findSize) <= (caretIndex + 1)) 
                     Pair<integer> index
                     if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
                         if findIndex >= 0
@@ -304,7 +305,7 @@ class FindDialog is Dialog, TextChangeListener
             end
 
             UpdateSelections()
-            UpdateMatches()
+            //UpdateMatches()
         end
     end
 
@@ -349,18 +350,26 @@ class FindDialog is Dialog, TextChangeListener
             endIndex = indices:Get(i):GetSecondValue()
             previousIndex = startIndex - 1
             nextIndex = endIndex + 1
+            if previousIndex > 0
                 previousCharacter = textValue:GetCharacter(previousIndex)
+            else
+                previousCharacter = " "
+            end
+            if nextIndex < textValue:GetSize()
                 nextCharacter = textValue:GetCharacter(nextIndex)
+            else
+                nextCharacter = " " 
+            end
             
                 if not((previousCharacter = " ") or (previousCharacter = ".") or (previousCharacter = "/")
                 or (previousCharacter = "*") or (previousCharacter = "(") or (previousCharacter = ")") or (previousCharacter = "+") 
                 or (previousCharacter = "-") or (previousCharacter = ">") or (previousCharacter = "<") or (previousCharacter = "=") 
-                or (previousCharacter = break))
+                or (previousCharacter = break) or (previousCharacter = ","))
                     removeIndices:Add(indices:Get(i))
                 elseif not ((nextCharacter = " ") or (nextCharacter = ".") or (nextCharacter = "/") 
                 or (nextCharacter = "*") or (nextCharacter = "(") or (nextCharacter = ")") or (nextCharacter = "+") 
                 or (nextCharacter = "-") or (nextCharacter = ">") or (nextCharacter = "<") or (nextCharacter = "=") 
-                or (nextCharacter = break))
+                or (nextCharacter = break) or (nextCharacter = ","))
                     removeIndices:Add(indices:Get(i))               
                 end
             i = i + 1
@@ -572,17 +581,23 @@ class FindDialog is Dialog, TextChangeListener
         end
         
         if textBox not= undefined
+        find = findField:GetText()
             if event:GetControl():Equals(cast(Object, GetTextBox()))
                 if event:GetEventType() = event:ADDED
                     textValue = textBox:GetText()
+                    if find not= ""
+                        FindText(find)
+                    end
                 elseif event:GetEventType() = event:DELETED
                     textValue = textBox:GetText()
+                    if find not= ""
+                        FindText(find)
+                    end
                 elseif event:GetEventType() = event:MODIFIED   
                     textValue = textBox:GetText()
-                end
-                find = findField:GetText()
-                if find not= ""
-                    FindText(find)
+                    if find not= ""
+                        FindText(find)
+                    end
                 end
             end
         end
