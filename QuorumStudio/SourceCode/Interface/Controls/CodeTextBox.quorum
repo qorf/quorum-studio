@@ -26,6 +26,7 @@ use Libraries.Game.Graphics.Font
 use Libraries.System.File
 use Libraries.Interface.Events.GutterListener
 use Libraries.Interface.Events.GutterEvent
+use Libraries.Interface.Controls.TextStyles.TextStyle
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -38,6 +39,9 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     Array<Token> lexer = undefined
     Lexer categories
     LineNumberGutter gutter
+
+    Array<text> findReplaceNames
+    Array<TextStyle> findReplaceStyles
 
     on create
         GameStateManager manager
@@ -453,5 +457,42 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         file:SetPath("Resources/Fonts/FiraCode-Retina.ttf")
         font:LoadFont(file)
         return font
+    end
+
+    /*
+    An action used to allow Find/Replace highlighting to be specifically marked
+    in the TextBox so we can restore it later if the highlights are all blown
+    away (e.g. by the UpdateCodeEditorBehavior).
+    */
+    action AddFindReplaceStyle(text name, TextStyle style)
+        findReplaceNames:Add(name)
+        findReplaceStyles:Add(style)
+        AddTextStyle(name, style)
+    end
+
+    action RemoveFindReplaceStyle(text name)
+        RemoveTextStyle(name)
+    end
+
+    /*
+    An action used to allow Find/Replace highlighting to be specifically marked
+    in the TextBox so we can restore it later if the highlights are all blown
+    away (e.g. by the UpdateCodeEditorBehavior).
+    */
+    action RestoreFindReplaceStyles
+        integer counter = 0
+        repeat while counter < findReplaceStyles:GetSize()
+            AddTextStyle(findReplaceNames:Get(counter), findReplaceStyles:Get(counter))
+            counter = counter + 1
+        end
+    end
+
+    /*
+    Empties the arrays for the Find/Replace highlighting so they can no longer
+    be restored by the TextBox.
+    */
+    action EmptyFindReplaceStyles
+        findReplaceNames:Empty()
+        findReplaceStyles:Empty()
     end
 end

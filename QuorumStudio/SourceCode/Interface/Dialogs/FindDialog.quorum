@@ -26,6 +26,7 @@ use Libraries.Development.Environment.Studio.Behaviors.PreviousBehavior
 
 class FindDialog is Dialog, TextChangeListener
     boolean initialized = false
+    //boolean textChangeListenerOn = true
 
     GameStateManager gameManager
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
@@ -36,7 +37,11 @@ class FindDialog is Dialog, TextChangeListener
     Array<Pair<integer>> indices
     Array<Pair<integer>> removeIndices
     integer selection = -1       //tracks which selection of the matches is currently selected
-
+    integer beforeCaretCount = 0            //tracks how many matches are before the caret index in the textBox used for replaceAll to correctly adjust the offset
+    integer afterCaretCount = 0             //tracks how many matches are after the caret index in the textBox used for replaceAll to correctly adjust the offset
+    integer removeAfter = 0                 //tracks how many matches need to be removed after the caret index (in the case of modifications such as matchCase, wholeWord, text changes)
+    integer removeBefore = 0                //tracks how many matches need to be removed before the caret index (in the case of modifications such as matchCase, wholeWord, text changes)
+    
 
     text textValue = "" 
 
@@ -199,6 +204,7 @@ class FindDialog is Dialog, TextChangeListener
         matchesContainer:SetRightPadding(10)
         matchesContainer:SetLeftPadding(20)
 
+        matches:SetText("")
         matches:SetHorizontalLayoutMode(matches:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
         matches:SetPercentageWidth(0.2)
         matches:SetPixelHeight(20)
@@ -238,22 +244,29 @@ class FindDialog is Dialog, TextChangeListener
     action GetTextBox returns CodeTextBox
         return textBox
     end
+
+    action GetFind returns text
+        return findField:GetText()
+    end
     
-    //finds all instances of "find" within the textBox and stores the start and 
+   //finds all instances of "find" within the textBox and stores the start and 
     //end index for each instance in the Array indices.
     //The indices array is sorted based on the caret position in the textBox to make it easier to iterate through the currentSelection when using the
     //next and previous buttons.
     //If MatchCase is selected, calls MatchCaseFindText() to eliminate any Pair of indices that does not meet the MatchCase criteria.
     //If WholeWord is selected, calls WholeWordFindText() to eliminate any Pair of indices that does not meet the WholeWord criteria.
-    //Calls UpdateMatches() to update the matches counter to reflect the number of instances in the dialog.
     //Calls UpdateSelections() to update the highlighted instances in the textBox.
     action FindText(text find)
+        //textChangeListenerOn = true
         integer caretIndex = textBox:GetCaretPosition()
+        afterCaretCount = 0
+        beforeCaretCount = 0
+        removeBefore = 0
+        removeAfter = 0
         //if there is a currentSelection it needs to be removed and selection reset
         if selection >= 0
             RemoveCurrentSelection()
         end
-        //selection = -1
         integer findIndex = 0
         integer findSize = find:GetSize()       //size of the word we are searching for
         integer endIndex = textValue:GetSize() - 1
@@ -274,6 +287,7 @@ class FindDialog is Dialog, TextChangeListener
                         if findIndex >= 0
                             index:Set(findIndex, (findIndex + (findSize - 1)))
                             indices:Add(index)
+                            afterCaretCount = afterCaretCount + 1
                             findIndex = findIndex + findSize
                         end
                     else
@@ -288,6 +302,7 @@ class FindDialog is Dialog, TextChangeListener
                         if findIndex >= 0
                             index:Set(findIndex, (findIndex + (findSize - 1)))
                             indices:Add(index)
+                            beforeCaretCount = beforeCaretCount + 1
                             findIndex = findIndex + findSize
                         end
                     else
@@ -305,27 +320,43 @@ class FindDialog is Dialog, TextChangeListener
             end
 
             UpdateSelections()
-            //UpdateMatches()
         end
     end
 
+
     //If there are any instances of find that do not meet the MatchCase criteria then
     //the Pair<startIndex, endIndex> are added to the removeIndices array 
+    //tracks how many instances are added to the removeIndices array before the caretIndex and after the caretIndex
     private action MatchCaseFindText(text find)
         text subtext = ""
         integer startIndex = 0
         integer endIndex = 0
         
         integer i = 0
-        repeat while i < indices:GetSize()
+        repeat while i < afterCaretCount
             startIndex = indices:Get(i):GetFirstValue()
             endIndex = indices:Get(i):GetSecondValue()
             subtext = textValue:GetSubtext(startIndex, (endIndex + 1))
             if not find:Equals(subtext)                
-                removeIndices:Add(indices:Get(i))                
+                removeIndices:Add(indices:Get(i))  
+                removeAfter = removeAfter + 1
             end           
             i = i + 1
-        end 
+        end
+            
+       integer j = 0
+        repeat while j < beforeCaretCount
+            startIndex = indices:Get(i):GetFirstValue()
+            endIndex = indices:Get(i):GetSecondValue()
+            subtext = textValue:GetSubtext(startIndex, (endIndex + 1))
+            if not find:Equals(subtext)
+                removeIndices:Add(indices:Get(i))
+                removeBefore = removeBefore + 1
+            end
+            j = j + 1
+            i = i + 1
+        end
+         
     end
 
     action GetCurrentWord() returns text
@@ -333,7 +364,8 @@ class FindDialog is Dialog, TextChangeListener
     end
 
     //If there are any instances of find that do not meet the WholeWord criteria then 
-    //the Pair<startIndex, endIndex> are added to the removeIndices array 
+    //the Pair<startIndex, endIndex> are added to the removeIndices array
+    //tracks how many instances are added to the removeIndices array before the caretIndex and after the caretIndex 
     private action WholeWordFindText(text find)
         text break = "
 "
@@ -345,34 +377,54 @@ class FindDialog is Dialog, TextChangeListener
         text nextCharacter = ""
         
         integer i = 0
-        repeat while i < indices:GetSize()
+        repeat while i < afterCaretCount
             startIndex = indices:Get(i):GetFirstValue()
             endIndex = indices:Get(i):GetSecondValue()
             previousIndex = startIndex - 1
             nextIndex = endIndex + 1
-            if previousIndex > 0
-                previousCharacter = textValue:GetCharacter(previousIndex)
-            else
-                previousCharacter = " "
-            end
-            if nextIndex < textValue:GetSize()
-                nextCharacter = textValue:GetCharacter(nextIndex)
-            else
-                nextCharacter = " " 
-            end
+            previousCharacter = textValue:GetCharacter(previousIndex)
+            nextCharacter = textValue:GetCharacter(nextIndex)
             
-                if not((previousCharacter = " ") or (previousCharacter = ".") or (previousCharacter = "/")
-                or (previousCharacter = "*") or (previousCharacter = "(") or (previousCharacter = ")") or (previousCharacter = "+") 
-                or (previousCharacter = "-") or (previousCharacter = ">") or (previousCharacter = "<") or (previousCharacter = "=") 
-                or (previousCharacter = break) or (previousCharacter = ","))
-                    removeIndices:Add(indices:Get(i))
-                elseif not ((nextCharacter = " ") or (nextCharacter = ".") or (nextCharacter = "/") 
-                or (nextCharacter = "*") or (nextCharacter = "(") or (nextCharacter = ")") or (nextCharacter = "+") 
-                or (nextCharacter = "-") or (nextCharacter = ">") or (nextCharacter = "<") or (nextCharacter = "=") 
-                or (nextCharacter = break) or (nextCharacter = ","))
-                    removeIndices:Add(indices:Get(i))               
-                end
+            if not((previousCharacter = " ") or (previousCharacter = ".") or (previousCharacter = "/")
+            or (previousCharacter = "*") or (previousCharacter = "(") or (previousCharacter = ")") or (previousCharacter = "+") 
+            or (previousCharacter = "-") or (previousCharacter = ">") or (previousCharacter = "<") or (previousCharacter = "=") 
+            or (previousCharacter = break) or (previousCharacter = ","))
+                removeIndices:Add(indices:Get(i))
+                removeAfter = removeAfter + 1
+            elseif not ((nextCharacter = " ") or (nextCharacter = ".") or (nextCharacter = "/") 
+            or (nextCharacter = "*") or (nextCharacter = "(") or (nextCharacter = ")") or (nextCharacter = "+") 
+            or (nextCharacter = "-") or (nextCharacter = ">") or (nextCharacter = "<") or (nextCharacter = "=") 
+            or (nextCharacter = break) or (nextCharacter = ","))
+                removeIndices:Add(indices:Get(i))  
+                removeAfter = removeAfter + 1
+            end
             i = i + 1
+        end
+
+        integer j = 0
+        repeat while j < beforeCaretCount
+            startIndex = indices:Get(i):GetFirstValue()
+            endIndex = indices:Get(i):GetSecondValue()
+            previousIndex = startIndex - 1
+            nextIndex = endIndex + 1
+            previousCharacter = textValue:GetCharacter(previousIndex)
+            nextCharacter = textValue:GetCharacter(nextIndex)
+            
+            if not((previousCharacter = " ") or (previousCharacter = ".") or (previousCharacter = "/")
+            or (previousCharacter = "*") or (previousCharacter = "(") or (previousCharacter = ")") or (previousCharacter = "+") 
+            or (previousCharacter = "-") or (previousCharacter = ">") or (previousCharacter = "<") or (previousCharacter = "=") 
+            or (previousCharacter = break) or (previousCharacter = ","))
+                removeIndices:Add(indices:Get(i))
+                removeBefore = removeBefore + 1
+            elseif not ((nextCharacter = " ") or (nextCharacter = ".") or (nextCharacter = "/") 
+            or (nextCharacter = "*") or (nextCharacter = "(") or (nextCharacter = ")") or (nextCharacter = "+") 
+            or (nextCharacter = "-") or (nextCharacter = ">") or (nextCharacter = "<") or (nextCharacter = "=") 
+            or (nextCharacter = break) or (nextCharacter = ","))
+                removeIndices:Add(indices:Get(i)) 
+                removeBefore = removeBefore + 1
+            end
+            i = i + 1
+            j = j + 1
         end
     end
 
@@ -402,6 +454,7 @@ class FindDialog is Dialog, TextChangeListener
     //Calls RemoveSelections() to remove the Pair<startIndex, endIndex> that no 
     //longer apply due to MatchCase criteria, WholeWord criteria, or TextChange events 
     private action UpdateSelections()
+        textBox:EmptyFindReplaceStyles()
         ColoredHighlight highlight
         Color color
         highlight:SetColor(color:Orange())
@@ -416,10 +469,13 @@ class FindDialog is Dialog, TextChangeListener
                 index = indices:Get(i)
                 startIndex = index:GetFirstValue()
                 endIndex = index:GetSecondValue()
+//                if i = 0
+//                    textBox:SetCaretPosition(startIndex - 1)
+//                end
                 textStyle:SetIndex(startIndex)
                 textStyle:SetSize((endIndex - startIndex) + 1)
                 textStyle:SetHighlight(highlight)
-                textBox:AddTextStyle("highlight" + startIndex, textStyle)
+                textBox:AddFindReplaceStyle("highlight" + startIndex, textStyle)
                 i = i + 1
             end
         end
@@ -431,19 +487,28 @@ class FindDialog is Dialog, TextChangeListener
     end
     
 
-    //Removes the insances of "find" that are no longer applicable due to MatchCase 
-    //criteria, WholeWord criteria, or a TextChange event
+    //Removes the highlighted instances of "find" that are no longer applicable due to MatchCase 
+    //criteria, WholeWord criteria, or a TextChange event.
+    //Updates the number of instances of find before the caretIndex and after the caretIndex
     private action RemoveSelections()
         integer startIndex = 0
         integer i = 0
         repeat while i < removeIndices:GetSize()            
             startIndex = removeIndices:Get(i):GetFirstValue()                        
             indices:Remove(removeIndices:Get(i))
-            textBox:RemoveTextStyle("highlight" + startIndex)
+            textBox:RemoveFindReplaceStyle("highlight" + startIndex)
             i = i + 1
         end
+        afterCaretCount = afterCaretCount - removeAfter
+        beforeCaretCount = beforeCaretCount - removeBefore
         removeIndices:Empty() 
+
+
+        if textBox not= undefined
+            textBox:EmptyFindReplaceStyles()
+        end
     end
+    
 
     //moves the selection index to the next position and sends the previousSelection index to
     //UpdatCurrentSelection() to add the new currentSelection highlight and remove the 
@@ -481,44 +546,33 @@ class FindDialog is Dialog, TextChangeListener
 
         integer lineStartIndex = textBox:GetLineIndexOfCharacter(wordStartIndex)
         textBox:GoToLine(lineStartIndex)
-        textBox:SetCaretPosition(lineStartIndex)
-        text lineText = textBox:GetCurrentLineText()
-        integer lineSize = lineText:GetSize()
 
         ColoredHighlight highlight
         ColoredHighlight selectionHighlight
-        ColoredHighlight lineHighlight 
         TextStyle textStyle
         TextStyle word
-        TextStyle line
         Color color
-        Color lightBlue
         Color blue
-        lightBlue:SetColor(0, 0, 0.3, 0.2)
         blue:SetColor(0, 0, 0.4, 0.2)
         highlight:SetColor(color:Orange())
-        lineHighlight:SetColor(lightBlue)
         selectionHighlight:SetColor(blue)
 
 
         if previousSelection >= 0 
             integer previousStartIndex = indices:Get(previousSelection):GetFirstValue()
             integer previousEndIndex = indices:Get(previousSelection):GetSecondValue()
-//            integer previousLineStartIndex = textBox:GetLineIndexOfCharacter(previousStartIndex)
+            integer previousLineStartIndex = textBox:GetLineIndexOfCharacter(previousStartIndex)
             textStyle:SetIndex(previousStartIndex)
             textStyle:SetSize((previousEndIndex - previousStartIndex) + 1)
             textStyle:SetHighlight(highlight)
 
         //resets the previous selection back to the orange highlight and removes the line highlight
             if not textBox:HasTextStyle("highlight" + previousStartIndex)
-                textBox:AddTextStyle("highlight" + previousStartIndex, textStyle)
+                textBox:AddFindReplaceStyle("highlight" + previousStartIndex, textStyle)
             end
             if textBox:HasTextStyle("selectionHighlight" + previousStartIndex)
                 textBox:RemoveTextStyle("selectionHighlight" + previousStartIndex)
             end
-//            if textBox:HasTextStyle("lineHighlight" + previousLineStartIndex)
-//                    textBox:RemoveTextStyle("lineHighlight" + previousLineStartIndex)
-//            end
             
         end
 
@@ -526,30 +580,29 @@ class FindDialog is Dialog, TextChangeListener
         word:SetSize((wordEndIndex - wordStartIndex)+ 1)
         word:SetHighlight(selectionHighlight)
 
-        if previousSelection >= 0
-            //sets the current selection to blue highlight
-            textBox:RemoveTextStyle("highlight" + wordStartIndex)       //remove the orange highlight
-            textBox:AddTextStyle("selectionHighlight" + wordStartIndex, word)    //add the blue highlight for current selection
-        end
-//        line:SetIndex(lineStartIndex)
-//        line:SetSize(lineSize)
-//        line:SetHighlight(lineHighlight)
-//        textBox:AddTextStyle("lineHighlight" + lineStartIndex, line)
+        //sets the current selection to blue highlight
+        textBox:RemoveFindReplaceStyle("highlight" + wordStartIndex)       //remove the orange highlight
+        textBox:AddTextStyle("selectionHighlight" + wordStartIndex, word)    //add the blue highlight for current selection
 
+
+        //updates which of the matches is currently selected
         UpdateMatches()
-
     end
 
     //removes the selection highlighting before updating the indices
     //called when there is a text, matchCase, or wholeWord change and when the
-    //dialog is closed, to remove all highlights within the textBox
+    //dialog is closed, to remove all highlights within the textBox 
     private action RemoveCurrentSelection
-        //removes the selection highlighting before updating the indices
         integer wordStartIndex = indices:Get(selection):GetFirstValue()
         textBox:RemoveTextStyle("selectionHighlight" + wordStartIndex)
         selection = -1
     end
 
+    //repopulates the highlighting for any remaining instances that were not replaced by calling FindText (not currently working)
+    action UpdateTextBox()
+        textValue = textBox:GetText()
+        FindText(findField:GetText())
+    end
     //Listens for text change within the findField and text change events in the 
     //current textBox that is being searched. Calls to update the selections if
     //there is a text change event that occurs in either field.
@@ -563,7 +616,6 @@ class FindDialog is Dialog, TextChangeListener
                 end
             elseif event:GetEventType() = event:DELETED
                 find = findField:GetText()
-
                 if find = ""
                     removeIndices = indices:CopyToArray()
                     indices:Empty()
@@ -579,26 +631,18 @@ class FindDialog is Dialog, TextChangeListener
                 end
             end
         end
-        
+
         if textBox not= undefined
-        find = findField:GetText()
-            if event:GetControl():Equals(cast(Object, GetTextBox()))
-                if event:GetEventType() = event:ADDED
-                    textValue = textBox:GetText()
-                    if find not= ""
-                        FindText(find)
+            if event:GetControl():Equals(cast(Object, textBox))                
+                //if textChangeListenerOn
+                    if event:GetEventType() = event:ADDED
+                        UpdateTextBox()
+                    elseif event:GetEventType() = event:DELETED
+                        UpdateTextBox()
+                    elseif event:GetEventType() = event:MODIFIED   
+                        UpdateTextBox()
                     end
-                elseif event:GetEventType() = event:DELETED
-                    textValue = textBox:GetText()
-                    if find not= ""
-                        FindText(find)
-                    end
-                elseif event:GetEventType() = event:MODIFIED   
-                    textValue = textBox:GetText()
-                    if find not= ""
-                        FindText(find)
-                    end
-                end
+                //end
             end
         end
     end

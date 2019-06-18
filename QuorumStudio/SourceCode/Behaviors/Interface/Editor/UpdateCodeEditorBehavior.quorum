@@ -176,15 +176,17 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
 
 
         File f = info:recompile
-            SymbolTable table = compilerResult:symbolTable
-            if table not= undefined
-                Class clazz = table:GetClassInFile(f:GetAbsolutePath())
-                if clazz not= undefined
-                    box:SetClass(clazz)
-                    box:SetStaticKey(clazz:GetStaticKey())
-                    box:SetLexer(mainFileTokens)
-                end
+        SymbolTable table = compilerResult:symbolTable
+        if table not= undefined
+            Class clazz = table:GetClassInFile(f:GetAbsolutePath())
+            if clazz not= undefined
+                box:SetClass(clazz)
+                box:SetStaticKey(clazz:GetStaticKey())
+                box:SetLexer(mainFileTokens)
             end
+        end
+
+        box:RestoreFindReplaceStyles()
     end
 
     private action GetTextStyle(Token token) returns TextStyle
