@@ -280,34 +280,45 @@ class FindDialog is Dialog, TextChangeListener
             end
 
             if textValue:GetSize() not= 0           //indices array starts with the first instance of the word after the caret 
-                findIndex = caretIndex
-                repeat while (findIndex >= 0) and ((findIndex + findSize) <= (endIndex + 1))
-                    Pair<integer> index
-                    if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
-                        if findIndex >= 0
+                if caretIndex >= 0
+                    findIndex = caretIndex - (findSize - 1)
+                    if findIndex >= 0
+                        repeat while findIndex < caretIndex        //checks to see if the caret was positioned within the first instance of the find word. If the caret is in the middle of the find word the instance is added to the afterCaretCount
+                            Pair<integer> index
+                            if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
+                                index:Set(findIndex, (findIndex + (findSize - 1)))
+                                indices:Add(index)
+                                afterCaretCount = afterCaretCount + 1
+                                findIndex = findIndex + findSize
+                            else
+                                findIndex = findIndex + 1
+                            end
+                        end
+                    end
+                    findIndex = caretIndex
+                    repeat while (findIndex >= 0) and ((findIndex + findSize) <= (endIndex + 1))
+                        Pair<integer> index
+                        if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
                             index:Set(findIndex, (findIndex + (findSize - 1)))
                             indices:Add(index)
                             afterCaretCount = afterCaretCount + 1
                             findIndex = findIndex + findSize
-                        end
-                    else
-                        findIndex = findIndex + 1
-                    end                   
-                end
-                
-                findIndex = 0                   //loop back around to the beginning of the textBox to add any instances of the word that occur before the caret position in the textBox
-                repeat while (findIndex >= 0) and ((findIndex + findSize) <= (caretIndex + 1)) 
-                    Pair<integer> index
-                    if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
-                        if findIndex >= 0
+                        else
+                            findIndex = findIndex + 1
+                        end                   
+                    end
+                    findIndex = 0                   //loop back around to the beginning of the textBox to add any instances of the word that occur before the caret position in the textBox
+                    repeat while (findIndex >= 0) and ((findIndex + findSize) <= caretIndex) 
+                        Pair<integer> index
+                        if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
                             index:Set(findIndex, (findIndex + (findSize - 1)))
                             indices:Add(index)
                             beforeCaretCount = beforeCaretCount + 1
                             findIndex = findIndex + findSize
-                        end
-                    else
-                        findIndex = findIndex + 1
-                    end                   
+                        else
+                            findIndex = findIndex + 1
+                        end                   
+                    end
                 end
             end
 
@@ -454,12 +465,15 @@ class FindDialog is Dialog, TextChangeListener
     //Calls RemoveSelections() to remove the Pair<startIndex, endIndex> that no 
     //longer apply due to MatchCase criteria, WholeWord criteria, or TextChange events 
     private action UpdateSelections()
-        textBox:EmptyFindReplaceStyles()
         ColoredHighlight highlight
         Color color
         highlight:SetColor(color:Orange())
         integer startIndex = 0
         integer endIndex = 0
+
+        if removeIndices:GetSize() not= 0
+            RemoveSelections()
+        end
 
         if indices:GetSize() not= 0
             integer i = 0
@@ -480,9 +494,6 @@ class FindDialog is Dialog, TextChangeListener
             end
         end
 
-        if removeIndices:GetSize() not= 0
-            RemoveSelections()
-        end
         UpdateMatches()
     end
     
@@ -505,7 +516,7 @@ class FindDialog is Dialog, TextChangeListener
 
 
         if textBox not= undefined
-            textBox:EmptyFindReplaceStyles()
+            textBox:RemoveFindReplaceStyles()
         end
     end
     
@@ -571,7 +582,7 @@ class FindDialog is Dialog, TextChangeListener
                 textBox:AddFindReplaceStyle("highlight" + previousStartIndex, textStyle)
             end
             if textBox:HasTextStyle("selectionHighlight" + previousStartIndex)
-                textBox:RemoveTextStyle("selectionHighlight" + previousStartIndex)
+                textBox:RemoveFindReplaceStyle("selectionHighlight" + previousStartIndex)
             end
             
         end
@@ -582,7 +593,7 @@ class FindDialog is Dialog, TextChangeListener
 
         //sets the current selection to blue highlight
         textBox:RemoveFindReplaceStyle("highlight" + wordStartIndex)       //remove the orange highlight
-        textBox:AddTextStyle("selectionHighlight" + wordStartIndex, word)    //add the blue highlight for current selection
+        textBox:AddFindReplaceStyle("selectionHighlight" + wordStartIndex, word)    //add the blue highlight for current selection
 
 
         //updates which of the matches is currently selected
@@ -593,9 +604,11 @@ class FindDialog is Dialog, TextChangeListener
     //called when there is a text, matchCase, or wholeWord change and when the
     //dialog is closed, to remove all highlights within the textBox 
     private action RemoveCurrentSelection
-        integer wordStartIndex = indices:Get(selection):GetFirstValue()
-        textBox:RemoveTextStyle("selectionHighlight" + wordStartIndex)
-        selection = -1
+        if indices:GetSize() not= 0
+            integer wordStartIndex = indices:Get(selection):GetFirstValue()
+            textBox:RemoveFindReplaceStyle("selectionHighlight" + wordStartIndex)
+            selection = -1
+        end
     end
 
     //repopulates the highlighting for any remaining instances that were not replaced by calling FindText (not currently working)
@@ -649,15 +662,16 @@ class FindDialog is Dialog, TextChangeListener
 
     //Removes any highlights in the textBox, empties the arrays and textFields and resets the selection index.
     action OnHide
-        if selection >= 0
-            RemoveCurrentSelection()
-        end
-        removeIndices = indices:CopyToArray()
-        indices:Empty()
-
-        if removeIndices:GetSize() not= 0 
-            RemoveSelections()
-        end
+//        if selection >= 0
+//            RemoveCurrentSelection()
+//        end
+//        removeIndices = indices:CopyToArray()
+//        indices:Empty()
+//
+//        if removeIndices:GetSize() not= 0 
+//            RemoveSelections()
+//        end
+        RemoveSelections()
         findField:Empty()
         selection = -1
         UpdateMatches()        

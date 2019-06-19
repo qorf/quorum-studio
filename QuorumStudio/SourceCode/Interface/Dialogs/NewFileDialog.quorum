@@ -105,18 +105,18 @@ class NewFileDialog is Dialog, KeyboardListener
     action SetProperties(QuorumProject project)
         me:project = project
         //Sets the locationNameField to the path of the current folder in focus in the ProjectTree
-        File file
-        ProjectTree tree = studio:GetProjectTree()
-        TreeSelection selection = tree:GetSelection()   
-        Array<TreeItem> items = selection:GetPath()
-        i = items:GetSize()-1
-        repeat while i > 0
-            TreeItem item = items:Get(i)
-            projectName = item:GetName() + "/" + projectName
-            i = i - 1
-        end
-
-        locationNameField:SetText(projectName:Trim())  
+//        File file
+//        ProjectTree tree = studio:GetProjectTree()
+//        TreeSelection selection = tree:GetSelection()   
+//        Array<TreeItem> items = selection:GetPath()
+//        i = items:GetSize()-1
+//        repeat while i > 0
+//            TreeItem item = items:Get(i)
+//            projectName = item:GetName() + "/" + projectName
+//            i = i - 1
+//        end
+        projectName = project:GetName()
+        locationNameField:SetText(project:GetName())  
     end 
 
     action IsInitialized returns boolean
@@ -245,9 +245,8 @@ class NewFileDialog is Dialog, KeyboardListener
     //(e.g. GameApplication/SourceCode to GameApplication/SourceCode/images)
     //used by the OpenBrowseFoldersBehavior
     action UpdateFolderName(text folderName)
-        //locationNameField:Empty()
-        projectName = projectName + "/" + folderName
-        locationNameField:SetText(projectName)    
+        locationNameField:Empty()
+        locationNameField:SetText(folderName)    
     end
 
     //creates the new file using the file path from the folderNameField in the
@@ -256,7 +255,7 @@ class NewFileDialog is Dialog, KeyboardListener
         File file
         File value = project:GetLocation()
         text path = value:GetAbsolutePath():Trim()
-        path = path + "/" + fileNameField:GetText():Trim() 
+        path = path + "/" + locationNameField:GetText():Trim() + "/" + fileNameField:GetText():Trim() 
         
         file:SetAbsolutePath(path)
         
@@ -310,5 +309,13 @@ class NewFileDialog is Dialog, KeyboardListener
         if event:keyCode = event:ESCAPE
             cancelButton:Activate()
         end
+    end
+
+    action OnHide
+        fileNameField:Empty()
+        locationNameField:Empty()
+        projectName = ""
+        project = undefined
+        manager = undefined
     end
 end

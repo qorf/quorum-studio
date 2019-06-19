@@ -44,9 +44,11 @@ use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Development.Environment.Studio.Behaviors.NewProjectTabBehavior
 use Libraries.Game.Graphics.Font
 use Libraries.Interface.Layouts.TabFlowLayout
+use Libraries.Interface.Events.MouseWheelListener
+use Libraries.Interface.Events.MouseEvent
 
 
-class NewProjectDialog is Dialog, KeyboardListener
+class NewProjectDialog is Dialog, KeyboardListener, MouseWheelListener
 
     boolean initialized = false
     
@@ -574,6 +576,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         ScrollPane scrollPane
         scrollPane:SetPercentageWidth(1.0)
         scrollPane:SetPixelHeight(300)
+        scrollPane:AddMouseWheelListener(me)
         //scrollPane:SetVerticalLayoutMode(scrollPane:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
         FlowLayout scrollLayout
         scrollPane:SetLayout(scrollLayout)
@@ -1068,4 +1071,13 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         end
     end
 
+
+    action OnHide
+        nameField:Empty()
+        locationField:Empty()
+        tabPane:Select(basicTab)
+        UpdateDescription(blankIcon)
+        descriptions:Empty()
+        templates:Empty()
+    end
 end
