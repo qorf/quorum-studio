@@ -53,29 +53,6 @@ class Menu is MenuBar
         Select(items)
     end
 
-    action GainedFocus(FocusEvent event)
-        GameStateManager manager
-        //get my selection
-        MenuSelection selection = GetSelection()
-        if selection:IsEmpty()
-            Array<MenuItem> items
-            items:Add(fileMenu)
-            items:Add(defaultMenuItem)
-            Select(items)
-            //selection:Set(items)
-            fileMenu:Open()
-            manager:GetGame():SetFocus(me)
-        else 
-            Array<MenuItem> array = selection:GetPath()
-            MenuItem item = array:Get(array:GetSize() - 1)
-            manager:GetGame():SetFocus(me)
-        end
-    end
-
-    action LostFocus(FocusEvent event)
-        Deselect()
-    end
-
     action SetDefaultPopupShortcut
         GameStateManager manager
         InputTable table = manager:GetGame():GetDefaultInputTable()
@@ -116,6 +93,7 @@ class Menu is MenuBar
         menuItems:Add(windowsMenu)
         menuItems:Add(helpMenu)
         Add(menuItems)
+        SetSelectingState(false)
         SetDefaultPopupShortcut()
     end
 
@@ -389,10 +367,10 @@ class Menu is MenuBar
         runItems:Add(toggleBreakpoint)
 
         MenuItem sendToAndroidDebugMode
-        toggleBreakpoint:SetName("Send to Android")
-        //toggleBreakpoint:SetShortcut(keyMap:GetToggleBreakpointKey()) //shortcut key or no?
-        toggleBreakpoint:SetBehavior(behaviors:GetThreadedSendToAndroidDebugModeBehavior())
-        runItems:Add(toggleBreakpoint)
+        sendToAndroidDebugMode:SetName("Send to Android")
+        //sendToAndroidDebugMode:SetShortcut(keyMap:GetToggleBreakpointKey()) //shortcut key or no?
+        sendToAndroidDebugMode:SetBehavior(behaviors:GetThreadedSendToAndroidDebugModeBehavior())
+        runItems:Add(sendToAndroidDebugMode)
 
         runMenu:SetName("Run")
         runMenu:Add(runItems)
