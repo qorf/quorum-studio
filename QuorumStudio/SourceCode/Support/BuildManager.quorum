@@ -226,6 +226,21 @@ class BuildManager is DebuggerListener, ProcessListener
         CodeTextBox box = tab:GetTextBox()
         text source = box:GetText()
 
+        //it's in the standard library, has a lexer, and is a valid file
+        Lexer standardLibraryLexer = library:GetLexer(file:GetAbsolutePath())
+        if file not= undefined and standardLibraryLexer not= undefined
+            if box not= undefined
+                box:SetBuildManager(me)
+                UpdateCodeEditorBehavior updater
+                //updater:SetBuildInformation(info)
+                updater:SetBuildManager(me)
+                //updater:SetCompilerResult(result)
+                updater:SetPath(file)
+                box:AddBehavior(updater)
+            end
+            return true
+        end
+
         //actually do the building
         BuildInformation info
         info:outputTab = outputTabs:GetOutputTab()
