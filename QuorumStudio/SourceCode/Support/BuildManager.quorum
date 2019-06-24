@@ -240,6 +240,10 @@ class BuildManager is DebuggerListener, ProcessListener
         return true
     end
 
+    action GetLibrary returns Library
+        return library
+    end
+
     action ToggleBreakpoint(Breakpoint point)
         File file = point:GetFile()
         integer line = point:GetLine()
@@ -373,6 +377,7 @@ class BuildManager is DebuggerListener, ProcessListener
         CallStackTab call = outputTabs:GetCallStackTab()
 
         UpdateCallStackBehavior behavior
+        behavior:SetBuildInformation(debuggingProgram)
         behavior:SetCallStackTab(call)
         behavior:SetOutputEditorTabPane(outputTabs)
         behavior:SetDebugger(debugger)

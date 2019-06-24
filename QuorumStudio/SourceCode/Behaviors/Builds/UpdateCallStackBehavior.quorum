@@ -15,6 +15,7 @@ use Libraries.Development.Environment.Studio.Interface.CallStackTab
 use Libraries.Language.Debug.Debugger
 use Libraries.Language.Debug.CallStackModel
 use Libraries.Language.Debug.StackFrame
+use Libraries.Development.Environment.Studio.Build.BuildInformation
 
 class UpdateCallStackBehavior is Behavior
     OutputEditorTabPane outputTabs = undefined
@@ -23,6 +24,16 @@ class UpdateCallStackBehavior is Behavior
     text message = ""
     boolean finished = false
     CallStackModel model = undefined
+    BuildInformation debuggingProgram = undefined
+
+    action GetBuildInformation returns BuildInformation
+        return debuggingProgram
+    end
+
+    action SetBuildInformation(BuildInformation info)
+        me:debuggingProgram = info
+    end
+
     action SetMessage(text bm)
         message = bm
     end
@@ -69,7 +80,7 @@ class UpdateCallStackBehavior is Behavior
                 i = 0
                 repeat while i < model:GetSize()
                     StackFrame frame = model:Get(i)
-                    stack:Add(frame)
+                    stack:Add(frame, debuggingProgram)
                     i = i + 1
                 end
             end
