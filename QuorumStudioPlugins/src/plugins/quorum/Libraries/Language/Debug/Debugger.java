@@ -13,6 +13,7 @@ import quorum.Libraries.Containers.Array;
 import quorum.Libraries.Containers.Array_;
 import quorum.Libraries.Containers.Iterator_;
 import quorum.Libraries.Language.Debug.Breakpoint_;
+import quorum.Libraries.Language.Debug.CallStackModel_;
 import quorum.Libraries.Language.Debug.DebuggerListener_;
 import quorum.Libraries.Language.Debug.VariablesModel_;
 
@@ -206,5 +207,10 @@ public class Debugger {
     public VariablesModel_ GetVariablesModel() {
         model.plugin_.setDebugger(debugger);
         return model;
+    }
+    
+    public CallStackModel_ GetCallStackModel() {
+        callStackModel.plugin_.setDebugger(debugger);
+        return callStackModel;
     }
 }
