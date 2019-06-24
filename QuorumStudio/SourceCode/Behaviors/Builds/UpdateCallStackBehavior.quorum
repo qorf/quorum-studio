@@ -1,0 +1,83 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.System.SystemHelper
+use Libraries.System.DateTime
+use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Language.Compile.CompilerErrorManager
+use Libraries.Containers.Iterator
+use Libraries.Language.Compile.CompilerError
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Development.Environment.Studio.Interface.CallStackTab
+use Libraries.Language.Debug.Debugger
+use Libraries.Language.Debug.CallStackModel
+use Libraries.Language.Debug.StackFrame
+
+class UpdateCallStackBehavior is Behavior
+    OutputEditorTabPane outputTabs = undefined
+    CallStackTab stack = undefined
+    Debugger debugger = undefined
+    text message = ""
+    boolean finished = false
+    CallStackModel model = undefined
+    action SetMessage(text bm)
+        message = bm
+    end
+
+    action GetMessage returns text
+        return message
+    end
+
+    action SetCallStackTab(CallStackTab bm)
+        stack = bm
+    end
+
+    action GetCallStackTab returns CallStackTab
+        return stack
+    end
+
+    action SetDebugger(Debugger bm)
+        debugger = bm
+        if debugger = undefined
+            return now
+        end
+
+        model = debugger:GetCallStackModel()
+        model:Update()
+    end
+
+    action GetDebugger returns Debugger
+        return debugger
+    end
+
+    action SetOutputEditorTabPane(OutputEditorTabPane bm)
+        outputTabs = bm
+    end
+
+    action GetOutputEditorTabPane returns OutputEditorTabPane
+        return outputTabs
+    end
+
+    action Update(number seconds)
+        if not finished
+            //do the stack updating here
+            stack:Empty()
+            if model not= undefined
+                i = 0
+                repeat while i < model:GetSize()
+                    StackFrame frame = model:Get(i)
+                    stack:Add(frame)
+                    i = i + 1
+                end
+            end
+            finished = true
+        end
+    end
+    
+    action IsFinished returns boolean
+        return finished
+    end
+end

@@ -57,6 +57,8 @@ use Libraries.Language.Compile.CodeCompletionRequest
 use Libraries.Language.Compile.CodeCompletionResult
 use Libraries.Development.Environment.Studio.Android.AndroidSupport
 use Libraries.Development.Environment.Studio.Behaviors.SetErrorsBehavior
+use Libraries.Development.Environment.Studio.Interface.CallStackTab
+use Libraries.Development.Environment.Studio.Behaviors.UpdateCallStackBehavior
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -366,6 +368,15 @@ class BuildManager is DebuggerListener, ProcessListener
             update:SetOldTextBox(box)
         end
         variablesTab:AddBehavior(update)
+
+        //update the callstack
+        CallStackTab call = outputTabs:GetCallStackTab()
+
+        UpdateCallStackBehavior behavior
+        behavior:SetCallStackTab(call)
+        behavior:SetOutputEditorTabPane(outputTabs)
+        behavior:SetDebugger(debugger)
+        call:AddBehavior(behavior)
     end
 
     action Scan
