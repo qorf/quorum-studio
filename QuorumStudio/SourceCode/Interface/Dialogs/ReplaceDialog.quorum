@@ -352,7 +352,7 @@ class ReplaceDialog is FindDialog, TextChangeListener
                 if caretIndex >= 0
                     findIndex = caretIndex - (findSize - 1)
                     if findIndex >= 0
-                        repeat while findIndex < caretIndex        //checks to see if the caret was positioned within the first instance of the find word. If the caret is in the middle of the find word the instance is added to the afterCaretCount
+                        repeat while (findIndex < caretIndex)  and ((findIndex + findSize) < endIndex)        //checks to see if the caret was positioned within the first instance of the find word. If the caret is in the middle of the find word the instance is added to the afterCaretCount
                             Pair<integer> index
                             if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
                                 index:Set(findIndex, (findIndex + (findSize - 1)))
@@ -463,8 +463,16 @@ class ReplaceDialog is FindDialog, TextChangeListener
             endIndex = indices:Get(i):GetSecondValue()
             previousIndex = startIndex - 1
             nextIndex = endIndex + 1
-            previousCharacter = textValue:GetCharacter(previousIndex)
-            nextCharacter = textValue:GetCharacter(nextIndex)
+            if previousIndex < 0
+                previousCharacter = " "
+            else
+                previousCharacter = textValue:GetCharacter(previousIndex)
+            end
+            if nextIndex > textValue:GetSize() - 1
+                nextCharacter = " "
+            else
+                nextCharacter = textValue:GetCharacter(nextIndex)
+            end
             
             if not((previousCharacter = " ") or (previousCharacter = ".") or (previousCharacter = "/")
             or (previousCharacter = "*") or (previousCharacter = "(") or (previousCharacter = ")") or (previousCharacter = "+") 
@@ -488,8 +496,16 @@ class ReplaceDialog is FindDialog, TextChangeListener
             endIndex = indices:Get(i):GetSecondValue()
             previousIndex = startIndex - 1
             nextIndex = endIndex + 1
-            previousCharacter = textValue:GetCharacter(previousIndex)
-            nextCharacter = textValue:GetCharacter(nextIndex)
+            if previousIndex < 0
+                previousCharacter = " "
+            else
+                previousCharacter = textValue:GetCharacter(previousIndex)
+            end
+            if nextIndex > textValue:GetSize() - 1
+                nextCharacter = " "
+            else
+                nextCharacter = textValue:GetCharacter(nextIndex)
+            end
             
             if not((previousCharacter = " ") or (previousCharacter = ".") or (previousCharacter = "/")
             or (previousCharacter = "*") or (previousCharacter = "(") or (previousCharacter = ")") or (previousCharacter = "+") 
