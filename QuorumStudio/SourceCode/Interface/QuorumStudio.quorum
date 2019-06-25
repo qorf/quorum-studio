@@ -43,6 +43,7 @@ use Libraries.Game.Graphics.Label
 use Libraries.Development.Environment.Studio.Interface.SplashScreen
 use Libraries.Development.Environment.Studio.Build.ScanListener
 use Attack.FakeFocusManager
+use Libraries.Sound.Audio
 
 class QuorumStudio is Game, FocusListener, ScanListener
     constant number VERSION = 1.0
@@ -77,6 +78,12 @@ class QuorumStudio is Game, FocusListener, ScanListener
     BuildLoop buildLoop
     SplashScreen splashScreen = undefined
     boolean splashScreenHide = false
+    boolean starting = true
+    boolean clicking = false
+    boolean doneing = false
+    Audio startup
+    Audio click
+    Audio done
     action Start
         DesktopConfiguration config = GetDesktopConfiguration()
         config:title = NAME
@@ -169,6 +176,9 @@ class QuorumStudio is Game, FocusListener, ScanListener
     end
 
     action CreateGame
+        startup:Load("Resources/Audio/Startup.ogg")
+        click:Load("Resources/Audio/Click.ogg")
+        done:Load("Resources/Audio/Done.ogg")
 
         FakeFocusManager fake
         SetFocusManager(fake)
@@ -412,16 +422,42 @@ class QuorumStudio is Game, FocusListener, ScanListener
         updater:CheckForNewerVersion(up)
     end
 
+    number timer = 0.0
     action Update(number seconds)
-        //helper:Sleep(25) //hard cap FPS for now
+        if starting and startup:IsLoaded()// and timer > 0.5
+            //startup:Play()
+            starting = false
+            clicking = true
+            timer = 0
+        end
+
+        if clicking
+            timer = timer + seconds
+        end
+
+        if clicking and click:IsLoaded() and timer > 1.0
+            click:Play()
+            timer = 0.0
+        end
+
+        
         if splashScreenHide 
             splashScreen:Hide()
             SetFocus(projectTree)
             splashScreenHide = false
+            clicking = false
+            starting = false
+            doneing = true
         end
+
+        if doneing and done:IsLoaded()
+            //done:Play()
+            doneing = false
+        end
+
         number cap = 100
         number mil = 1000.0 / cap
-        if seconds < mil
+        if seconds < mil and not starting and not clicking and not doneing
             number value = (mil - seconds)
             integer sleep = cast(integer, value)
             if sleep > 0
