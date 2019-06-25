@@ -18,11 +18,29 @@ class Options is ProjectListener
     constant text OPEN_FILES = "Open Files"
     constant text BREAKPOINTS = "Breakpoints"
     constant text BREAKPOINT = "Breakpoint"
+    constant text FRAME_LIMITED = "FrameLimit"
+    constant text FRAME_RATE = "FrameRate"
+    constant text STARTUP_SOUNDS = "StartupSounds"
 
     HashTable<text, text> projects 
     Array<File> filesOpenAtBoot
     QuorumStudio studio = undefined
     BuildManager manager = undefined
+    boolean isFrameLimited = false
+    number frameRate = 100
+    boolean startupSounds = true
+
+    action IsFrameLimited returns boolean
+        return isFrameLimited
+    end
+
+    action GetFrameRateLimit returns number
+        return frameRate
+    end
+
+    action IsStartupSound returns boolean
+        return startupSounds
+    end
 
     action SetMainApplication(QuorumStudio studio)
         me:studio = studio
@@ -78,6 +96,14 @@ class Options is ProjectListener
         end
     end
 
+    private action JSONValueProcessor(text value) returns text
+        text result = value
+        i = 0
+        result:Replace("\", "\\")
+
+        return result
+    end
+
     action Write
         File file
         file:SetPath(OPTIONS_FILE)
@@ -92,9 +118,13 @@ class Options is ProjectListener
         repeat while openProjectIterator:HasNext()
             text next = openProjectIterator:Next()
             JavaScriptObjectNotation item
-            item:SetText(next)
+            item:SetText(JSONValueProcessor(next))
             array:Add(item)
         end
+
+        notation:Add(FRAME_LIMITED, IsFrameLimited())
+        notation:Add(FRAME_RATE, frameRate)
+        notation:Add(STARTUP_SOUNDS, startupSounds)
 
         //if Quorum Studio instance is not null, write any other behavior 
         //we are interested in storing
@@ -108,7 +138,7 @@ class Options is ProjectListener
         repeat while openFileIterator:HasNext()
             File next = openFileIterator:Next()
             if next not= undefined
-                text path = next:GetAbsolutePath()
+                text path = JSONValueProcessor(next:GetAbsolutePath())
                 JavaScriptObjectNotation item
                 item:SetText(path)
                 openFiles:Add(item)
@@ -122,7 +152,7 @@ class Options is ProjectListener
 
             repeat while breakpoints:HasNext()
                 Breakpoint bp = breakpoints:Next()
-                activeBreakpoints:Add(bp:GetFile():GetAbsolutePath(), bp:GetLine())
+                activeBreakpoints:Add(JSONValueProcessor(bp:GetFile():GetAbsolutePath()), bp:GetLine())
             end
         end
 
@@ -145,7 +175,11 @@ class Options is ProjectListener
                 JavaScriptObjectNotation value = object:Get(i)
                 if value:IsText()
                     text project = value:GetText()
-                    projects:Add(project, project)
+                    File file
+                    file:SetAbsolutePath(project)
+                    if file:Exists()
+                        projects:Add(project, project)
+                    end
                 end
                 i = i + 1
             end
@@ -161,11 +195,32 @@ class Options is ProjectListener
                     text path = value:GetText()
                     File file
                     file:SetAbsolutePath(path)
-                    filesOpenAtBoot:Add(file)
+                    if file:Exists()
+                        filesOpenAtBoot:Add(file)
+                    end
                 end
                 i = i + 1
             end
-
+        elseif key = FRAME_LIMITED
+            if object:IsBoolean()
+                boolean value = object:GetBoolean()
+                me:isFrameLimited = value
+            end
+        elseif key = FRAME_RATE
+            if object:IsNumber()
+                number value = object:GetNumber()
+                integer min = 20
+                if value < min
+                    me:frameRate = min
+                else
+                    me:frameRate = value
+                end
+            end
+        elseif key = STARTUP_SOUNDS
+            if object:IsBoolean()
+                boolean value = object:GetBoolean()
+                me:startupSounds = value
+            end
         elseif key = BREAKPOINTS
             if object:IsEmpty()
                 return now
@@ -179,7 +234,9 @@ class Options is ProjectListener
 
                 File file
                 file:SetAbsolutePath(location)
-                manager:ToggleBreakpoint(file, line)
+                if file:Exists()
+                    manager:ToggleBreakpoint(file, line)
+                end
                 i = i + 1
             end
         end
