@@ -910,6 +910,26 @@ class QuorumProject is Project
         end
     end
 
+    private action SetImageSheetProperty(ImageSheets sheets)
+        ProjectProperty property
+        property:SetKey(IMAGE_SHEETS)
+        Array<ImageSheet> array = sheets:GetSheets(true)
+        i = 0
+        repeat while i < array:GetSize()
+            ImageSheet sheet = array:Get(i)
+            Iterator<text> iterator = sheet:GetValues()
+            ProjectProperty sheetProperty
+            sheetProperty:SetKey(sheet:GetName())
+            repeat while iterator:HasNext()
+                text value = iterator:Next()
+                sheetProperty:Add(value)
+            end
+            property:Add(sheetProperty)
+            i = i + 1
+        end
+        AddProperty(property)
+    end
+
     private action CreateImageSheets(JavaScriptObjectNotation object)
         ImageSheets sheets
         me:sheets = sheets
@@ -946,6 +966,7 @@ class QuorumProject is Project
             sheets:Add(sheet)
             i = i + 1
         end
+        SetImageSheetProperty(sheets)
     end
 
     private action AddMultivalueTextProperty(JavaScriptObjectNotation object)
@@ -988,6 +1009,56 @@ class QuorumProject is Project
 
         return false
     end
+
+    private action HandleNestedProperties(ProjectProperty property, integer nesting) returns text
+        text space = "    "
+        i = 1
+        repeat while i < nesting
+            space = space + space
+            i = i + 1
+        end
+        text dq = space:GetDoubleQuote()
+        text line = space:GetCarriageReturn()
+        text result = space + dq + property:GetKey() + dq + " : "
+        
+        result = result
+        if property:GetSize() = 1
+            text next = property:GetFirstValue()
+            if next = "true" or next = "false"
+                result = result + next
+            else 
+                result = result + dq + next + dq
+            end
+        elseif property:GetNestedPropertiesSize() > 0
+            i = 0
+            text array = "{"
+            repeat while i < property:GetNestedPropertiesSize()
+                ProjectProperty sub = property:GetNestedProperty(i)
+                array = array + line + HandleNestedProperties(sub, nesting + 1)//array + dq + sub:GetKey() + dq
+                
+                if i not= property:GetNestedPropertiesSize() - 1
+                    array = array + ", "
+                end
+                i = i + 1
+            end
+            array = array + line + space + "}"
+            result = result + array
+        else
+            i = 0
+            text array = "["
+            repeat while i < property:GetSize()
+                text value = property:Get(i)
+                array = array + dq + value + dq
+                if i not= property:GetSize() - 1
+                    array = array + ", "
+                end
+                i = i + 1
+            end
+            array = array + "]"
+            result = result + array
+        end
+        return result
+    end
     /*
         This action saves the project properties to disk. If a file already 
         exists for this project, the system overrides it.
@@ -1004,68 +1075,13 @@ class QuorumProject is Project
         Iterator<ProjectProperty> iterator = GetProperties(true)
         repeat while iterator:HasNext()
             ProjectProperty property = iterator:Next()
-            result = result + space + dq + property:GetKey() + dq + ": "
-            if property:GetSize() = 1
-                text next = property:GetFirstValue()
-                if next = "true" or next = "false"
-                    result = result + next
-                else 
-                    result = result + dq + next + dq
-                end
-            else
-                i = 0
-                text array = "["
-                repeat while i < property:GetSize()
-                    text value = property:Get(i)
-                    array = array + dq + value + dq
-                    if i not= property:GetSize() - 1
-                        array = array + ", "
-                    end
-                    i = i + 1
-                end
-                array = array + "]"
-                result = result + array
-            end
-
+            result = result + HandleNestedProperties(property, 1)
             if iterator:HasNext()
-                result = result + ","
-            end
-
-            if not iterator:HasNext() and not sheets:IsEmpty()
                 result = result + ","
             end
             result = result + line
         end
-
-        if not sheets:IsEmpty()
-            text sheetText = space + dq + IMAGE_SHEETS + dq + ": {" + line
-            //now add the image sheets
-            Iterator<ImageSheet> sheeterator = sheets:GetSheets(true):GetIterator()
-            repeat while sheeterator:HasNext()
-                ImageSheet sheet = sheeterator:Next()
-                text name = sheet:GetName()
-                sheetText = sheetText + space + space + dq + name + dq + ": ["
-                Iterator<text> imagesIterator = sheet:GetValues()
-                repeat while imagesIterator:HasNext()
-                    text image = imagesIterator:Next()
-                    sheetText = sheetText + dq + image + dq
-                    if imagesIterator:HasNext()
-                        sheetText = sheetText + ","
-                    end
-                end
-                sheetText = sheetText + "]"
-                if sheeterator:HasNext()
-                    sheetText = sheetText + ","
-                end
-                sheetText = sheetText + line
-            end
-            sheetText = sheetText + space + "}" + line
-
-            result = result + sheetText + "}"
-        else 
-            result = result + "}"
-        end
-        
+        result = result + "}"
         file:Write(result)
     end
 end

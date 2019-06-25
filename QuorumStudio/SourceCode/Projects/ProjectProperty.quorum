@@ -9,6 +9,23 @@ use Libraries.Language.Support.CompareResult
 class ProjectProperty 
     text key = ""
     Array<text> values
+    Array<ProjectProperty> properties
+
+    action Add(ProjectProperty property)
+        properties:Add(property)
+    end
+
+    action Remove(ProjectProperty property)
+        properties:Remove(property)
+    end
+
+    action GetNestedPropertiesSize returns integer
+        return properties:GetSize()
+    end
+
+    action GetNestedProperty(integer i) returns ProjectProperty
+        return properties:Get(i)
+    end
 
     /* Returns the name of the property */
     action GetKey returns text
@@ -51,6 +68,14 @@ class ProjectProperty
         i = 0
         repeat while i < values:GetSize()
             property:Add(values:Get(i))
+            i = i + 1
+        end
+
+        //now copy all of the sub properties
+        i = 0
+        repeat while i < properties:GetSize()
+            ProjectProperty sub = properties:Get(i)
+            property:Add(sub:Copy())
             i = i + 1
         end
         return property
