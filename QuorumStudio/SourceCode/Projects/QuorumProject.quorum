@@ -910,7 +910,7 @@ class QuorumProject is Project
         end
     end
 
-    private action SetImageSheetProperty(ImageSheets sheets)
+    action GenerateImageSheetProperty returns ProjectProperty
         ProjectProperty property
         property:SetKey(IMAGE_SHEETS)
         Array<ImageSheet> array = sheets:GetSheets(true)
@@ -927,7 +927,11 @@ class QuorumProject is Project
             property:Add(sheetProperty)
             i = i + 1
         end
-        AddProperty(property)
+        return property
+    end
+
+    private action SetImageSheetProperty(ImageSheets sheets)
+        AddProperty(GenerateImageSheetProperty())
     end
 
     private action CreateImageSheets(JavaScriptObjectNotation object)
