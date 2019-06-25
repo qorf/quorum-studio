@@ -21,8 +21,13 @@ class NewProjectApplicationsBehavior is QuorumStudioBehavior
     
 
     action Run(BehaviorEvent event)
-        me:button = dialog:GetCurrentApplicationFocus()
-        me:toggleButton = cast(ToggleButton, me:button)
+        me:toggleButton = cast(ToggleButton, event:GetItem())
+        me:dialog:RemoveApplicationToggle()
+        me:toggleButton:AllowToggleOff(false)
+        me:toggleButton:SetToggleState(true)
+        //me:toggleButton = dialog:GetCurrentApplicationFocus()
+        //me:toggleButton = cast(ToggleButton, me:button)
         dialog:UpdateDescription(me:toggleButton)
+        
     end
 end

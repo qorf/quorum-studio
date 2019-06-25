@@ -46,6 +46,7 @@ use Libraries.Game.Graphics.Font
 use Libraries.Interface.Layouts.TabFlowLayout
 use Libraries.Interface.Events.MouseWheelListener
 use Libraries.Interface.Events.MouseEvent
+use Libraries.Containers.Array
 
 
 class NewProjectDialog is Dialog, KeyboardListener, MouseWheelListener
@@ -74,7 +75,7 @@ class NewProjectDialog is Dialog, KeyboardListener, MouseWheelListener
     NewProjectApplicationsBehavior buttonsBehavior
     NewProjectBrowseBehavior browseBehavior
     NewProjectOkBehavior okayBehavior
-    NewProjectTabBehavior tabBehavior
+    //NewProjectTabBehavior tabBehavior
     
     //set by the browseBehavior, used by the okayBehavior to set the QuorumProject location
     File locationPath
@@ -160,13 +161,13 @@ Respond action and respond with a WebResponse Object. We can receive these
 messages in any Java Container (e.g., Tomcat, Glassfish)."
 
     on create
-        tabBehavior:SetDialog(me)
+        //tabBehavior:SetDialog(me)
         browseBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
         buttonsBehavior:SetDialog(me)
         okayBehavior:SetDialog(me)
         studio:AddKeyboardListener(me)
-        basicTab:SetBehavior(tabBehavior)
+        //basicTab:SetBehavior(tabBehavior)
     end
 
     action Initialize
@@ -587,8 +588,8 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         Control panel
         panel:SetLayout(layout)
         panel:SetPercentageWidth(1.0)
-        //panel:SetPixelHeight(800)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+        panel:SetPixelHeight(600)
+        //panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
         scrollPane:Add(panel)
 
         FlowLayout applicationsLayout1
@@ -957,7 +958,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
     end
 
     private action SetupBehaviors
-        advancedTab:SetBehavior(tabBehavior)
+        //advancedTab:SetBehavior(tabBehavior)
         browseButton:SetBehavior(browseBehavior)
         cancelButton:SetBehavior(cancelBehavior)
         okayButton:SetBehavior(okayBehavior)
@@ -967,11 +968,19 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
     //used by the NewProjectApplicationBehavior to update
     //the description text box to the correct description for
     //the application/template type in focus
-    action GetCurrentApplicationFocus returns Button
-        Button currentFocus
-        currentFocus = cast(Button, studio:GetCurrentFocus())
-        return currentFocus
-    end
+//    action GetCurrentApplicationFocus returns ToggleButton
+//        //ToggleButton currentFocus
+//        Array<ToggleButton> applications = toggleButtons:GetButtons()
+//        integer i = 0
+//        repeat while i < applications:GetSize()
+//            ToggleButton application = applications:Get(i)
+//            if application:GetToggleState()
+//                return application
+//            end
+//            i = i + 1
+//        end
+//        //return currentFocus
+//    end
 
     //called by the NewProjectApplicationBehavior to update
     //the description text box to the correct description for
@@ -980,7 +989,11 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         descriptionText:SetText(descriptions:GetValue(button))
         descriptionText:HideCaret()
         templatePath = templates:GetValue(button)
-        button:SetToggleState(true)
+        //button:SetToggleState(true)
+    end
+
+    action RemoveApplicationToggle()
+        toggleButtons:DeselectAll()
     end
 
     action SetLocation(File file)
@@ -1009,17 +1022,18 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         text path = locationPath:GetAbsolutePath():Trim() + "/" + nameField:GetText():Trim() + "/Main.quorum"
         file:SetAbsolutePath(path)
         project:SetLocation(file:GetParentDirectory())
-        project:SetName(nameField:GetText():Trim())
+        
 
         projectPath = project:GetLocation()
         text newProjectPath = projectPath:GetAbsolutePath()
         newProjectFolderLocation:SetWorkingDirectory(newProjectPath)
         boolean copySuccess = template:Copy(newProjectFolderLocation, true)
-//        if not copySuccess
-//            output "Project copied Successfully"
-//        else
-//            output "Error copying Project"
-//        end
+        if not copySuccess
+            output "Error copying Project"
+        else
+            output "Project copied Successfully"
+        end
+        project:SetName(nameField:GetText():Trim())
 
         File dad = newProjectFolderLocation:GetParentDirectory()
         if not dad:Exists()
@@ -1027,6 +1041,10 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         end
 
         return project
+    end
+    
+    action GetProjectName() returns text
+        return nameField:GetText():Trim()
     end
 
     action AppendToProjectPane(QuorumProject project)
@@ -1077,7 +1095,5 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         locationField:Empty()
         tabPane:Select(basicTab)
         UpdateDescription(blankIcon)
-        descriptions:Empty()
-        templates:Empty()
     end
 end
