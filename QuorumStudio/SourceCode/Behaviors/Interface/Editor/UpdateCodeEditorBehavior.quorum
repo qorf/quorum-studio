@@ -21,6 +21,7 @@ use Libraries.Language.Compile.Symbol.SymbolTable
 use Libraries.Language.Compile.Symbol.Class
 use Libraries.Development.Environment.Studio.Build.BuildInformation
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Language.Compile.Library
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
     CompilerResult compilerResult = undefined
@@ -79,7 +80,16 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
         CodeTextBox box = cast(CodeTextBox, event:GetItem())
-        Lexer lexer = compilerResult:lexers:GetValue(path:GetAbsolutePath())
+
+        boolean isStandardLibrary = false
+        Library library = manager:GetLibrary()
+        Lexer lexer = library:GetLexer(path:GetAbsolutePath())
+        if lexer = undefined
+            lexer = compilerResult:lexers:GetValue(path:GetAbsolutePath())
+        else 
+            isStandardLibrary = true
+        end
+
         if lexer = undefined
             return now
         end
@@ -122,32 +132,34 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
             
             i = i + 1
         end
-        CompilerErrorManager errors = compilerResult:compilerErrorManager
-        if errors = undefined
-            return now
-        end
 
-        if not errors:IsCompilationErrorFree()
-            i = 0
-            Iterator<CompilerError> iterator = errors:GetIterator()
-            repeat while iterator:HasNext()
-                CompilerError error = iterator:Next()
-                integer index = error:GetIndex()
-                integer indexEnd = error:GetIndexEnd()
-                TextStyle style
-                TextUnderline underline
-                style:SetHighlight(underline)
-                style:SetIndex(index)
-                if indexEnd - index - 1 > 0
-                    style:SetSize(indexEnd - index - 1)
-                else
-                    style:SetSize(1)
+        if not isStandardLibrary
+            CompilerErrorManager errors = compilerResult:compilerErrorManager
+            if errors = undefined
+                return now
+            end
+
+            if not errors:IsCompilationErrorFree()
+                i = 0
+                Iterator<CompilerError> iterator = errors:GetIterator()
+                repeat while iterator:HasNext()
+                    CompilerError error = iterator:Next()
+                    integer index = error:GetIndex()
+                    integer indexEnd = error:GetIndexEnd()
+                    TextStyle style
+                    TextUnderline underline
+                    style:SetHighlight(underline)
+                    style:SetIndex(index)
+                    if indexEnd - index - 1 > 0
+                        style:SetSize(indexEnd - index - 1)
+                    else
+                        style:SetSize(1)
+                    end
+                    box:AddTextStyle("Errors" + i, style)
+                    i = i + 1
                 end
-                box:AddTextStyle("Errors" + i, style)
-                i = i + 1
             end
         end
-
         //now set the cursor line
         integer caret = box:GetCaretPosition()
         ColoredHighlight caretHighlight
@@ -175,8 +187,21 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         //add the debugger line
 
 
-        File f = info:recompile
-        SymbolTable table = compilerResult:symbolTable
+        File f = undefined
+        if isStandardLibrary
+            f = path
+        else
+            f = info:recompile
+        end
+
+        
+        SymbolTable table = undefined
+        if isStandardLibrary
+            table = library:GetSymbolTable()
+        else
+            table = compilerResult:symbolTable
+        end
+
         if table not= undefined
             Class clazz = table:GetClassInFile(f:GetAbsolutePath())
             if clazz not= undefined

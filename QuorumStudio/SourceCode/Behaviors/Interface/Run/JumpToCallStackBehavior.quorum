@@ -1,0 +1,77 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Controls.TextBox
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Studio.Build.BuildInformation
+use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Interface.Selections.SpreadsheetSelection
+use Libraries.Interface.Controls.Cell
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Language.Compile.Library
+use Libraries.Language.Compile.Symbol.SymbolTable
+use Libraries.Language.Compile.Symbol.Class
+
+class JumpToCallStackBehavior is QuorumStudioBehavior
+
+    action Run(BehaviorEvent event)
+        if not(event:GetItem() is Cell)
+            return now
+        end
+       
+        Cell cell = cast(Cell, event:GetItem())
+        Spreadsheet sheet = cell:GetSpreadsheet()
+        SpreadsheetSelection selection = sheet:GetSelection()
+        integer x = selection:GetX()
+        integer y = selection:GetY()
+        Cell lineCell = sheet:GetCell(1, y)
+        Cell fileCell = sheet:GetCell(3, y)
+        
+        integer line = cast(integer, lineCell:GetText())
+        if line < 0
+            line = 0
+        end
+        text fileText = fileCell:GetText()
+
+        if fileText:IsEmpty()
+            return now
+        end
+        QuorumStudio studio = GetMainApplication()
+        BuildManager build = studio:GetBuildManager()
+        Library library = build:GetLibrary()
+        SymbolTable table = library:GetSymbolTable()
+        Class clazz = table:GetClassInFile(fileText)
+        //if the class is in the standard library, make it read only
+        if clazz = undefined
+            output "Not in standard library"
+        else
+            output "In standard library"
+        end
+
+        CodeEditorTabPane editors = studio:GetTabPane()
+        File file
+        file:SetAbsolutePath(fileText)
+        EditorTab tab = editors:OpenNewTab(file)
+        TextBox box = tab:GetTextBox()
+
+        if line > 0
+            box:SetCaretPositionToLine(line - 1)
+            box:GoToLine(line - 1)
+        end
+    end
+end

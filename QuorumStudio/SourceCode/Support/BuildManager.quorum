@@ -57,6 +57,8 @@ use Libraries.Language.Compile.CodeCompletionRequest
 use Libraries.Language.Compile.CodeCompletionResult
 use Libraries.Development.Environment.Studio.Android.AndroidSupport
 use Libraries.Development.Environment.Studio.Behaviors.SetErrorsBehavior
+use Libraries.Development.Environment.Studio.Interface.CallStackTab
+use Libraries.Development.Environment.Studio.Behaviors.UpdateCallStackBehavior
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -224,6 +226,21 @@ class BuildManager is DebuggerListener, ProcessListener
         CodeTextBox box = tab:GetTextBox()
         text source = box:GetText()
 
+        //it's in the standard library, has a lexer, and is a valid file
+        Lexer standardLibraryLexer = library:GetLexer(file:GetAbsolutePath())
+        if file not= undefined and standardLibraryLexer not= undefined
+            if box not= undefined
+                box:SetBuildManager(me)
+                UpdateCodeEditorBehavior updater
+                //updater:SetBuildInformation(info)
+                updater:SetBuildManager(me)
+                //updater:SetCompilerResult(result)
+                updater:SetPath(file)
+                box:AddBehavior(updater)
+            end
+            return true
+        end
+
         //actually do the building
         BuildInformation info
         info:outputTab = outputTabs:GetOutputTab()
@@ -236,6 +253,10 @@ class BuildManager is DebuggerListener, ProcessListener
         FastBuild(info)
         
         return true
+    end
+
+    action GetLibrary returns Library
+        return library
     end
 
     action ToggleBreakpoint(Breakpoint point)
@@ -366,6 +387,16 @@ class BuildManager is DebuggerListener, ProcessListener
             update:SetOldTextBox(box)
         end
         variablesTab:AddBehavior(update)
+
+        //update the callstack
+        CallStackTab call = outputTabs:GetCallStackTab()
+
+        UpdateCallStackBehavior behavior
+        behavior:SetBuildInformation(debuggingProgram)
+        behavior:SetCallStackTab(call)
+        behavior:SetOutputEditorTabPane(outputTabs)
+        behavior:SetDebugger(debugger)
+        call:AddBehavior(behavior)
     end
 
     action Scan

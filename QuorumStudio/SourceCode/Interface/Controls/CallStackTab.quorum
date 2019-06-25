@@ -1,6 +1,160 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.Tab
+
+use Libraries.Interface.Controls.Tab
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Interface.Layouts.Layout
+use Libraries.Development.Environment.Resources
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Language.Debug.Debugger
+use Libraries.Language.Debug.VariablesModel
+use Libraries.Containers.Array
+use Libraries.Language.Debug.Variable
+use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Interface.Controls.Column
+use Libraries.Interface.Controls.Cell
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Language.Debug.StackFrame
+use Libraries.Development.Environment.Studio.Build.BuildInformation
+use Libraries.Language.Compile.CompilerResult
+use Libraries.Language.Compile.Symbol.SymbolTable
+use Libraries.Language.Compile.Symbol.Class
 
 class CallStackTab is Tab  
+    BuildManager manager = undefined
+    Resources resources = undefined
+    Behaviors behaviors = undefined
+    Debugger debugger = undefined
+    BreakpointScrollPane pane
+    Spreadsheet table
+    boolean updateDebuggerInformation = false
+    Column actionColumn
+    Column lineColumn
+    Column classColumn
+    Column fileColumn
+    Cell headerAction
+    Cell headerClass
+    Cell headerLine
+    Cell headerFile
+
+    action GetBehaviors returns Behaviors
+        return behaviors
+    end
+
+    action SetBehaviors(Behaviors behaviors)
+        me:behaviors = behaviors
+        manager = behaviors:GetBuildManager()
+        debugger = manager:GetDebugger()
+        table:SetCellActivationBehavior(behaviors:GetJumpToCallStackBehavior())
+    end
+
+    action GetResources returns Resources
+        return resources
+    end
+
+    action SetResources(Resources resources)
+        me:resources = resources
+    end
+
+    action GetBuildManager returns BuildManager
+        return manager
+    end
+
+    action SetBuildManager(BuildManager build)
+        me:manager = build
+    end
+
+    action Setup
+        DisplayCloseButton(true)
+        table:Add(actionColumn)
+
+        LayoutProperties messageProperties = actionColumn:GetDefaultLayoutProperties()
+        messageProperties:SetPixelWidth(0)
+        messageProperties:SetPercentageWidth(0.15)
+        
+        LayoutProperties lineProperties = lineColumn:GetDefaultLayoutProperties()
+        lineProperties:SetPixelWidth(0)
+        lineProperties:SetPercentageWidth(0.1)
+
+        LayoutProperties classProperties = classColumn:GetDefaultLayoutProperties()
+        classProperties:SetPixelWidth(0)
+        classProperties:SetPercentageWidth(0.25)
+
+        LayoutProperties fileProperties = fileColumn:GetDefaultLayoutProperties()
+        fileProperties:SetPixelWidth(0)
+        fileProperties:SetPercentageWidth(0.5)
+
+        headerAction:SetText("Action")
+        headerLine:SetText("Line")
+        headerClass:SetText("Class")
+        headerFile:SetText("File")
+
+        actionColumn:Add(headerAction)
+        lineColumn:Add(headerLine)
+        classColumn:Add(headerClass)
+        fileColumn:Add(headerFile)
+
+        table:Add(lineColumn)
+        table:Add(classColumn)
+        table:Add(fileColumn)
+
+        LayoutProperties properties = table:GetDefaultLayoutProperties()
+        properties:SetHorizontalLayoutMode(properties:FILL)
+
+        pane:Add(table)
+        pane:Resize()
+        SetName("Call Stack")
+        SetRelatedItem(GetPane())
+        DisplayCloseButton(true)
+    end
+
+    action Empty 
+        table:Empty()
+        actionColumn:Empty()
+        lineColumn:Empty()
+        classColumn:Empty()
+        fileColumn:Empty()
+
+        table:Add(actionColumn)
+        table:Add(lineColumn)
+        table:Add(classColumn)
+        table:Add(fileColumn)
+
+        actionColumn:Add(headerAction)
+        lineColumn:Add(headerLine)
+        classColumn:Add(headerClass)
+        fileColumn:Add(headerFile)
+    end
+
+    action Add(StackFrame frame, BuildInformation info)
+        Cell actionCell
+        Cell lineCell
+        Cell classNameCell
+        Cell fileNameCell
+        
+        actionCell:SetText(frame:GetName())
+        lineCell:SetText("" + frame:GetLine())
+        classNameCell:SetText("" + frame:GetDotName())
+
+        CompilerResult result = info:result
+        SymbolTable table = result:symbolTable
+        Class clazz = table:GetClass(frame:GetQuorumName())
+        if clazz not= undefined
+            text value = clazz:GetFile():GetAbsolutePath()
+            fileNameCell:SetText(value)
+        else
+            fileNameCell:SetText("")
+        end
+
+        actionColumn:Add(actionCell)
+        lineColumn:Add(lineCell)
+        classColumn:Add(classNameCell)
+        fileColumn:Add(fileNameCell)
+    end
+
+    action GetPane returns BreakpointScrollPane
+        return pane
+    end
 end
