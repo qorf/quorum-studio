@@ -49,7 +49,7 @@ use Libraries.Interface.Events.MouseEvent
 use Libraries.Containers.Array
 
 
-class NewProjectDialog is Dialog, KeyboardListener, MouseWheelListener
+class NewProjectDialog is Dialog//, KeyboardListener, MouseWheelListener
 
     boolean initialized = false
     
@@ -166,7 +166,8 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         cancelBehavior:SetDialog(me)
         buttonsBehavior:SetDialog(me)
         okayBehavior:SetDialog(me)
-        studio:AddKeyboardListener(me)
+        SetBehavior(okayBehavior)
+        //studio:AddKeyboardListener(me)
         //basicTab:SetBehavior(tabBehavior)
     end
 
@@ -577,7 +578,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         ScrollPane scrollPane
         scrollPane:SetPercentageWidth(1.0)
         scrollPane:SetPixelHeight(300)
-        scrollPane:AddMouseWheelListener(me)
+        //scrollPane:AddMouseWheelListener(me)
         //scrollPane:SetVerticalLayoutMode(scrollPane:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
         FlowLayout scrollLayout
         scrollPane:SetLayout(scrollLayout)
@@ -963,25 +964,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         cancelButton:SetBehavior(cancelBehavior)
         okayButton:SetBehavior(okayBehavior)
     end
-    
-    //action to obtain the current button that has the focus
-    //used by the NewProjectApplicationBehavior to update
-    //the description text box to the correct description for
-    //the application/template type in focus
-//    action GetCurrentApplicationFocus returns ToggleButton
-//        //ToggleButton currentFocus
-//        Array<ToggleButton> applications = toggleButtons:GetButtons()
-//        integer i = 0
-//        repeat while i < applications:GetSize()
-//            ToggleButton application = applications:Get(i)
-//            if application:GetToggleState()
-//                return application
-//            end
-//            i = i + 1
-//        end
-//        //return currentFocus
-//    end
-
+   
     //called by the NewProjectApplicationBehavior to update
     //the description text box to the correct description for
     //the application/template Button in focus
@@ -989,7 +972,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         descriptionText:SetText(descriptions:GetValue(button))
         descriptionText:HideCaret()
         templatePath = templates:GetValue(button)
-        //button:SetToggleState(true)
     end
 
     action RemoveApplicationToggle()
@@ -1028,11 +1010,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         text newProjectPath = projectPath:GetAbsolutePath()
         newProjectFolderLocation:SetWorkingDirectory(newProjectPath)
         boolean copySuccess = template:Copy(newProjectFolderLocation, true)
-        if not copySuccess
-            output "Error copying Project"
-        else
-            output "Project copied Successfully"
-        end
+        
         project:SetName(nameField:GetText():Trim())
 
         File dad = newProjectFolderLocation:GetParentDirectory()
@@ -1061,16 +1039,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         Iterator<TreeItem> items = projectTree:GetTreeItems()
 
         projectTree:Add(treeItem)
-    end
-    
-    action PressedKey (KeyboardEvent event)
-        if event:keyCode = event:ENTER
-            okayButton:Activate()
-        end
-
-        if event:keyCode = event:ESCAPE
-            cancelButton:Activate()            
-        end
     end
 
     action GetCurrentTabFocus returns Tab
