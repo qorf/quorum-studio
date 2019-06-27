@@ -49,10 +49,8 @@ use Libraries.Interface.Events.MouseEvent
 use Libraries.Containers.Array
 
 
-class NewProjectDialog is Dialog//, KeyboardListener, MouseWheelListener
-
+class NewProjectDialog is Dialog
     boolean initialized = false
-    
     GameStateManager gameManager
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
     HashTable<Button, text> descriptions
@@ -284,6 +282,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         descriptionText:SetLeftPadding(20)
         descriptionText:SetRightPadding(20)
         descriptionText:SetPixelHeight(100)
+        descriptionText:SetName("Project Description")
         descriptionText:HideCaret()
         
         descriptionContainer:Add(descriptionText)
@@ -306,6 +305,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         projectNameContainer:Add(nameLabel)
 
         nameField:SetText("BlankQuorumApplication") 
+        nameField:SetName("Name")
         nameField:SetPercentageWidth(0.92)
         projectNameContainer:Add(nameField)
         createNewProjectContainer:Add(projectNameContainer)
@@ -327,6 +327,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         locationField:SetText(locationPath:GetPath())    //set to current directory?
         locationField:SetPercentageWidth(0.82)
         locationField:SetRightPadding(10)
+        locationField:SetName("Location")
         projectLocationContainer:Add(locationField)
 
         browseButton:SetName("Browse...")
@@ -887,6 +888,10 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
     end
 
     private action SetupFocus
+        //Tab advancedTab
+        basicTab:SetFocusTarget(blankIcon)
+        advancedTab:SetFocusTarget(documentIcon)
+
         tabPane:SetFocusable(true)
         nameField:SetFocusable(true)
         locationField:SetFocusable(true)
@@ -1063,6 +1068,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
     end
 
     action OnShow
-        //fileNameField:Focus()
+        blankIcon:Focus()
     end
 end
