@@ -38,7 +38,7 @@ use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Interface.Selections.TreeSelection
 
 
-class NewFileDialog is Dialog, KeyboardListener
+class NewFileDialog is Dialog
 
     boolean initialized = false 
 
@@ -67,8 +67,10 @@ class NewFileDialog is Dialog, KeyboardListener
         cancelBehavior:SetDialog(me)
         okayBehavior:SetDialog(me)
         browseBehavior:SetDialog(me) 
-        studio:AddKeyboardListener(me) 
-        fileNameField:Focus()
+        SetBehavior(okayBehavior)
+
+        fileNameField:SetName("Name")
+        locationNameField:SetName("Location")
     end
 
     action Initialize
@@ -104,17 +106,6 @@ class NewFileDialog is Dialog, KeyboardListener
     //project (e.g. GameApplication/SourceCode)
     action SetProperties(QuorumProject project)
         me:project = project
-        //Sets the locationNameField to the path of the current folder in focus in the ProjectTree
-//        File file
-//        ProjectTree tree = studio:GetProjectTree()
-//        TreeSelection selection = tree:GetSelection()   
-//        Array<TreeItem> items = selection:GetPath()
-//        i = items:GetSize()-1
-//        repeat while i > 0
-//            TreeItem item = items:Get(i)
-//            projectName = item:GetName() + "/" + projectName
-//            i = i - 1
-//        end
         projectName = project:GetName()
         locationNameField:SetText(project:GetName())  
     end 
@@ -301,21 +292,15 @@ class NewFileDialog is Dialog, KeyboardListener
         projectTree:Add(treeItem)
     end
 
-    action PressedKey(KeyboardEvent event)
-        if event:keyCode = event:ENTER
-            okayButton:Activate()
-        end
-
-        if event:keyCode = event:ESCAPE
-            cancelButton:Activate()
-        end
-    end
-
     action OnHide
         fileNameField:Empty()
         locationNameField:Empty()
         projectName = ""
         project = undefined
         manager = undefined
+    end
+
+    action OnShow
+        fileNameField:Focus()
     end
 end
