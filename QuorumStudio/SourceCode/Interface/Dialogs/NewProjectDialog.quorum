@@ -47,9 +47,11 @@ use Libraries.Interface.Layouts.TabFlowLayout
 use Libraries.Interface.Events.MouseWheelListener
 use Libraries.Interface.Events.MouseEvent
 use Libraries.Containers.Array
+use Libraries.Interface.Events.SelectionListener
+use Libraries.Interface.Events.SelectionEvent
 
 
-class NewProjectDialog is Dialog
+class NewProjectDialog is Dialog, SelectionListener
     boolean initialized = false
     GameStateManager gameManager
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
@@ -164,6 +166,19 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         buttonsBehavior:SetDialog(me)
         okayBehavior:SetDialog(me)
         SetBehavior(okayBehavior)
+        tabPane:AddSelectionListener(me)
+    end
+
+    action SelectionChanged(SelectionEvent event)
+        TabPaneSelection selection = cast(TabPaneSelection, event:GetSelection())
+        integer index = selection:GetIndex()
+        if index = 0
+            okayButton:SetNextFocus(blankIcon)
+            descriptionText:SetPreviousFocus(legoIcon)
+        else
+            okayButton:SetNextFocus(documentIcon)
+            descriptionText:SetPreviousFocus(webServerIcon)
+        end
     end
 
     action Initialize
@@ -283,6 +298,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         descriptionText:SetRightPadding(20)
         descriptionText:SetPixelHeight(100)
         descriptionText:SetName("Project Description")
+        descriptionText:SetMoveFocusOnTab(true)
         descriptionText:HideCaret()
         
         descriptionContainer:Add(descriptionText)
@@ -919,12 +935,18 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         locationField:SetNextFocus(browseButton)
         browseButton:SetNextFocus(cancelButton)
         cancelButton:SetNextFocus(okayButton)
-        okayButton:SetNextFocus(tabPane)
+        okayButton:SetNextFocus(blankIcon)
 
+
+            
         blankIcon:SetNextFocus(gameIcon)
         gameIcon:SetNextFocus(androidIcon)
         androidIcon:SetNextFocus(legoIcon)
-        legoIcon:SetNextFocus(nameField)
+        legoIcon:SetNextFocus(descriptionText)
+
+        descriptionText:SetPreviousFocus(legoIcon)
+        descriptionText:SetNextFocus(nameField)
+        nameField:SetPreviousFocus(descriptionText)
 
         documentIcon:SetNextFocus(imageSheetsIcon)
         imageSheetsIcon:SetNextFocus(internetServicesIcon)
@@ -935,7 +957,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         sineWavesIcon:SetNextFocus(skyboxIcon)
         skyboxIcon:SetNextFocus(userInterfaceIcon)
         userInterfaceIcon:SetNextFocus(webServerIcon)
-        webServerIcon:SetNextFocus(nameField)
+        webServerIcon:SetNextFocus(descriptionText)
 
         tabPane:SetPreviousFocus(okayButton)
         locationField:SetPreviousFocus(nameField)
