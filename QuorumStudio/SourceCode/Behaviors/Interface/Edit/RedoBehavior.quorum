@@ -1,0 +1,23 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.FindDialog
+use Libraries.Interface.Controls.Dialog
+use Libraries.Development.Environment.Studio.Interface.ReplaceDialog
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Item
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Undo.EditManager
+
+class RedoBehavior is EditorBehavior
+    action Run(Item item)
+        if item is TextBox
+            TextBox box = cast(TextBox, item)
+            EditManager edits = box:GetEditManager()
+            if edits not= undefined and edits:CanRedo()
+                edits:Redo()
+            end
+        end
+    end
+end

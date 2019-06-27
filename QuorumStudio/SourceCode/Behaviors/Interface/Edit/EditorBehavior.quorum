@@ -1,0 +1,45 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.FindDialog
+use Libraries.Interface.Controls.Dialog
+use Libraries.Development.Environment.Studio.Interface.ReplaceDialog
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Item
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Selections.TextBoxSelection
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Interface.Behaviors.Controls.TextBoxCopyToClipboardBehavior
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Controls.MenuRoot
+use Libraries.Game.FocusManager
+
+class EditorBehavior is QuorumStudioBehavior
+    action Run (BehaviorEvent event)
+        Item value = event:GetItem()
+        Item item = undefined
+        if value is MenuItem
+            MenuItem menuItem = cast(MenuItem, value)
+            MenuRoot value1 = menuItem:GetMenuRoot()
+            item = value1:GetLastFocus()
+
+            if item = undefined
+                GameStateManager manager
+                FocusManager focuser = manager:GetFocusManager()
+                Item value2 = focuser:GetFocus()
+                if value2 = undefined
+                    return now
+                end
+                Run(value2)
+            else 
+                Run(item)
+            end
+        else 
+            Run(value)
+        end        
+    end
+
+    blueprint action Run(Item item)
+end

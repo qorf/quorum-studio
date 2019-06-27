@@ -1,0 +1,29 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.FindDialog
+use Libraries.Interface.Controls.Dialog
+use Libraries.Development.Environment.Studio.Interface.ReplaceDialog
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Item
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Selections.TextBoxSelection
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Interface.Behaviors.Controls.TextBoxCopyToClipboardBehavior
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Controls.MenuRoot
+use Libraries.Game.FocusManager
+
+class CutBehavior is EditorBehavior
+    TextBoxCopyToClipboardBehavior behave
+
+    action Run(Item item)
+        BehaviorEvent newEvent
+        newEvent:SetItem(item)
+        behave:Run(newEvent)
+        TextBox box = cast(TextBox, item)
+        box:DeleteSelection()
+    end
+end
