@@ -132,6 +132,20 @@ class QuorumProject is Project
         return sources
     end
 
+    /* This action checks to see if the passed file is the main file by comparing
+        their absolute paths. If this file or the main file are undefined, it returns false.
+    */
+    action IsMainFile(File file) returns boolean
+        if file = undefined or mainFile = undefined 
+            return false
+        end
+
+        if file:GetAbsolutePath() = mainFile:GetAbsolutePath()
+            return true
+        end
+        return false
+    end
+
     /*
         This action searches through all source files in a project and returns 
         true if this is a valid source code file in the project. If it cannot
