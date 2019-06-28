@@ -10,6 +10,7 @@ use Libraries.Language.Compile.Compiler
 use Libraries.Development.Environment.Projects.QuorumProjectView
 use Libraries.Development.Environment.Projects.ProjectView
 use Libraries.Containers.Support.ArrayIterator
+use Libraries.Development.Environment.Projects.ProjectTreeItem
 
 /*
     This class loads a Quorum project into the Integrated Development Environment.
@@ -106,6 +107,7 @@ class QuorumProject is Project
     /* This is an in memory representation of the image sheets class. */
     ImageSheets sheets
     Compiler compiler
+    ProjectTreeItem mainFileItem = undefined
 
     on create
         library:SetPath("Library/Standard")
@@ -704,7 +706,7 @@ class QuorumProject is Project
     end
 
     action SetMain(text path)
-        SetPropertyValue(PROJECT_MAIN_LOCATION, path)
+        SetPropertyValue(PROJECT_MAIN, path)
         File location = GetLocation()
         File newMain
         newMain:SetWorkingDirectory(location:GetAbsolutePath())
@@ -714,6 +716,44 @@ class QuorumProject is Project
             alert("Set Main file to a file that does not exist")
         end
         mainFile = newMain
+    end
+
+    action GetMainFileProjectTreeItem returns ProjectTreeItem
+        return mainFileItem
+    end
+
+    /*
+        This action takes a project tree item and both sets the item for the main
+        and additionally sets the main. The purpose is that if you want to ignore
+        trees and just use Main funtionality, call SetMain and pass a path. If you
+        want the project tree to update, call this instead. It returns false if 
+        the call could not be validated and thus fails.
+    */
+    action SetMainFileProjectTreeItem(ProjectTreeItem item) returns boolean
+        if item = undefined
+            return false
+        end
+
+        File value = item:GetFile()
+        if value = undefined
+            return false
+        end
+
+        if value:GetAbsolutePath() = GetMain():GetAbsolutePath()
+            mainFileItem = item
+            return true
+        end
+        text newPath = value:GetAbsolutePath()
+        File projectLocation = GetLocation()
+        text projectPath = projectLocation:GetAbsolutePath()
+        if newPath:GetSize() < projectPath:GetSize()
+            return false
+        end
+        text newRelativePath = newPath:GetSubtext(projectPath:GetSize())
+        SetMain(newRelativePath)
+        mainFileItem = item
+        
+        return true
     end
 
     action GetExecutableLocation returns File
