@@ -1,0 +1,150 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Game.Graphics.Label
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Game.Graphics.Drawable
+use Libraries.Interface.Controls.Icon
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Button
+use Libraries.Development.Environment.Studio.Behaviors.GoToLineOkButtonBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Interface.Events.TextChangeListener
+use Libraries.Interface.Events.TextChangeEvent
+
+class GoToLineDialog is Dialog, TextChangeListener
+    boolean initialized = false
+    Button ok
+    Button cancel
+    TextField lineTextField
+    Label lineLabel
+
+    GoToLineOkButtonBehavior okBehavior
+    DialogCancelBehavior cancelBehavior
+    on create
+        SetModal(true)
+    end
+
+    action Setup
+        if initialized
+            output "WARNING: Re-initializing the FindDialog."
+        end
+        initialized = true
+
+        SetName("Go To Line Dialog")
+        SetPixelWidth(400)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        okBehavior:SetDialog(me)
+        cancelBehavior:SetDialog(me)
+        SetBehavior(okBehavior)
+
+        SetNextFocus(lineLabel)
+        SetPreviousFocus(ok)
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+
+        lineLabel:SetText("Go To Line")
+        lineLabel:SetNextFocus(lineTextField)
+        lineLabel:SetPreviousFocus(ok)
+
+        //setup the ok button
+        ok:SetName("Go To")
+        ok:SetFontSize(14)
+        ok:SetLeftPadding(10)
+        ok:SetRightPadding(10)
+        ok:SetBottomPadding(10)
+        ok:SetTopPadding(15)
+        ok:SetHorizontalLayoutMode(ok:parent:Libraries.Interface.Controls.Control:STANDARD)
+        ok:SetPercentageWidth(0.3)
+        ok:SetFocusable(true)
+        ok:SetNextFocus(lineTextField)
+        ok:SetBehavior(okBehavior)
+        ok:SetPreviousFocus(cancel)
+
+        cancel:SetName("Cancel")
+        cancel:SetFontSize(14)
+        cancel:SetLeftPadding(200)
+        cancel:SetBottomPadding(10)
+        cancel:SetTopPadding(15)
+        cancel:SetHorizontalLayoutMode(ok:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancel:SetPercentageWidth(0.3)
+        cancel:SetFocusable(true)
+        cancel:SetNextFocus(ok)
+        cancel:SetBehavior(cancelBehavior)
+        cancel:SetPreviousFocus(lineTextField)
+
+        lineTextField:SetName("Go To Line")
+        lineTextField:SetHorizontalLayoutMode(lineTextField:parent:Libraries.Interface.Controls.Control:FILL)
+        lineTextField:SetFocusable(true)
+        lineTextField:SetNextFocus(cancel)
+        lineTextField:SetPreviousFocus(ok)
+
+        lineTextField:SetText("")
+        lineTextField:AddTextChangeListener(me)
+
+        LayoutProperties properties
+        Control panel
+        FlowLayout findLayout
+        panel:SetLayout(findLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetPixelHeight(50)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+
+        panel:Add(lineLabel)
+        panel:Add(lineTextField)
+        panel:Add(cancel)
+        panel:Add(ok)
+        panel:SetView2D(view)
+        Add(panel)
+    end
+
+    action TextChanged(TextChangeEvent event)
+        text value = lineTextField:GetText()
+        text newValue = Sanitize(value)
+        if not newValue:IsEmpty()
+            integer line = cast(integer, newValue)
+            okBehavior:SetLine(line - 1)
+        else
+            okBehavior:SetLine(0)
+        end
+
+        if value not= newValue
+            lineTextField:SetText(newValue)
+        end
+    end
+
+    private action Sanitize(text value) returns text
+        text result = ""
+        i = 0
+        repeat while i < value:GetSize()
+            text char = value:GetCharacter(i)
+            if IsInteger(char)
+                result = result + char
+            end
+            i = i + 1
+        end
+        return result
+    end
+
+    private action IsInteger(text char) returns boolean
+        if char = "1" or char = "2" or char = "3" or char = "4" or char = "5"
+            or char = "6" or char = "7" or char = "8" or char = "9" or char = "0"
+            return true
+        end
+        return false
+    end
+
+    action OnShow
+        lineTextField:Focus()
+    end
+end
