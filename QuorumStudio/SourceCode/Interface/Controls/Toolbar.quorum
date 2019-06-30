@@ -47,14 +47,6 @@ class Toolbar is ToolBar
         return behaviors
     end
 
-    action SetDisplayOffset(number value)
-        height = value
-    end
-
-    action GetDisplayOffset returns number
-        return height
-    end
-
     action GetResources returns Resources
         return resources
     end
@@ -62,21 +54,6 @@ class Toolbar is ToolBar
     action SetResources(Resources resources)
         me:resources = resources
     end
-
-    action GetLayout returns Layout
-        return layout
-    end
-
-    action SetLayout(Layout layout)
-        me:layout = layout
-    end
-
-    action GainedFocus(FocusEvent event)
-        a = 5 
-//        Button button = buttons:Get(0)
-//        button:Focus()
-    end
-    
 
     action GetPreviousFocus returns Item
         return parent:Item:GetPreviousFocus()
@@ -87,6 +64,7 @@ class Toolbar is ToolBar
     end
 
     action Setup
+        SetPixelHeight(34)
         AddButtonToToolbar(resources:GetNewProject(), behaviors:GetOpenNewProjectBehavior(), "New Project")
         AddButtonToToolbar(resources:GetNewFile(), behaviors:GetOpenNewFileBehavior(), "New File")
         AddButtonToToolbar(resources:GetOpenProject(), behaviors:GetOpenProjectBehavior(), "Open Project")
@@ -130,6 +108,7 @@ class Toolbar is ToolBar
     private action AddButtonToToolbar(Icon image, Behavior behavior, text name)
         Button button
         button:SetFont(undefined)
+        
         button:SetIcon(image)
         button:SetTopPadding(3)
         button:SetBottomPadding(3)
