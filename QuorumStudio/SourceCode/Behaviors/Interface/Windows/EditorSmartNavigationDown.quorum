@@ -10,10 +10,13 @@ use Libraries.Interface.Controls.TextBox
 use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Development.Environment.Studio.Interface.CallStackTab
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Interface.Item
 
-class EditorSmartNavigationDown is QuorumStudioBehavior
-    action Run(BehaviorEvent event)
-        CodeTextBox box = cast(CodeTextBox, event:GetItem())
-        box:SmartNavigateDown()
+class EditorSmartNavigationDown is EditorBehavior
+    action Run(Item item)
+        if item is CodeTextBox
+            CodeTextBox box = cast(CodeTextBox, item)
+            box:SmartNavigateDown()
+        end
     end
 end

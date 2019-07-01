@@ -16,12 +16,15 @@ use Libraries.Interface.Selections.MenuSelection
 use Libraries.Development.Environment.Studio.Behaviors.DefaultMenuOpenBehavior
 use Libraries.Interface.Events.FocusEvent
 use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Events.SelectionListener
+use Libraries.Interface.Events.SelectionEvent
 
-class Menu is MenuBar
+class Menu is MenuBar, SelectionListener
     KeyboardEvent keys
     MenuItem fileMenu
     MenuItem editMenu
     MenuItem viewMenu
+    MenuItem navigateMenu
     MenuItem runMenu
     MenuItem windowsMenu
     MenuItem helpMenu
@@ -80,7 +83,8 @@ class Menu is MenuBar
     action Setup
         SetupFileMenu()
         SetupEditMenu()
-        //SetupViewMenu()
+        SetupViewMenu()
+        SetupNavigateMenu()
         SetupRunMenu()
         SetupWindowsMenu()
         SetupHelpMenu()
@@ -88,10 +92,11 @@ class Menu is MenuBar
         Array<MenuItem> menuItems
         menuItems:Add(fileMenu)
         menuItems:Add(editMenu)
-        //menuItems:Add(viewMenu)
+        menuItems:Add(viewMenu)
+        menuItems:Add(navigateMenu)
         menuItems:Add(runMenu)
         menuItems:Add(windowsMenu)
-        menuItems:Add(helpMenu)
+        //menuItems:Add(helpMenu)
         Add(menuItems)
         SetSelectingState(false)
         SetDefaultPopupShortcut()
@@ -104,35 +109,29 @@ class Menu is MenuBar
         MenuItem newProject
         defaultMenuItem = newProject
         newProject:SetName("New Project")
-        // Set a behavior to indicate what the menu item does when activated.
+        newProject:SetShortcut(keyMap:GetNewProjectKey())
         newProject:SetBehavior(behaviors:GetOpenNewProjectBehavior())
         fileItems:Add(newProject)
+
+        MenuItem newFile
+        newFile:SetName("New File")
+        newFile:SetShortcut(keyMap:GetNewFileKey())
+        newFile:SetBehavior(behaviors:GetOpenNewFileBehavior())
+        fileItems:Add(newFile)
         
         // The openProject is instead declared as a field so it can be used
         // later in SetupMenuHotkeys().
         MenuItem openProject
         openProject:SetName("Open Project")
-        // Set a behavior to indicate what the menu item does when activated.
+        openProject:SetShortcut(keyMap:GetOpenProjectKey())
         openProject:SetBehavior(behaviors:GetOpenProjectBehavior())
         fileItems:Add(openProject)
 
         MenuItem closeProject
         closeProject:SetName("Close Project")
-        // Set a behavior to indicate what the menu item does when activated.
+        closeProject:SetShortcut(keyMap:GetCloseProjectKey())
         closeProject:SetBehavior(behaviors:GetCloseProjectBehavior())
         fileItems:Add(closeProject)
-
-        MenuItem newFile
-        newFile:SetName("New File")
-        // Set a behavior to indicate what the menu item does when activated.
-        newFile:SetBehavior(behaviors:GetOpenNewFileBehavior())
-        fileItems:Add(newFile)
-        
-        MenuItem openFile
-        openFile:SetName("Open File")
-        // Set a behavior to indicate what the menu item does when activated.
-        //openFile:SetBehavior(undefined)
-        fileItems:Add(openFile)
 
         MenuItem save
         save:SetName("Save")
@@ -140,21 +139,14 @@ class Menu is MenuBar
         save:SetShortcut(keyMap:GetSaveKey())
         fileItems:Add(save)
 
-        MenuItem saveAs
-        saveAs:SetName("Save As...")
-        // Set a behavior to indicate what the menu item does when activated.
-        //saveAs:SetBehavior(undefined)
-        fileItems:Add(saveAs)
-
         MenuItem saveAll
         saveAll:SetName("Save All")
-        // Set a behavior to indicate what the menu item does when activated.
+        saveAll:SetShortcut(keyMap:GetSaveAllKey())
         saveAll:SetBehavior(behaviors:GetSaveAllBehavior())
         fileItems:Add(saveAll)
 
         MenuItem exit
         exit:SetName("Exit")
-        // Set a behavior to indicate what the menu item does when activated.
         exit:SetBehavior(behaviors:GetExitBehavior())
         exit:SetShortcut(keyMap:GetExitKey())
         fileItems:Add(exit)
@@ -168,85 +160,61 @@ class Menu is MenuBar
 
         MenuItem undo
         undo:SetName("Undo")
-        // Set a behavior to indicate what the menu item does when activated.
-        //undo:SetBehavior(undefined)
+        undo:SetShortcut(keyMap:GetUndoKey())
+        undo:SetBehavior(behaviors:GetUndoBehavior())
         editItems:Add(undo)
 
         MenuItem redo
         redo:SetName("Redo")
-        // Set a behavior to indicate what the menu item does when activated.
-        //redo:SetBehavior(undefined)
+        redo:SetShortcut(keyMap:GetRedoKey())
+        redo:SetBehavior(behaviors:GetRedoBehavior())
         editItems:Add(redo)
 
         MenuItem cut
         cut:SetName("Cut")
-        // Set a behavior to indicate what the menu item does when activated.
-        //cut:SetBehavior(undefined)
+        cut:SetShortcut(keyMap:GetCutKey())
+        cut:SetBehavior(behaviors:GetCutBehavior())
         editItems:Add(cut)
 
         MenuItem copy
         copy:SetName("Copy")
-        // Set a behavior to indicate what the menu item does when activated.
-        //copy:SetBehavior(undefined)
+        copy:SetShortcut(keyMap:GetCopyKey())
+        copy:SetBehavior(behaviors:GetCopyBehavior())
         editItems:Add(copy)
 
         MenuItem paste
         paste:SetName("Paste")
-        // Set a behavior to indicate what the menu item does when activated.
-        //paste:SetBehavior(undefined)
+        paste:SetShortcut(keyMap:GetPasteKey())
+        paste:SetBehavior(behaviors:GetPasteBehavior())
         editItems:Add(paste)
-
-        MenuItem delete
-        delete:SetName("Delete")
-        // Set a behavior to indicate what the menu item does when activated.
-        //delete:SetBehavior(undefined)
-        editItems:Add(delete)
 
         MenuItem selectAll
         selectAll:SetName("Select All")
-        // Set a behavior to indicate what the menu item does when activated.
-        //selectAll:SetBehavior(undefined)
+        selectAll:SetShortcut(keyMap:GetSelectAllKey())
+        selectAll:SetBehavior(behaviors:GetSelectAllBehavior())
         editItems:Add(selectAll)
-
-        MenuItem goToLine
-        goToLine:SetName("Go to Line")
-        // Set a behavior to indicate what the menu item does when activated.
-        //goToLine:SetBehavior(undefined)
-        editItems:Add(goToLine)
-
-        MenuItem findSelection
-        findSelection:SetName("Find Selection")
-        // Set a behavior to indicate what the menu item does when activated.
-        //findSelection:SetBehavior(undefined)
-        editItems:Add(findSelection)
-
-        MenuItem findNext
-        findNext:SetName("Find Next")
-        // Set a behavior to indicate what the menu item does when activated.
-        //findNext:SetBehavior(undefined)
-        editItems:Add(findNext)
-
-        MenuItem findPrevious
-        findPrevious:SetName("Find Previous")
-        // Set a behavior to indicate what the menu item does when activated.
-        //findPrevious:SetBehavior(undefined)
-        editItems:Add(findPrevious)
 
         MenuItem find
         find:SetName("Find")
-        // Set a behavior to indicate what the menu item does when activated.
+        find:SetShortcut(keyMap:GetFindKey())
         find:SetBehavior(behaviors:GetOpenFindDialogBehavior())
         editItems:Add(find)
 
         MenuItem replace
         replace:SetName("Replace")
-        // Set a behavior to indicate what the menu item does when activated.
+        replace:SetShortcut(keyMap:GetReplaceKey())
         replace:SetBehavior(behaviors:GetOpenReplaceDialogBehavior())
         editItems:Add(replace)
 
+        MenuItem comment
+        comment:SetName("Comment")
+        comment:SetShortcut(keyMap:GetCommentLinesKey())
+        comment:SetBehavior(behaviors:GetCommentLineBehavior())
+        editItems:Add(comment)
+
         MenuItem projectProperties
         projectProperties:SetName("Edit Project Properties")
-        // Set a behavior to indicate what the menu item does when activated.
+        projectProperties:SetShortcut(keyMap:GetProjectPropertiesKey())
         projectProperties:SetBehavior(behaviors:GetOpenProjectPropertiesBehavior())
         editItems:Add(projectProperties)
 
@@ -257,32 +225,62 @@ class Menu is MenuBar
     private action SetupViewMenu
         Array<MenuItem> viewItems
 
-        MenuItem errorLog
-        errorLog:SetName("Quorum Studio Error Log")
-        // Set a behavior to indicate what the menu item does when activated.
-        //errorLog:SetBehavior(undefined)
-        viewItems:Add(errorLog)
+        MenuItem zoomIn
+        zoomIn:SetName("Zoom In")
+        zoomIn:SetShortcut(keyMap:GetScaleInterfaceUpKey())
+        zoomIn:SetBehavior(behaviors:GetScaleInterfaceUpBehavior())
+        viewItems:Add(zoomIn)
 
-        MenuItem lineNumbers
-        lineNumbers:SetName("Show Line Numbers")
-        // Set a behavior to indicate what the menu item does when activated.
-        //lineNumbers:SetBehavior(undefined)
-        viewItems:Add(lineNumbers)
-
-        MenuItem blocksMode
-        blocksMode:SetName("Enable Blocks Mode")
-        // Set a behavior to indicate what the menu item does when activated.
-        //blocksMode:SetBehavior(undefined)
-        viewItems:Add(blocksMode)
-
-        MenuItem splitMode
-        splitMode:SetName("Enable Split Mode")
-        // Set a behavior to indicate what the menu item does when activated.
-        //splitMode:SetBehavior(undefined)
-        viewItems:Add(splitMode)
+        MenuItem zoomOut
+        zoomOut:SetName("Zoom Out")
+        zoomOut:SetShortcut(keyMap:GetScaleInterfaceDownKey())
+        zoomOut:SetBehavior(behaviors:GetScaleInterfaceDownBehavior())
+        viewItems:Add(zoomOut)
 
         viewMenu:SetName("View")
         viewMenu:Add(viewItems)
+    end
+    
+    private action SetupNavigateMenu
+        Array<MenuItem> navigateItems
+
+//table:Add(keyMap:GetSmartNavigateUpKey(), behaviors:GetEditorSmartNavigationUp())
+            //table:Add(keyMap:GetSmartNavigateDownKey(), behaviors:GetEditorSmartNavigationDown())
+            //table:Add(keyMap:GetSmartNavigateLeftKey(), behaviors:GetEditorSmartNavigationLeft())
+            //table:Add(keyMap:GetSmartNavigateRightKey(), behaviors:GetEditorSmartNavigationRight())
+
+        MenuItem goToLine
+        goToLine:SetName("Go to Line")
+        goToLine:SetShortcut(keyMap:GetGotoLineKey())
+        goToLine:SetBehavior(behaviors:GetGoToLineBehavior())
+        navigateItems:Add(goToLine)
+
+        MenuItem smartUp
+        smartUp:SetName("Previous Action")
+        smartUp:SetShortcut(keyMap:GetSmartNavigateUpKey())
+        smartUp:SetBehavior(behaviors:GetEditorSmartNavigationUp())
+        navigateItems:Add(smartUp)
+
+        MenuItem smartDown
+        smartDown:SetName("Next Action")
+        smartDown:SetShortcut(keyMap:GetSmartNavigateDownKey())
+        smartDown:SetBehavior(behaviors:GetEditorSmartNavigationDown())
+        navigateItems:Add(smartDown)
+
+        MenuItem smartLeft
+        smartLeft:SetName("Previous Scope")
+        smartLeft:SetShortcut(keyMap:GetSmartNavigateLeftKey())
+        smartLeft:SetBehavior( behaviors:GetEditorSmartNavigationLeft())
+        navigateItems:Add(smartLeft)
+
+        MenuItem smartRight
+        smartRight:SetName("Next Scope")
+        smartRight:SetShortcut(keyMap:GetSmartNavigateRightKey())
+        smartRight:SetBehavior(behaviors:GetEditorSmartNavigationRight())
+        navigateItems:Add(smartRight)
+
+        navigateMenu:SetName("Navigate")
+        navigateMenu:Add(navigateItems)
     end
 
     private action SetupRunMenu
@@ -326,13 +324,13 @@ class Menu is MenuBar
 
         MenuItem pauseDebug
         pauseDebug:SetName("Pause")
-        pauseDebug:SetShortcut(keyMap:GetStopKey())
+        pauseDebug:SetShortcut(keyMap:GetPauseKey())
         pauseDebug:SetBehavior(behaviors:GetThreadedPauseBehavior())
         runItems:Add(pauseDebug)
 
         MenuItem continueDebug
         continueDebug:SetName("Continue")
-        continueDebug:SetShortcut(keyMap:GetStopKey())
+        continueDebug:SetShortcut(keyMap:GetContinueKey())
         continueDebug:SetBehavior(behaviors:GetThreadedContinueBehavior())
         runItems:Add(continueDebug)
 
@@ -365,6 +363,12 @@ class Menu is MenuBar
         toggleBreakpoint:SetShortcut(keyMap:GetToggleBreakpointKey())
         toggleBreakpoint:SetBehavior(behaviors:GetToggleBreakpointBehavior())
         runItems:Add(toggleBreakpoint)
+
+        MenuItem setProgramStart
+        setProgramStart:SetName("Set Program Start")
+        setProgramStart:SetShortcut(keyMap:GetSetProgramStartKey())
+        setProgramStart:SetBehavior(behaviors:GetSetProgramStartBehavior())
+        runItems:Add(setProgramStart)
 
         MenuItem sendToAndroidDebugMode
         sendToAndroidDebugMode:SetName("Send to Android")
@@ -447,17 +451,17 @@ class Menu is MenuBar
         //about:SetBehavior(undefined)
         helpItems:Add(about)
 
-        MenuItem findHelp
-        findHelp:SetName("Find Help Online")
-        // Set a behavior to indicate what the menu item does when activated.
-        //findHelp:SetBehavior(undefined)
-        helpItems:Add(findHelp)
-
-        MenuItem checkForUpdates
-        checkForUpdates:SetName("Check for Updates")
-        // Set a behavior to indicate what the menu item does when activated.
-        //checkForUpdates:SetBehavior(undefined)
-        helpItems:Add(checkForUpdates)
+//        MenuItem findHelp
+//        findHelp:SetName("Find Help Online")
+//        // Set a behavior to indicate what the menu item does when activated.
+//        //findHelp:SetBehavior(undefined)
+//        helpItems:Add(findHelp)
+//
+//        MenuItem checkForUpdates
+//        checkForUpdates:SetName("Check for Updates")
+//        // Set a behavior to indicate what the menu item does when activated.
+//        //checkForUpdates:SetBehavior(undefined)
+//        helpItems:Add(checkForUpdates)
 
         helpMenu:SetName("Help")
         helpMenu:Add(helpItems)

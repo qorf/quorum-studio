@@ -1,0 +1,49 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.System.File
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Resources
+use Libraries.Interface.Controls.Icon
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+
+class SetProgramStartBehavior is QuorumStudioBehavior
+    GameStateManager manager
+    action Run(BehaviorEvent event)
+        QuorumStudio qs = cast(QuorumStudio, manager:GetGame())
+        Resources resources = qs:GetResources()
+        ProjectTree tree = qs:GetProjectTree()
+        TreeSelection selection = tree:GetSelection()
+        if selection:IsEmpty()
+            return now
+        end
+
+        TreeItem value = selection:GetTreeItem()
+        if value is ProjectTreeItem
+            ProjectTreeItem item = cast(ProjectTreeItem, value)
+            File file = item:GetFile()
+            QuorumProject project = item:GetProject()
+            ProjectTreeItem oldMainItem = project:GetMainFileProjectTreeItem()
+            Icon normal = resources:GetQuorumFile()
+            Icon main = resources:GetMainFile()
+
+            boolean result = project:SetMainFileProjectTreeItem(item)
+            if result
+                oldMainItem:SetIcon(normal)
+                item:SetIcon(main)
+            end
+
+            CodeEditorTabPane editors = qs:GetTabPane()
+            //editors:UpdateEditorBadging()
+            project:Save()
+        end
+    end
+end

@@ -11,6 +11,7 @@ use Libraries.Interface.Controls.PopupMenu
 use Libraries.Interface.Controls.MenuItem
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Development.Environment.Studio.Behaviors.OpenNewFileBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SetProgramStartBehavior
 
 class QuorumProjectView is ProjectView
     QuorumProject project = undefined
@@ -154,13 +155,23 @@ class QuorumProjectView is ProjectView
                 text dq = ""
                 dq = dq:GetDoubleQuote()
 
-                MenuItem quorum1
-                quorum1:SetName("Single Compile")
-                exampleContextMenu:Add(quorum1)
+                MenuItem openMenuItem
+                openMenuItem:SetName("Open")
+                //exampleContextMenu:Add(openMenuItem)
 
-                MenuItem quorum2
-                quorum2:SetName("Context menu for " + dq + source:GetPath() + dq)
-                exampleContextMenu:Add(quorum2)
+                MenuItem renameMenuItem
+                renameMenuItem:SetName("Rename")
+                //exampleContextMenu:Add(renameMenuItem)
+
+                MenuItem deleteMenuItem
+                deleteMenuItem:SetName("Delete")
+                //exampleContextMenu:Add(deleteMenuItem)
+
+//                SetProgramStart startBehavior
+//                MenuItem setMainFileMenuItem
+//                setMainFileMenuItem:SetBehavior(startBehavior)
+//                setMainFileMenuItem:SetName("Set Program Start")
+//                exampleContextMenu:Add(setMainFileMenuItem)
 
                 ProjectTreeItem item
                 item:SetFile(file)
@@ -169,10 +180,17 @@ class QuorumProjectView is ProjectView
                 behavior:SetFile(file)
                 item:SetBehavior(behavior)
                 item:SetName(file:GetFileName())
-                item:SetIcon(resources:GetQuorumFile())
+                item:SetProject(project)
+                
+                if not project:IsMainFile(file)
+                    item:SetIcon(resources:GetQuorumFile())
+                else //THERE CAN ONLY BE ONE
+                    item:SetIcon(resources:GetMainFile())
+                    project:SetMainFileProjectTreeItem(item)
+                end
                 items:Add(item)
 
-                item:SetPopupMenu(exampleContextMenu)
+                //item:SetPopupMenu(exampleContextMenu)
             end
             i = i + 1
         end
@@ -188,12 +206,17 @@ class QuorumProjectView is ProjectView
             MenuItem newFileMenuItem
             newFileMenuItem:SetName("New File")
             newFileMenuItem:SetBehavior(openNewFileBehavior)
-            exampleContextMenu:Add(newFileMenuItem)
+            //exampleContextMenu:Add(newFileMenuItem)
 
             MenuItem renameMenuItem
-            renameMenuItem:SetName("Rename Folder")
-            exampleContextMenu:Add(renameMenuItem)
-            value:SetPopupMenu(exampleContextMenu)
+            renameMenuItem:SetName("Rename")
+            //exampleContextMenu:Add(renameMenuItem)
+            //value:SetPopupMenu(exampleContextMenu)
+
+            MenuItem deleteFolderMenuItem
+            deleteFolderMenuItem:SetName("Delete")
+            exampleContextMenu:Add(deleteFolderMenuItem)
+            //value:SetPopupMenu(exampleContextMenu)
         else
             value:SetIcon(resources:GetQuorumFile())
         end

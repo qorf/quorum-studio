@@ -31,6 +31,8 @@ use Libraries.Development.Environment.Studio.Interface.KeyMap
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Game.GameStateManager
 use Libraries.Game.Game
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 
 class CodeEditorTabPane is TabPane, TabChangeListener
     KeyboardEvent keys
@@ -104,6 +106,39 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         return openFiles:GetValueIterator()
     end
 
+    action UpdateEditorBadging
+        GameStateManager manager
+        Game game = manager:GetGame()
+        QuorumStudio studio = cast(QuorumStudio, game)
+
+        Iterator<Tab> tabs = openTabs:GetValueIterator()
+        repeat while tabs:HasNext()
+            Tab tab = tabs:Next()
+            if tab is EditorTab
+                EditorTab edit = cast(EditorTab, tab)
+                File value = edit:GetFile()
+
+                boolean isMain = false
+                ProjectManager projects = studio:GetProjectManager()
+                Iterator<QuorumProject> iterator = projects:GetIterator()
+                repeat while iterator:HasNext()
+                    QuorumProject project = iterator:Next()
+                    if project:IsMainFile(value)
+                        isMain = true
+                    end
+                end
+
+                Icon icon = undefined
+                if isMain
+                    icon = resources:GetMainFile()
+                else
+                    icon = resources:GetQuorumFile()
+                end 
+
+                tab:SetIcon(icon)
+            end
+        end
+    end
     /*
         This action opens a new tab if one is not open. If one is already open, 
         then it returns the one already there.
@@ -140,6 +175,7 @@ class CodeEditorTabPane is TabPane, TabChangeListener
 
         GameStateManager manager
         Game game = manager:GetGame()
+        QuorumStudio studio = cast(QuorumStudio, game)
         InputTable table = game:GetInputTable(textBox:CODE_BOX_INPUT_GROUP)
         if table = undefined
             table = textBox:CopyAndActivateInputTable(textBox:CODE_BOX_INPUT_GROUP)
@@ -147,15 +183,30 @@ class CodeEditorTabPane is TabPane, TabChangeListener
 
             table:Add(keyMap:GetCodeCompletionKey(), behaviors:GetCodeCompletionBehavior())
             table:Add(keyMap:GetCommentLinesKey(), behaviors:GetCommentLinesBehavior())
-            table:Add(keyMap:GetSmartNavigateUpKey(), behaviors:GetEditorSmartNavigationUp())
-            table:Add(keyMap:GetSmartNavigateDownKey(), behaviors:GetEditorSmartNavigationDown())
-            table:Add(keyMap:GetSmartNavigateLeftKey(), behaviors:GetEditorSmartNavigationLeft())
-            table:Add(keyMap:GetSmartNavigateRightKey(), behaviors:GetEditorSmartNavigationRight())
+            //table:Add(keyMap:GetSmartNavigateUpKey(), behaviors:GetEditorSmartNavigationUp())
+            //table:Add(keyMap:GetSmartNavigateDownKey(), behaviors:GetEditorSmartNavigationDown())
+            //table:Add(keyMap:GetSmartNavigateLeftKey(), behaviors:GetEditorSmartNavigationLeft())
+            //table:Add(keyMap:GetSmartNavigateRightKey(), behaviors:GetEditorSmartNavigationRight())
         else 
             textBox:SetInputGroup(textBox:CODE_BOX_INPUT_GROUP)
         end
         
-        Icon icon = resources:GetQuorumFile()
+        boolean isMain = false
+        ProjectManager projects = studio:GetProjectManager()
+        Iterator<QuorumProject> iterator = projects:GetIterator()
+        repeat while iterator:HasNext()
+            QuorumProject project = iterator:Next()
+            if project:IsMainFile(file)
+                isMain = true
+            end
+        end
+        Icon icon = undefined
+
+        if isMain
+            icon = resources:GetMainFile()
+        else
+            icon = resources:GetQuorumFile()
+        end 
 
         EditorTab returnedTab = undefined
         boolean value = openFiles:HasKey(file:GetAbsolutePath())

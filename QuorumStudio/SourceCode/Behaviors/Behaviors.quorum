@@ -8,7 +8,6 @@ use Libraries.Development.Environment.Studio.Build.BuildManager
 class Behaviors 
     //File Menu
     constant text DEFAULT_MENU_OPEN = "Default Menu Open"
-    constant text DEFAULT_ESCAPE_BEHAVIOR = "Default Escape Behavior"
     constant text OPEN_PROJECT = "Open Project"
     constant text CLOSE_PROJET = "Close Project"
     constant text OPEN_NEW_FILE = "Create New File"
@@ -25,10 +24,27 @@ class Behaviors
     ExitBehavior exitBehavior
 
     DefaultMenuOpenBehavior defaultMenuOpenBehavior
-    DefaultEscapeBehavior defaultEscapeBehavior
 
     OpenNewFileBehavior openNewFileBehavior
     OpenNewProjectBehavior openNewProjectBehavior
+
+
+    //Edit Menu
+    constant text UNDO = "Undo"
+    constant text REDO = "Redo"
+    constant text CUT = "Cut"
+    constant text COPY = "Copy"
+    constant text PASTE = "Paste"
+    constant text SELECT_ALL = "Select All"
+    constant text COMMENT_LINE = "Comment Line"
+
+    UndoBehavior undoBehavior
+    RedoBehavior redoBehavior
+    CutBehavior cutBehavior
+    CopyBehavior copyBehavior
+    PasteBehavior pasteBehavior
+    SelectAllBehavior selectAllBehavior
+    CommentLineBehavior commentLineBehavior
 
     //Run Menu
     constant text BUILD_PROJECT = "Build Project"
@@ -46,6 +62,7 @@ class Behaviors
     constant text TOGGLE_BREAKPOINT = "Toggle Breakpoint"
     constant text ADD_INPUT_TO_PROCESS = "Add Input To Process"
     constant text ANDROID_DEBUG_BEHAVIOR = "Add Input To Process"
+    constant text SET_PROGRAM_START = "Set Program Start"
     constant text BOOTSTRAP = "Bootstrap"
 
     BuildProjectBehavior buildProjectBehavior
@@ -64,6 +81,7 @@ class Behaviors
     InputBehavior inputBehavior
     SendToAndroidDebugModeBehavior androidDebugBehavior
     BootstrapBehavior bootstrapBehavior
+    SetProgramStartBehavior setProgramStartBehavior
 
     //Windows Menu
     constant text FOCUS_BREAKPOINTS_WINDOW = "Focus Break Points Window"
@@ -124,15 +142,15 @@ class Behaviors
     constant text TEXT_EDITOR_SMART_NAVIGATION_DOWN = "Text Editor Smart Navigation Down"
     constant text TEXT_EDITOR_SMART_NAVIGATION_LEFT = "Text Editor Smart Navigation Left"
     constant text TEXT_EDITOR_SMART_NAVIGATION_RIGHT = "Text Editor Smart Navigation Right"
+    constant text GOTO_LINE_BEHAVIOR = "Goto Line Behavior"
 
-    //editor navigation
+    //Navigation Menu
+    GoToLineBehavior gotoLineBehavior
     EditorSmartNavigationUp editorSmartNavigationUp
     EditorSmartNavigationDown editorSmartNavigationDown
     EditorSmartNavigationLeft editorSmartNavigationLeft
     EditorSmartNavigationRight editorSmartNavigationRight
     constant text TEXT_EDITOR_COMMENT_LINES = "Text Editor Comment Lines"
-
-    CommentLineBehavior commentLineBehavior
 
     //Code Completion
     CodeCompletionBehavior codeCompletionBehavior
@@ -159,7 +177,6 @@ class Behaviors
 
     on create
         behaviors:Add(DEFAULT_MENU_OPEN, defaultMenuOpenBehavior)
-        behaviors:Add(DEFAULT_ESCAPE_BEHAVIOR, defaultEscapeBehavior)
         behaviors:Add(OPEN_PROJECT, openProjectBehavior)
         behaviors:Add(CLOSE_PROJET, closeProjectBehavior)
         behaviors:Add(OPEN_NEW_FILE, openNewFileBehavior)
@@ -238,6 +255,7 @@ class Behaviors
         behaviors:Add(PAUSE, threadedPause)
         behaviors:Add(CONTINUE, threadedContinue)
         behaviors:Add(TOGGLE_BREAKPOINT, toggleBreakpointBehavior)
+        behaviors:Add(SET_PROGRAM_START, setProgramStartBehavior)
         behaviors:Add(ADD_INPUT_TO_PROCESS, inputBehavior) //
         behaviors:Add(ANDROID_DEBUG_BEHAVIOR, threadedSendToAndroidDebug)
         behaviors:Add(BOOTSTRAP, threadedBootstrapBehavior)
@@ -264,6 +282,7 @@ class Behaviors
         behaviors:Add(TEXT_EDITOR_SMART_NAVIGATION_DOWN, editorSmartNavigationDown)
         behaviors:Add(TEXT_EDITOR_SMART_NAVIGATION_LEFT, editorSmartNavigationLeft)
         behaviors:Add(TEXT_EDITOR_SMART_NAVIGATION_RIGHT, editorSmartNavigationRight)
+        behaviors:Add(GOTO_LINE_BEHAVIOR, gotoLineBehavior)
 
         // Project Properties Behaviors
         behaviors:Add(OPEN_PROJECT_PROPERTIES, openProjectPropertiesBehavior)
@@ -273,8 +292,44 @@ class Behaviors
         //Extra Behaviors
         behaviors:Add(JUMP_TO_ERROR_BEHAVIOR, jumpToErrorBehavior)
         behaviors:Add(JUMP_TO_CALL_STACK_BEHAVIOR, jumpToCallStackBehavior)
+
+        
+        behaviors:Add(UNDO, undoBehavior)
+        behaviors:Add(REDO, redoBehavior)
+        behaviors:Add(CUT, cutBehavior)
+        behaviors:Add(COPY, copyBehavior)
+        behaviors:Add(PASTE, pasteBehavior)
+        behaviors:Add(SELECT_ALL, selectAllBehavior)
     end
     
+    action GetCommentLineBehavior returns CommentLineBehavior
+        return commentLineBehavior
+    end
+
+    action GetUndoBehavior returns UndoBehavior
+        return undoBehavior
+    end
+
+    action GetRedoBehavior returns RedoBehavior
+        return redoBehavior
+    end
+
+    action GetCutBehavior returns CutBehavior
+        return cutBehavior
+    end
+
+    action GetCopyBehavior returns CopyBehavior
+        return copyBehavior
+    end
+
+    action GetPasteBehavior returns PasteBehavior
+        return pasteBehavior
+    end
+
+    action GetSelectAllBehavior returns SelectAllBehavior
+        return selectAllBehavior
+    end
+
     //general behaviors
     action GetBuildManager returns BuildManager
         return builder
@@ -434,6 +489,10 @@ class Behaviors
         return toggleBreakpointBehavior
     end
 
+    action GetSetProgramStartBehavior returns SetProgramStartBehavior
+        return setProgramStartBehavior
+    end
+
     action GetInputBehavior returns InputBehavior
         return inputBehavior
     end
@@ -475,10 +534,6 @@ class Behaviors
         return focusVariablesBehavior
     end
 
-    action GetDefaultEscapeBehavior returns DefaultEscapeBehavior
-        return defaultEscapeBehavior
-    end
-
     action GetScaleInterfaceUpBehavior returns QuorumStudioBehavior
         return interfaceScaleUp
     end
@@ -505,6 +560,10 @@ class Behaviors
 
     action GetEditorSmartNavigationUp returns EditorSmartNavigationUp
         return editorSmartNavigationUp
+    end
+
+    action GetGoToLineBehavior returns GoToLineBehavior
+        return gotoLineBehavior
     end
 
     action GetEditorSmartNavigationDown returns EditorSmartNavigationDown

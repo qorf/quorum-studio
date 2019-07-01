@@ -47,12 +47,12 @@ use Libraries.Interface.Layouts.TabFlowLayout
 use Libraries.Interface.Events.MouseWheelListener
 use Libraries.Interface.Events.MouseEvent
 use Libraries.Containers.Array
+use Libraries.Interface.Events.SelectionListener
+use Libraries.Interface.Events.SelectionEvent
 
 
-class NewProjectDialog is Dialog, KeyboardListener, MouseWheelListener
-
+class NewProjectDialog is Dialog, SelectionListener
     boolean initialized = false
-    
     GameStateManager gameManager
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
     HashTable<Button, text> descriptions
@@ -161,13 +161,24 @@ Respond action and respond with a WebResponse Object. We can receive these
 messages in any Java Container (e.g., Tomcat, Glassfish)."
 
     on create
-        //tabBehavior:SetDialog(me)
         browseBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
         buttonsBehavior:SetDialog(me)
         okayBehavior:SetDialog(me)
-        studio:AddKeyboardListener(me)
-        //basicTab:SetBehavior(tabBehavior)
+        SetBehavior(okayBehavior)
+        tabPane:AddSelectionListener(me)
+    end
+
+    action SelectionChanged(SelectionEvent event)
+        TabPaneSelection selection = cast(TabPaneSelection, event:GetSelection())
+        integer index = selection:GetIndex()
+        if index = 0
+            okayButton:SetNextFocus(blankIcon)
+            descriptionText:SetPreviousFocus(legoIcon)
+        else
+            okayButton:SetNextFocus(documentIcon)
+            descriptionText:SetPreviousFocus(webServerIcon)
+        end
     end
 
     action Initialize
@@ -286,6 +297,8 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         descriptionText:SetLeftPadding(20)
         descriptionText:SetRightPadding(20)
         descriptionText:SetPixelHeight(100)
+        descriptionText:SetName("Project Description")
+        descriptionText:SetMoveFocusOnTab(true)
         descriptionText:HideCaret()
         
         descriptionContainer:Add(descriptionText)
@@ -308,6 +321,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         projectNameContainer:Add(nameLabel)
 
         nameField:SetText("BlankQuorumApplication") 
+        nameField:SetName("Name")
         nameField:SetPercentageWidth(0.92)
         projectNameContainer:Add(nameField)
         createNewProjectContainer:Add(projectNameContainer)
@@ -329,6 +343,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         locationField:SetText(locationPath:GetPath())    //set to current directory?
         locationField:SetPercentageWidth(0.82)
         locationField:SetRightPadding(10)
+        locationField:SetName("Location")
         projectLocationContainer:Add(locationField)
 
         browseButton:SetName("Browse...")
@@ -577,7 +592,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         ScrollPane scrollPane
         scrollPane:SetPercentageWidth(1.0)
         scrollPane:SetPixelHeight(300)
-        scrollPane:AddMouseWheelListener(me)
+        //scrollPane:AddMouseWheelListener(me)
         //scrollPane:SetVerticalLayoutMode(scrollPane:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
         FlowLayout scrollLayout
         scrollPane:SetLayout(scrollLayout)
@@ -889,6 +904,10 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
     end
 
     private action SetupFocus
+        //Tab advancedTab
+        basicTab:SetFocusTarget(blankIcon)
+        advancedTab:SetFocusTarget(documentIcon)
+
         tabPane:SetFocusable(true)
         nameField:SetFocusable(true)
         locationField:SetFocusable(true)
@@ -916,12 +935,18 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         locationField:SetNextFocus(browseButton)
         browseButton:SetNextFocus(cancelButton)
         cancelButton:SetNextFocus(okayButton)
-        okayButton:SetNextFocus(tabPane)
+        okayButton:SetNextFocus(blankIcon)
 
+
+            
         blankIcon:SetNextFocus(gameIcon)
         gameIcon:SetNextFocus(androidIcon)
         androidIcon:SetNextFocus(legoIcon)
-        legoIcon:SetNextFocus(nameField)
+        legoIcon:SetNextFocus(descriptionText)
+
+        descriptionText:SetPreviousFocus(legoIcon)
+        descriptionText:SetNextFocus(nameField)
+        nameField:SetPreviousFocus(descriptionText)
 
         documentIcon:SetNextFocus(imageSheetsIcon)
         imageSheetsIcon:SetNextFocus(internetServicesIcon)
@@ -932,7 +957,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         sineWavesIcon:SetNextFocus(skyboxIcon)
         skyboxIcon:SetNextFocus(userInterfaceIcon)
         userInterfaceIcon:SetNextFocus(webServerIcon)
-        webServerIcon:SetNextFocus(nameField)
+        webServerIcon:SetNextFocus(descriptionText)
 
         tabPane:SetPreviousFocus(okayButton)
         locationField:SetPreviousFocus(nameField)
@@ -963,25 +988,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         cancelButton:SetBehavior(cancelBehavior)
         okayButton:SetBehavior(okayBehavior)
     end
-    
-    //action to obtain the current button that has the focus
-    //used by the NewProjectApplicationBehavior to update
-    //the description text box to the correct description for
-    //the application/template type in focus
-//    action GetCurrentApplicationFocus returns ToggleButton
-//        //ToggleButton currentFocus
-//        Array<ToggleButton> applications = toggleButtons:GetButtons()
-//        integer i = 0
-//        repeat while i < applications:GetSize()
-//            ToggleButton application = applications:Get(i)
-//            if application:GetToggleState()
-//                return application
-//            end
-//            i = i + 1
-//        end
-//        //return currentFocus
-//    end
-
+   
     //called by the NewProjectApplicationBehavior to update
     //the description text box to the correct description for
     //the application/template Button in focus
@@ -989,7 +996,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         descriptionText:SetText(descriptions:GetValue(button))
         descriptionText:HideCaret()
         templatePath = templates:GetValue(button)
-        //button:SetToggleState(true)
     end
 
     action RemoveApplicationToggle()
@@ -1028,11 +1034,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         text newProjectPath = projectPath:GetAbsolutePath()
         newProjectFolderLocation:SetWorkingDirectory(newProjectPath)
         boolean copySuccess = template:Copy(newProjectFolderLocation, true)
-        if not copySuccess
-            output "Error copying Project"
-        else
-            output "Project copied Successfully"
-        end
+        
         project:SetName(nameField:GetText():Trim())
 
         File dad = newProjectFolderLocation:GetParentDirectory()
@@ -1062,16 +1064,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
 
         projectTree:Add(treeItem)
     end
-    
-    action PressedKey (KeyboardEvent event)
-        if event:keyCode = event:ENTER
-            okayButton:Activate()
-        end
-
-        if event:keyCode = event:ESCAPE
-            cancelButton:Activate()            
-        end
-    end
 
     action GetCurrentTabFocus returns Tab
         return tabPane:GetSelection():GetTab()
@@ -1095,5 +1087,9 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         locationField:Empty()
         tabPane:Select(basicTab)
         UpdateDescription(blankIcon)
+    end
+
+    action OnShow
+        blankIcon:Focus()
     end
 end

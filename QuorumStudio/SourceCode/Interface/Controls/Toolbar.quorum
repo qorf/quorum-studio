@@ -19,6 +19,11 @@ use Libraries.Interface.Controls.Control
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Controls.Icon
 use Libraries.Interface.Controls.ToolBar
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.Glyph
+use Libraries.Game.Graphics.TextureRegion
+use Libraries.Game.Graphics.Drawable
+use Libraries.System.File
 
 class Toolbar is ToolBar
     Layout layout = undefined
@@ -42,14 +47,6 @@ class Toolbar is ToolBar
         return behaviors
     end
 
-    action SetDisplayOffset(number value)
-        height = value
-    end
-
-    action GetDisplayOffset returns number
-        return height
-    end
-
     action GetResources returns Resources
         return resources
     end
@@ -57,21 +54,6 @@ class Toolbar is ToolBar
     action SetResources(Resources resources)
         me:resources = resources
     end
-
-    action GetLayout returns Layout
-        return layout
-    end
-
-    action SetLayout(Layout layout)
-        me:layout = layout
-    end
-
-    action GainedFocus(FocusEvent event)
-        a = 5 
-//        Button button = buttons:Get(0)
-//        button:Focus()
-    end
-    
 
     action GetPreviousFocus returns Item
         return parent:Item:GetPreviousFocus()
@@ -82,10 +64,11 @@ class Toolbar is ToolBar
     end
 
     action Setup
-        AddButtonToToolbar(resources:GetNewProject(), undefined, "New Project")
-        AddButtonToToolbar(resources:GetNewFile(), undefined, "New File")
+        SetPixelHeight(34)
+        AddButtonToToolbar(resources:GetNewProject(), behaviors:GetOpenNewProjectBehavior(), "New Project")
+        AddButtonToToolbar(resources:GetNewFile(), behaviors:GetOpenNewFileBehavior(), "New File")
         AddButtonToToolbar(resources:GetOpenProject(), behaviors:GetOpenProjectBehavior(), "Open Project")
-        AddButtonToToolbar(resources:GetSaveAll(), undefined, "Save All")
+        AddButtonToToolbar(resources:GetSaveAll(), behaviors:GetSaveAllBehavior(), "Save All")
         AddButtonToToolbar(resources:GetUndo(), undefined, "Undo")
         AddButtonToToolbar(resources:GetRedo(), undefined, "Redo")
         AddButtonToToolbar(resources:GetBuild(), behaviors:GetThreadedBuildProjectBehavior(), "Build")
@@ -125,6 +108,7 @@ class Toolbar is ToolBar
     private action AddButtonToToolbar(Icon image, Behavior behavior, text name)
         Button button
         button:SetFont(undefined)
+        
         button:SetIcon(image)
         button:SetTopPadding(3)
         button:SetBottomPadding(3)

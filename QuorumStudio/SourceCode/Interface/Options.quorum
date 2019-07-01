@@ -82,6 +82,11 @@ class Options is ProjectListener
     action Read
         File file
         file:SetPath(OPTIONS_FILE)
+        if not file:Exists()
+            file:Write("")
+            file:Close()
+            return now
+        end
         text value = file:Read()
 
         JavaScriptObjectNotation notation
