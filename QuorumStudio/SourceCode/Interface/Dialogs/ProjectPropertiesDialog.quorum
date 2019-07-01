@@ -27,6 +27,18 @@ use Libraries.Development.Environment.Studio.Behaviors.EmptyListBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddJavaClassFolderBehavior
 use Libraries.Interface.Events.MouseWheelListener
 use Libraries.Interface.Events.MouseEvent
+use Libraries.Development.Environment.Projects.Quorum.ImageSheets
+use Libraries.System.File
+use Libraries.Development.Environment.Projects.Quorum.ImageSheet
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddImagesBehavior
+use Libraries.Containers.HashTable
+use Libraries.Interface.Selections.ListSelection
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesImageSheetListBehavior
+use Libraries.Interface.Controls.ListItem
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddImageSheetsBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddSourceBehavior
+
+
 
 class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
@@ -35,6 +47,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     // The current Quorum project that we're modifying the properties of.
     // Set during the SetProperties(QuorumProject) action.
     QuorumProject project = undefined
+    File sourceLocation = undefined
 
     // Variables for the Project Information tab.
     TextField programNameField
@@ -54,7 +67,12 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     ProjectPropertiesAddJarBehavior addJarBehavior
     RemoveListItemBehavior removeJarBehavior
     EmptyListBehavior clearJarsBehavior
+
+    ProjectPropertiesAddSourceBehavior addSourceBehavior
     
+    ProjectPropertiesAddImagesBehavior addImagesBehavior
+    ProjectPropertiesImageSheetListBehavior imageSheetListBehavior
+    ProjectPropertiesAddImageSheetsBehavior addImageSheetsBehavior
 
     // Variables for the Games tab.
     Checkbox enableImageSheets
@@ -63,8 +81,17 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     List imageSheetsList
     List imagesList
 
+    Array<List> imagesListArray         //stores each associated imageSheetName with the correct list of images to be displayed in the imagesList
+    integer imageSheetCount = -1    
+
     // Variables for the Mobile tab.
     TextField mobileResourcesField
+    TextField androidLibraryField
+    TextField keyStoreField
+    TextField keyStorePasswordField
+    TextField keyAliasField
+    TextField keyPasswordField
+    TextField jdkField
 
     // Behaviors used by the OK and Cancel buttons.
     ProjectPropertiesOkBehavior okBehavior
@@ -73,7 +100,10 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     on create
         addJarBehavior:SetDialog(me)
         addJavaClassBehavior:SetDialog(me)
-
+        addSourceBehavior:SetDialog(me)
+        addImagesBehavior:SetDialog(me)
+        addImageSheetsBehavior:SetDialog(me)
+        imageSheetListBehavior:SetDialog(me)
         okBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
     end
@@ -105,6 +135,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
     action SetProperties(QuorumProject project)
         me:project = project
+        sourceLocation = me:project:GetSourceLocation()
 
         SetName(project:GetName() + " Properties")
 
@@ -178,18 +209,29 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         if imageSheetsPathProperty not= undefined
             imageSheetsBuildPathField:SetText(imageSheetsPathProperty:GetFirstValue())
         else
-            imageSheetsBuildPathField:SetText("resources")
+            imageSheetsBuildPathField:SetText("/resources")
         end
 
         imageSheetsList:Empty()
-
-        ProjectProperty imageSheetsProperty = project:GetProperty(project:IMAGE_SHEETS)
+        imagesList:Empty()
+        imagesListArray:Empty()     
         
+        ProjectProperty imageSheetsProperty = project:GetProperty(project:IMAGE_SHEETS)
         if imageSheetsProperty not= undefined
-            Iterator<text> imageSheets = imageSheetsProperty:GetValueIterator()
-
-            repeat while imageSheets:HasNext()
-                quorumSourcesList:Add(imageSheets:Next())
+            
+            ImageSheets sheets = project:GetImageSheets()
+            Array<ImageSheet> imageSheets = sheets:GetSheets(true)
+            Iterator<ImageSheet> sheetsIterator = imageSheets:GetIterator()
+            repeat while sheetsIterator:HasNext()
+                imageSheetCount = imageSheetCount + 1
+                ImageSheet sheet = sheetsIterator:Next()
+                imageSheetsList:Add(imageSheetCount, sheet:GetName())
+                Iterator<text> sheetIterator = sheet:GetValues()
+                List list
+                repeat while sheetIterator:HasNext()
+                    list:Add(sheetIterator:Next())
+                end
+                imagesListArray:Add(list)
             end
         end
 
@@ -198,8 +240,57 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         if mobileResourcesProperty not= undefined
             mobileResourcesField:SetText(mobileResourcesProperty:GetFirstValue())
         else
-            mobileResourcesField:SetText("media")
+            mobileResourcesField:SetText("/media")
         end
+        
+    end
+    
+    /* Called by the ProjectPropertiesImageSheetListBehavior, when the image sheet 
+    selection changes this action sets the correct images list, dependent on the 
+    imageSheet selected in the imageSheets list*/
+    action SetCurrentImageList(integer index)
+        imagesList:Empty()
+        List list = imagesListArray:Get(index)
+
+        if list not= undefined
+            //Sets the list to appear in the dialog
+            integer i = 0
+            repeat while i < list:GetSize()
+                imagesList:Add(list:Get(0))
+                i = i + 1
+            end
+        end        
+    end
+
+    /*returns the current list of images, dependent on the the current image sheet
+    selected */
+    action GetCurrentImageList returns List
+        ListSelection listSelection = imageSheetsList:GetSelection()
+        integer index = listSelection:GetIndex()
+        return imagesListArray:Get(index)
+    end
+
+    action GetCurrentImageSheet returns ListItem
+        ListSelection listSelection = imageSheetsList:GetSelection()
+        return listSelection:GetListItem()
+    end
+
+    action GetCurrentImageSheetIndex returns integer
+        ListSelection listSelection = imageSheetsList:GetSelection()
+        return listSelection:GetIndex()
+    end
+
+    action AddToImagesListArray(integer index, List list)
+        imagesListArray:Add(index, list)
+    end
+
+    /* called by the AddImageSheetsOkBehavior, adds the new image sheet name
+    to the list of image sheets for the project */
+    action AddNewImageSheet(text imageSheetName)
+        imageSheetCount = imageSheetCount + 1
+        imageSheetsList:Add(imageSheetCount, imageSheetName)
+        List list
+        imagesListArray:Add(imageSheetCount, list)
     end
 
     /*
@@ -236,16 +327,33 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         project:EnableImageSheets(enableImageSheets:GetToggleState())
         project:EnableRecompileImageSheetsOnBuild(buildImageSheetsOnCompile:GetToggleState())
         project:SetImageSheetBuildPath(imageSheetsBuildPathField:GetText())
-        // NYI: Image Sheets
-        // NYI: Images
+
+        if(enableImageSheets:GetToggleState())
+            ImageSheets imageSheets
+            Array<text> imageSheetName = ListToArray(imageSheetsList)
+            integer i = 0
+            repeat while i < imageSheetName:GetSize()
+                Array<text> images = ListToArray(imagesListArray:Get(i))
+                ImageSheet imageSheet
+                imageSheet:SetName(imageSheetName:Get(i))
+                imageSheet:SetValues(images)
+                imageSheets:Add(imageSheet)
+                i = i + 1
+            end
+
+            project:SetImageSheets(imageSheets)
+            ProjectProperty projectImageSheets = project:GenerateImageSheetProperty()
+            projectImageSheets:SetKey(project:IMAGE_SHEETS)
+            project:AddProperty(projectImageSheets)
+        end
 
         project:SetMobileAssetsPath(mobileResourcesField:GetText())
-        // NYI: Android Library Path
-        // NYI: Key Store Path
-        // NYI: Key Store Password
-        // NYI: Key Alias
+        project:SetAndroidPath(androidLibraryField:GetText())
+        project:SetAndroidKeystorePath(keyStoreField:GetText())
+        project:SetAndroidKeystorePassword(keyStorePasswordField:GetText())
+        project:SetAndroidKeyAlias(keyAliasField:GetText())
         // NYI: Key Password
-        // NYI: Alternative Java Development Kit
+        project:SetAndroidAlternateJDKPath(jdkField:GetText())
 
         project:Save()
     end
@@ -259,20 +367,10 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         projectInfoTab:SetName("Project Information")
         projectInfoTab:DisplayCloseButton(false)
 
-//        ScrollPane scrollPane
-//        scrollPane:AddMouseWheelListener(me)
-//        scrollPane:SetPercentageWidth(1.0)
-//        scrollPane:SetPixelHeight(500)
-//        FlowLayout scrollLayout
-//        scrollPane:SetLayout(scrollLayout)
-
-//        projectInfoTab:SetRelatedItem(scrollPane)
-
         Control panel
         panel:SetPercentageWidth(1.0)
         panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
         panel:SetPixelHeight(500)
-//        panel:SetPercentageHeight(1.0)
 
         LabelBoxView panelView
         Color color
@@ -283,8 +381,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         FlowLayout layout
         panel:SetLayout(layout)
         projectInfoTab:SetRelatedItem(panel)
-
-//        scrollPane:Add(panel)
 
         Control programNameArea
         FlowLayout programNameLayout
@@ -297,14 +393,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         programNameArea:SetVerticalLayoutMode(programNameArea:FIT_CONTENTS)
         Label programName
         programName:SetText("Program Name: ")
-        //programName:SetLeftPadding(10)
         programName:SetRightPadding(10)
-        //programName:SetTopPadding(6)
-        //programName:SetBottomPadding(6)
 
         programNameField:SetHorizontalLayoutMode(programNameField:parent:Libraries.Interface.Controls.Control:FILL)
-        //programNameField:SetTopPadding(6)
-        //programNameField:SetRightPadding(10)
 
         programNameArea:Add(programName)
         programNameArea:Add(programNameField)
@@ -367,7 +458,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         javaClassList:SetVerticalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
         javaClassList:SetPercentageWidth(0.7)
         javaClassList:SetPixelHeight(100)
-        javaClassList:Add("Example 1")
         pluginArea:Add(javaClassList)
 
         Control pluginButtons
@@ -478,8 +568,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         panel:Add(jarArea)
 
-        // Additional source.
-
         Label sourceFiles
         sourceFiles:SetText("Additional Source Files")
         sourceFiles:SetLeftPadding(10)
@@ -502,6 +590,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         quorumSourcesList:SetPixelHeight(100)
         sourceArea:Add(quorumSourcesList)
 
+        addSourceBehavior:SetList(quorumSourcesList)
+        
         Control sourceButtons
         FlowLayout sourceButtonsLayout
         sourceButtons:SetLayout(sourceButtonsLayout)
@@ -516,6 +606,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         addSource:SetLeftPadding(4)
         addSource:SetRightPadding(4)
         addSource:SetBottomPadding(6)
+        addSource:SetBehavior(addSourceBehavior)
         sourceButtons:Add(addSource)
 
         Button removeSource
@@ -584,19 +675,10 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         tab:SetName("Games")
         tab:DisplayCloseButton(false)
 
-//        ScrollPane scrollPane
-//        scrollPane:SetPercentageWidth(1.0)
-//        scrollPane:SetPixelHeight(500)
-//        FlowLayout scrollLayout
-//        scrollPane:SetLayout(scrollLayout)
-//
-//        tab:SetRelatedItem(scrollPane)
-
         Control panel
         panel:SetPercentageWidth(1.0)
         panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
         panel:SetPixelHeight(500)
-//        panel:SetPercentageHeight(1.0)
 
         LabelBoxView panelView
         Color color
@@ -661,8 +743,11 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         imageSheetsList:SetVerticalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imageSheetsList:SetPercentageWidth(0.7)
         imageSheetsList:SetPixelHeight(100)
-        imageSheetsList:Add("Example 1")
+        //have to double click on the list item to initiate behavior
+        imageSheetsList:SetItemActivationBehavior(imageSheetListBehavior)
         imageSheetsArea:Add(imageSheetsList)
+
+        addImageSheetsBehavior:SetImageSheetsList(imageSheetsList)
 
         Control imageSheetsButtons
         FlowLayout imageSheetsButtonsLayout
@@ -678,6 +763,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         addSheet:SetLeftPadding(4)
         addSheet:SetRightPadding(4)
         addSheet:SetBottomPadding(6)
+        addSheet:SetBehavior(addImageSheetsBehavior)
         imageSheetsButtons:Add(addSheet)
 
         Button editSheet
@@ -729,7 +815,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         imagesList:SetVerticalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imagesList:SetPercentageWidth(0.7)
         imagesList:SetPixelHeight(100)
-        imagesList:Add("Example 1")
         imagesArea:Add(imagesList)
 
         Control imagesButtons
@@ -746,6 +831,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         addImage:SetLeftPadding(4)
         addImage:SetRightPadding(4)
         addImage:SetBottomPadding(6)
+        addImage:SetBehavior(addImagesBehavior)
         imagesButtons:Add(addImage)
 
         Button addImageFolder
@@ -790,14 +876,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         tab:SetName("Mobile")
         tab:DisplayCloseButton(false)
 
-//        ScrollPane scrollPane
-//        scrollPane:SetPercentageWidth(1.0)
-//        scrollPane:SetPixelHeight(500)
-//        FlowLayout scrollLayout
-//        scrollPane:SetLayout(scrollLayout)
-
-//        tab:SetRelatedItem(scrollPane)
-
         Control panel
         panel:SetPercentageWidth(1.0)
         panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
@@ -811,8 +889,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         FlowLayout layout
         panel:SetLayout(layout)
         tab:SetRelatedItem(panel)
-
-//        scrollPane:Add(panel)
 
         Label resourcesLabel
         resourcesLabel:SetText("Resources")
@@ -863,7 +939,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         androidLibraryLabel:SetTopPadding(10)
         panel:Add(androidLibraryLabel)
 
-        TextField androidLibraryField
+        
         androidLibraryField:SetPercentageWidth(1.0)
         androidLibraryField:SetPixelWidth(-10)
         androidLibraryField:SetLeftPadding(10)
@@ -876,7 +952,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         keyStoreLabel:SetTopPadding(20)
         panel:Add(keyStoreLabel)
 
-        TextField keyStoreField
+
         keyStoreField:SetPercentageWidth(1.0)
         keyStoreField:SetPixelWidth(-10)
         keyStoreField:SetLeftPadding(10)
@@ -889,7 +965,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         keyStorePasswordLabel:SetTopPadding(20)
         panel:Add(keyStorePasswordLabel)
 
-        TextField keyStorePasswordField
+        
         keyStorePasswordField:SetPercentageWidth(1.0)
         keyStorePasswordField:SetPixelWidth(-10)
         keyStorePasswordField:SetLeftPadding(10)
@@ -902,7 +978,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         keyAliasLabel:SetTopPadding(20)
         panel:Add(keyAliasLabel)
 
-        TextField keyAliasField
+        
         keyAliasField:SetPercentageWidth(1.0)
         keyAliasField:SetPixelWidth(-10)
         keyAliasField:SetLeftPadding(10)
@@ -915,7 +991,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         keyPasswordLabel:SetTopPadding(20)
         panel:Add(keyPasswordLabel)
 
-        TextField keyPasswordField
+
         keyPasswordField:SetPercentageWidth(1.0)
         keyPasswordField:SetPixelWidth(-10)
         keyPasswordField:SetLeftPadding(10)
@@ -928,7 +1004,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         jdkLabel:SetTopPadding(20)
         panel:Add(jdkLabel)
 
-        TextField jdkField
+        
         jdkField:SetPercentageWidth(1.0)
         jdkField:SetPixelWidth(-10)
         jdkField:SetLeftPadding(10)
@@ -964,4 +1040,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         return array
     end
 
+    action OnHide()
+        imageSheetCount = -1
+        imagesListArray:Empty()
+    end
 end

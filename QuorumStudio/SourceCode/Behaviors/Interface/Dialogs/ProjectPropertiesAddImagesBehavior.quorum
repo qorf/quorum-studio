@@ -1,0 +1,77 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.ProjectPropertiesDialog
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.FileChooser
+use Libraries.Interface.Controls.FileFilter
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.System.File
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Projects.Quorum.ImageSheet
+use Libraries.Interface.Selections.ListSelection
+use Libraries.Interface.Controls.ListItem
+
+class ProjectPropertiesAddImagesBehavior is QuorumStudioBehavior
+    
+    ProjectPropertiesDialog dialog = undefined
+    List imageList = undefined
+    ListItem imageSheetsListItem = undefined
+
+
+    action SetDialog(ProjectPropertiesDialog dialog)
+        me:dialog = dialog
+    end
+
+    action GetDialog returns ProjectPropertiesDialog
+        return dialog
+    end
+
+//    action GetImageSheetsListItem returns ListItem
+//        return imageSheetsListItem
+//    end
+
+//    action SetImagesList(Array<List> imageLists)
+//        if imageSheetsListItem not= undefined
+//            imageList = 
+//        end
+//    end
+
+    action GetImagesList returns List
+        return imageList
+    end
+
+    action Run(BehaviorEvent event)    
+        imageSheetsListItem = me:dialog:GetCurrentImageSheet()
+        
+
+        if imageSheetsListItem not= undefined
+
+            imageList = me:dialog:GetCurrentImageList()
+            
+            
+            FileChooser chooser
+            FileFilter filter
+            filter:Empty()
+            filter:Add("png")
+            filter:Add("jpg")
+            filter:Add("jpeg")
+        
+            filter:SetAcceptAll(false)
+
+            QuorumProject project = dialog:GetProject()
+            File image = chooser:OpenFileDialog(project:GetLocation(), filter)
+
+
+            if image not= undefined
+                imageList:Add(image:GetAbsolutePath())                      
+                //dialog:AddImagesToSheet(imageSheetsListItem:GetIndex())                         //adds the new image to the correct image sheet
+            end
+
+            integer index = me:dialog:GetCurrentImageSheetIndex()
+            me:dialog:AddToImagesListArray(index, imageList)
+            me:dialog:SetCurrentImageList(index)
+        end
+        
+    end
+end

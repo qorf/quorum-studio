@@ -1,0 +1,49 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.ProjectPropertiesDialog
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.FileChooser
+use Libraries.Interface.Controls.FileFilter
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.System.File
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Projects.Quorum.ImageSheet
+use Libraries.Interface.Selections.ListSelection
+use Libraries.Development.Environment.Studio.Interface.AddImageSheetsDialog
+
+class ProjectPropertiesAddImageSheetsBehavior is QuorumStudioBehavior
+    AddImageSheetsDialog imageSheetsDialog = undefined
+    ProjectPropertiesDialog dialog = undefined
+    List imageList = undefined
+    List imageSheetsList = undefined
+
+    action SetDialog(ProjectPropertiesDialog dialog)
+        me:dialog = dialog
+    end
+
+    action GetDialog returns ProjectPropertiesDialog
+        return dialog
+    end
+
+    action SetImageSheetsList(List list)
+        imageSheetsList = list
+    end
+
+    action GetImageSheetsList returns List
+        return imageSheetsList
+    end
+
+    action Run(BehaviorEvent event)
+
+        if me:imageSheetsDialog = undefined
+            AddImageSheetsDialog imagesSheetsDialog
+            me:imageSheetsDialog = imagesSheetsDialog
+            me:imageSheetsDialog:Initialize()
+            me:imageSheetsDialog:SetPropertiesDialog(dialog)
+        end
+
+        me:imageSheetsDialog:Show() 
+
+    end
+end
