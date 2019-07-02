@@ -88,7 +88,7 @@ class Options is ProjectListener
             return now
         end
         text value = file:Read()
-
+        value = value:Replace("\\", "\")
         JavaScriptObjectNotation notation
         notation:Read(value)
 
@@ -123,7 +123,7 @@ class Options is ProjectListener
         repeat while openProjectIterator:HasNext()
             text next = openProjectIterator:Next()
             JavaScriptObjectNotation item
-            item:SetText(JSONValueProcessor(next))
+            item:SetText(next)
             array:Add(item)
         end
 
@@ -163,6 +163,8 @@ class Options is ProjectListener
 
         text value = notation:ToText()
         //write to disk once this is fixed
+        //sanitize the input first
+        value = value:Replace("\", "\\")
         file:Write(value)
     end
 
