@@ -26,6 +26,8 @@ use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Studio.Behaviors.InputBehavior
 use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Events.FocusEvent
+use Libraries.Interface.Selections.TabPaneSelection
 
 class OutputEditorTabPane is TabPane
     Color color
@@ -38,6 +40,17 @@ class OutputEditorTabPane is TabPane
     
     Resources resources = undefined
     Behaviors behaviors = undefined
+
+    action GainedFocus(FocusEvent event)
+        TabPaneSelection selection = GetSelection()
+        Tab tab = selection:GetTab()
+        if tab not= undefined
+            Item2D value = tab:GetFocusTarget()
+            if value not= undefined
+                value:Focus()
+            end
+        end
+    end
 
     action GetBehaviors returns Behaviors
         return behaviors
@@ -162,6 +175,7 @@ class OutputEditorTabPane is TabPane
         outputPanel:Add(inputTextBoxForOutputPane)
         outputPanel:Add(button)
         outputTab:SetTextBox(textBox)
+        outputTab:SetFocusTarget(textBox)
         outputTab:SetName("Console")
         outputTab:SetRelatedItem(outputPanel)
         outputTab:DisplayCloseButton(true)
