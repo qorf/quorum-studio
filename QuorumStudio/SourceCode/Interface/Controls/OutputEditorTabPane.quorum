@@ -138,11 +138,13 @@ class OutputEditorTabPane is TabPane
         FlowLayout flow
         outputPanel:SetLayout(flow)
 
-        TextBox textBox  
-        textBox:SetBackgroundColor(color:White())
-        textBox:SetText("Welcome to Quorum Studio!")
+        TextBox textBoxForConsoleOutput  
+        textBoxForConsoleOutput:SetBackgroundColor(color:White())
+        textBoxForConsoleOutput:SetText("Welcome to Quorum Studio!")
+        textBoxForConsoleOutput:SetMoveFocusOnTab(true)
+        textBoxForConsoleOutput:SetName("Console output")
 
-        LayoutProperties textBoxPanelLayout = textBox:GetDefaultLayoutProperties()
+        LayoutProperties textBoxPanelLayout = textBoxForConsoleOutput:GetDefaultLayoutProperties()
         textBoxPanelLayout:SetPercentageX(0)
         textBoxPanelLayout:SetPercentageY(0.2)
         textBoxPanelLayout:SetPercentageWidth(1)
@@ -158,24 +160,34 @@ class OutputEditorTabPane is TabPane
         textBoxPanelLayoutForInput:SetTopPadding(3)
 
         inputTextBoxForOutputPane:SetBackgroundColor(color:White())
-
+        inputTextBoxForOutputPane:SetMoveFocusOnTab(true)
         InputBehavior behavior = behaviors:GetInputBehavior()
         
-        Button button
-        LayoutProperties buttonProperties = button:GetDefaultLayoutProperties()
+        Button sendButtonOutputPane
+        LayoutProperties buttonProperties = sendButtonOutputPane:GetDefaultLayoutProperties()
         buttonProperties:SetHorizontalLayoutMode(buttonProperties:FILL)
         buttonProperties:SetVerticalLayoutMode(buttonProperties:FILL)
         buttonProperties:SetTopPadding(2)
-        button:SetName("Send")
+        sendButtonOutputPane:SetName("Send")
 
+        //Set the focus system up for these controls
+        sendButtonOutputPane:SetNextFocus(textBoxForConsoleOutput)
+        sendButtonOutputPane:SetPreviousFocus(inputTextBoxForOutputPane)
+        inputTextBoxForOutputPane:SetNextFocus(sendButtonOutputPane)
+        inputTextBoxForOutputPane:SetPreviousFocus(textBoxForConsoleOutput)
+        textBoxForConsoleOutput:SetNextFocus(inputTextBoxForOutputPane)
+        textBoxForConsoleOutput:SetPreviousFocus(sendButtonOutputPane)
+
+        //setup some behaviors
         behavior:SetInputTextBox(inputTextBoxForOutputPane)
-        button:SetBehavior(behavior)
+        sendButtonOutputPane:SetBehavior(behavior)
 
-        outputPanel:Add(textBox)
+        outputPanel:Add(textBoxForConsoleOutput)
         outputPanel:Add(inputTextBoxForOutputPane)
-        outputPanel:Add(button)
-        outputTab:SetTextBox(textBox)
-        outputTab:SetFocusTarget(textBox)
+        outputPanel:Add(sendButtonOutputPane)
+        
+        outputTab:SetTextBox(textBoxForConsoleOutput)
+        outputTab:SetFocusTarget(textBoxForConsoleOutput)
         outputTab:SetName("Console")
         outputTab:SetRelatedItem(outputPanel)
         outputTab:DisplayCloseButton(true)
