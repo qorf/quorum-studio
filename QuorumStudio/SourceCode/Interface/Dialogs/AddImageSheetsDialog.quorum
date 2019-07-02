@@ -1,0 +1,162 @@
+package Libraries.Development.Environment.Studio.Interface
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Gradient
+use Libraries.Interface.Controls.Button
+use Libraries.Development.Environment.Studio.Behaviors.AddImageSheetsOkBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+
+class AddImageSheetsDialog is Dialog
+    boolean initialized = false
+
+    ProjectPropertiesDialog projectPropertiesDialog
+    TextField imageSheetName
+    Button cancelButton
+    Button okayButton
+
+    AddImageSheetsOkBehavior okayBehavior
+    DialogCancelBehavior cancelBehavior
+
+    on create
+        okayBehavior:SetDialog(me)
+        cancelBehavior:SetDialog(me)
+    end
+
+    action SetPropertiesDialog(ProjectPropertiesDialog propertiesDialog)
+        projectPropertiesDialog = propertiesDialog 
+    end
+
+    action OnShow()
+        imageSheetName:Focus()
+    end
+
+    action Initialize
+        if initialized
+            output "WARNING: Re-initializing the FindDialog."
+        end
+
+        initialized = true
+
+        SetName("Add Image Sheet")
+        SetPixelWidth(300)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL - view:TOP)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        
+        Control panel
+        FlowLayout newFileLayout
+        panel:SetLayout(newFileLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetPixelHeight(110)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+        panel:Add(AddImageSheetControl())
+        panel:SetView2D(view)
+        Add(panel)
+
+    end
+
+    private action AddImageSheetControl returns Control
+        Control addImageSheetContainer
+
+        Color color
+        FlowLayout addImageSheetLayout
+        addImageSheetContainer:SetLayout(addImageSheetLayout)
+        addImageSheetContainer:SetBorderThickness(1)
+        addImageSheetContainer:SetBorderColor(color:Black())
+        addImageSheetContainer:SetPercentageWidth(1.0)   
+        addImageSheetContainer:SetVerticalLayoutMode(addImageSheetContainer:FIT_CONTENTS)
+        
+        Label imageSheetLabel
+        imageSheetLabel:SetLeftPadding(10)
+        imageSheetLabel:SetText("Please enter the name of the image sheet")
+        imageSheetLabel:SetPercentageWidth(1.0)
+        
+        addImageSheetContainer:Add(imageSheetLabel)
+        
+        Control imageSheetNameContainer
+        FlowLayout imageSheetNameLayout
+        imageSheetNameContainer:SetLayout(imageSheetNameLayout)
+        imageSheetNameContainer:SetTopPadding(20)
+        imageSheetNameContainer:SetLeftPadding(10)
+        imageSheetNameContainer:SetRightPadding(10)
+        imageSheetNameContainer:SetBottomPadding(20)
+        imageSheetNameContainer:SetPercentageWidth(1.0)
+        imageSheetNameContainer:SetVerticalLayoutMode(imageSheetNameContainer:FIT_CONTENTS)
+        
+        imageSheetName:SetHorizontalLayoutMode(imageSheetName:parent:Libraries.Interface.Controls.Control:FILL)
+        imageSheetName:SetNextFocus(cancelButton)
+        imageSheetName:SetPreviousFocus(okayButton)
+        imageSheetName:SetName("Image Sheet Name")
+        imageSheetName:SetText("")
+        imageSheetName:SetFocusable(true)
+        imageSheetNameContainer:Add(imageSheetName)
+        addImageSheetContainer:Add(imageSheetNameContainer)
+
+        Control buttonsContainer   
+        FlowLayout buttonsLayout
+        buttonsContainer:SetLayout(buttonsLayout)
+        buttonsContainer:SetPercentageWidth(1.0)
+        buttonsContainer:SetVerticalLayoutMode(buttonsContainer:FIT_CONTENTS)
+        buttonsContainer:SetTopPadding(20)
+        
+        Control closingPadding
+        closingPadding:SetPercentageWidth(0.54)
+        closingPadding:SetPixelHeight(1)
+        buttonsContainer:Add(closingPadding)
+
+        cancelButton:SetName("Cancel")
+        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancelButton:SetPercentageWidth(0.2)
+        cancelButton:SetLeftPadding(0)
+        cancelButton:SetTopPadding(0)
+        cancelButton:SetFocusable(true)
+        cancelButton:SetNextFocus(okayButton)
+        cancelButton:SetPreviousFocus(imageSheetName)
+        cancelButton:SetBehavior(cancelBehavior)
+        buttonsContainer:Add(cancelButton)
+
+        Gradient okayGradient
+        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
+        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
+        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
+
+        okayButton:SetName("OK")
+        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        okayButton:SetBackgroundColor(okayGradient)
+        okayButton:SetPercentageWidth(0.2)
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(0)
+        okayButton:SetFocusable(true)
+        okayButton:SetNextFocus(imageSheetName)
+        okayButton:SetPreviousFocus(cancelButton)
+        okayButton:SetBehavior(okayBehavior)
+        buttonsContainer:Add(okayButton)
+        
+        addImageSheetContainer:Add(buttonsContainer)
+
+        return addImageSheetContainer
+    end
+
+    /* Adds the new imageSheet name to the ProjectPropertiesDialog imageSheets List */
+    action AddNewImageSheet()
+        projectPropertiesDialog:AddNewImageSheet(imageSheetName:GetText())
+    end
+
+    action GetImageSheetName returns text
+        return imageSheetName:GetText()
+    end
+    
+    action OnHide()
+        imageSheetName:Empty()
+    end
+
+end

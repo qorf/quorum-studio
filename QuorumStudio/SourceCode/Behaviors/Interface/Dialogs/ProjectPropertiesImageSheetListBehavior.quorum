@@ -1,0 +1,33 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.ProjectPropertiesDialog
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.List
+
+class ProjectPropertiesImageSheetListBehavior is QuorumStudioBehavior
+    ProjectPropertiesDialog dialog = undefined
+    ListItem listItem = undefined
+    List list = undefined
+    
+    action SetDialog(ProjectPropertiesDialog dialog)
+        me:dialog = dialog
+    end
+
+    action SetList(List list)
+        me:list = list
+    end
+
+    action GetList returns List
+        return me:list
+    end
+
+    action Run(BehaviorEvent event)
+        listItem = cast(ListItem, event:GetItem())
+        List list = listItem:GetList()
+        integer index = list:GetIndexOf(listItem)
+        
+        dialog:SetCurrentImageList(index)
+    end
+end
