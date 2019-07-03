@@ -1,0 +1,39 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Interface.Controls.OptionDialog
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Behaviors.Controls.DeleteFileIfOkBehavior
+use Libraries.System.File
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+
+class DeleteFileBehavior is Behavior
+    File file = undefined
+    ProjectTreeItem item = undefined
+
+    action GetTreeItem returns ProjectTreeItem
+        return item
+    end
+
+    action SetItem(ProjectTreeItem item)
+        me:item = item
+    end
+
+    action GetFile returns File
+        return file
+    end
+
+    action SetFile(File file)
+        me:file = file
+    end
+
+    action Run(BehaviorEvent event)
+        OptionDialog dialog
+        dialog:SetName("Delete File Dialog")
+        DeleteFileIfOkBehavior behavior
+        behavior:SetFile(file)
+        behavior:SetItem(item)
+        behavior:SetDialog(dialog)
+        dialog:SetBehavior(behavior)
+        dialog:Show()
+    end
+end

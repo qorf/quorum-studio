@@ -12,6 +12,7 @@ use Libraries.Interface.Controls.MenuItem
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Development.Environment.Studio.Behaviors.OpenNewFileBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SetProgramStartBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DeleteFileBehavior
 
 class QuorumProjectView is ProjectView
     QuorumProject project = undefined
@@ -152,6 +153,7 @@ class QuorumProjectView is ProjectView
                 items:Add(directory)
             else
                 PopupMenu exampleContextMenu
+                ProjectTreeItem item
                 text dq = ""
                 dq = dq:GetDoubleQuote()
                 OpenTabBehavior behavior
@@ -165,9 +167,13 @@ class QuorumProjectView is ProjectView
                 renameMenuItem:SetName("Rename")
                 //exampleContextMenu:Add(renameMenuItem)
 
+                DeleteFileBehavior deleteFileBehavior
                 MenuItem deleteMenuItem
                 deleteMenuItem:SetName("Delete")
-                //exampleContextMenu:Add(deleteMenuItem)
+                deleteFileBehavior:SetFile(file)
+                deleteFileBehavior:SetItem(item)
+                deleteMenuItem:SetBehavior(deleteFileBehavior)
+                exampleContextMenu:Add(deleteMenuItem)
 
 //                SetProgramStart startBehavior
 //                MenuItem setMainFileMenuItem
@@ -175,7 +181,7 @@ class QuorumProjectView is ProjectView
 //                setMainFileMenuItem:SetName("Set Program Start")
 //                exampleContextMenu:Add(setMainFileMenuItem)
 
-                ProjectTreeItem item
+                
                 item:SetFile(file)
                 
                 behavior:SetMainApplication(studio)
