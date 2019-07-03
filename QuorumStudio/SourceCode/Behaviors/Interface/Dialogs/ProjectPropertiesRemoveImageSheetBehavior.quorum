@@ -3,14 +3,19 @@ package Libraries.Development.Environment.Studio.Behaviors
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.ProjectPropertiesDialog
 use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.FileChooser
+use Libraries.Interface.Controls.FileFilter
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.System.File
+use Libraries.Containers.Array
 use Libraries.Development.Environment.Projects.Quorum.ImageSheet
 use Libraries.Interface.Selections.ListSelection
 use Libraries.Development.Environment.Studio.Interface.AddImageSheetsDialog
 
-class ProjectPropertiesAddImageSheetsBehavior is QuorumStudioBehavior
-    AddImageSheetsDialog imageSheetsDialog = undefined
+class ProjectPropertiesRemoveImageSheetBehavior is QuorumStudioBehavior
     ProjectPropertiesDialog dialog = undefined
     List imageSheetsList = undefined
+    ListSelection listSelection 
 
     action SetDialog(ProjectPropertiesDialog dialog)
         me:dialog = dialog
@@ -29,20 +34,7 @@ class ProjectPropertiesAddImageSheetsBehavior is QuorumStudioBehavior
     end
 
     action Run(BehaviorEvent event)
-        /* If a user tries to add an image sheet without toggling the enable toggle
-        sheets in the project properties dialog, then this is done for the user. This
-        could be replaced by not allowing the user to add an image sheet unless if
-        the enable image sheets has been toggled.*/
-        me:dialog:ToggleEnableImageSheets()
-
-        if me:imageSheetsDialog = undefined
-            AddImageSheetsDialog imagesSheetsDialog
-            me:imageSheetsDialog = imagesSheetsDialog
-            me:imageSheetsDialog:Initialize()
-            me:imageSheetsDialog:SetPropertiesDialog(dialog)
-        end
-
-        me:imageSheetsDialog:Show() 
-
+        listSelection = imageSheetsList:GetSelection()
+        me:dialog:RemoveImageSheet(listSelection:GetIndex())
     end
 end

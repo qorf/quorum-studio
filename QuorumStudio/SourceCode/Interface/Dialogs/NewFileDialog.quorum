@@ -104,10 +104,10 @@ class NewFileDialog is Dialog
 
     //sets the folderNameField in the dialog to the default filepath for the
     //project (e.g. GameApplication/SourceCode)
-    action SetProperties(QuorumProject project)
+    action SetProperties(QuorumProject project, TreeSelection selection)
         me:project = project
         projectName = project:GetName()
-        locationNameField:SetText(project:GetName())  
+        locationNameField:SetText(selection:GetDisplayName())  
     end 
 
     action IsInitialized returns boolean
@@ -240,14 +240,26 @@ class NewFileDialog is Dialog
         locationNameField:SetText(folderName)    
     end
 
-    //creates the new file using the file path from the folderNameField in the
-    //dialog
+    /* 
+    Creates the new file using the file path from the locationNameField in the
+    dialog. if the locationNameField is the same as the project name, then the 
+    new file is by default added to the SourceCode folder
+    */
     action CreateNewFile()
         File file
         File value = project:GetLocation()
+        output project:GetName()
         text path = value:GetAbsolutePath():Trim()
-        path = path + "/" + locationNameField:GetText():Trim() + "/" + fileNameField:GetText():Trim() 
-        
+        output path
+        output locationNameField:GetText()
+        output locationNameField:GetText():Trim()
+
+        if project:GetName():Equals(locationNameField:GetText():Trim())
+            path = path + "/" + project:PROJECT_SOURCES + "/" + fileNameField:GetText():Trim()
+        else
+            path = path + "/" + locationNameField:GetText():Trim() + "/" + fileNameField:GetText():Trim() 
+        end
+
         file:SetAbsolutePath(path)
         
         if file:GetFileExtension() = ""
