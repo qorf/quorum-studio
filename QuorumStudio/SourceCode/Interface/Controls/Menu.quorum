@@ -29,6 +29,7 @@ class Menu is MenuBar, SelectionListener
     MenuItem windowsMenu
     MenuItem helpMenu
 
+    MenuItem newProject
     MenuItem defaultMenuItem = undefined
     Resources resources = undefined
     KeyMap keyMap = undefined
@@ -40,6 +41,15 @@ class Menu is MenuBar, SelectionListener
     on create
         gradient:Set(color:LightGray(), color:LightGray(), color:White(), color:White())
         SetName("Menu")
+    end
+
+    action GainedFocus(FocusEvent event)
+        MenuSelection selection = GetSelection()
+        if selection:IsEmpty()
+            Array<MenuItem> newSelection
+            newSelection:Add(newProject)
+            Select(newSelection)
+        end
     end
 
     action GetBehaviors returns Behaviors
@@ -106,7 +116,7 @@ class Menu is MenuBar, SelectionListener
     private action SetupFileMenu
         Array<MenuItem> fileItems
         
-        MenuItem newProject
+        
         defaultMenuItem = newProject
         newProject:SetName("New Project")
         newProject:SetShortcut(keyMap:GetNewProjectKey())
