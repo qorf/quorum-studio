@@ -5,9 +5,11 @@ use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.ProjectPropertiesDialog
 use Libraries.Interface.Controls.ListItem
 use Libraries.Interface.Controls.List
+use Libraries.Interface.Selections.ListSelection
 
 class ProjectPropertiesImageSheetListBehavior is QuorumStudioBehavior
     ProjectPropertiesDialog dialog = undefined
+    ListSelection listSelection = undefined
     ListItem listItem = undefined
     List list = undefined
     
@@ -24,10 +26,8 @@ class ProjectPropertiesImageSheetListBehavior is QuorumStudioBehavior
     end
 
     action Run(BehaviorEvent event)
-        listItem = cast(ListItem, event:GetItem())
-        List list = listItem:GetList()
-        integer index = list:GetIndexOf(listItem)
-        
+        listSelection = me:list:GetSelection()
+        integer index = listSelection:GetIndex()       
         dialog:SetCurrentImageList(index)
     end
 end

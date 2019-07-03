@@ -9,6 +9,7 @@ use Libraries.Game.Graphics.Gradient
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Studio.Behaviors.AddImageSheetsOkBehavior
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.EditImageSheetsOkBehavior
 
 class AddImageSheetsDialog is Dialog
     boolean initialized = false
@@ -18,12 +19,18 @@ class AddImageSheetsDialog is Dialog
     Button cancelButton
     Button okayButton
 
+    EditImageSheetsOkBehavior   editOkayBehavior
     AddImageSheetsOkBehavior okayBehavior
     DialogCancelBehavior cancelBehavior
 
+    integer imageSheetIndex = 0
+    boolean editImageSheet = false
+
     on create
+        editOkayBehavior:SetDialog(me)
         okayBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
+        SetBehavior(okayBehavior)
     end
 
     action SetPropertiesDialog(ProjectPropertiesDialog propertiesDialog)
@@ -138,7 +145,11 @@ class AddImageSheetsDialog is Dialog
         okayButton:SetFocusable(true)
         okayButton:SetNextFocus(imageSheetName)
         okayButton:SetPreviousFocus(cancelButton)
-        okayButton:SetBehavior(okayBehavior)
+        if editImageSheet
+            okayButton:SetBehavior(editOkayBehavior)
+        else
+            okayButton:SetBehavior(okayBehavior)
+        end
         buttonsContainer:Add(okayButton)
         
         addImageSheetContainer:Add(buttonsContainer)
@@ -146,7 +157,22 @@ class AddImageSheetsDialog is Dialog
         return addImageSheetContainer
     end
 
-    /* Adds the new imageSheet name to the ProjectPropertiesDialog imageSheets List */
+    action SetEditFlag()
+        editImageSheet = true
+    end
+
+    action SetImageSheetName(text name)
+        imageSheetName:SetText(name)
+    end
+
+    action SetImageSheetIndex(integer index)
+        imageSheetIndex = index
+    end
+
+    action EditImageSheet()
+        projectPropertiesDialog:EditImageSheetName(imageSheetName:GetText(), imageSheetIndex)
+    end
+
     action AddNewImageSheet()
         projectPropertiesDialog:AddNewImageSheet(imageSheetName:GetText())
     end
