@@ -88,6 +88,21 @@ class Project
         properties:Add(key, property)
     end
 
+    action AddPropertyAsArray(text key, Array<text> values) 
+        ProjectProperty property
+        property:SetIsArray(true)
+        property:SetKey(key)
+
+        if values not= undefined and not values:IsEmpty()
+            i = 0
+            repeat while i < values:GetSize()
+                property:Add(values:Get(i))
+                i = i + 1
+            end
+        end
+        properties:Add(key, property)
+    end
+
     /* This action adds a property to the system. If a property of this name 
         already exists, it is overriden. Undefined or empty arrays cause
         this action to not add the property.
