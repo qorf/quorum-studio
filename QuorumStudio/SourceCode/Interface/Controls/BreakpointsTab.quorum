@@ -29,6 +29,9 @@ use Libraries.Game.InputSet
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Game.GameStateManager
 use Libraries.Game.Game
+use Libraries.Interface.Events.FocusEvent
+use Libraries.Interface.Selections.TreeTableSelection
+use Libraries.Interface.Controls.TreeTableCell
 
 class BreakpointsTab is Tab, BreakpointListener
     BreakpointScrollPane pane
@@ -54,6 +57,17 @@ class BreakpointsTab is Tab, BreakpointListener
         row:SetFile("File")
         row:SetLine("Line")
         breakpointTree:Add(row)
+    end
+
+    action GainedFocus(FocusEvent event)
+        TreeTableSelection selection = breakpointTree:GetSelection()
+        if selection:IsEmpty() and breakpointTree:GetColumnsSize() > 0 
+            and breakpointTree:GetRows() not= undefined and breakpointTree:GetRows():GetSize() > 0
+        
+            TreeTableCell cell = breakpointTree:GetCell(0,0)
+            breakpointTree:Select(cell)
+            cell:Focus()
+        end
     end
 
     action GetBehaviors returns Behaviors

@@ -22,6 +22,9 @@ use Libraries.Language.Debug.VariableNameColumn
 use Libraries.Language.Debug.VariableValueColumn
 use Libraries.Interface.Controls.TreeTableColumn
 use Libraries.Language.Debug.VariableRow
+use Libraries.Interface.Events.FocusEvent
+use Libraries.Interface.Selections.TreeTableSelection
+use Libraries.Interface.Controls.TreeTableCell
 
 class VariablesTab is Tab, TreeChangeListener
     BuildManager manager = undefined
@@ -86,6 +89,18 @@ class VariablesTab is Tab, TreeChangeListener
         me:manager = build
     end
 
+
+    action GainedFocus(FocusEvent event)
+        TreeTableSelection selection = variablesTree:GetSelection()
+        if selection:IsEmpty() and variablesTree:GetColumnsSize() > 0 
+            and variablesTree:GetRows() not= undefined and variablesTree:GetRows():GetSize() > 0
+        
+            TreeTableCell cell = variablesTree:GetCell(0,0)
+            variablesTree:Select(cell)
+            cell:Focus()
+        end
+    end
+
     action Setup
         LayoutProperties properties = variablesTree:GetDefaultLayoutProperties()
         properties:SetHorizontalLayoutMode(properties:STANDARD)
@@ -97,6 +112,7 @@ class VariablesTab is Tab, TreeChangeListener
         SetName("Variables")
         SetRelatedItem(GetPane())
         DisplayCloseButton(true)
+        SetFocusTarget(variablesTree)
     end
 
     action GetPane returns BreakpointScrollPane
