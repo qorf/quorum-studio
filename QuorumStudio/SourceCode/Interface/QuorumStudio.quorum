@@ -44,8 +44,10 @@ use Libraries.Development.Environment.Studio.Interface.SplashScreen
 use Libraries.Development.Environment.Studio.Build.ScanListener
 use Attack.FakeFocusManager
 use Libraries.Sound.Audio
+use Libraries.Interface.Events.ResizeListener
+use Libraries.Interface.Events.ResizeEvent
 
-class QuorumStudio is Game, FocusListener, ScanListener
+class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant number VERSION = 1.0
     constant text NAME = "Quorum Studio " + VERSION + " Beta 1"
     integer DEFAULT_WINDOW_WIDTH = 2500
@@ -175,7 +177,16 @@ class QuorumStudio is Game, FocusListener, ScanListener
         splashScreenHide = true
     end
 
+    action SizeChanged(ResizeEvent event)
+        integer height = event:GetHeight()
+        integer width = event:GetWidth()
+        options:SetWidth(GetScreenWidth())
+        options:SetHeight(GetScreenHeight())
+        options:SetInterfaceScale(GetInterfaceScale())
+    end
+
     action CreateGame
+        AddResizeListener(me)
         startup:Load("Resources/Audio/Startup.ogg")
         click:Load("Resources/Audio/Click.ogg")
         done:Load("Resources/Audio/Done.ogg")
@@ -201,11 +212,15 @@ class QuorumStudio is Game, FocusListener, ScanListener
         Layer2D layer = me:GetCurrentLayer2D()
         layer:SetAutomaticResizing(true)
         
+        Load()
         SetupInterface()
-        SetScreenSize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
+        integer width = options:GetWidth()
+        integer height = options:GetHeight()
+        number size = options:GetInterfaceScale()
+        SetInterfaceScale(size)
+        SetScreenSize(width, height)
         mainContentPane:Resize()
 
-        Load()
         SetupFocus()
         SetupInterfaceScaling()
         
@@ -319,6 +334,9 @@ class QuorumStudio is Game, FocusListener, ScanListener
     end
 
     action Save
+        options:SetWidth(GetScreenWidth())
+        options:SetHeight(GetScreenHeight())
+        options:SetInterfaceScale(GetInterfaceScale())
         manager:SaveOpenProjects()
         options:Write()
         File mapFile = options:GetKeyMapFile()
