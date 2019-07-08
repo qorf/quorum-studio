@@ -20,6 +20,7 @@ class Options is ProjectListener
     constant text BREAKPOINT = "Breakpoint"
     constant text FRAME_LIMITED = "FrameLimit"
     constant text FRAME_RATE = "FrameRate"
+    constant text FRAMES_PER_SECOND_COUNTER = "Frames Per Second Counter"
     constant text STARTUP_SOUNDS = "StartupSounds"
 
     HashTable<text, text> projects 
@@ -29,6 +30,15 @@ class Options is ProjectListener
     boolean isFrameLimited = false
     number frameRate = 100
     boolean startupSounds = true
+    boolean fpsCounter = false
+
+    action IsShowingFramesPerSecondCounter returns boolean
+        return fpsCounter
+    end
+
+    action SetIsShowingFramesPerSecondCounter(boolean frames)
+        fpsCounter = frames
+    end
 
     action IsFrameLimited returns boolean
         return isFrameLimited
@@ -88,7 +98,7 @@ class Options is ProjectListener
             return now
         end
         text value = file:Read()
-
+        value = value:Replace("\\", "\")
         JavaScriptObjectNotation notation
         notation:Read(value)
 
@@ -123,13 +133,14 @@ class Options is ProjectListener
         repeat while openProjectIterator:HasNext()
             text next = openProjectIterator:Next()
             JavaScriptObjectNotation item
-            item:SetText(JSONValueProcessor(next))
+            item:SetText(next)
             array:Add(item)
         end
 
         notation:Add(FRAME_LIMITED, IsFrameLimited())
         notation:Add(FRAME_RATE, frameRate)
         notation:Add(STARTUP_SOUNDS, startupSounds)
+        notation:Add(FRAMES_PER_SECOND_COUNTER, fpsCounter)
 
         //if Quorum Studio instance is not null, write any other behavior 
         //we are interested in storing
@@ -163,6 +174,8 @@ class Options is ProjectListener
 
         text value = notation:ToText()
         //write to disk once this is fixed
+        //sanitize the input first
+        value = value:Replace("\", "\\")
         file:Write(value)
     end
 
@@ -205,6 +218,11 @@ class Options is ProjectListener
                     end
                 end
                 i = i + 1
+            end
+        elseif key = FRAMES_PER_SECOND_COUNTER
+            if object:IsBoolean()
+                boolean value = object:GetBoolean()
+                me:fpsCounter = value
             end
         elseif key = FRAME_LIMITED
             if object:IsBoolean()

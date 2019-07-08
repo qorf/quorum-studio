@@ -38,6 +38,12 @@ class Toolbar is ToolBar
         SetFocusable(true)
     end
 
+    action GainedFocus(FocusEvent event)
+        if buttons:GetSize() > 0
+            Button first = buttons:Get(0)
+            first:Focus()
+        end
+    end
 
     action SetBehaviors(Behaviors behaviors)
         me:behaviors = behaviors
@@ -69,8 +75,8 @@ class Toolbar is ToolBar
         AddButtonToToolbar(resources:GetNewFile(), behaviors:GetOpenNewFileBehavior(), "New File")
         AddButtonToToolbar(resources:GetOpenProject(), behaviors:GetOpenProjectBehavior(), "Open Project")
         AddButtonToToolbar(resources:GetSaveAll(), behaviors:GetSaveAllBehavior(), "Save All")
-        AddButtonToToolbar(resources:GetUndo(), undefined, "Undo")
-        AddButtonToToolbar(resources:GetRedo(), undefined, "Redo")
+        AddButtonToToolbar(resources:GetUndo(), behaviors:GetUndoBehavior(), "Undo")
+        AddButtonToToolbar(resources:GetRedo(), behaviors:GetRedoBehavior(), "Redo")
         AddButtonToToolbar(resources:GetBuild(), behaviors:GetThreadedBuildProjectBehavior(), "Build")
         AddButtonToToolbar(resources:GetCleanAndBuild(), behaviors:GetCleanBuildProjectBehavior(), "Clean and Build")
         AddButtonToToolbar(resources:GetRun(), behaviors:GetThreadedRunProjectBehavior(), "Run")

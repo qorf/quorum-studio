@@ -37,7 +37,12 @@ use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesImageShe
 use Libraries.Interface.Controls.ListItem
 use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddImageSheetsBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddSourceBehavior
-
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesEditImageSheetsBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesRemoveImageSheetBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesRemoveImageBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddImageFolderBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesMobileResourcesBrowseBehavior
+use Libraries.Development.Environment.Studio.Behaviors.EmptyTextFieldBehavior
 
 
 class ProjectPropertiesDialog is Dialog, MouseWheelListener
@@ -69,10 +74,20 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     EmptyListBehavior clearJarsBehavior
 
     ProjectPropertiesAddSourceBehavior addSourceBehavior
+    RemoveListItemBehavior removeSourceBehavior
+    EmptyListBehavior clearSourcesBehavior
     
-    ProjectPropertiesAddImagesBehavior addImagesBehavior
-    ProjectPropertiesImageSheetListBehavior imageSheetListBehavior
     ProjectPropertiesAddImageSheetsBehavior addImageSheetsBehavior
+    ProjectPropertiesEditImageSheetsBehavior editImageSheetsBehavior
+    ProjectPropertiesRemoveImageSheetBehavior   removeImageSheetBehavior
+    ProjectPropertiesImageSheetListBehavior imageSheetListBehavior
+
+    ProjectPropertiesAddImagesBehavior addImagesBehavior
+    ProjectPropertiesAddImageFolderBehavior addImageFolderBehavior
+    ProjectPropertiesRemoveImageBehavior removeImageBehavior
+
+    ProjectPropertiesMobileResourcesBrowseBehavior mobileResourcesBrowseBehavior
+    EmptyTextFieldBehavior emptyTextFieldBehavior
 
     // Variables for the Games tab.
     Checkbox enableImageSheets
@@ -92,20 +107,31 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     TextField keyAliasField
     TextField keyPasswordField
     TextField jdkField
-
+    TabPane tabPane
     // Behaviors used by the OK and Cancel buttons.
     ProjectPropertiesOkBehavior okBehavior
     DialogCancelBehavior cancelBehavior
+
+    action OnShow
+        tabPane:Focus()
+        programNameField:Focus()
+    end
 
     on create
         addJarBehavior:SetDialog(me)
         addJavaClassBehavior:SetDialog(me)
         addSourceBehavior:SetDialog(me)
         addImagesBehavior:SetDialog(me)
+        addImageFolderBehavior:SetDialog(me)
+        removeImageBehavior:SetDialog(me)
         addImageSheetsBehavior:SetDialog(me)
+        editImageSheetsBehavior:SetDialog(me)
+        removeImageSheetBehavior:SetDialog(me)
         imageSheetListBehavior:SetDialog(me)
+        mobileResourcesBrowseBehavior:SetDialog(me)
         okBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
+        SetBehavior(okBehavior)
     end
 
     action Initialize
@@ -119,7 +145,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         SetPixelWidth(400)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
 
-        TabPane tabPane
+        
         FlowLayout tabLayout
         tabPane:SetViewAreaLayout(tabLayout)
         tabPane:SetPercentageWidth(1.0)
@@ -209,7 +235,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         if imageSheetsPathProperty not= undefined
             imageSheetsBuildPathField:SetText(imageSheetsPathProperty:GetFirstValue())
         else
-            imageSheetsBuildPathField:SetText("/resources")
+            imageSheetsBuildPathField:SetText("resources")
         end
 
         imageSheetsList:Empty()
@@ -240,20 +266,18 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         if mobileResourcesProperty not= undefined
             mobileResourcesField:SetText(mobileResourcesProperty:GetFirstValue())
         else
-            mobileResourcesField:SetText("/media")
+            mobileResourcesField:SetText("media")
         end
-        
     end
     
     /* Called by the ProjectPropertiesImageSheetListBehavior, when the image sheet 
     selection changes this action sets the correct images list, dependent on the 
     imageSheet selected in the imageSheets list*/
-    action SetCurrentImageList(integer index)
+    action SetCurrentImageList(integer sheetIndex)
         imagesList:Empty()
-        List list = imagesListArray:Get(index)
+        List list = imagesListArray:Get(sheetIndex)
 
         if list not= undefined
-            //Sets the list to appear in the dialog
             integer i = 0
             repeat while i < list:GetSize()
                 imagesList:Add(list:Get(0))
@@ -262,11 +286,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         end        
     end
 
-    /*returns the current list of images, dependent on the the current image sheet
-    selected */
-    action GetCurrentImageList returns List
-        ListSelection listSelection = imageSheetsList:GetSelection()
-        integer index = listSelection:GetIndex()
+    /*returns the list of images associated with the given index */
+    action GetCurrentImageList(integer index) returns List
         return imagesListArray:Get(index)
     end
 
@@ -280,8 +301,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         return listSelection:GetIndex()
     end
 
-    action AddToImagesListArray(integer index, List list)
-        imagesListArray:Add(index, list)
+    action AddToImagesListArray(integer sheetIndex, List list)
+        imagesListArray:RemoveAt(sheetIndex)        
+        imagesListArray:Add(sheetIndex, list)
     end
 
     /* called by the AddImageSheetsOkBehavior, adds the new image sheet name
@@ -290,7 +312,38 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         imageSheetCount = imageSheetCount + 1
         imageSheetsList:Add(imageSheetCount, imageSheetName)
         List list
+        list:Empty()
         imagesListArray:Add(imageSheetCount, list)
+    end
+
+    action EditImageSheetName(text imageSheetName, integer index)
+        imageSheetsList:Add(index, imageSheetName)
+    end
+
+    action RemoveImageSheet(integer index)
+        imageSheetCount = imageSheetCount - 1
+        imageSheetsList:Remove(index)
+        imagesListArray:RemoveAt(index)
+    end
+   
+    action RemoveImage(integer imageIndex, integer sheetIndex)
+        ListItem listItem = cast(ListItem, imagesList:GetItem(imageIndex))
+        imagesList:Remove(listItem)
+        List list 
+        integer i = 0
+        repeat while i < imagesList:GetSize()
+            list:Add(imagesList:GetListItem(i))
+            i = i + 1
+        end
+        imagesListArray:RemoveAt(sheetIndex)
+        imagesListArray:Add(sheetIndex, list)
+        SetCurrentImageList(sheetIndex)
+    end
+
+    action ToggleEnableImageSheets()
+        if not enableImageSheets:GetToggleState()
+            enableImageSheets:SetToggleState(true)
+        end
     end
 
     /*
@@ -301,6 +354,11 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     */
     action GetProject returns QuorumProject
         return project
+    end
+
+
+    action SetMobileResourcesLocation(text location)
+        mobileResourcesField:SetText(location)
     end
 
     /*
@@ -326,7 +384,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         project:EnableImageSheets(enableImageSheets:GetToggleState())
         project:EnableRecompileImageSheetsOnBuild(buildImageSheetsOnCompile:GetToggleState())
-        project:SetImageSheetBuildPath(imageSheetsBuildPathField:GetText())
+        project:SetImageSheetBuildPath("/" + imageSheetsBuildPathField:GetText():Trim())
 
         if(enableImageSheets:GetToggleState())
             ImageSheets imageSheets
@@ -347,7 +405,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             project:AddProperty(projectImageSheets)
         end
 
-        project:SetMobileAssetsPath(mobileResourcesField:GetText())
+        project:SetMobileAssetsPath("/" + mobileResourcesField:GetText():Trim())
         project:SetAndroidPath(androidLibraryField:GetText())
         project:SetAndroidKeystorePath(keyStoreField:GetText())
         project:SetAndroidKeystorePassword(keyStorePasswordField:GetText())
@@ -364,6 +422,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
     private action CreateProjectInfoTab returns Tab
         Tab projectInfoTab
+        projectInfoTab:SetFocusTarget(programNameField)
         projectInfoTab:SetName("Project Information")
         projectInfoTab:DisplayCloseButton(false)
 
@@ -396,6 +455,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         programName:SetRightPadding(10)
 
         programNameField:SetHorizontalLayoutMode(programNameField:parent:Libraries.Interface.Controls.Control:FILL)
+        programNameField:SetName("Program Name")
 
         programNameArea:Add(programName)
         programNameArea:Add(programNameField)
@@ -454,6 +514,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         pluginArea:SetPercentageWidth(1.0)
         pluginArea:SetLeftPadding(10)
 
+        javaClassList:SetName("Additional Quorum Plugin Folders")
         javaClassList:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
         javaClassList:SetVerticalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
         javaClassList:SetPercentageWidth(0.7)
@@ -519,6 +580,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         jarArea:SetPercentageWidth(1.0)
         jarArea:SetLeftPadding(10)
 
+        jarList:SetName("Additional Java Jar Libraries")
         jarList:SetHorizontalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
         jarList:SetVerticalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
         jarList:SetPercentageWidth(0.7)
@@ -584,6 +646,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         sourceArea:SetPercentageWidth(1.0)
         sourceArea:SetLeftPadding(10)
 
+        quorumSourcesList:SetName("Additional Source Files")
         quorumSourcesList:SetHorizontalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:STANDARD)
         quorumSourcesList:SetVerticalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:STANDARD)
         quorumSourcesList:SetPercentageWidth(0.7)
@@ -591,6 +654,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         sourceArea:Add(quorumSourcesList)
 
         addSourceBehavior:SetList(quorumSourcesList)
+        removeSourceBehavior:SetList(quorumSourcesList)
+        clearSourcesBehavior:SetList(quorumSourcesList)
         
         Control sourceButtons
         FlowLayout sourceButtonsLayout
@@ -618,14 +683,14 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         removeSource:SetBottomPadding(6)
         sourceButtons:Add(removeSource)
 
-        Button clearSource
-        clearSource:SetName("Clear")
-        clearSource:SetHorizontalLayoutMode(clearSource:parent:Libraries.Interface.Controls.Control:STANDARD)
-        clearSource:SetPercentageWidth(1.0)
-        clearSource:SetLeftPadding(4)
-        clearSource:SetRightPadding(4)
-        clearSource:SetBottomPadding(6)
-        sourceButtons:Add(clearSource)
+        Button clearSources
+        clearSources:SetName("Clear")
+        clearSources:SetHorizontalLayoutMode(clearSources:parent:Libraries.Interface.Controls.Control:STANDARD)
+        clearSources:SetPercentageWidth(1.0)
+        clearSources:SetLeftPadding(4)
+        clearSources:SetRightPadding(4)
+        clearSources:SetBottomPadding(6)
+        sourceButtons:Add(clearSources)
 
         panel:Add(sourceArea)
 
@@ -637,7 +702,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
 
         Control confirmPadding
-        confirmPadding:SetPercentageWidth(0.5)
+        confirmPadding:SetPercentageWidth(0.56)
         confirmPadding:SetPixelHeight(1)
         confirmArea:Add(confirmPadding)
 
@@ -667,11 +732,51 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         panel:Add(confirmArea)
 
+        programNameField:SetNextFocus(standardProjectButton)
+        programNameField:SetPreviousFocus(okayButton)
+        standardProjectButton:SetNextFocus(legoProjectButton)
+        standardProjectButton:SetPreviousFocus(programNameField)
+        legoProjectButton:SetNextFocus(webServerProjectButton)
+        legoProjectButton:SetPreviousFocus(standardProjectButton)
+        webServerProjectButton:SetNextFocus(webBrowserProjectButton)
+        webServerProjectButton:SetPreviousFocus(legoProjectButton)
+        webBrowserProjectButton:SetNextFocus(javaClassList)
+        webBrowserProjectButton:SetPreviousFocus(webServerProjectButton)
+        javaClassList:SetNextFocus(addPlugin)
+        javaClassList:SetPreviousFocus(webBrowserProjectButton)
+        addPlugin:SetNextFocus(removePlugin)
+        addPlugin:SetPreviousFocus(javaClassList)
+        removePlugin:SetNextFocus(clearPlugins)
+        removePlugin:SetPreviousFocus(addPlugin)
+        clearPlugins:SetNextFocus(jarList)
+        clearPlugins:SetPreviousFocus(removePlugin)
+        jarList:SetNextFocus(addJar)
+        jarList:SetPreviousFocus(clearPlugins)
+        addJar:SetNextFocus(removeJar)
+        addJar:SetPreviousFocus(jarList)
+        removeJar:SetNextFocus(clearJars)
+        removeJar:SetPreviousFocus(addJar)
+        clearJars:SetNextFocus(quorumSourcesList)
+        clearJars:SetPreviousFocus(removeJar)
+        quorumSourcesList:SetNextFocus(addSource)
+        quorumSourcesList:SetPreviousFocus(clearJars)
+        addSource:SetNextFocus(removeSource)
+        addSource:SetPreviousFocus(quorumSourcesList)
+        removeSource:SetNextFocus(clearSources)
+        removeSource:SetPreviousFocus(addSource)
+        clearSources:SetNextFocus(cancelButton)
+        clearSources:SetPreviousFocus(removeSource)
+        cancelButton:SetNextFocus(okayButton)
+        cancelButton:SetPreviousFocus(clearSources)
+        okayButton:SetNextFocus(programNameField)
+        okayButton:SetPreviousFocus(cancelButton)
+        
         return projectInfoTab
     end
 
     private action CreateGamesTab returns Tab
         Tab tab
+        tab:SetFocusTarget(enableImageSheets)
         tab:SetName("Games")
         tab:DisplayCloseButton(false)
 
@@ -689,8 +794,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         FlowLayout layout
         panel:SetLayout(layout)
-
-        //scrollPane:Add(panel)
 
         enableImageSheets:SetName("Enable Image Sheet Support")
         enableImageSheets:SetLeftPadding(10)
@@ -717,7 +820,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         buildPathLabel:SetText("Build Path: ")
         buildPathContainer:Add(buildPathLabel)
 
-        imageSheetsBuildPathField:SetText("resources")
+        imageSheetsBuildPathField:SetText("/resources")
+        imageSheetsBuildPathField:SetName("Build Path")
         imageSheetsBuildPathField:SetHorizontalLayoutMode(imageSheetsBuildPathField:parent:Libraries.Interface.Controls.Control:FILL)
         buildPathContainer:Add(imageSheetsBuildPathField)
 
@@ -729,8 +833,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         imageSheetsLabel:SetTopPadding(20)
         panel:Add(imageSheetsLabel)
 
-        FlowLayout imageSheetsLayout
+        imageSheetListBehavior:SetList(imageSheetsList)
 
+        FlowLayout imageSheetsLayout
         Control imageSheetsArea
         imageSheetsArea:SetLayout(imageSheetsLayout)
         imageSheetsArea:SetHorizontalLayoutMode(imageSheetsArea:STANDARD)
@@ -739,6 +844,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         imageSheetsArea:SetLeftPadding(10)
         imageSheetsArea:SetTopPadding(10)
 
+        imageSheetsList:SetName("Image Sheets List")
         imageSheetsList:SetHorizontalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imageSheetsList:SetVerticalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imageSheetsList:SetPercentageWidth(0.7)
@@ -748,6 +854,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         imageSheetsArea:Add(imageSheetsList)
 
         addImageSheetsBehavior:SetImageSheetsList(imageSheetsList)
+        editImageSheetsBehavior:SetImageSheetsList(imageSheetsList)
+        removeImageSheetBehavior:SetImageSheetsList(imageSheetsList)
 
         Control imageSheetsButtons
         FlowLayout imageSheetsButtonsLayout
@@ -773,6 +881,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         editSheet:SetLeftPadding(4)
         editSheet:SetRightPadding(4)
         editSheet:SetBottomPadding(6)
+        editSheet:SetBehavior(editImageSheetsBehavior)
         imageSheetsButtons:Add(editSheet)
 
         Button removeSheet
@@ -782,16 +891,17 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         removeSheet:SetLeftPadding(4)
         removeSheet:SetRightPadding(4)
         removeSheet:SetBottomPadding(6)
+        removeSheet:SetBehavior(removeImageSheetBehavior)
         imageSheetsButtons:Add(removeSheet)
 
-        Button buildSheets
-        buildSheets:SetName("Build")
-        buildSheets:SetHorizontalLayoutMode(buildSheets:parent:Libraries.Interface.Controls.Control:STANDARD)
-        buildSheets:SetPercentageWidth(1.0)
-        buildSheets:SetLeftPadding(4)
-        buildSheets:SetRightPadding(4)
-        buildSheets:SetBottomPadding(6)
-        imageSheetsButtons:Add(buildSheets)
+//        Button buildSheets
+//        buildSheets:SetName("Build")
+//        buildSheets:SetHorizontalLayoutMode(buildSheets:parent:Libraries.Interface.Controls.Control:STANDARD)
+//        buildSheets:SetPercentageWidth(1.0)
+//        buildSheets:SetLeftPadding(4)
+//        buildSheets:SetRightPadding(4)
+//        buildSheets:SetBottomPadding(6)
+//        imageSheetsButtons:Add(buildSheets)
 
         panel:Add(imageSheetsArea)
 
@@ -811,11 +921,17 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         imagesArea:SetLeftPadding(10)
         imagesArea:SetTopPadding(10)
 
+        imagesList:SetName("Images List")
         imagesList:SetHorizontalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imagesList:SetVerticalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imagesList:SetPercentageWidth(0.7)
         imagesList:SetPixelHeight(100)
         imagesArea:Add(imagesList)
+
+        addImagesBehavior:SetImageSheetsList(imageSheetsList)
+        addImageFolderBehavior:SetImageSheetsList(imageSheetsList)
+        removeImageBehavior:SetImageSheetsList(imageSheetsList)
+        removeImageBehavior:SetImagesList(imagesList)
 
         Control imagesButtons
         FlowLayout imagesButtonsLayout
@@ -841,6 +957,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         addImageFolder:SetLeftPadding(4)
         addImageFolder:SetRightPadding(4)
         addImageFolder:SetBottomPadding(6)
+        addImageFolder:SetBehavior(addImageFolderBehavior)
         imagesButtons:Add(addImageFolder)
 
         Button removeImage
@@ -850,29 +967,84 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         removeImage:SetLeftPadding(4)
         removeImage:SetRightPadding(4)
         removeImage:SetBottomPadding(6)
+        removeImage:SetBehavior(removeImageBehavior)
         imagesButtons:Add(removeImage)
 
         panel:Add(imagesArea)
 
-        Button okayButton
-        okayButton:SetName("OK")
-        okayButton:SetLeftPadding(10)
-        okayButton:SetTopPadding(20)
-        okayButton:SetBehavior(okBehavior)
-        panel:Add(okayButton)
+        Control confirmArea
+        FlowLayout confirmLayout
+        confirmArea:SetLayout(confirmLayout)
+        confirmArea:SetPercentageWidth(1.0)
+        confirmArea:SetTopPadding(20)
+        confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
+
+        Control confirmPadding
+        confirmPadding:SetPercentageWidth(0.56)
+        confirmPadding:SetPixelHeight(1)
+        confirmArea:Add(confirmPadding)
 
         Button cancelButton
         cancelButton:SetName("Cancel")
-        cancelButton:SetLeftPadding(10)
-        cancelButton:SetTopPadding(20)
+        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancelButton:SetPercentageWidth(0.2)
+        cancelButton:SetLeftPadding(0)
+        cancelButton:SetTopPadding(0)
         cancelButton:SetBehavior(cancelBehavior)
-        panel:Add(cancelButton)
+        confirmArea:Add(cancelButton)
+
+        Gradient okayGradient
+        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
+        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
+        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
+
+        Button okayButton
+        okayButton:SetName("OK")
+        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        okayButton:SetBackgroundColor(okayGradient)
+        okayButton:SetPercentageWidth(0.2)
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(0)
+        okayButton:SetBehavior(okBehavior)
+        confirmArea:Add(okayButton)
+
+        panel:Add(confirmArea)
+
+        enableImageSheets:SetNextFocus(buildImageSheetsOnCompile)
+        enableImageSheets:SetPreviousFocus(okayButton)
+        buildImageSheetsOnCompile:SetNextFocus(imageSheetsBuildPathField)
+        buildImageSheetsOnCompile:SetPreviousFocus(enableImageSheets)
+        imageSheetsBuildPathField:SetNextFocus(imageSheetsList)
+        imageSheetsBuildPathField:SetPreviousFocus(buildImageSheetsOnCompile)
+        imageSheetsList:SetNextFocus(addSheet)
+        imageSheetsList:SetPreviousFocus(imageSheetsBuildPathField)
+        addSheet:SetNextFocus(editSheet)
+        addSheet:SetPreviousFocus(imageSheetsList)
+        editSheet:SetNextFocus(removeSheet)
+        editSheet:SetPreviousFocus(addSheet)
+        removeSheet:SetNextFocus(imagesList)
+        removeSheet:SetPreviousFocus(editSheet)
+        //buildSheets:SetNextFocus(imagesList)
+        //buildSheets:SetPreviousFocus(removeSheet)
+        imagesList:SetNextFocus(addImage)
+        imagesList:SetPreviousFocus(removeSheet)
+        addImage:SetNextFocus(addImageFolder)
+        addImage:SetPreviousFocus(imagesList)
+        addImageFolder:SetNextFocus(removeImage)
+        addImageFolder:SetPreviousFocus(addImage)
+        removeImage:SetNextFocus(cancelButton)
+        removeImage:SetPreviousFocus(addImageFolder)
+        cancelButton:SetNextFocus(okayButton)
+        cancelButton:SetPreviousFocus(removeImage)
+        okayButton:SetNextFocus(enableImageSheets)
+        okayButton:SetPreviousFocus(cancelButton)
 
         return tab
     end
 
     private action CreateMobileTab returns Tab
         Tab tab
+        tab:SetFocusTarget(mobileResourcesField)
         tab:SetName("Mobile")
         tab:DisplayCloseButton(false)
 
@@ -907,6 +1079,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         panel:Add(resourcesContainer)
 
+        emptyTextFieldBehavior:SetTextField(mobileResourcesField)
+
+        mobileResourcesField:SetName("Mobile Resources")
         mobileResourcesField:SetPercentageWidth(0.5)
         resourcesContainer:Add(mobileResourcesField)
 
@@ -914,12 +1089,14 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         resourcesBrowse:SetName("Browse...")
         resourcesBrowse:SetPercentageWidth(0.15)
         resourcesBrowse:SetLeftPadding(6)
+        resourcesBrowse:SetBehavior(mobileResourcesBrowseBehavior)
         resourcesContainer:Add(resourcesBrowse)
 
         Button resourcesClear
         resourcesClear:SetName("Clear")
         resourcesClear:SetPercentageWidth(0.15)
         resourcesClear:SetLeftPadding(6)
+        resourcesClear:SetBehavior(emptyTextFieldBehavior)
         resourcesContainer:Add(resourcesClear)
 
         Label androidLabel
@@ -939,7 +1116,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         androidLibraryLabel:SetTopPadding(10)
         panel:Add(androidLibraryLabel)
 
-        
+        androidLibraryField:SetName("Android Library Path")
         androidLibraryField:SetPercentageWidth(1.0)
         androidLibraryField:SetPixelWidth(-10)
         androidLibraryField:SetLeftPadding(10)
@@ -952,7 +1129,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         keyStoreLabel:SetTopPadding(20)
         panel:Add(keyStoreLabel)
 
-
+        keyStoreField:SetName("Key Store Path")
         keyStoreField:SetPercentageWidth(1.0)
         keyStoreField:SetPixelWidth(-10)
         keyStoreField:SetLeftPadding(10)
@@ -965,7 +1142,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         keyStorePasswordLabel:SetTopPadding(20)
         panel:Add(keyStorePasswordLabel)
 
-        
+        keyStorePasswordField:SetName("Key Store Password")
         keyStorePasswordField:SetPercentageWidth(1.0)
         keyStorePasswordField:SetPixelWidth(-10)
         keyStorePasswordField:SetLeftPadding(10)
@@ -978,7 +1155,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         keyAliasLabel:SetTopPadding(20)
         panel:Add(keyAliasLabel)
 
-        
+        keyAliasField:SetName("Key Alias")
         keyAliasField:SetPercentageWidth(1.0)
         keyAliasField:SetPixelWidth(-10)
         keyAliasField:SetLeftPadding(10)
@@ -991,7 +1168,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         keyPasswordLabel:SetTopPadding(20)
         panel:Add(keyPasswordLabel)
 
-
+        keyPasswordField:SetName("Key Password")
         keyPasswordField:SetPercentageWidth(1.0)
         keyPasswordField:SetPixelWidth(-10)
         keyPasswordField:SetLeftPadding(10)
@@ -1004,26 +1181,73 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         jdkLabel:SetTopPadding(20)
         panel:Add(jdkLabel)
 
-        
+        jdkField:SetName("Alternative Java Development Kit")
         jdkField:SetPercentageWidth(1.0)
         jdkField:SetPixelWidth(-10)
         jdkField:SetLeftPadding(10)
         jdkField:SetTopPadding(10)
         panel:Add(jdkField)
 
-        Button okayButton
-        okayButton:SetName("OK")
-        okayButton:SetLeftPadding(10)
-        okayButton:SetTopPadding(20)
-        okayButton:SetBehavior(okBehavior)
-        panel:Add(okayButton)
+        Control confirmArea
+        FlowLayout confirmLayout
+        confirmArea:SetLayout(confirmLayout)
+        confirmArea:SetPercentageWidth(1.0)
+        confirmArea:SetTopPadding(20)
+        confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
+
+        Control confirmPadding
+        confirmPadding:SetPercentageWidth(0.56)
+        confirmPadding:SetPixelHeight(1)
+        confirmArea:Add(confirmPadding)
 
         Button cancelButton
         cancelButton:SetName("Cancel")
-        cancelButton:SetLeftPadding(10)
-        cancelButton:SetTopPadding(20)
+        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancelButton:SetPercentageWidth(0.2)
+        cancelButton:SetLeftPadding(0)
+        cancelButton:SetTopPadding(0)
         cancelButton:SetBehavior(cancelBehavior)
-        panel:Add(cancelButton)
+        confirmArea:Add(cancelButton)
+
+        Gradient okayGradient
+        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
+        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
+        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
+
+        Button okayButton
+        okayButton:SetName("OK")
+        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        okayButton:SetBackgroundColor(okayGradient)
+        okayButton:SetPercentageWidth(0.2)
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(0)
+        okayButton:SetBehavior(okBehavior)
+        confirmArea:Add(okayButton)
+
+        panel:Add(confirmArea)
+
+        mobileResourcesField:SetNextFocus(resourcesBrowse)
+        mobileResourcesField:SetPreviousFocus(okayButton)
+        resourcesBrowse:SetNextFocus(resourcesClear)
+        resourcesBrowse:SetPreviousFocus(mobileResourcesField)
+        resourcesClear:SetNextFocus(androidLibraryField)
+        resourcesClear:SetPreviousFocus(resourcesBrowse)
+        androidLibraryField:SetNextFocus(keyStoreField)
+        androidLibraryField:SetPreviousFocus(resourcesClear)
+        keyStoreField:SetNextFocus(keyStorePasswordField)
+        keyStoreField:SetPreviousFocus(androidLibraryField)
+        keyStorePasswordField:SetNextFocus(keyAliasField)
+        keyStorePasswordField:SetPreviousFocus(keyStoreField)
+        keyAliasField:SetNextFocus(keyPasswordField)
+        keyAliasField:SetPreviousFocus(keyStorePasswordField)
+        keyPasswordField:SetNextFocus(jdkField)
+        keyPasswordField:SetPreviousFocus(keyAliasField)
+        jdkField:SetNextFocus(cancelButton)
+        jdkField:SetPreviousFocus(keyPasswordField)
+        cancelButton:SetNextFocus(okayButton)
+        cancelButton:SetPreviousFocus(jdkField)
+        okayButton:SetNextFocus(mobileResourcesField)
+        okayButton:SetPreviousFocus(cancelButton)
 
         return tab
     end
@@ -1043,5 +1267,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     action OnHide()
         imageSheetCount = -1
         imagesListArray:Empty()
+        
     end
 end

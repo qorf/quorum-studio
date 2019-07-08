@@ -16,11 +16,13 @@ use Libraries.Containers.Array
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Studio.Build.BuildInformation
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
 
 class InputBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
     TextBox textbox = undefined
-
+    GameStateManager manager
     action GetInputTextBox returns TextBox
         return textbox
     end
@@ -38,7 +40,8 @@ class InputBehavior is QuorumStudioBehavior
     end
 
     action Run(BehaviorEvent event)
-        QuorumStudio studio = GetMainApplication()
+        Game game = manager:GetGame()
+        QuorumStudio studio = cast(QuorumStudio, game)
         OutputEditorTabPane outPane = studio:GetOutputPane()
         OutputTab out = outPane:GetOutputTab()
 

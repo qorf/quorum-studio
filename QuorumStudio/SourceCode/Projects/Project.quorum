@@ -21,7 +21,7 @@ class Project
     public constant text PROPERTIES_LOCATION = "Project/Project.qp"
     public constant text PROJECT_NAME = "ProjectName"
     public constant text DEVELOPMENT_ENVIRONMENT_VERSION = "DevelopmentEnvironmentVersion"
-    public constant text DEVELOPMENT_ENVIRONMENT_VERSION_VALUE = "Quorum Studio 1.0"
+    public constant text DEVELOPMENT_ENVIRONMENT_VERSION_VALUE = "Quorum Studio 1.0 Beta 1"
     constant text MULTIPLE_VALUE_SPLITTER = ";"
     File location = undefined
     File propertiesLocation
@@ -76,6 +76,21 @@ class Project
     */
     action AddProperty(text key, Array<text> values) 
         ProjectProperty property
+        property:SetKey(key)
+
+        if values not= undefined and not values:IsEmpty()
+            i = 0
+            repeat while i < values:GetSize()
+                property:Add(values:Get(i))
+                i = i + 1
+            end
+        end
+        properties:Add(key, property)
+    end
+
+    action AddPropertyAsArray(text key, Array<text> values) 
+        ProjectProperty property
+        property:SetIsArray(true)
         property:SetKey(key)
 
         if values not= undefined and not values:IsEmpty()

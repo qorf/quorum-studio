@@ -1,0 +1,41 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.System.File
+use Libraries.Interface.Controls.OptionDialog
+use Libraries.Interface.Behaviors.Controls.DeleteFileIfOkBehavior
+
+class DeleteBehavior is QuorumStudioBehavior
+    action Run(BehaviorEvent event)
+        GameStateManager manager
+        Game game = manager:GetGame()
+        QuorumStudio studio = cast(QuorumStudio, game)
+        ProjectTree tree = studio:GetProjectTree()
+        TreeSelection selection = tree:GetSelection()
+        if not selection:IsEmpty()
+            TreeItem treeItem = selection:GetTreeItem()
+            if treeItem is ProjectTreeItem
+                ProjectTreeItem item = cast(ProjectTreeItem, treeItem)
+                File file = item:GetFile()
+                if file not= undefined and file:IsFile()
+                    OptionDialog dialog
+                    dialog:SetName("Delete File Dialog")
+                    DeleteFileIfOkBehavior behavior
+                    behavior:SetFile(file)
+                    behavior:SetItem(item)
+                    behavior:SetDialog(dialog)
+                    dialog:SetBehavior(behavior)
+                    dialog:Show()
+                    dialog:Focus()
+                end
+            end
+        end
+    end
+end

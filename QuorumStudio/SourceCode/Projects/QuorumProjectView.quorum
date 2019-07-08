@@ -12,6 +12,7 @@ use Libraries.Interface.Controls.MenuItem
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Development.Environment.Studio.Behaviors.OpenNewFileBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SetProgramStartBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DeleteFileBehavior
 
 class QuorumProjectView is ProjectView
     QuorumProject project = undefined
@@ -97,7 +98,6 @@ class QuorumProjectView is ProjectView
 
     action GetLogicalTree returns TreeItem
         if project = undefined
-            output "GetLogicalTree: project = undefined"
             return undefined
         end
 
@@ -152,20 +152,27 @@ class QuorumProjectView is ProjectView
                 items:Add(directory)
             else
                 PopupMenu exampleContextMenu
+                ProjectTreeItem item
                 text dq = ""
                 dq = dq:GetDoubleQuote()
+                OpenTabBehavior behavior
 
                 MenuItem openMenuItem
                 openMenuItem:SetName("Open")
-                //exampleContextMenu:Add(openMenuItem)
+                exampleContextMenu:Add(openMenuItem)
+                openMenuItem:SetBehavior(behavior)
 
                 MenuItem renameMenuItem
                 renameMenuItem:SetName("Rename")
                 //exampleContextMenu:Add(renameMenuItem)
 
+                DeleteFileBehavior deleteFileBehavior
                 MenuItem deleteMenuItem
                 deleteMenuItem:SetName("Delete")
-                //exampleContextMenu:Add(deleteMenuItem)
+                deleteFileBehavior:SetFile(file)
+                deleteFileBehavior:SetItem(item)
+                deleteMenuItem:SetBehavior(deleteFileBehavior)
+                exampleContextMenu:Add(deleteMenuItem)
 
 //                SetProgramStart startBehavior
 //                MenuItem setMainFileMenuItem
@@ -173,9 +180,9 @@ class QuorumProjectView is ProjectView
 //                setMainFileMenuItem:SetName("Set Program Start")
 //                exampleContextMenu:Add(setMainFileMenuItem)
 
-                ProjectTreeItem item
+                
                 item:SetFile(file)
-                OpenTabBehavior behavior
+                
                 behavior:SetMainApplication(studio)
                 behavior:SetFile(file)
                 item:SetBehavior(behavior)
@@ -190,7 +197,7 @@ class QuorumProjectView is ProjectView
                 end
                 items:Add(item)
 
-                //item:SetPopupMenu(exampleContextMenu)
+                item:SetPopupMenu(exampleContextMenu)
             end
             i = i + 1
         end

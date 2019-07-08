@@ -1,0 +1,52 @@
+package Libraries.Interface.Behaviors.Controls
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.OptionDialog
+use Libraries.System.File
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Interface.Controls.TreeItem
+
+class DeleteFileIfOkBehavior is Behavior
+    OptionDialog dialog = undefined
+    File file = undefined
+    ProjectTreeItem item = undefined
+
+    action GetTreeItem returns ProjectTreeItem
+        return item
+    end
+
+    action SetItem(ProjectTreeItem item)
+        me:item = item
+    end
+
+    action GetFile returns File
+        return file
+    end
+
+    action SetFile(File file)
+        me:file = file
+    end
+
+    action GetDialog returns OptionDialog
+        return dialog
+    end
+
+    action SetDialog(OptionDialog dialog)
+        me:dialog = dialog
+    end
+
+    action Run(BehaviorEvent event)
+        if item not= undefined
+            TreeItem value = item:GetParentTreeItem()
+            if value not= undefined
+                value:Remove(cast(TreeItem, item))
+            end
+        end
+
+        if file not= undefined
+            file:Delete()
+        end
+        dialog:Hide()
+    end
+end

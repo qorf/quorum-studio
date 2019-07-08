@@ -12,12 +12,10 @@ use Libraries.Development.Environment.Projects.Quorum.ImageSheet
 use Libraries.Interface.Selections.ListSelection
 use Libraries.Interface.Controls.ListItem
 
-class ProjectPropertiesAddImagesBehavior is QuorumStudioBehavior
-    
+class ProjectPropertiesAddImagesBehavior is QuorumStudioBehavior   
     ProjectPropertiesDialog dialog = undefined
     List imageList = undefined
-    ListItem imageSheetsListItem = undefined
-
+    List imageSheetsList = undefined
 
     action SetDialog(ProjectPropertiesDialog dialog)
         me:dialog = dialog
@@ -27,51 +25,53 @@ class ProjectPropertiesAddImagesBehavior is QuorumStudioBehavior
         return dialog
     end
 
-//    action GetImageSheetsListItem returns ListItem
-//        return imageSheetsListItem
-//    end
-
-//    action SetImagesList(Array<List> imageLists)
-//        if imageSheetsListItem not= undefined
-//            imageList = 
-//        end
-//    end
-
-    action GetImagesList returns List
-        return imageList
+    action SetImageSheetsList(List list)
+        me:imageSheetsList = list
+    end
+    
+    action GetImageSheetsList returns List
+        return me:imageSheetsList
     end
 
-    action Run(BehaviorEvent event)    
-        imageSheetsListItem = me:dialog:GetCurrentImageSheet()
-        
-
-        if imageSheetsListItem not= undefined
-
-            imageList = me:dialog:GetCurrentImageList()
-            
-            
-            FileChooser chooser
-            FileFilter filter
-            filter:Empty()
-            filter:Add("png")
-            filter:Add("jpg")
-            filter:Add("jpeg")
-        
-            filter:SetAcceptAll(false)
-
-            QuorumProject project = dialog:GetProject()
-            File image = chooser:OpenFileDialog(project:GetLocation(), filter)
-
-
-            if image not= undefined
-                imageList:Add(image:GetAbsolutePath())                      
-                //dialog:AddImagesToSheet(imageSheetsListItem:GetIndex())                         //adds the new image to the correct image sheet
-            end
-
-            integer index = me:dialog:GetCurrentImageSheetIndex()
-            me:dialog:AddToImagesListArray(index, imageList)
-            me:dialog:SetCurrentImageList(index)
+    
+    action Run(BehaviorEvent event)  
+        /* if there have been no image sheets created to store the images to, then 
+        a default assets image sheet is created for the user. This could be replaced
+        to not allow users to click add image button unless an image sheet exists and
+        is selected. */
+        if imageSheetsList:IsEmpty()
+            me:dialog:AddNewImageSheet("assets")
+            me:dialog:ToggleEnableImageSheets()
+            imageSheetsList:Select(0)
         end
         
+        ListSelection sheetSelection = imageSheetsList:GetSelection()
+        /* adds the images to the currently selected imageSheet, if no imageSheet is
+        selected then the image is added to the first imageSheet in the list by default 
+        this could be changed to not allow users to click add image button unless if 
+        an image sheet has been selected */
+        integer sheetIndex = 0
+        if sheetSelection not= undefined
+            sheetIndex = sheetSelection:GetIndex()
+        end
+
+        imageList = me:dialog:GetCurrentImageList(sheetIndex)            
+        FileChooser chooser
+        FileFilter filter
+        filter:Empty()
+        filter:Add("png")
+        filter:Add("jpg")
+        filter:Add("jpeg")        
+        filter:SetAcceptAll(false)
+
+        QuorumProject project = dialog:GetProject()
+        File image = chooser:OpenFileDialog(project:GetLocation(), filter)
+
+        if image not= undefined
+            imageList:Add(image:GetAbsolutePath())                      
+        end
+
+        me:dialog:AddToImagesListArray(sheetIndex, imageList)
+        me:dialog:SetCurrentImageList(sheetIndex)        
     end
 end
