@@ -19,19 +19,7 @@ use Libraries.Development.Environment.Projects.ProjectManager
 class NewProjectBrowseBehavior is QuorumStudioBehavior 
     
     NewProjectDialog dialog = undefined
-    text folderName = undefined
-    QuorumProject project = undefined
-    QuorumStudio studio = undefined
     ProjectManager manager = undefined
-
-    action SetMainApplication(QuorumStudio studio)
-        me:studio = studio
-        manager = studio:GetProjectManager()
-    end
-
-    action GetMainApplication returns QuorumStudio
-        return studio
-    end
 
     action SetDialog(NewProjectDialog dialog)
         me:dialog = dialog
@@ -41,24 +29,12 @@ class NewProjectBrowseBehavior is QuorumStudioBehavior
         return dialog
     end
 
-    action SetFolderName (text folderName)
-        me:folderName = folderName
-    end
-
-    action GetFolderName returns text
-        return me:folderName
-    end
-
     action Run(BehaviorEvent event)
         FileChooser chooser
         File location
         File file = chooser:ChooseFolderDialog(location)
         if file not= undefined
-            //sets the locationPath variable for creating the new project
             dialog:SetLocation(file)        
-            //boolean isProject = manager:IsProject(file)
-            me:folderName = file:GetFileName()
-            dialog:UpdateLocationName(folderName)
         end
     end
 end

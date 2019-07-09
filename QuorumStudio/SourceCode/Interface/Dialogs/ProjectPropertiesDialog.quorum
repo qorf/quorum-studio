@@ -43,6 +43,7 @@ use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesRemoveIm
 use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddImageFolderBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesMobileResourcesBrowseBehavior
 use Libraries.Development.Environment.Studio.Behaviors.EmptyTextFieldBehavior
+use Libraries.Interface.Controls.TextBox
 
 
 class ProjectPropertiesDialog is Dialog, MouseWheelListener
@@ -93,6 +94,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     Checkbox enableImageSheets
     Checkbox buildImageSheetsOnCompile
     TextField imageSheetsBuildPathField
+    TextBox imagesTextBox
     List imageSheetsList
     List imagesList
 
@@ -114,7 +116,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
     action OnShow
         tabPane:Focus()
-        programNameField:Focus()
     end
 
     on create
@@ -142,14 +143,14 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         initialized = true
 
         SetName("Properties")
-        SetPixelWidth(400)
+        SetPixelWidth(600)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
 
         
         FlowLayout tabLayout
         tabPane:SetViewAreaLayout(tabLayout)
         tabPane:SetPercentageWidth(1.0)
-        tabPane:SetPixelHeight(500)
+        tabPane:SetPixelHeight(700)
 
         tabPane:Add(CreateProjectInfoTab())
         tabPane:Add(CreateGamesTab())
@@ -157,6 +158,14 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         Add(tabPane)
 
         tabPane:Select(0)
+
+        mobileResourcesField:Empty()
+        androidLibraryField:Empty()
+        keyStoreField:Empty()
+        keyStorePasswordField:Empty()
+        keyAliasField:Empty()
+        keyPasswordField:Empty()
+        jdkField:Empty()
     end
 
     action SetProperties(QuorumProject project)
@@ -268,6 +277,55 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         else
             mobileResourcesField:SetText("media")
         end
+
+        ProjectProperty androidLibraryProperty = project:GetProperty(project:ANDROID_PATH)
+        ProjectProperty androidKeyStoreProperty = project:GetProperty(project:ANDROID_KEYSTORE_PATH)
+        ProjectProperty androidKeyStorePasswordProperty = project:GetProperty(project:ANDROID_KEYSTORE_PASSWORD)
+        ProjectProperty androidKeyAliasProperty = project:GetProperty(project:ANDROID_KEY_ALIAS)
+        ProjectProperty androidKeyPasswordProperty = project:GetProperty(project:ANDROID_KEY_PASSWORD)
+        ProjectProperty androidJDKProperty = project:GetProperty(project:ANDROID_ALTERNATE_JDK_PATH)
+
+        if androidLibraryProperty not= undefined
+            androidLibraryField:SetText(project:GetAndroidPath())
+        else
+            androidLibraryField:Empty()
+        end
+            androidLibraryField:HideCaret()
+        
+        if androidKeyStoreProperty not= undefined
+            keyStoreField:SetText(project:GetAndroidKeystorePath())
+        else
+            keyStoreField:Empty()
+        end
+        keyStoreField:HideCaret()
+
+        if androidKeyStorePasswordProperty not= undefined
+            keyStorePasswordField:SetText(project:GetAndroidKeystorePassword())
+        else
+            keyStorePasswordField:Empty()
+        end
+        keyStorePasswordField:HideCaret()
+
+        if androidKeyAliasProperty not= undefined
+            keyAliasField:SetText(project:GetAndroidKeyAlias())
+        else
+            keyAliasField:Empty()
+        end
+        keyAliasField:HideCaret()
+
+        if androidKeyPasswordProperty not= undefined
+            keyPasswordField:SetText(project:GetAndroidKeyPassword())
+        else
+            keyPasswordField:Empty()
+        end
+        keyPasswordField:HideCaret()
+        
+        if androidJDKProperty not= undefined
+            jdkField:SetText(project:GetAndroidAlternateJDKPath())
+        else
+            jdkField:Empty()
+        end
+        jdkField:HideCaret()
     end
     
     /* Called by the ProjectPropertiesImageSheetListBehavior, when the image sheet 
@@ -283,7 +341,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
                 imagesList:Add(list:Get(0))
                 i = i + 1
             end
-        end        
+        end
     end
 
     /*returns the list of images associated with the given index */
@@ -384,8 +442,13 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         project:EnableImageSheets(enableImageSheets:GetToggleState())
         project:EnableRecompileImageSheetsOnBuild(buildImageSheetsOnCompile:GetToggleState())
-        project:SetImageSheetBuildPath("/" + imageSheetsBuildPathField:GetText():Trim())
-
+        text imageSheetBuildPath = imageSheetsBuildPathField:GetText():Trim()
+        if imageSheetBuildPath:StartsWith("/")
+            project:SetImageSheetBuildPath(imageSheetBuildPath)
+        else
+            project:SetImageSheetBuildPath("/" + imageSheetBuildPath)
+        end
+       
         if(enableImageSheets:GetToggleState())
             ImageSheets imageSheets
             Array<text> imageSheetName = ListToArray(imageSheetsList)
@@ -405,13 +468,31 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             project:AddProperty(projectImageSheets)
         end
 
-        project:SetMobileAssetsPath("/" + mobileResourcesField:GetText():Trim())
-        project:SetAndroidPath(androidLibraryField:GetText())
-        project:SetAndroidKeystorePath(keyStoreField:GetText())
-        project:SetAndroidKeystorePassword(keyStorePasswordField:GetText())
-        project:SetAndroidKeyAlias(keyAliasField:GetText())
-        // NYI: Key Password
-        project:SetAndroidAlternateJDKPath(jdkField:GetText())
+        text mobileAssetsPath = mobileResourcesField:GetText():Trim()
+        if mobileAssetsPath:StartsWith("/")
+            project:SetMobileAssetsPath(mobileAssetsPath)
+        else
+            project:SetMobileAssetsPath("/" + mobileAssetsPath)
+        end
+
+        if not androidLibraryField:IsEmpty()
+            project:SetAndroidPath(androidLibraryField:GetText())
+        end
+        if not keyStoreField:IsEmpty()
+            project:SetAndroidKeystorePath(keyStoreField:GetText())
+        end
+        if not keyStorePasswordField:IsEmpty()
+            project:SetAndroidKeystorePassword(keyStorePasswordField:GetText())
+        end
+        if not keyAliasField:IsEmpty()
+            project:SetAndroidKeyAlias(keyAliasField:GetText())
+        end
+        if not keyPasswordField:IsEmpty()
+            project:SetAndroidKeyPassword(keyPasswordField:GetText())
+        end
+        if not jdkField:IsEmpty()
+            project:SetAndroidAlternateJDKPath(jdkField:GetText())
+        end
 
         project:Save()
     end
@@ -429,7 +510,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         Control panel
         panel:SetPercentageWidth(1.0)
         panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-        panel:SetPixelHeight(500)
+        panel:SetPixelHeight(550)
 
         LabelBoxView panelView
         Color color
@@ -444,64 +525,90 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         Control programNameArea
         FlowLayout programNameLayout
         programNameArea:SetLayout(programNameLayout)
-        programNameArea:SetRightPadding(4)
-        programNameArea:SetTopPadding(10)
-        programNameArea:SetLeftPadding(10)
-        programNameArea:SetBottomPadding(6)
+        programNameArea:SetRightPadding(40)
+        programNameArea:SetTopPadding(20)
+        programNameArea:SetLeftPadding(20)
+        programNameArea:SetBottomPadding(10)
         programNameArea:SetPercentageWidth(1.0)
         programNameArea:SetVerticalLayoutMode(programNameArea:FIT_CONTENTS)
+
         Label programName
         programName:SetText("Program Name: ")
-        programName:SetRightPadding(10)
+        programNameArea:Add(programName)
+
+        Control labelPadding
+        labelPadding:SetPercentageWidth(0.2)
+        labelPadding:SetPixelHeight(1)
+        programNameArea:Add(labelPadding)
 
         programNameField:SetHorizontalLayoutMode(programNameField:parent:Libraries.Interface.Controls.Control:FILL)
         programNameField:SetName("Program Name")
-
-        programNameArea:Add(programName)
         programNameArea:Add(programNameField)
         panel:Add(programNameArea)
 
+        Control projectTypeArea
+        FlowLayout projectTypeLayout
+        projectTypeArea:SetLayout(projectTypeLayout)
+        projectTypeArea:SetRightPadding(10)
+        projectTypeArea:SetLeftPadding(20)
+        projectTypeArea:SetTopPadding(20)
+        projectTypeArea:SetBottomPadding(10)
+        projectTypeArea:SetPercentageWidth(1.0)
+        projectTypeArea:SetVerticalLayoutMode(projectTypeArea:FIT_CONTENTS)
+        
         Label projectType
         projectType:SetText("Select Project Type: ")
-        projectType:SetTopPadding(6)
-        projectType:SetLeftPadding(10)
-        projectType:SetRightPadding(10)
-        panel:Add(projectType)
+        projectTypeArea:Add(projectType)
+
+        Control buttonPadding
+        buttonPadding:SetPercentageWidth(0.15)
+        buttonPadding:SetPixelHeight(1)
+        projectTypeArea:Add(buttonPadding)
 
         Control buttonArea
         FlowLayout buttonLayout
-        buttonArea:SetTopPadding(6)
         buttonArea:SetLayout(buttonLayout)
         buttonArea:SetHorizontalLayoutMode(buttonArea:FILL)
         buttonArea:SetVerticalLayoutMode(buttonArea:FIT_CONTENTS)
 
         ButtonGroup buttonGroup
         standardProjectButton:SetName("Standard")
-        standardProjectButton:SetRightPadding(6)
+        standardProjectButton:SetFontSize(14)
+        standardProjectButton:SetRightPadding(33)
         buttonGroup:AddButton(standardProjectButton)
         buttonArea:Add(standardProjectButton)
+        buttonArea:Add(buttonPadding)
 
         legoProjectButton:SetName("Lego")
-        legoProjectButton:SetRightPadding(6)
+        legoProjectButton:SetFontSize(14)
+        legoProjectButton:SetRightPadding(60)
         buttonGroup:AddButton(legoProjectButton)
         buttonArea:Add(legoProjectButton)
+        buttonArea:Add(buttonPadding)
 
         webServerProjectButton:SetName("Web Server")
-        webServerProjectButton:SetRightPadding(6)
+        webServerProjectButton:SetFontSize(14)
+        webServerProjectButton:SetTopPadding(20)
         buttonGroup:AddButton(webServerProjectButton)
         buttonArea:Add(webServerProjectButton)
+        buttonArea:Add(buttonPadding)
+
 
         webBrowserProjectButton:SetName("Web Browser")
+        webBrowserProjectButton:SetFontSize(14)
+        webBrowserProjectButton:SetTopPadding(20)
         webBrowserProjectButton:SetRightPadding(6)
         buttonGroup:AddButton(webBrowserProjectButton)
         buttonArea:Add(webBrowserProjectButton)
+        buttonArea:Add(buttonPadding)
 
-        panel:Add(buttonArea)
+        projectTypeArea:Add(buttonArea)
+        panel:Add(projectTypeArea)
 
         Label pluginFolders
-        pluginFolders:SetLeftPadding(10)
+        pluginFolders:SetLeftPadding(20)
         pluginFolders:SetTopPadding(10)
-        pluginFolders:SetBottomPadding(6)
+        pluginFolders:SetBottomPadding(20)
         pluginFolders:SetText("Additional Quorum Plugin Folders")
         panel:Add(pluginFolders)
 
@@ -512,20 +619,23 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         pluginArea:SetHorizontalLayoutMode(pluginArea:STANDARD)
         pluginArea:SetVerticalLayoutMode(pluginArea:FIT_CONTENTS)
         pluginArea:SetPercentageWidth(1.0)
-        pluginArea:SetLeftPadding(10)
+        pluginArea:SetLeftPadding(20)
 
         javaClassList:SetName("Additional Quorum Plugin Folders")
         javaClassList:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
         javaClassList:SetVerticalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
         javaClassList:SetPercentageWidth(0.7)
+        javaClassList:SetRightPadding(20)
         javaClassList:SetPixelHeight(100)
         pluginArea:Add(javaClassList)
 
         Control pluginButtons
         FlowLayout pluginButtonsLayout
         pluginButtons:SetLayout(pluginButtonsLayout)
-        pluginButtons:SetHorizontalLayoutMode(pluginButtons:FILL)
+        pluginButtons:SetPercentageWidth(0.25)
         pluginButtons:SetVerticalLayoutMode(pluginButtons:FIT_CONTENTS)
+        pluginButtons:SetRightPadding(10)
+        pluginButtons:SetLeftPadding(20)
         pluginArea:Add(pluginButtons)
 
         addJavaClassBehavior:SetList(javaClassList)
@@ -536,9 +646,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         addPlugin:SetName("Add")
         addPlugin:SetHorizontalLayoutMode(addPlugin:parent:Libraries.Interface.Controls.Control:STANDARD)
         addPlugin:SetPercentageWidth(1.0)
-        addPlugin:SetLeftPadding(4)
-        addPlugin:SetRightPadding(4)
-        addPlugin:SetBottomPadding(6)
+        addPlugin:SetBottomPadding(25)
         addPlugin:SetBehavior(addJavaClassBehavior)
         pluginButtons:Add(addPlugin)
 
@@ -546,9 +654,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         removePlugin:SetName("Remove")
         removePlugin:SetHorizontalLayoutMode(removePlugin:parent:Libraries.Interface.Controls.Control:STANDARD)
         removePlugin:SetPercentageWidth(1.0)
-        removePlugin:SetLeftPadding(4)
-        removePlugin:SetRightPadding(4)
-        removePlugin:SetBottomPadding(6)
+        removePlugin:SetBottomPadding(25)
         removePlugin:SetBehavior(removeJavaClassBehavior)
         pluginButtons:Add(removePlugin)
 
@@ -556,9 +662,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         clearPlugins:SetName("Clear")
         clearPlugins:SetHorizontalLayoutMode(clearPlugins:parent:Libraries.Interface.Controls.Control:STANDARD)
         clearPlugins:SetPercentageWidth(1.0)
-        clearPlugins:SetLeftPadding(4)
-        clearPlugins:SetRightPadding(4)
-        clearPlugins:SetBottomPadding(6)
         clearPlugins:SetBehavior(clearJavaClassesBehavior)
         pluginButtons:Add(clearPlugins)
 
@@ -566,9 +669,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         Label jarLibraries
         jarLibraries:SetText("Additional Java Jar Libraries")
-        jarLibraries:SetLeftPadding(10)
+        jarLibraries:SetLeftPadding(20)
         jarLibraries:SetTopPadding(10)
-        jarLibraries:SetBottomPadding(6)
+        jarLibraries:SetBottomPadding(20)
         panel:Add(jarLibraries)
 
         FlowLayout jarLayout
@@ -578,20 +681,23 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         jarArea:SetHorizontalLayoutMode(jarArea:STANDARD)
         jarArea:SetVerticalLayoutMode(jarArea:FIT_CONTENTS)
         jarArea:SetPercentageWidth(1.0)
-        jarArea:SetLeftPadding(10)
+        jarArea:SetLeftPadding(20)
 
         jarList:SetName("Additional Java Jar Libraries")
         jarList:SetHorizontalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
         jarList:SetVerticalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
         jarList:SetPercentageWidth(0.7)
+        jarList:SetRightPadding(20)
         jarList:SetPixelHeight(100)
         jarArea:Add(jarList)
 
         Control jarButtons
         FlowLayout jarButtonsLayout
         jarButtons:SetLayout(jarButtonsLayout)
-        jarButtons:SetHorizontalLayoutMode(jarButtons:FILL)
+        jarButtons:SetPercentageWidth(0.25)
         jarButtons:SetVerticalLayoutMode(jarButtons:FIT_CONTENTS)
+        jarButtons:SetRightPadding(20)
+        jarButtons:SetLeftPadding(10)
         jarArea:Add(jarButtons)
 
         addJarBehavior:SetList(jarList)
@@ -602,9 +708,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         addJar:SetName("Add")
         addJar:SetHorizontalLayoutMode(addJar:parent:Libraries.Interface.Controls.Control:STANDARD)
         addJar:SetPercentageWidth(1.0)
-        addJar:SetLeftPadding(4)
-        addJar:SetRightPadding(4)
-        addJar:SetBottomPadding(6)
+        addJar:SetBottomPadding(25)
         addJar:SetBehavior(addJarBehavior)
         jarButtons:Add(addJar)
 
@@ -612,9 +716,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         removeJar:SetName("Remove")
         removeJar:SetHorizontalLayoutMode(removeJar:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeJar:SetPercentageWidth(1.0)
-        removeJar:SetLeftPadding(4)
-        removeJar:SetRightPadding(4)
-        removeJar:SetBottomPadding(6)
+        removeJar:SetBottomPadding(25)
         removeJar:SetBehavior(removeJarBehavior)
         jarButtons:Add(removeJar)
 
@@ -622,9 +724,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         clearJars:SetHorizontalLayoutMode(clearJars:parent:Libraries.Interface.Controls.Control:STANDARD)
         clearJars:SetName("Clear")
         clearJars:SetPercentageWidth(1.0)
-        clearJars:SetLeftPadding(4)
-        clearJars:SetRightPadding(4)
-        clearJars:SetBottomPadding(6)
         clearJars:SetBehavior(clearJarsBehavior)
         jarButtons:Add(clearJars)
 
@@ -632,9 +731,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         Label sourceFiles
         sourceFiles:SetText("Additional Source Files")
-        sourceFiles:SetLeftPadding(10)
+        sourceFiles:SetLeftPadding(20)
         sourceFiles:SetTopPadding(10)
-        sourceFiles:SetBottomPadding(6)
+        sourceFiles:SetBottomPadding(20)
         panel:Add(sourceFiles)
 
         FlowLayout sourceLayout
@@ -644,12 +743,13 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         sourceArea:SetHorizontalLayoutMode(sourceArea:STANDARD)
         sourceArea:SetVerticalLayoutMode(sourceArea:FIT_CONTENTS)
         sourceArea:SetPercentageWidth(1.0)
-        sourceArea:SetLeftPadding(10)
+        sourceArea:SetLeftPadding(20)
 
         quorumSourcesList:SetName("Additional Source Files")
         quorumSourcesList:SetHorizontalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:STANDARD)
         quorumSourcesList:SetVerticalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:STANDARD)
         quorumSourcesList:SetPercentageWidth(0.7)
+        quorumSourcesList:SetRightPadding(20)
         quorumSourcesList:SetPixelHeight(100)
         sourceArea:Add(quorumSourcesList)
 
@@ -660,17 +760,17 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         Control sourceButtons
         FlowLayout sourceButtonsLayout
         sourceButtons:SetLayout(sourceButtonsLayout)
-        sourceButtons:SetHorizontalLayoutMode(sourceButtons:FILL)
+        sourceButtons:SetPercentageWidth(0.25)
         sourceButtons:SetVerticalLayoutMode(sourceButtons:FIT_CONTENTS)
+        sourceButtons:SetRightPadding(20)
+        sourceButtons:SetLeftPadding(15)
         sourceArea:Add(sourceButtons)
 
         Button addSource
         addSource:SetName("Add")
         addSource:SetHorizontalLayoutMode(addSource:parent:Libraries.Interface.Controls.Control:STANDARD)
         addSource:SetPercentageWidth(1.0)
-        addSource:SetLeftPadding(4)
-        addSource:SetRightPadding(4)
-        addSource:SetBottomPadding(6)
+        addSource:SetBottomPadding(25)
         addSource:SetBehavior(addSourceBehavior)
         sourceButtons:Add(addSource)
 
@@ -678,18 +778,13 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         removeSource:SetName("Remove")
         removeSource:SetHorizontalLayoutMode(removeSource:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeSource:SetPercentageWidth(1.0)
-        removeSource:SetLeftPadding(4)
-        removeSource:SetRightPadding(4)
-        removeSource:SetBottomPadding(6)
+        removeSource:SetBottomPadding(25)
         sourceButtons:Add(removeSource)
 
         Button clearSources
         clearSources:SetName("Clear")
         clearSources:SetHorizontalLayoutMode(clearSources:parent:Libraries.Interface.Controls.Control:STANDARD)
         clearSources:SetPercentageWidth(1.0)
-        clearSources:SetLeftPadding(4)
-        clearSources:SetRightPadding(4)
-        clearSources:SetBottomPadding(6)
         sourceButtons:Add(clearSources)
 
         panel:Add(sourceArea)
@@ -711,7 +806,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
         cancelButton:SetPercentageWidth(0.2)
         cancelButton:SetLeftPadding(0)
-        cancelButton:SetTopPadding(0)
+        cancelButton:SetBottomPadding(20)
+        cancelButton:SetTopPadding(40)
         cancelButton:SetBehavior(cancelBehavior)
         confirmArea:Add(cancelButton)
 
@@ -726,7 +822,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         okayButton:SetBackgroundColor(okayGradient)
         okayButton:SetPercentageWidth(0.2)
         okayButton:SetLeftPadding(10)
-        okayButton:SetTopPadding(0)
+        okayButton:SetBottomPadding(20)
+        okayButton:SetTopPadding(40)
         okayButton:SetBehavior(okBehavior)
         confirmArea:Add(okayButton)
 
@@ -820,7 +917,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         buildPathLabel:SetText("Build Path: ")
         buildPathContainer:Add(buildPathLabel)
 
-        imageSheetsBuildPathField:SetText("/resources")
+        imageSheetsBuildPathField:SetText("resources")
         imageSheetsBuildPathField:SetName("Build Path")
         imageSheetsBuildPathField:SetHorizontalLayoutMode(imageSheetsBuildPathField:parent:Libraries.Interface.Controls.Control:FILL)
         buildPathContainer:Add(imageSheetsBuildPathField)
@@ -894,15 +991,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         removeSheet:SetBehavior(removeImageSheetBehavior)
         imageSheetsButtons:Add(removeSheet)
 
-//        Button buildSheets
-//        buildSheets:SetName("Build")
-//        buildSheets:SetHorizontalLayoutMode(buildSheets:parent:Libraries.Interface.Controls.Control:STANDARD)
-//        buildSheets:SetPercentageWidth(1.0)
-//        buildSheets:SetLeftPadding(4)
-//        buildSheets:SetRightPadding(4)
-//        buildSheets:SetBottomPadding(6)
-//        imageSheetsButtons:Add(buildSheets)
-
         panel:Add(imageSheetsArea)
 
         Label imagesLabel
@@ -920,13 +1008,22 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         imagesArea:SetPercentageWidth(1.0)
         imagesArea:SetLeftPadding(10)
         imagesArea:SetTopPadding(10)
+        
+        ScrollPane scrollPane
+        scrollPane:SetPercentageWidth(0.7)
+        scrollPane:SetPixelHeight(100)
+        FlowLayout scrollLayout
+        scrollPane:SetLayout(scrollLayout)
 
         imagesList:SetName("Images List")
         imagesList:SetHorizontalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        imagesList:SetVerticalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        imagesList:SetPercentageWidth(0.7)
-        imagesList:SetPixelHeight(100)
-        imagesArea:Add(imagesList)
+        imagesList:SetVerticalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        imagesList:SetPercentageWidth(1.0)
+        //imagesList:SetPixelHeight(600)
+        //imagesArea:Add(imagesList)
+        
+        scrollPane:Add(imagesList)
+        imagesArea:Add(scrollPane)
 
         addImagesBehavior:SetImageSheetsList(imageSheetsList)
         addImageFolderBehavior:SetImageSheetsList(imageSheetsList)
@@ -989,7 +1086,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
         cancelButton:SetPercentageWidth(0.2)
         cancelButton:SetLeftPadding(0)
-        cancelButton:SetTopPadding(0)
+        cancelButton:SetBottomPadding(20)
+        cancelButton:SetTopPadding(20)
         cancelButton:SetBehavior(cancelBehavior)
         confirmArea:Add(cancelButton)
 
@@ -1004,7 +1102,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         okayButton:SetBackgroundColor(okayGradient)
         okayButton:SetPercentageWidth(0.2)
         okayButton:SetLeftPadding(10)
-        okayButton:SetTopPadding(0)
+        okayButton:SetBottomPadding(20)
+        okayButton:SetTopPadding(20)
         okayButton:SetBehavior(okBehavior)
         confirmArea:Add(okayButton)
 
@@ -1024,8 +1123,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         editSheet:SetPreviousFocus(addSheet)
         removeSheet:SetNextFocus(imagesList)
         removeSheet:SetPreviousFocus(editSheet)
-        //buildSheets:SetNextFocus(imagesList)
-        //buildSheets:SetPreviousFocus(removeSheet)
         imagesList:SetNextFocus(addImage)
         imagesList:SetPreviousFocus(removeSheet)
         addImage:SetNextFocus(addImageFolder)
@@ -1082,20 +1179,21 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         emptyTextFieldBehavior:SetTextField(mobileResourcesField)
 
         mobileResourcesField:SetName("Mobile Resources")
-        mobileResourcesField:SetPercentageWidth(0.5)
+        mobileResourcesField:SetPercentageWidth(0.6)
         resourcesContainer:Add(mobileResourcesField)
 
         Button resourcesBrowse
         resourcesBrowse:SetName("Browse...")
         resourcesBrowse:SetPercentageWidth(0.15)
-        resourcesBrowse:SetLeftPadding(6)
+        resourcesBrowse:SetLeftPadding(15)
         resourcesBrowse:SetBehavior(mobileResourcesBrowseBehavior)
         resourcesContainer:Add(resourcesBrowse)
 
         Button resourcesClear
         resourcesClear:SetName("Clear")
         resourcesClear:SetPercentageWidth(0.15)
-        resourcesClear:SetLeftPadding(6)
+        resourcesClear:SetLeftPadding(20)
+        resourcesClear:SetRightPadding(20)
         resourcesClear:SetBehavior(emptyTextFieldBehavior)
         resourcesContainer:Add(resourcesClear)
 
@@ -1205,7 +1303,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
         cancelButton:SetPercentageWidth(0.2)
         cancelButton:SetLeftPadding(0)
-        cancelButton:SetTopPadding(0)
+        cancelButton:SetTopPadding(40)
+        cancelButton:SetBottomPadding(20)
         cancelButton:SetBehavior(cancelBehavior)
         confirmArea:Add(cancelButton)
 
@@ -1220,7 +1319,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         okayButton:SetBackgroundColor(okayGradient)
         okayButton:SetPercentageWidth(0.2)
         okayButton:SetLeftPadding(10)
-        okayButton:SetTopPadding(0)
+        okayButton:SetTopPadding(40)
+        okayButton:SetBottomPadding(20)
         okayButton:SetBehavior(okBehavior)
         confirmArea:Add(okayButton)
 

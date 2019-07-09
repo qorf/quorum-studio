@@ -10,8 +10,6 @@ use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Controls.Button
 use Libraries.Game.Graphics.Gradient
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
-use Libraries.Interface.Events.KeyboardListener
-use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Game.GameStateManager
 use Libraries.Interface.Controls.List
@@ -38,20 +36,13 @@ use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Containers.Iterator
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Resources
-use Libraries.Interface.Events.TabChangeListener
-use Libraries.Interface.Events.TabChangeEvent
 use Libraries.Interface.Selections.TabPaneSelection
-use Libraries.Development.Environment.Studio.Behaviors.NewProjectTabBehavior
 use Libraries.Game.Graphics.Font
 use Libraries.Interface.Layouts.TabFlowLayout
-use Libraries.Interface.Events.MouseWheelListener
-use Libraries.Interface.Events.MouseEvent
 use Libraries.Containers.Array
 use Libraries.Interface.Events.SelectionListener
-use Libraries.Interface.Events.SelectionEvent
 
-
-class NewProjectDialog is Dialog, SelectionListener
+class NewProjectDialog is Dialog
     boolean initialized = false
     GameStateManager gameManager
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
@@ -75,7 +66,6 @@ class NewProjectDialog is Dialog, SelectionListener
     NewProjectApplicationsBehavior buttonsBehavior
     NewProjectBrowseBehavior browseBehavior
     NewProjectOkBehavior okayBehavior
-    //NewProjectTabBehavior tabBehavior
     
     //set by the browseBehavior, used by the okayBehavior to set the QuorumProject location
     File locationPath
@@ -83,23 +73,7 @@ class NewProjectDialog is Dialog, SelectionListener
     text templatePath = "Templates/New/Blank" 
 
     //Basic Tab ToggleButtons
-    ButtonGroup toggleButtons
-    ToggleButton blankIcon
-    ToggleButton gameIcon
-    ToggleButton androidIcon
-    ToggleButton legoIcon
-    
-    //Advanced Tab ToggleButtons
-    ToggleButton documentIcon
-    ToggleButton imageSheetsIcon
-    ToggleButton internetServicesIcon
-    ToggleButton legoMoveIcon
-    ToggleButton physics2DIcon
-    ToggleButton physics3DIcon
-    ToggleButton sineWavesIcon
-    ToggleButton skyboxIcon
-    ToggleButton userInterfaceIcon
-    ToggleButton webServerIcon    
+    ButtonGroup toggleButtons  
 
     //Application Descriptions
     text blankDescription = 
@@ -166,19 +140,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         buttonsBehavior:SetDialog(me)
         okayBehavior:SetDialog(me)
         SetBehavior(okayBehavior)
-        tabPane:AddSelectionListener(me)
-    end
-
-    action SelectionChanged(SelectionEvent event)
-        TabPaneSelection selection = cast(TabPaneSelection, event:GetSelection())
-        integer index = selection:GetIndex()
-        if index = 0
-            okayButton:SetNextFocus(blankIcon)
-            descriptionText:SetPreviousFocus(legoIcon)
-        else
-            okayButton:SetNextFocus(documentIcon)
-            descriptionText:SetPreviousFocus(webServerIcon)
-        end
     end
 
     action Initialize
@@ -188,40 +149,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         end
 
         initialized = true
-       
-        //HashTable for Applications and their descriptions, used for loading the correct description
-        //dependent on the current application selection
-        descriptions:Add(blankIcon, blankDescription)
-        descriptions:Add(gameIcon, gameDescription)
-        descriptions:Add(androidIcon, androidDescription)
-        descriptions:Add(legoIcon, legoDescription)
-        descriptions:Add(documentIcon, documentDescription)
-        descriptions:Add(imageSheetsIcon, imageSheetsDescription)
-        descriptions:Add(internetServicesIcon, internetServicesDescription)
-        descriptions:Add(legoMoveIcon, legoMoveDescription)
-        descriptions:Add(physics2DIcon, physics2DDescription)
-        descriptions:Add(physics3DIcon, physics3DDescription)
-        descriptions:Add(sineWavesIcon, sineWavesDescription)
-        descriptions:Add(skyboxIcon, skyboxDescription)
-        descriptions:Add(userInterfaceIcon, userInterfaceDescription)
-        descriptions:Add(webServerIcon, webServerDescription)
-
-        //HashTable for Applications and their template path, used for adding the current files and folders
-        //dependent on the application selection
-        templates:Add(blankIcon, "Templates/New/Blank")
-        templates:Add(gameIcon, "Templates/New/Game")
-        templates:Add(androidIcon, "Templates/New/Android")
-        templates:Add(legoIcon, "Templates/New/LEGO")
-        templates:Add(documentIcon, "Templates/Other/Document")
-        templates:Add(imageSheetsIcon, "Templates/Other/ImageSheets")
-        templates:Add(internetServicesIcon, "Templates/Other/InternetServices")
-        templates:Add(legoMoveIcon, "Templates/Other/LEGOMove")
-        templates:Add(physics2DIcon, "Templates/Other/Physics2D")
-        templates:Add(physics3DIcon, "Templates/Other/Physics3D")
-        templates:Add(sineWavesIcon, "Templates/Other/SineWaves")
-        templates:Add(skyboxIcon, "Templates/Other/Skybox")
-        templates:Add(userInterfaceIcon, "Templates/Other/UserInterface")
-        templates:Add(webServerIcon, "Templates/Other/WebServer")
 
         SetName("New Project")       
         SetPixelWidth(850)
@@ -268,7 +195,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         tabPane:SetPixelHeight(300)
         tabPane:Add(BasicTab())
         tabPane:Add(AdvancedTab())
-        tabPane:Select(BasicTab())
+        tabPane:Select(basicTab)
         tabPane:SetLeftPadding(20)
         tabPane:SetRightPadding(20)
         applicationsContainer:Add(tabPane)
@@ -292,7 +219,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
 
         //descriptionText changes as the focus template selection changes
         //focus is set to blankDescription by default
-        descriptionText:SetText(blankDescription)
+        descriptionText:SetText("")
         descriptionText:SetPercentageWidth(1.0)
         descriptionText:SetLeftPadding(20)
         descriptionText:SetRightPadding(20)
@@ -379,7 +306,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         okayButton:SetBackgroundColor(okayGradient)
         okayButton:SetPercentageWidth(0.1)
         okayButton:SetLeftPadding(10)
-        //okayButton:SetTopPadding(0)
         closingButtonsContainer:Add(okayButton)
         createNewProjectContainer:Add(closingButtonsContainer)
 
@@ -389,6 +315,11 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
     end
 
     private action BasicTab returns Tab
+        ToggleButton blankIcon
+        ToggleButton gameIcon
+        ToggleButton androidIcon
+        ToggleButton legoIcon
+
         Icon icon
         Color color
 
@@ -412,8 +343,19 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         android:Load(androidFile)
         lego:Load(legoFile)
 
+        descriptions:Add(blankIcon, blankDescription)
+        descriptions:Add(gameIcon, gameDescription)
+        descriptions:Add(androidIcon, androidDescription)
+        descriptions:Add(legoIcon, legoDescription)
+
+        templates:Add(blankIcon, "Templates/New/Blank")
+        templates:Add(gameIcon, "Templates/New/Game")
+        templates:Add(androidIcon, "Templates/New/Android")
+        templates:Add(legoIcon, "Templates/New/LEGO")
+
         basicTab:SetName("Basic")
         basicTab:DisplayCloseButton(false)
+        basicTab:SetFocusTarget(blankIcon)
 
         LabelBoxView view
         view:Initialize(color:White(), color:White())
@@ -425,7 +367,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         panel:SetPixelHeight(300) 
         panel:SetView2D(view)
         basicTab:SetRelatedItem(panel)
-        //scrollPane:Add(panel)
 
         FlowLayout applicationsLayout
         Control applicationsContainer
@@ -533,11 +474,54 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         labelsContainer:Add(labelContainer4)
 
         panel:Add(labelsContainer)
+
+        blankIcon:SetNextFocus(gameIcon)
+        gameIcon:SetNextFocus(androidIcon)
+        androidIcon:SetNextFocus(legoIcon)
+        legoIcon:SetNextFocus(blankIcon)
+
+        blankIcon:SetPreviousFocus(legoIcon)
+        gameIcon:SetPreviousFocus(blankIcon)
+        androidIcon:SetPreviousFocus(gameIcon)
+        legoIcon:SetPreviousFocus(androidIcon)
        
         return basicTab
     end
 
     private action AdvancedTab returns Tab
+        ToggleButton documentIcon
+        ToggleButton imageSheetsIcon
+        ToggleButton internetServicesIcon
+        ToggleButton legoMoveIcon
+        ToggleButton physics2DIcon
+        ToggleButton physics3DIcon
+        ToggleButton sineWavesIcon
+        ToggleButton skyboxIcon
+        ToggleButton userInterfaceIcon
+        ToggleButton webServerIcon  
+
+        descriptions:Add(documentIcon, documentDescription)
+        descriptions:Add(imageSheetsIcon, imageSheetsDescription)
+        descriptions:Add(internetServicesIcon, internetServicesDescription)
+        descriptions:Add(legoMoveIcon, legoMoveDescription)
+        descriptions:Add(physics2DIcon, physics2DDescription)
+        descriptions:Add(physics3DIcon, physics3DDescription)
+        descriptions:Add(sineWavesIcon, sineWavesDescription)
+        descriptions:Add(skyboxIcon, skyboxDescription)
+        descriptions:Add(userInterfaceIcon, userInterfaceDescription)
+        descriptions:Add(webServerIcon, webServerDescription)
+
+        templates:Add(documentIcon, "Templates/Other/Document")
+        templates:Add(imageSheetsIcon, "Templates/Other/ImageSheets")
+        templates:Add(internetServicesIcon, "Templates/Other/InternetServices")
+        templates:Add(legoMoveIcon, "Templates/Other/LEGOMove")
+        templates:Add(physics2DIcon, "Templates/Other/Physics2D")
+        templates:Add(physics3DIcon, "Templates/Other/Physics3D")
+        templates:Add(sineWavesIcon, "Templates/Other/SineWaves")
+        templates:Add(skyboxIcon, "Templates/Other/Skybox")
+        templates:Add(userInterfaceIcon, "Templates/Other/UserInterface")
+        templates:Add(webServerIcon, "Templates/Other/WebServer")
+
         Color color
 
         Icon document
@@ -588,12 +572,11 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
 
         advancedTab:SetName("Advanced")
         advancedTab:DisplayCloseButton(false)
+        advancedTab:SetFocusTarget(documentIcon)
 
         ScrollPane scrollPane
         scrollPane:SetPercentageWidth(1.0)
         scrollPane:SetPixelHeight(300)
-        //scrollPane:AddMouseWheelListener(me)
-        //scrollPane:SetVerticalLayoutMode(scrollPane:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
         FlowLayout scrollLayout
         scrollPane:SetLayout(scrollLayout)
 
@@ -604,7 +587,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         panel:SetLayout(layout)
         panel:SetPercentageWidth(1.0)
         panel:SetPixelHeight(600)
-        //panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
         scrollPane:Add(panel)
 
         FlowLayout applicationsLayout1
@@ -677,7 +659,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         FlowLayout labelLayout1
         Control labelContainer1
         labelContainer1:SetLayout(labelLayout1)
-        //labelContainer1:SetCenterX(document:GetCenterX())
         labelContainer1:SetPercentageWidth(0.2)
         labelContainer1:SetVerticalLayoutMode(labelContainer1:FIT_CONTENTS)
         labelContainer1:Add(SetupApplicationLabels("Document"))        
@@ -692,7 +673,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         FlowLayout labelLayout3
         Control labelContainer3
         labelContainer3:SetLayout(labelLayout3)
-        //labelContainer3:SetCenterX(internet:GetCenterX())
         labelContainer3:SetPercentageWidth(0.2)
         labelContainer3:SetVerticalLayoutMode(labelContainer3:FIT_CONTENTS)
         labelContainer3:Add(SetupApplicationLabels("Internet")) 
@@ -700,7 +680,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         FlowLayout labelLayout4
         Control labelContainer4
         labelContainer4:SetLayout(labelLayout4)
-        //labelContainer4:SetCenterX(lego:GetCenterX())
         labelContainer4:SetPercentageWidth(0.2)
         labelContainer4:SetVerticalLayoutMode(labelContainer4:FIT_CONTENTS)
         labelContainer4:Add(SetupApplicationLabels("Lego Move")) 
@@ -814,7 +793,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
 
         panel:Add(labelsContainer2)
 
-
         FlowLayout applicationsLayout3
         Control applicationsContainer3
         applicationsContainer3:SetLayout(applicationsLayout3)
@@ -877,6 +855,28 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
 
         panel:Add(labelsContainer3)
 
+        documentIcon:SetNextFocus(imageSheetsIcon)
+        imageSheetsIcon:SetNextFocus(internetServicesIcon)
+        internetServicesIcon:SetNextFocus(legoMoveIcon)
+        legoMoveIcon:SetNextFocus(physics2DIcon)
+        physics2DIcon:SetNextFocus(physics3DIcon)
+        physics3DIcon:SetNextFocus(sineWavesIcon)
+        sineWavesIcon:SetNextFocus(skyboxIcon)
+        skyboxIcon:SetNextFocus(userInterfaceIcon)
+        userInterfaceIcon:SetNextFocus(webServerIcon)
+        webServerIcon:SetNextFocus(documentIcon)
+
+        documentIcon:SetPreviousFocus(webServerIcon)
+        imageSheetsIcon:SetPreviousFocus(documentIcon)
+        internetServicesIcon:SetPreviousFocus(imageSheetsIcon)
+        legoMoveIcon:SetPreviousFocus(internetServicesIcon)
+        physics2DIcon:SetPreviousFocus(legoMoveIcon)
+        physics3DIcon:SetPreviousFocus(physics2DIcon)
+        sineWavesIcon:SetPreviousFocus(physics3DIcon)
+        skyboxIcon:SetPreviousFocus(sineWavesIcon)
+        userInterfaceIcon:SetPreviousFocus(skyboxIcon)
+        webServerIcon:SetPreviousFocus(userInterfaceIcon)
+
         return advancedTab
     end 
 
@@ -904,82 +904,18 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
     end
 
     private action SetupFocus
-        //Tab advancedTab
-        basicTab:SetFocusTarget(blankIcon)
-        advancedTab:SetFocusTarget(documentIcon)
-
-        tabPane:SetFocusable(true)
-        nameField:SetFocusable(true)
-        locationField:SetFocusable(true)
-        browseButton:SetFocusable(true)
-        cancelButton:SetFocusable(true)
-        okayButton:SetFocusable(true)
-
-        blankIcon:SetFocusable(true)
-        gameIcon:SetFocusable(true)
-        androidIcon:SetFocusable(true)
-        legoIcon:SetFocusable(true)
-
-        documentIcon:SetFocusable(true)
-        imageSheetsIcon:SetFocusable(true)
-        internetServicesIcon:SetFocusable(true)
-        legoMoveIcon:SetFocusable(true)
-        physics2DIcon:SetFocusable(true)
-        physics3DIcon:SetFocusable(true)
-        sineWavesIcon:SetFocusable(true)
-        skyboxIcon:SetFocusable(true)
-        userInterfaceIcon:SetFocusable(true)
-        webServerIcon:SetFocusable(true)
-
         nameField:SetNextFocus(locationField)
         locationField:SetNextFocus(browseButton)
         browseButton:SetNextFocus(cancelButton)
         cancelButton:SetNextFocus(okayButton)
-        okayButton:SetNextFocus(blankIcon)
-
-
-            
-        blankIcon:SetNextFocus(gameIcon)
-        gameIcon:SetNextFocus(androidIcon)
-        androidIcon:SetNextFocus(legoIcon)
-        legoIcon:SetNextFocus(descriptionText)
-
-        descriptionText:SetPreviousFocus(legoIcon)
-        descriptionText:SetNextFocus(nameField)
-        nameField:SetPreviousFocus(descriptionText)
-
-        documentIcon:SetNextFocus(imageSheetsIcon)
-        imageSheetsIcon:SetNextFocus(internetServicesIcon)
-        internetServicesIcon:SetNextFocus(legoMoveIcon)
-        legoMoveIcon:SetNextFocus(physics2DIcon)
-        physics2DIcon:SetNextFocus(physics3DIcon)
-        physics3DIcon:SetNextFocus(sineWavesIcon)
-        sineWavesIcon:SetNextFocus(skyboxIcon)
-        skyboxIcon:SetNextFocus(userInterfaceIcon)
-        userInterfaceIcon:SetNextFocus(webServerIcon)
-        webServerIcon:SetNextFocus(descriptionText)
+        okayButton:SetNextFocus(tabPane)
 
         tabPane:SetPreviousFocus(okayButton)
+        nameField:SetPreviousFocus(tabPane)
         locationField:SetPreviousFocus(nameField)
         browseButton:SetPreviousFocus(locationField)
         cancelButton:SetPreviousFocus(browseButton)
         okayButton:SetPreviousFocus(cancelButton)
-
-        blankIcon:SetPreviousFocus(tabPane)
-        gameIcon:SetPreviousFocus(blankIcon)
-        androidIcon:SetPreviousFocus(gameIcon)
-        legoIcon:SetPreviousFocus(androidIcon)
-
-        documentIcon:SetPreviousFocus(tabPane)
-        imageSheetsIcon:SetPreviousFocus(documentIcon)
-        internetServicesIcon:SetPreviousFocus(imageSheetsIcon)
-        legoMoveIcon:SetPreviousFocus(internetServicesIcon)
-        physics2DIcon:SetPreviousFocus(legoMoveIcon)
-        physics3DIcon:SetPreviousFocus(physics2DIcon)
-        sineWavesIcon:SetPreviousFocus(physics3DIcon)
-        skyboxIcon:SetPreviousFocus(sineWavesIcon)
-        userInterfaceIcon:SetPreviousFocus(skyboxIcon)
-        webServerIcon:SetPreviousFocus(userInterfaceIcon)
     end
 
     private action SetupBehaviors
@@ -1004,9 +940,10 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
 
     action SetLocation(File file)
         locationPath = file
+        UpdateLocationName(file:GetAbsolutePath())
     end
 
-    action UpdateLocationName(text location)
+    private action UpdateLocationName(text location)
         locationField:SetText(location)
     end
 
@@ -1025,7 +962,7 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         //dependent on the type of application chosen by the user
         template:SetPath(templatePath)  //sets the template of the user defined application            
         
-        text path = locationPath:GetAbsolutePath():Trim() + "/" + nameField:GetText():Trim() + "/Main.quorum"
+        text path = locationField:GetText():Trim() + "/" + nameField:GetText():Trim() + "/Main.quorum"
         file:SetAbsolutePath(path)
         project:SetLocation(file:GetParentDirectory())
         
@@ -1050,7 +987,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
     end
 
     action AppendToProjectPane(QuorumProject project)
-        //action to add the newly created project to the project pane in QuorumStudio
         Resources resource
         resource:Load()
 
@@ -1065,31 +1001,15 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         projectTree:Add(treeItem)
     end
 
-    action GetCurrentTabFocus returns Tab
-        return tabPane:GetSelection():GetTab()
-    end
-
-    action UpdateFocus(Tab tab)
-        if tab = basicTab
-            tabPane:SetNextFocus(blankIcon)
-            blankIcon:Focus()
-            nameField:SetPreviousFocus(legoIcon)            
-        elseif tab = advancedTab
-            tabPane:SetNextFocus(documentIcon)
-            documentIcon:Focus()
-            nameField:SetPreviousFocus(webServerIcon)
-        end
-    end
-
-
     action OnHide
         nameField:Empty()
         locationField:Empty()
-        tabPane:Select(basicTab)
-        UpdateDescription(blankIcon)
     end
 
     action OnShow
-        blankIcon:Focus()
+        tabPane:Focus()
+        tabPane:Select(basicTab)
+        basicTab:Activate()
     end
+
 end
