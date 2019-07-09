@@ -5,23 +5,27 @@
  */
 package plugins.quorum.Libraries.Language.Debug;
 
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import org.debugger.jdi.JDIDebugger;
+import plugins.quorum.Libraries.Concurrency.ProcessCoordinator;
+import plugins.quorum.Libraries.Concurrency.ProcessWatcher;
 import quorum.Libraries.Containers.Array;
 import quorum.Libraries.Containers.Array_;
 import quorum.Libraries.Containers.Iterator_;
 import quorum.Libraries.Language.Debug.Breakpoint_;
 import quorum.Libraries.Language.Debug.CallStackModel_;
 import quorum.Libraries.Language.Debug.DebuggerListener_;
+import quorum.Libraries.Language.Debug.DebuggerOutputEvent;
 import quorum.Libraries.Language.Debug.VariablesModel_;
 
 /**
  *
  * @author stefika
  */
-public class Debugger {
+public class Debugger implements ProcessCoordinator{
     public java.lang.Object me_ = null;
     private JDIDebugger debugger;
     String location = "";
@@ -30,6 +34,7 @@ public class Debugger {
     HashMap<String, BreakpointWrapper> breakpoints = new HashMap<>();
     quorum.Libraries.Language.Debug.VariablesModel model = new quorum.Libraries.Language.Debug.VariablesModel();
     quorum.Libraries.Language.Debug.CallStackModel callStackModel = new quorum.Libraries.Language.Debug.CallStackModel();
+    ProcessWatcher watch = null;
     
     public void RunToCursor(String className, int line) {
         if(debugger != null) {
@@ -165,12 +170,21 @@ public class Debugger {
         debugger.setExecutable(location);
         debugger.setWorkingDirectory(workingDirectory);
         debugger.launch();
+        
+        watch = new ProcessWatcher(debugger.getInputStream());
+        OutputStream outputStream = debugger.getOutputStream();
+        watch.setStream(outputStream);
+        watch.SetProcessCoordinator(this);
+        watch.start();
     }
     
     public void Stop() {
         if(debugger != null) {
             debugger.stop();
             debugger = null;
+        }
+        if(watch != null) {
+            watch.SetCancelled(true);
         }
     }
     
@@ -212,5 +226,23 @@ public class Debugger {
     public CallStackModel_ GetCallStackModel() {
         callStackModel.plugin_.setDebugger(debugger);
         return callStackModel;
+    }
+
+    DebuggerOutputEvent event = new DebuggerOutputEvent();
+    @Override
+    public void SendOutput(String value) {
+        event.SetOutput(value);
+        for(int i = 0; i < listeners.size(); i++) {
+            DebuggerListenerWrapper item = listeners.get(i);
+            DebuggerListener_ listener = item.getListener();
+            listener.Run(event);
+        }
+    }
+
+    @Override
+    public void SendInput(String value) {
+        if(watch != null) {
+            watch.SendInput(value);
+        }
     }
 }
