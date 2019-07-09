@@ -4,12 +4,14 @@ use Libraries.Development.Environment.Studio.Interface.NewProjectDialog
 use Libraries.Interface.Controls.Button
 use Libraries.Interface.Controls.ToggleButton
 use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Views.SelectionHighlightView
 
 class NewProjectApplicationsBehavior is QuorumStudioBehavior
     
     NewProjectDialog dialog = undefined
     Button button
     ToggleButton toggleButton
+
 
     action SetDialog(NewProjectDialog dialog)
         me:dialog = dialog
@@ -19,15 +21,10 @@ class NewProjectApplicationsBehavior is QuorumStudioBehavior
         return dialog
     end
     
-
     action Run(BehaviorEvent event)
         me:toggleButton = cast(ToggleButton, event:GetItem())
         me:dialog:RemoveApplicationToggle()
-        me:toggleButton:AllowToggleOff(false)
         me:toggleButton:SetToggleState(true)
-        //me:toggleButton = dialog:GetCurrentApplicationFocus()
-        //me:toggleButton = cast(ToggleButton, me:button)
-        dialog:UpdateDescription(me:toggleButton)
-        
+        dialog:UpdateDescription(me:toggleButton)       
     end
 end
