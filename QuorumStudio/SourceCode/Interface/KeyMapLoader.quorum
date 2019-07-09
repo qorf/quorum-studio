@@ -3,15 +3,16 @@ package Libraries.Development.Environment.Studio.Interface
 use Libraries.Game.InputSet
 use Libraries.System.Properties
 use Libraries.System.File
+use Libraries.Development.Environment.Configuration.Options
 
 class KeyMapLoader is KeyMap
     KeyMap actualKeyMap = undefined
+    Options options = undefined
     Properties properties
     public constant text KEYMAP = "Configuration/KeyMap.json"
 
-    on create
-        File customKeymap
-        customKeymap:SetPath(KEYMAP)
+    action Setup
+        File customKeymap = options:GetKeyMapFile()
         if customKeymap:Exists()
             RemapKeyMap map
             boolean value = map:Load(customKeymap)
@@ -23,6 +24,14 @@ class KeyMapLoader is KeyMap
         else
             LoadDefaultMap()
         end
+    end
+
+    action GetOptions returns Options
+        return options
+    end
+    
+    action SetOptions(Options options)
+        me:options = options
     end
 
     private action LoadDefaultMap

@@ -10,6 +10,7 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Development.Environment.Studio.Build.BuildManager
 use Libraries.Language.Debug.Breakpoint
+use Libraries.System.Properties
 
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
@@ -26,6 +27,45 @@ class Options is ProjectListener
     constant text WINDOW_WIDTH = "Width"
     constant text WINDOW_HEIGHT = "Height"
 
+    File optionsLocation
+    File keymapLocation
+    boolean placeConfigInAppDataOnWindows = true
+
+    on create
+        Properties prop
+        text value = prop:GetEnvironmentVariable("APPDATA")
+
+        //If we're on windows, we need to place our config files into app data
+        //to avoid requiring admin access in the installed version
+        if prop:IsWindows() and placeConfigInAppDataOnWindows
+            File file
+            file:SetWorkingDirectory(value)
+            file:SetPath("Quorum Studio")
+            if not file:Exists()
+                file:CreateDirectory()
+            end
+
+            File newOptionsFile
+            newOptionsFile:SetWorkingDirectory(file:GetAbsolutePath())
+            newOptionsFile:SetPath("Options.json")
+            optionsLocation = newOptionsFile
+
+            File newKeyMapFile
+            newKeyMapFile:SetWorkingDirectory(file:GetAbsolutePath())
+            newKeyMapFile:SetPath("KeyMap.json")
+            keymapLocation = newKeyMapFile
+        else
+            File file
+            file:SetPath("Configuration")
+            if not file:Exists()
+                file:CreateDirectory()
+            end
+
+            optionsLocation:SetPath(OPTIONS_FILE)
+            keymapLocation:SetPath(KEYMAP_FILE)
+        end
+    end
+
     HashTable<text, text> projects 
     Array<File> filesOpenAtBoot
     QuorumStudio studio = undefined
@@ -34,7 +74,7 @@ class Options is ProjectListener
     number frameRate = 100
     boolean startupSounds = true
     boolean fpsCounter = false
-    number scale = 1
+    number scale = 2
     integer width = 2500
     integer height = 1500
 
@@ -100,9 +140,11 @@ class Options is ProjectListener
     end
 
     action GetKeyMapFile returns File
-        File file
-        file:SetPath(KEYMAP_FILE)
-        return file
+        return keymapLocation
+    end
+
+    action GetOptionsFile returns File
+        return optionsLocation
     end
 
     action OpenedProject(QuorumProject project)
@@ -120,11 +162,9 @@ class Options is ProjectListener
     end
     
     action Read
-        File file
-        file:SetPath(OPTIONS_FILE)
+        File file = GetOptionsFile()
+        //it is just fine if the file isn't there. Bail and let the system generate it later
         if not file:Exists()
-            file:Write("")
-            file:Close()
             return now
         end
         text value = file:Read()
@@ -150,8 +190,7 @@ class Options is ProjectListener
     end
 
     action Write
-        File file
-        file:SetPath(OPTIONS_FILE)
+        File file = GetOptionsFile()
         JavaScriptObjectNotation notation
         notation:SetPrettyPrint(true)
         JavaScriptObjectNotation array

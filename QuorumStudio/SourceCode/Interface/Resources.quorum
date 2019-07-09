@@ -5,6 +5,7 @@ use Libraries.Game.Graphics.Color
 use Libraries.Development.Environment.Studio.Interface.KeyMap
 use Libraries.Development.Environment.Studio.Interface.KeyMapLoader
 use Libraries.Interface.Controls.Icon
+use Libraries.Development.Environment.Configuration.Options
 
 /*
     This class represents the resources that are used on the system.
@@ -68,7 +69,17 @@ class Resources
     //colors
     Color backgroundColor
     
+    Options options = undefined
     KeyMapLoader keyMap
+
+    action GetOptions returns Options
+        return options
+    end
+    
+    action SetOptions(Options options)
+        me:options = options
+        keyMap:SetOptions(options)
+    end
 
     action GetKeyMap returns KeyMap
         return keyMap
@@ -100,6 +111,7 @@ class Resources
         stepOut:LoadFromFile(STEP_OUT)
 
         backgroundColor:SetColor(226.0/255.0, 226.0/255.0, 226.0/255.0, 1)
+        keyMap:Setup()
     end
 
     action GetBackgroundColor returns Color
