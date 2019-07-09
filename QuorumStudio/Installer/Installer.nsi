@@ -14,6 +14,8 @@
   !define REGISTRY_KEY "Software\QuorumStudio"
 
   Name "Quorum Studio ${VERSION}"
+  Caption "Quorum Studio"
+  Icon "quorum.ico"
   OutFile "Quorum Studio ${VERSION}.exe"
 
   ;Default installation folder
@@ -81,6 +83,7 @@ Section "Core" SecDummy
   
   ;ADD YOUR OWN FILES HERE...
   File QuorumStudio.exe
+  File quorum.ico
   File /nonfatal /r "..\Run\*.*"
   File /nonfatal /r "..\External"
   File /nonfatal /r "..\Library"
@@ -97,8 +100,13 @@ Section "Core" SecDummy
     
     ;Create shortcuts
     CreateDirectory "$SMPROGRAMS\$StartMenuFolder"
+    CreateShortCut "$SMPROGRAMS\$StartMenuFolder\Quorum Studio.lnk" "$INSTDIR\QuorumStudio.exe" "" "$INSTDIR\quorum.ico"
     CreateShortcut "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
   
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\QuorumStudio" \
+                 "DisplayName" "Quorum Studio 1.0 Beta 1"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\QuorumStudio" \
+                 "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
   !insertmacro MUI_STARTMENU_WRITE_END
 
 SectionEnd
@@ -106,14 +114,17 @@ SectionEnd
 ;--------------------------------
 ;Descriptions
 
+    ;!define MUI_FINISHPAGE_RUN "$INSTDIR\QuorumStudio.exe"
+    ;!insertmacro MUI_PAGE_FINISH
+
   ;Language strings
-  LangString DESC_SecDummy ${LANG_ENGLISH} "A test section."
+  LangString DESC_SecDummy ${LANG_ENGLISH} "Introduction."
 
   ;Assign language strings to sections
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
     !insertmacro MUI_DESCRIPTION_TEXT ${SecDummy} $(DESC_SecDummy)
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
- 
+  
 ;--------------------------------
 ;Uninstaller Section
 
@@ -123,12 +134,16 @@ Section "Uninstall"
 
   Delete "$INSTDIR\Uninstall.exe"
 
-  RMDir "$INSTDIR"
-  
+  RMDir /r "$INSTDIR"
+  RMDir /r "$APPDATA\Quorum Studio"
+
   !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
     
+  Delete "$SMPROGRAMS\$StartMenuFolder\Quorum Studio.lnk"
   Delete "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk"
   RMDir "$SMPROGRAMS\$StartMenuFolder"
+
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\QuorumStudio"
   
   DeleteRegKey /ifempty HKCU ${REGISTRY_KEY}
 

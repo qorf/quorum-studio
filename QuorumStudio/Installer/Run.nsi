@@ -3,10 +3,14 @@
  
 Name "Quorum Studio"
 Caption "Quorum Studio"
+Icon "quorum.ico"
 OutFile "QuorumStudio.exe"
- 
+
+RequestExecutionLevel none
+
 SilentInstall silent
-AutoCloseWindow false
+AutoCloseWindow true
+ShowInstDetails nevershow
  
 !define CLASSPATH "QuorumStudio.jar"
 !define CLASS "quorum.Main"
