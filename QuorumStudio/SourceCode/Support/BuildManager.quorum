@@ -59,6 +59,7 @@ use Libraries.Development.Environment.Studio.Android.AndroidSupport
 use Libraries.Development.Environment.Studio.Behaviors.SetErrorsBehavior
 use Libraries.Development.Environment.Studio.Interface.CallStackTab
 use Libraries.Development.Environment.Studio.Behaviors.UpdateCallStackBehavior
+use Libraries.Language.Debug.DebuggerOutputEvent
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -322,6 +323,8 @@ class BuildManager is DebuggerListener, ProcessListener
         if debuggerLineTextBox not= undefined
             debuggerLineTextBox:RemoveTextStyle("Debugger")
         end
+
+        debuggingProgram = undefined
     end
 
     /*
@@ -353,6 +356,12 @@ class BuildManager is DebuggerListener, ProcessListener
 
     action Run(DebuggerErrorEvent event)
         a = 5
+    end
+
+    action Run(DebuggerOutputEvent event)
+        OutputTab out = outputTabs:GetOutputTab()
+        text value = event:GetOutput()
+        out:Append(value)
     end
 
     action Run(BreakpointEvent event)
@@ -1148,6 +1157,23 @@ class BuildManager is DebuggerListener, ProcessListener
         if processes:HasKey(path) //kill it, if you have to
             ProcessRunner process = processes:GetValue(path) //I think we can toss it
             process:SendInput(value)
+        end
+
+        if debuggingProgram not= undefined
+            debugger:SendInput(value)
+        end
+    end
+
+    action StopAll
+        Iterator<text> iterator = processes:GetKeyIterator()
+        repeat while iterator:HasNext()
+            text key = iterator:Next()
+            ProcessRunner process = processes:GetValue(key)
+            process:Cancel()
+        end
+        if debuggingProgram not= undefined
+            debugger:Stop()
+            debuggingProgram = undefined
         end
     end
 
