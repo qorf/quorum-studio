@@ -18,10 +18,13 @@ class Options is ProjectListener
     constant text OPEN_FILES = "Open Files"
     constant text BREAKPOINTS = "Breakpoints"
     constant text BREAKPOINT = "Breakpoint"
-    constant text FRAME_LIMITED = "FrameLimit"
-    constant text FRAME_RATE = "FrameRate"
+    constant text FRAME_LIMITED = "Frame Limit"
+    constant text FRAME_RATE = "Frame Rate"
     constant text FRAMES_PER_SECOND_COUNTER = "Frames Per Second Counter"
     constant text STARTUP_SOUNDS = "StartupSounds"
+    constant text SCALE = "Scale"
+    constant text WINDOW_WIDTH = "Width"
+    constant text WINDOW_HEIGHT = "Height"
 
     HashTable<text, text> projects 
     Array<File> filesOpenAtBoot
@@ -31,6 +34,33 @@ class Options is ProjectListener
     number frameRate = 100
     boolean startupSounds = true
     boolean fpsCounter = false
+    number scale = 1
+    integer width = 2500
+    integer height = 1500
+
+    action GetInterfaceScale returns number
+        return scale
+    end
+
+    action SetInterfaceScale(number scale)
+        me:scale = scale
+    end
+    
+    action GetWidth returns integer
+        return width
+    end
+
+    action GetHeight returns integer
+        return height
+    end
+
+    action SetWidth(integer width)
+        me:width = width
+    end
+
+    action SetHeight(integer height)
+        me:height = height
+    end
 
     action IsShowingFramesPerSecondCounter returns boolean
         return fpsCounter
@@ -141,6 +171,9 @@ class Options is ProjectListener
         notation:Add(FRAME_RATE, frameRate)
         notation:Add(STARTUP_SOUNDS, startupSounds)
         notation:Add(FRAMES_PER_SECOND_COUNTER, fpsCounter)
+        notation:Add(SCALE, scale)
+        notation:Add(WINDOW_WIDTH, width)
+        notation:Add(WINDOW_HEIGHT, height)
 
         //if Quorum Studio instance is not null, write any other behavior 
         //we are interested in storing
@@ -237,6 +270,39 @@ class Options is ProjectListener
                     me:frameRate = min
                 else
                     me:frameRate = value
+                end
+            end
+        elseif key = SCALE
+            if object:IsNumber()
+                number value = object:GetNumber()
+                number min = 0.1
+                number max = 500
+                if value < min
+                    me:scale = min
+                elseif value > max
+                    me:scale = max
+                else
+                    me:scale = value
+                end
+            end
+        elseif key = WINDOW_WIDTH
+            if object:IsInteger()
+                integer value = object:GetInteger()
+                integer min = 100
+                if value < min
+                    me:width = min
+                else
+                    me:width = value
+                end
+            end
+        elseif key = WINDOW_HEIGHT
+            if object:IsInteger()
+                integer value = object:GetInteger()
+                integer min = 100
+                if value < min
+                    me:height = min
+                else
+                    me:height = value
                 end
             end
         elseif key = STARTUP_SOUNDS
