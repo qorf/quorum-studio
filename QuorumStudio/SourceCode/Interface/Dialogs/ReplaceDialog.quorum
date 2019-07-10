@@ -65,7 +65,6 @@ class ReplaceDialog is FindDialog, TextChangeListener
     ReplaceBehavior replaceBehavior
 
     on create
-        findField:Focus()
         findField:AddTextChangeListener(me)
         wholeWordMatchCaseBehavior:SetDialog(cast(Dialog, me))
         wholeWordMatchCaseBehavior:SetDialogType(wholeWordMatchCaseBehavior:REPLACE)
@@ -76,6 +75,11 @@ class ReplaceDialog is FindDialog, TextChangeListener
         replaceAllBehavior:SetDialog(me)
         replaceBehavior:SetDialog(me)        
         SetModal(false)
+        SetBehavior(nextBehavior)
+    end
+
+    action OnShow()
+        findField:Focus()
     end
 
     action Initialize

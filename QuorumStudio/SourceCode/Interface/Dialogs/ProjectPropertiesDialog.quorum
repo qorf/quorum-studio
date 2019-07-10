@@ -116,6 +116,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
     action OnShow
         tabPane:Focus()
+//        tabPane:Select(0)
+//        Tab tab = tabPane:GetSelectedTab()
+//        tab:Activate()
     end
 
     on create
@@ -342,6 +345,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
                 i = i + 1
             end
         end
+
+        imagesList:Select(0)
+        imagesList:Activate()
     end
 
     /*returns the list of images associated with the given index */
@@ -439,6 +445,11 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         project:SetJavaClassDependencies(ListToArray(javaClassList))
         project:SetJarDependencies(ListToArray(jarList))
         project:SetQuorumDependencies(ListToArray(quorumSourcesList))
+
+        if not imageSheetsList:IsEmpty()
+            enableImageSheets:SetToggleState(true)
+            buildImageSheetsOnCompile:SetToggleState(true)
+        end
 
         project:EnableImageSheets(enableImageSheets:GetToggleState())
         project:EnableRecompileImageSheetsOnBuild(buildImageSheetsOnCompile:GetToggleState())
@@ -779,12 +790,14 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         removeSource:SetHorizontalLayoutMode(removeSource:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeSource:SetPercentageWidth(1.0)
         removeSource:SetBottomPadding(25)
+        removeSource:SetBehavior(removeSourceBehavior)
         sourceButtons:Add(removeSource)
 
         Button clearSources
         clearSources:SetName("Clear")
         clearSources:SetHorizontalLayoutMode(clearSources:parent:Libraries.Interface.Controls.Control:STANDARD)
         clearSources:SetPercentageWidth(1.0)
+        clearSources:SetBehavior(clearSourcesBehavior)
         sourceButtons:Add(clearSources)
 
         panel:Add(sourceArea)
@@ -1367,6 +1380,5 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     action OnHide()
         imageSheetCount = -1
         imagesListArray:Empty()
-        
     end
 end

@@ -22,15 +22,20 @@ class NewProjectOkBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
         File file
+        
+        if me:dialog:GetName() = ""
+            me:dialog:ActivateCancelButton()
+        elseif me:dialog:GetLocation() = ""
+            me:dialog:ActivateCancelButton()
+        else
 
-        //me:button = me:dialog:GetCurrentApplicationFocus()
-        me:project = me:dialog:CreateNewProject()
-        file = me:project:GetPropertiesLocation()
-        me:project:LoadProperties(file)
-        me:project:SetName(me:dialog:GetProjectName())
-        //me:project:Save()
-        //me:project:Load()
-        me:dialog:AppendToProjectPane(me:project)
-        me:dialog:Hide()
+            me:project = me:dialog:CreateNewProject()
+            file = me:project:GetPropertiesLocation()
+            me:project:LoadProperties(file)
+            me:project:SetName(me:dialog:GetProjectName())
+
+            me:dialog:AppendToProjectPane(me:project)
+            me:dialog:Hide()
+        end
     end
 end

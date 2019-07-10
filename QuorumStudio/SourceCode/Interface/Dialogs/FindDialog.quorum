@@ -60,7 +60,6 @@ class FindDialog is Dialog, TextChangeListener
     
 
     on create
-        findField:Focus()
         findField:AddTextChangeListener(me)
         wholeWordMatchCaseBehavior:SetDialog(cast(Dialog, me))
         wholeWordMatchCaseBehavior:SetDialogType(wholeWordMatchCaseBehavior:FIND)
@@ -69,6 +68,11 @@ class FindDialog is Dialog, TextChangeListener
         nextBehavior:SetDialog(cast(Dialog, me))
         nextBehavior:SetDialogType(nextBehavior:FIND)
         SetModal(false)
+        SetBehavior(nextBehavior)
+    end
+
+    action OnShow()
+        findField:Focus()
     end
 
     action Initialize
@@ -678,15 +682,6 @@ class FindDialog is Dialog, TextChangeListener
 
     //Removes any highlights in the textBox, empties the arrays and textFields and resets the selection index.
     action OnHide
-//        if selection >= 0
-//            RemoveCurrentSelection()
-//        end
-//        removeIndices = indices:CopyToArray()
-//        indices:Empty()
-//
-//        if removeIndices:GetSize() not= 0 
-//            RemoveSelections()
-//        end
         RemoveSelections()
         findField:Empty()
         selection = -1
