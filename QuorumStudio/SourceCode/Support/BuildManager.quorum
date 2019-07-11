@@ -1026,9 +1026,11 @@ class BuildManager is DebuggerListener, ProcessListener
         out:Append("Copying Information")
         android:CopyLibraries()
         
-        if mediaDirectory not= undefined and mediaDirectory:Exists()
+
+        text mobileAssetPath = project:GetMobileAssetsPath()
+        if mediaDirectory not= undefined and mediaDirectory:Exists() and mobileAssetPath not= undefined
             out:Append("Copying Assets")
-            android:CopyAssets(mediaDirectory, project:GetMobileAssetsPath())
+            android:CopyAssets(mediaDirectory, mobileAssetPath)
         else
             out:Append("No assets requested for copying")
         end

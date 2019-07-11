@@ -95,12 +95,13 @@ class AndroidSupport is ProcessListener
     end
 
     action CopyAssets(File mediaFolder, text value)
-        if not mediaFolder:Exists()
+        if not mediaFolder:Exists() or value = undefined
             return now
         end //bail if it isn't there
 
         File assetsFolder
-        assetsFolder:SetAbsolutePath(pathToBuildAndroidFolder + FILE_SEPARATOR + "app"+ FILE_SEPARATOR + "src" + FILE_SEPARATOR + "main" + FILE_SEPARATOR+ "assets" + FILE_SEPARATOR + value)
+        text pathtemp = pathToBuildAndroidFolder + FILE_SEPARATOR + "app" + FILE_SEPARATOR + "src" + FILE_SEPARATOR + "main" + FILE_SEPARATOR + "assets" + FILE_SEPARATOR + value
+        assetsFolder:SetAbsolutePath(pathtemp)
         if not assetsFolder:Exists()
             assetsFolder:CreateDirectories()
         end
