@@ -997,7 +997,8 @@ class BuildManager is DebuggerListener, ProcessListener
         runDirectory:SetAbsolutePath(run)
         File parentDirectory = runDirectory:GetParentDirectory()
 
-        text media = parentDirectory:GetAbsolutePath() + "/" + project:GetMobileAssetsPath()
+        text mediaPathFromProject = project:GetMobileAssetsPath()
+        text media = parentDirectory:GetAbsolutePath() + "/" + mediaPathFromProject
         File mediaDirectory
         mediaDirectory:SetAbsolutePath(media)
 
@@ -1022,7 +1023,7 @@ class BuildManager is DebuggerListener, ProcessListener
         out:Append("Copying Information")
         android:CopyLibraries()
         
-        if mediaDirectory:Exists()
+        if media not= undefined and mediaDirectory:Exists()
             out:Append("Copying Assets")
             android:CopyAssets(mediaDirectory, project:GetMobileAssetsPath())
         else
