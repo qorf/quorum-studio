@@ -41,6 +41,7 @@ use Libraries.Game.Graphics.Font
 use Libraries.Interface.Layouts.TabFlowLayout
 use Libraries.Containers.Array
 use Libraries.Interface.Events.SelectionListener
+use Libraries.Interface.Events.SelectionEvent
 
 class NewProjectDialog is Dialog
     boolean initialized = false
@@ -74,6 +75,12 @@ class NewProjectDialog is Dialog
 
     //Basic Tab ToggleButtons
     ButtonGroup toggleButtons  
+    ToggleButton blankIcon
+    ToggleButton documentIcon
+    ToggleButton legoIcon
+    ToggleButton webServerIcon
+
+
 
     //Application Descriptions
     text blankDescription = 
@@ -144,9 +151,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
 
     action Initialize
         Color color
-        if initialized
-            output "WARNING: Re-initializing the NewProjectDialog."
-        end
 
         initialized = true
 
@@ -315,10 +319,10 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
     end
 
     private action BasicTab returns Tab
-        ToggleButton blankIcon
+        //ToggleButton blankIcon
         ToggleButton gameIcon
         ToggleButton androidIcon
-        ToggleButton legoIcon
+        //ToggleButton legoIcon
 
         Icon icon
         Color color
@@ -934,9 +938,6 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         templatePath = templates:GetValue(button)
     end
 
-//    action RemoveApplicationToggle()
-//        toggleButtons:DeselectAll()
-//    end
 
     action GetLocation returns text
         return locationField:GetText()
@@ -1020,8 +1021,10 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
 
     action OnShow
         tabPane:Focus()
-//        tabPane:Select(basicTab)
-//        basicTab:Activate()
+        Tab tab = tabPane:GetSelectedTab()
+        if not tab:Equals(tabPane:Get(0))
+            tab:Activate()
+        end
     end
 
 end
