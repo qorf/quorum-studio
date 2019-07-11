@@ -44,6 +44,7 @@ use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddImage
 use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesMobileResourcesBrowseBehavior
 use Libraries.Development.Environment.Studio.Behaviors.EmptyTextFieldBehavior
 use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Selections.TabPaneSelection
 
 
 class ProjectPropertiesDialog is Dialog, MouseWheelListener
@@ -116,9 +117,10 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
     action OnShow
         tabPane:Focus()
-//        tabPane:Select(0)
-//        Tab tab = tabPane:GetSelectedTab()
-//        tab:Activate()
+        Tab tab = tabPane:GetSelectedTab()
+        if not tab:Equals(tabPane:Get(0))
+            tab:Activate()
+        end
     end
 
     on create
@@ -341,7 +343,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         if list not= undefined
             integer i = 0
             repeat while i < list:GetSize()
-                imagesList:Add(list:Get(0))
+                output list:Get(i)
+                imagesList:Add(list:Get(i))
                 i = i + 1
             end
         end
@@ -454,12 +457,13 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         project:EnableImageSheets(enableImageSheets:GetToggleState())
         project:EnableRecompileImageSheetsOnBuild(buildImageSheetsOnCompile:GetToggleState())
         text imageSheetBuildPath = imageSheetsBuildPathField:GetText():Trim()
-        if imageSheetBuildPath:StartsWith("/")
-            project:SetImageSheetBuildPath(imageSheetBuildPath)
-        else
-            project:SetImageSheetBuildPath("/" + imageSheetBuildPath)
+        if enableImageSheets:GetToggleState()
+            if imageSheetBuildPath:StartsWith("/")
+                project:SetImageSheetBuildPath(imageSheetBuildPath)
+            else
+                project:SetImageSheetBuildPath("/" + imageSheetBuildPath)
+            end
         end
-       
         if(enableImageSheets:GetToggleState())
             ImageSheets imageSheets
             Array<text> imageSheetName = ListToArray(imageSheetsList)
@@ -478,31 +482,41 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             projectImageSheets:SetKey(project:IMAGE_SHEETS)
             project:AddProperty(projectImageSheets)
         end
+        
+        boolean mobileFlag = false
+
+        if not androidLibraryField:GetText():Equals("")
+            project:SetAndroidPath(androidLibraryField:GetText())
+            mobileFlag = true
+        end
+        if not keyStoreField:GetText():Equals("")
+            project:SetAndroidKeystorePath(keyStoreField:GetText())
+            mobileFlag = true
+        end
+        if not keyStorePasswordField:GetText():Equals("")
+            project:SetAndroidKeystorePassword(keyStorePasswordField:GetText())
+            mobileFlag = true
+        end
+        if not keyAliasField:GetText():Equals("")
+            project:SetAndroidKeyAlias(keyAliasField:GetText())
+            mobileFlag = true
+        end
+        if not keyPasswordField:GetText():Equals("")
+            project:SetAndroidKeyPassword(keyPasswordField:GetText())
+            mobileFlag = true
+        end
+        if not jdkField:GetText():Equals("")
+            project:SetAndroidAlternateJDKPath(jdkField:GetText())
+            mobileFlag = true
+        end
 
         text mobileAssetsPath = mobileResourcesField:GetText():Trim()
-        if mobileAssetsPath:StartsWith("/")
-            project:SetMobileAssetsPath(mobileAssetsPath)
-        else
-            project:SetMobileAssetsPath("/" + mobileAssetsPath)
-        end
-
-        if not androidLibraryField:IsEmpty()
-            project:SetAndroidPath(androidLibraryField:GetText())
-        end
-        if not keyStoreField:IsEmpty()
-            project:SetAndroidKeystorePath(keyStoreField:GetText())
-        end
-        if not keyStorePasswordField:IsEmpty()
-            project:SetAndroidKeystorePassword(keyStorePasswordField:GetText())
-        end
-        if not keyAliasField:IsEmpty()
-            project:SetAndroidKeyAlias(keyAliasField:GetText())
-        end
-        if not keyPasswordField:IsEmpty()
-            project:SetAndroidKeyPassword(keyPasswordField:GetText())
-        end
-        if not jdkField:IsEmpty()
-            project:SetAndroidAlternateJDKPath(jdkField:GetText())
+        if mobileFlag
+            if mobileAssetsPath:StartsWith("/")
+                project:SetMobileAssetsPath(mobileAssetsPath)
+            else
+                project:SetMobileAssetsPath("/" + mobileAssetsPath)
+            end
         end
 
         project:Save()
@@ -978,9 +992,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         addSheet:SetName("Add")
         addSheet:SetHorizontalLayoutMode(addSheet:parent:Libraries.Interface.Controls.Control:STANDARD)
         addSheet:SetPercentageWidth(1.0)
-        addSheet:SetLeftPadding(4)
-        addSheet:SetRightPadding(4)
-        addSheet:SetBottomPadding(6)
+        addSheet:SetLeftPadding(15)
+        addSheet:SetRightPadding(20)
+        addSheet:SetBottomPadding(25)
         addSheet:SetBehavior(addImageSheetsBehavior)
         imageSheetsButtons:Add(addSheet)
 
@@ -988,9 +1002,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         editSheet:SetName("Edit")
         editSheet:SetHorizontalLayoutMode(editSheet:parent:Libraries.Interface.Controls.Control:STANDARD)
         editSheet:SetPercentageWidth(1.0)
-        editSheet:SetLeftPadding(4)
-        editSheet:SetRightPadding(4)
-        editSheet:SetBottomPadding(6)
+        editSheet:SetLeftPadding(15)
+        editSheet:SetRightPadding(20)
+        editSheet:SetBottomPadding(25)
         editSheet:SetBehavior(editImageSheetsBehavior)
         imageSheetsButtons:Add(editSheet)
 
@@ -998,8 +1012,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         removeSheet:SetName("Remove")
         removeSheet:SetHorizontalLayoutMode(removeSheet:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeSheet:SetPercentageWidth(1.0)
-        removeSheet:SetLeftPadding(4)
-        removeSheet:SetRightPadding(4)
+        removeSheet:SetLeftPadding(15)
+        removeSheet:SetRightPadding(20)
         removeSheet:SetBottomPadding(6)
         removeSheet:SetBehavior(removeImageSheetBehavior)
         imageSheetsButtons:Add(removeSheet)
@@ -1054,9 +1068,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         addImage:SetName("Add")
         addImage:SetHorizontalLayoutMode(addImage:parent:Libraries.Interface.Controls.Control:STANDARD)
         addImage:SetPercentageWidth(1.0)
-        addImage:SetLeftPadding(4)
-        addImage:SetRightPadding(4)
-        addImage:SetBottomPadding(6)
+        addImage:SetLeftPadding(15)
+        addImage:SetRightPadding(20)
+        addImage:SetBottomPadding(25)
         addImage:SetBehavior(addImagesBehavior)
         imagesButtons:Add(addImage)
 
@@ -1064,9 +1078,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         addImageFolder:SetName("Add Folder")
         addImageFolder:SetHorizontalLayoutMode(addImageFolder:parent:Libraries.Interface.Controls.Control:STANDARD)
         addImageFolder:SetPercentageWidth(1.0)
-        addImageFolder:SetLeftPadding(4)
-        addImageFolder:SetRightPadding(4)
-        addImageFolder:SetBottomPadding(6)
+        addImageFolder:SetLeftPadding(15)
+        addImageFolder:SetRightPadding(20)
+        addImageFolder:SetBottomPadding(25)
         addImageFolder:SetBehavior(addImageFolderBehavior)
         imagesButtons:Add(addImageFolder)
 
@@ -1074,9 +1088,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         removeImage:SetName("Remove")
         removeImage:SetHorizontalLayoutMode(removeImage:parent:Libraries.Interface.Controls.Control:STANDARD)
         removeImage:SetPercentageWidth(1.0)
-        removeImage:SetLeftPadding(4)
-        removeImage:SetRightPadding(4)
-        removeImage:SetBottomPadding(6)
+        removeImage:SetLeftPadding(15)
+        removeImage:SetRightPadding(20)
+        removeImage:SetBottomPadding(25)
         removeImage:SetBehavior(removeImageBehavior)
         imagesButtons:Add(removeImage)
 
@@ -1195,20 +1209,30 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         mobileResourcesField:SetPercentageWidth(0.6)
         resourcesContainer:Add(mobileResourcesField)
 
+        FlowLayout resourcesButtonLayout   
+        Control resourcesButtonContainer
+        resourcesButtonContainer:SetLayout(resourcesButtonLayout)
+        resourcesButtonContainer:SetPercentageWidth(0.3)
+        resourcesButtonContainer:SetVerticalLayoutMode(resourcesButtonContainer:FIT_CONTENTS)
+        resourcesButtonContainer:SetLeftPadding(10)
+        resourcesContainer:Add(resourcesButtonContainer)
+        
         Button resourcesBrowse
         resourcesBrowse:SetName("Browse...")
-        resourcesBrowse:SetPercentageWidth(0.15)
+        resourcesBrowse:SetHorizontalLayoutMode(resourcesBrowse:parent:Libraries.Interface.Controls.Control:STANDARD)
+        resourcesBrowse:SetPercentageWidth(0.45)
         resourcesBrowse:SetLeftPadding(15)
         resourcesBrowse:SetBehavior(mobileResourcesBrowseBehavior)
-        resourcesContainer:Add(resourcesBrowse)
+        resourcesButtonContainer:Add(resourcesBrowse)
 
         Button resourcesClear
         resourcesClear:SetName("Clear")
-        resourcesClear:SetPercentageWidth(0.15)
+        resourcesClear:SetHorizontalLayoutMode(resourcesClear:parent:Libraries.Interface.Controls.Control:STANDARD)
+        resourcesClear:SetPercentageWidth(0.45)
         resourcesClear:SetLeftPadding(20)
         resourcesClear:SetRightPadding(20)
         resourcesClear:SetBehavior(emptyTextFieldBehavior)
-        resourcesContainer:Add(resourcesClear)
+        resourcesButtonContainer:Add(resourcesClear)
 
         Label androidLabel
         androidLabel:SetSize(20)
