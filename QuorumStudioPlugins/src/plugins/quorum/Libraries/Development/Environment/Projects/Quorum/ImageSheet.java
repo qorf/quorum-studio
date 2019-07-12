@@ -58,7 +58,6 @@ public class ImageSheet {
         ProcessBuilder pb = new ProcessBuilder(args);
         Process p;
         try {
-            System.out.println("Starting");
             File log = new File("log");
             pb.redirectErrorStream(true);
             pb.redirectOutput(Redirect.appendTo(log));
