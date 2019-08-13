@@ -3,12 +3,24 @@ package Libraries.Development.Environment.Studio.Behaviors
 use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.GoToLineDialog
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Interface.Item2D
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 
 class GoToLineBehavior is QuorumStudioBehavior
+    GoToLineDialog dialog
 
     action Run(BehaviorEvent event)
-        GoToLineDialog dialog
-        dialog:Setup()
-        dialog:Show()
+        QuorumStudio studio = GetMainApplication()
+        CodeEditorTabPane tabPane = studio:GetTabPane()
+        Item2D tabbedItem = tabPane:GetCurrentItem()
+
+        if tabbedItem not= undefined
+            if dialog:IsShowing() = false
+                dialog:Setup()
+                dialog:Show()
+            end
+        end
     end
 end
