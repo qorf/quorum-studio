@@ -6,7 +6,6 @@ use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
-use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Item2D
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
@@ -39,10 +38,8 @@ class GoToLineOkButtonBehavior is Behavior
         Game game = manager:GetGame()
         QuorumStudio studio = cast(QuorumStudio, game)
         CodeEditorTabPane editors = studio:GetTabPane()
-        TabPaneSelection value = editors:GetSelection()
-        Tab tab = value:GetTab()
-        Item2D related = tab:GetRelatedItem()
-        if related is TextBox
+        Item2D related = editors:GetCurrentItem()
+        if related not= undefined and related is TextBox
             TextBox box = cast(TextBox, related)
 
             check
