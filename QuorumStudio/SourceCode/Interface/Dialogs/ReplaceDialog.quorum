@@ -24,6 +24,9 @@ use Libraries.Development.Environment.Studio.Behaviors.ReplaceAllBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ReplaceBehavior
 use Libraries.Interface.Events.KeyboardListener
 use Libraries.Development.Environment.Studio.Behaviors.FindBehavior
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Game.InputTable
+use Libraries.Game.InputSet
 
 
 class ReplaceDialog is FindDialog, TextChangeListener
@@ -39,7 +42,7 @@ class ReplaceDialog is FindDialog, TextChangeListener
     //ReplaceDialog Controls
     TextField findField
     TextField replaceField
-    Label matches
+    Label matches = undefined
     Checkbox wholeWord
     Checkbox matchCase
     Button previous
@@ -50,8 +53,8 @@ class ReplaceDialog is FindDialog, TextChangeListener
 
     //ReplaceDialog Control Behaviors
     WholeWordMatchCaseBehavior wholeWordMatchCaseBehavior
-    PreviousBehavior previousBehavior
-    NextBehavior nextBehavior
+    //PreviousBehavior previousBehavior
+    //NextBehavior nextBehavior
     ReplaceAllBehavior replaceAllBehavior
     ReplaceBehavior replaceBehavior
     FindBehavior findBehavior
@@ -60,15 +63,14 @@ class ReplaceDialog is FindDialog, TextChangeListener
         findField:AddTextChangeListener(me)
         wholeWordMatchCaseBehavior:SetDialog(cast(Dialog, me))
         wholeWordMatchCaseBehavior:SetDialogType(wholeWordMatchCaseBehavior:REPLACE)
-        previousBehavior:SetDialog(cast(Dialog, me))
-        previousBehavior:SetDialogType(previousBehavior:REPLACE)
-        nextBehavior:SetDialog(cast(Dialog, me))
-        nextBehavior:SetDialogType(nextBehavior:REPLACE)
+        //previousBehavior:SetDialog(me)
+        //nextBehavior:SetDialog(me)
         replaceAllBehavior:SetDialog(me)
         replaceBehavior:SetDialog(me) 
         findBehavior:SetDialog(me)
+        SetMatchesLabel(matches)
         SetModal(false)
-        SetBehavior(nextBehavior)
+        //SetBehavior(nextBehavior)
     end
 
     action OnShow()
@@ -105,6 +107,7 @@ class ReplaceDialog is FindDialog, TextChangeListener
         panel:SetBorderColor(color:Black())
         panel:SetBorderThickness(1)
         panel:Add(CreateReplaceControl())
+        panel:Add(CreateMatchesControl())
         panel:SetView2D(view)
         Add(panel)
     end
@@ -134,6 +137,7 @@ class ReplaceDialog is FindDialog, TextChangeListener
         findContainer:Add(findLabel)
         
         findField:SetHorizontalLayoutMode(findField:parent:Libraries.Interface.Controls.Control:FILL)
+        findField:SetName("Find")
         findField:SetText("")
         findField:SetFocusable(true)
         findField:SetNextFocus(replaceField)
@@ -158,6 +162,7 @@ class ReplaceDialog is FindDialog, TextChangeListener
         replaceContainer:Add(replaceLabel)
 
         replaceField:SetHorizontalLayoutMode(replaceField:parent:Libraries.Interface.Controls.Control:FILL)
+        replaceField:SetName("Replace")
         replaceField:SetText("")
         replaceField:SetFocusable(true)
         replaceField:SetNextFocus(wholeWord)
@@ -221,7 +226,6 @@ class ReplaceDialog is FindDialog, TextChangeListener
         previous:SetPercentageWidth(1.0)
         previous:SetFocusable(true)
         previous:SetNextFocus(next)
-        previous:SetBehavior(previousBehavior)
         previous:SetPreviousFocus(matchCase)
         
         replace:SetName("Replace")
@@ -253,7 +257,7 @@ class ReplaceDialog is FindDialog, TextChangeListener
         next:SetPercentageWidth(1.0)
         next:SetFocusable(true)
         next:SetNextFocus(replace)
-        next:SetBehavior(nextBehavior)
+        //next:SetBehavior(nextBehavior)
         next:SetPreviousFocus(previous)
         
         replaceAll:SetName("Replace All")
@@ -272,24 +276,35 @@ class ReplaceDialog is FindDialog, TextChangeListener
         
         createReplaceContainer:Add(optionsContainer)
 
-        FlowLayout matchesLayout
-        Control matchesContainer
-        matchesContainer:SetLayout(matchesLayout)
-        matchesContainer:SetPercentageWidth(1.0)
-        matchesContainer:SetVerticalLayoutMode(matchesContainer:FIT_CONTENTS)
-        matchesContainer:SetTopPadding(50)
-        matchesContainer:SetRightPadding(10)
-        matchesContainer:SetLeftPadding(20)
+//        //Should be "ALT + N" (until ALT key works correctly using the same hotkey as the CodeTextBox)
+        KeyboardEvent keys
+        text inputGroup = GetInputGroup()
+        InputTable dialogInputs = studio:GetInputTable(inputGroup)
+//        InputSet nextSet 
+//        nextSet:SetKeyboardInput(keys:F3)
+//        nextSet:AddModifier(nextSet:META)
+//        dialogInputs:Add(nextSet, nextBehavior)
+//
+//        //Should be "ALT + P" (until ALT key works correctly using the same hotkey as the CodeTextBox)
+//        InputSet previousSet
+//        previousSet:SetKeyboardInput(keys:F3)
+//        previousSet:AddModifier(previousSet:META)
+//        previousSet:AddModifier(previousSet:SHIFT)
+//        dialogInputs:Add(previousSet, previousBehavior)
+//
+        //Should be "ALT + R" (until ALT key works correctly using CMD+SHIFT+R)
+        InputSet replaceSet
+        replaceSet:SetKeyboardInput(keys:R)
+        replaceSet:AddModifier(replaceSet:SHIFT)
+        replaceSet:AddModifier(replaceSet:META)
+        dialogInputs:Add(replaceSet, replaceBehavior)
 
-        matches:SetText("")
-        matches:SetHorizontalLayoutMode(matches:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        matches:SetPercentageWidth(0.2)
-        matches:SetPixelHeight(20)
-        matches:SetLeftPadding(6)
-        matches:SetRightPadding(30)
-        matchesContainer:Add(matches)
-
-        createReplaceContainer:Add(matchesContainer)
+        //Should be "ALT + A" (until ALT key works correctly using CMD+SHIFT+A)
+        InputSet replaceAllSet
+        replaceAllSet:SetKeyboardInput(keys:A)
+        replaceAllSet:AddModifier(replaceAllSet:SHIFT)
+        replaceAllSet:AddModifier(replaceAllSet:META)
+        dialogInputs:Add(replaceAllSet, replaceAllBehavior)
         
         return createReplaceContainer
     end
@@ -316,11 +331,14 @@ class ReplaceDialog is FindDialog, TextChangeListener
         textBox = code
         textBox:AddTextChangeListener(me)
         findBehavior:SetTextBox(textBox)
-        nextBehavior:SetTextBox(textBox)
-        previousBehavior:SetTextBox(textBox)
-        wholeWordMatchCaseBehavior:SetTextBox(textBox) 
+        wholeWordMatchCaseBehavior:SetTextBox(textBox)
+        //textBox:SetNextBehavior(nextBehavior)
+        //textBox:SetPreviousBehavior(previousBehavior)
+        textBox:SetDialog(me)
         replaceBehavior:SetTextBox(textBox)
         replaceAllBehavior:SetTextBox(textBox)
+        previous:SetBehavior(textBox:GetPreviousBehavior())
+        next:SetBehavior(textBox:GetNextBehavior())
     end
 
     action GetTextBox returns CodeTextBox
@@ -355,23 +373,23 @@ class ReplaceDialog is FindDialog, TextChangeListener
     //Updates the matches label on the Dialog to reflect how many instances of 
     //"find" were found in the textBox. If there is a currentSelection it will also 
     //display the selection number in relation to the number of total matches found.
-    action UpdateMatches(integer currentSelection, integer totalMatches)
-        if findField:GetText() not= ""
-            if totalMatches = 0
-                matches:SetText("No matches")
-            elseif totalMatches = 1
-                matches:SetText(cast(text, totalMatches) + " match")
-            else
-                if currentSelection >= 0
-                    matches:SetText(cast(text, (currentSelection + 1)) + " of " + cast(text, totalMatches) + " matches")
-                else
-                    matches:SetText(cast(text, totalMatches) + " matches")
-                end
-            end
-        else 
-            matches:SetText("") 
-        end
-    end
+//    action UpdateMatches(integer currentSelection, integer totalMatches)
+//        if findField:GetText() not= ""
+//            if totalMatches = 0
+//                matches:SetText("No matches")
+//            elseif totalMatches = 1
+//                matches:SetText(cast(text, totalMatches) + " match")
+//            else
+//                if currentSelection >= 0
+//                    matches:SetText(cast(text, (currentSelection + 1)) + " of " + cast(text, totalMatches) + " matches")
+//                else
+//                    matches:SetText(cast(text, totalMatches) + " matches")
+//                end
+//            end
+//        else 
+//            matches:SetText("") 
+//        end
+//    end
 
     //called after replace and replaceAll to update the textValue to include the textBox modifications
     //repopulates the highlighting for any remaining instances that were not replaced by calling FindText (not currently working)
@@ -421,7 +439,7 @@ class ReplaceDialog is FindDialog, TextChangeListener
 
     //Removes any highlights in the textBox, empties the arrays and textFields and resets the selection index.
     action OnHide
-        textBox:RemoveFindReplaceStyles()
+        //textBox:RemoveFindReplaceStyles()
         textBox:SetFindWord(findField:GetText())
         textBox:SetReplaceWord(replaceField:GetText())
         textBox:SetIsDialogOpen(false)

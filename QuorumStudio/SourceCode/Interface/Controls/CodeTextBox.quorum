@@ -28,6 +28,13 @@ use Libraries.Interface.Events.GutterListener
 use Libraries.Interface.Events.GutterEvent
 use Libraries.Interface.Controls.TextStyles.TextStyle
 use Libraries.Containers.Support.Pair
+use Libraries.Development.Environment.Studio.Behaviors.PreviousBehavior
+use Libraries.Development.Environment.Studio.Behaviors.NextBehavior
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Game.InputTable
+use Libraries.Game.InputSet
+use Libraries.Development.Environment.Studio.QuorumStudio
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -51,6 +58,9 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     boolean findIsMatchCase = false
     boolean isDialogOpen = false
     integer findSelection = -1
+    PreviousBehavior previousBehavior
+    NextBehavior nextBehavior
+    FindDialog findDialog = undefined
 
     on create
         GameStateManager manager
@@ -515,12 +525,6 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         findReplaceStyles:Empty()
     end
 
-    action SetFindSelectionsToClosedDialog
-        //if Dialog:IsClosed()
-        
-
-    end
-
     action SetIsDialogOpen(boolean state)
         isDialogOpen = state
     end
@@ -529,11 +533,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         return isDialogOpen
     end
 
-    
-
-
-    action FindText(text find, boolean wholeWord, boolean matchCase)
-        
+    action FindText(text find, boolean wholeWord, boolean matchCase)        
         text textValue = GetText() //+ bufferSpace
         if findSelection >= 0
             RemoveCurrentSelection()
@@ -701,6 +701,51 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         return replaceWord
     end
 
+//    action SetPreviousBehavior(PreviousBehavior behavior)
+//        previousBehavior = behavior
+//        //previousBehavior:SetTextBox(me)
+//
+//        GameStateManager gameManager
+//        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+//
+//        KeyboardEvent keys
+//        text inputGroup = GetInputGroup()
+//        InputTable textBoxInputs = studio:GetInputTable(inputGroup)
+//        InputSet previousSet 
+//        previousSet:SetKeyboardInput(keys:F3)
+//        previousSet:AddModifier(previousSet:META)
+//        previousSet:AddModifier(previousSet:SHIFT)
+//        textBoxInputs:Add(previousSet, previousBehavior)
+//    end
+
+    action GetPreviousBehavior returns PreviousBehavior
+        return previousBehavior
+    end
+
+    action GetNextBehavior returns NextBehavior
+        return nextBehavior
+    end
+
+//    action SetNextBehavior(NextBehavior behavior)
+//        nextBehavior = behavior
+//        //nextBehavior:SetTextBox(me)
+//
+//        GameStateManager gameManager
+//        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+//
+//        KeyboardEvent keys
+//        text inputGroup = GetInputGroup()
+//        InputTable textBoxInputs = studio:GetInputTable(inputGroup)
+//        InputSet nextSet 
+//        nextSet:SetKeyboardInput(keys:F3)
+//        nextSet:AddModifier(nextSet:META)
+//        textBoxInputs:Add(nextSet, nextBehavior)
+//    end
+
+    action SetDialog(FindDialog dialog)
+        findDialog = dialog
+    end
+
     /* Updates the highlighted instances of "find" in the textBox
     Calls RemoveSelections() to remove the Pair<startIndex, endIndex> that no 
     longer apply due to MatchCase criteria, WholeWord criteria, or 
@@ -825,6 +870,10 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         //sets the current selection to blue highlight
         RemoveFindReplaceStyle("highlight" + wordStartIndex)       //remove the orange highlight
         AddFindReplaceStyle("selectionHighlight" + wordStartIndex, word)    //add the blue highlight for current selection
+
+        if findDialog not= undefined
+            findDialog:UpdateMatches(findSelection, findIndices:GetSize())
+        end
     end
 
     /* removes the selection highlighting before updating the indices

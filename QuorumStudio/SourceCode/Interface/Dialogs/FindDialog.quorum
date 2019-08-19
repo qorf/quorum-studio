@@ -24,6 +24,9 @@ use Libraries.Containers.Iterator
 use Libraries.Development.Environment.Studio.Behaviors.NextBehavior
 use Libraries.Development.Environment.Studio.Behaviors.PreviousBehavior
 use Libraries.Development.Environment.Studio.Behaviors.FindBehavior
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Game.InputTable
+use Libraries.Game.InputSet
 
 class FindDialog is Dialog, TextChangeListener
     boolean initialized = false
@@ -46,8 +49,8 @@ class FindDialog is Dialog, TextChangeListener
 
     //FindDialog Control Behaviors
     WholeWordMatchCaseBehavior wholeWordMatchCaseBehavior
-    PreviousBehavior previousBehavior
-    NextBehavior nextBehavior
+    //PreviousBehavior previousBehavior
+    //NextBehavior nextBehavior
     FindBehavior findBehavior
     
 
@@ -55,13 +58,11 @@ class FindDialog is Dialog, TextChangeListener
         findField:AddTextChangeListener(me)
         wholeWordMatchCaseBehavior:SetDialog(cast(Dialog, me))
         wholeWordMatchCaseBehavior:SetDialogType(wholeWordMatchCaseBehavior:FIND)
-        previousBehavior:SetDialog(cast(Dialog, me))
-        previousBehavior:SetDialogType(previousBehavior:FIND)
-        nextBehavior:SetDialog(cast(Dialog, me))
-        nextBehavior:SetDialogType(nextBehavior:FIND)
+        //previousBehavior:SetDialog(me)
+        //nextBehavior:SetDialog(me)
         findBehavior:SetDialog(me)
         SetModal(false)
-        SetBehavior(nextBehavior)
+        //SetBehavior(nextBehavior)
     end
 
     action OnShow()
@@ -97,6 +98,7 @@ class FindDialog is Dialog, TextChangeListener
         panel:SetBorderColor(color:Black())
         panel:SetBorderThickness(1)
         panel:Add(CreateFindControl())
+        panel:Add(CreateMatchesControl())
         panel:SetView2D(view)
         Add(panel)
     end
@@ -171,7 +173,7 @@ class FindDialog is Dialog, TextChangeListener
         previous:SetFocusable(true)
         previous:SetNextFocus(next)
         previous:SetPreviousFocus(matchCase)
-        previous:SetBehavior(previousBehavior)
+        //previous:SetBehavior(previousBehavior)
         optionsContainer:Add(previous)
         
         next:SetName("Next")
@@ -183,7 +185,7 @@ class FindDialog is Dialog, TextChangeListener
         next:SetFocusable(true)
         next:SetNextFocus(findField)
         next:SetPreviousFocus(previous)
-        next:SetBehavior(nextBehavior)
+        //next:SetBehavior(nextBehavior)
         optionsContainer:Add(next)
 
         matchCase:SetName("Match Case")
@@ -198,6 +200,25 @@ class FindDialog is Dialog, TextChangeListener
 
         createFindContainer:Add(optionsContainer)
 
+//        //Should be "ALT + N" (until ALT key works correctly using the same hotkey as the CodeTextBox)
+//        KeyboardEvent keys
+//        text inputGroup = GetInputGroup()
+//        InputTable dialogInputs = studio:GetInputTable(inputGroup)
+//        InputSet nextSet 
+//        nextSet:SetKeyboardInput(keys:F3)
+//        nextSet:AddModifier(nextSet:META)
+//        dialogInputs:Add(nextSet, nextBehavior)
+//        //Should be "ALT + P" (until ALT key works correctly using the same hotkey as the CodeTextBox)
+//        InputSet previousSet
+//        previousSet:SetKeyboardInput(keys:F3)
+//        previousSet:AddModifier(previousSet:META)
+//        previousSet:AddModifier(previousSet:SHIFT)
+//        dialogInputs:Add(previousSet, previousBehavior)
+
+        return createFindContainer
+    end
+
+    private action CreateMatchesControl returns Control
         FlowLayout matchesLayout
         Control matchesContainer
         matchesContainer:SetLayout(matchesLayout)
@@ -207,18 +228,18 @@ class FindDialog is Dialog, TextChangeListener
         matchesContainer:SetRightPadding(10)
         matchesContainer:SetLeftPadding(20)
 
-        matches:SetText("")
-        matches:SetHorizontalLayoutMode(matches:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        matches:SetPercentageWidth(0.2)
-        matches:SetPixelHeight(20)
-        matches:SetLeftPadding(6)
-        matches:SetRightPadding(30)
-        matchesContainer:Add(matches)
-        createFindContainer:Add(matchesContainer)
+        Label label
+        label:SetText("")
+        label:SetHorizontalLayoutMode(label:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        label:SetPercentageWidth(0.2)
+        label:SetPixelHeight(20)
+        label:SetLeftPadding(6)
+        label:SetRightPadding(30)
+        matchesContainer:Add(label)
+        SetMatchesLabel(label)
+        return matchesContainer
         
-        return createFindContainer
     end
-
 
     action IsInitialized returns boolean
         return initialized
@@ -243,9 +264,12 @@ class FindDialog is Dialog, TextChangeListener
         textBox:AddTextChangeListener(me)
         //still need to set textChange listener to off/on when replacing
         findBehavior:SetTextBox(textBox)
-        nextBehavior:SetTextBox(textBox)
-        previousBehavior:SetTextBox(textBox)
-        wholeWordMatchCaseBehavior:SetTextBox(textBox)        
+        //textBox:SetPreviousBehavior(previousBehavior)
+        //textBox:SetNextBehavior(nextBehavior)
+        textBox:SetDialog(me)
+        wholeWordMatchCaseBehavior:SetTextBox(textBox)
+        previous:SetBehavior(textBox:GetPreviousBehavior())
+        next:SetBehavior(textBox:GetNextBehavior())     
     end
 
     action GetTextBox returns CodeTextBox
@@ -272,11 +296,20 @@ class FindDialog is Dialog, TextChangeListener
         return textChangeListenerOn
     end
 
+    action SetMatchesLabel(Label label)
+        matches = label
+    end
+
+    action GetMatchesLabel returns Label
+        return matches
+    end
+
     //Updates the matches label on the Dialog to reflect how many instances of 
     //"find" were found in the textBox. If there is a currentSelection it will also 
     //display the selection number in relation to the number of total matches found.
     action UpdateMatches(integer currentSelection, integer totalMatches)
-        if findField:GetText() not= ""
+        //if findField:GetText() not= ""
+        //if textBox:GetFindWord() not= ""
             if totalMatches = 0
                 matches:SetText("No matches")
             elseif totalMatches = 1
@@ -288,9 +321,9 @@ class FindDialog is Dialog, TextChangeListener
                     matches:SetText(cast(text, totalMatches) + " matches")
                 end
             end
-        else 
-            matches:SetText("") 
-        end
+        //else 
+            //matches:SetText("") 
+        //end
     end
 
 
@@ -337,7 +370,7 @@ class FindDialog is Dialog, TextChangeListener
 
     //Removes any highlights in the textBox, empties the arrays and textFields and resets the selection index.
     action OnHide
-        textBox:RemoveFindReplaceStyles()
+        //textBox:RemoveFindReplaceStyles()
         textBox:SetFindWord(findField:GetText())
         textBox:SetIsDialogOpen(false)
         //RemoveSelections()

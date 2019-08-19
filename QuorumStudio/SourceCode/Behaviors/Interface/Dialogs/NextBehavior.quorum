@@ -7,39 +7,32 @@ use Libraries.Interface.Controls.Dialog
 use Libraries.Development.Environment.Studio.Interface.ReplaceDialog
 use Libraries.Interface.Controls.Checkbox
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Interface.Item2D
 
 class NextBehavior is QuorumStudioBehavior
-    Dialog dialog = undefined
-    CodeTextBox textBox = undefined
-    public constant integer FIND = 1
-    public constant integer REPLACE = 2
+//    FindDialog dialog = undefined
+    //CodeTextBox textBox = undefined
 
-    integer dialogType = FIND
+//    action SetDialog(FindDialog dialog)
+//        me:dialog = dialog
+//    end
 
-    action SetDialog(Dialog dialog)
-        me:dialog = dialog
-    end
+//    action SetTextBox(CodeTextBox textBox)
+//        me:textBox = textBox
+//    end
 
-    action SetDialogType(integer type)
-        dialogType = type
-    end 
-
-    action SetTextBox(CodeTextBox textBox)
-        me:textBox = textBox
-    end
-
-    action Run (BehaviorEvent event)
-        FindDialog findDialog
-        ReplaceDialog replaceDialog
-        
-        if dialogType = FIND
-            findDialog = cast(FindDialog, me:dialog)
+    action Run (BehaviorEvent event)       
+        GameStateManager gameManager
+        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+        //Item item = event:GetItem()
+        CodeEditorTabPane tabPane = studio:GetTabPane()
+        Item2D tab = tabPane:GetCurrentItem()
+        if tab is CodeTextBox
+            CodeTextBox textBox = cast(CodeTextBox, tab)
             textBox:NextSelection()
-            findDialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
-        elseif dialogType = REPLACE
-            replaceDialog = cast(ReplaceDialog, me:dialog)
-            textBox:NextSelection()
-            replaceDialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
         end
     end
 end

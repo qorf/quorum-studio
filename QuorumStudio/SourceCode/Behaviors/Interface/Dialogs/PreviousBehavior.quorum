@@ -7,39 +7,40 @@ use Libraries.Interface.Controls.Dialog
 use Libraries.Development.Environment.Studio.Interface.ReplaceDialog
 use Libraries.Interface.Controls.Checkbox
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Interface.Item2D
+use Libraries.Game.GameStateManager
 
 class PreviousBehavior is QuorumStudioBehavior
-    Dialog dialog = undefined
-    CodeTextBox textBox = undefined
-    public constant integer FIND = 1
-    public constant integer REPLACE = 2
+    //FindDialog dialog = undefined
+//    CodeTextBox textBox = undefined
 
-    integer dialogType = FIND
+//    action SetDialog(FindDialog dialog)
+//        me:dialog = dialog
+//    end
 
-    action SetDialog(Dialog dialog)
-        me:dialog = dialog
-    end
-
-    action SetDialogType(integer type)
-        dialogType = type
-    end 
-
-    action SetTextBox(CodeTextBox textBox)
-        me:textBox = textBox
-    end
+//    action SetTextBox(CodeTextBox textBox)
+//        me:textBox = textBox
+//    end
 
     action Run (BehaviorEvent event)
-        FindDialog findDialog
-        ReplaceDialog replaceDialog
-        
-        if dialogType = FIND
-            findDialog = cast(FindDialog, me:dialog)
+        GameStateManager gameManager
+        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+        //Item item = event:GetItem()
+        CodeEditorTabPane tabPane = studio:GetTabPane()
+        Item2D tab = tabPane:GetCurrentItem()
+        if tab is CodeTextBox
+            CodeTextBox textBox = cast(CodeTextBox, tab)
             textBox:PreviousSelection()
-            findDialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
-        elseif dialogType = REPLACE
-            replaceDialog = cast(ReplaceDialog, me:dialog)
-            textBox:PreviousSelection()
-            replaceDialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
         end
+
+        //Get the current code text box and previous selection for that textbox
+//        if textBox:GetIsDialogOpen()
+//            textBox:PreviousSelection()
+//            dialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
+//        else
+//            textBox:PreviousSelection()
+//        end
     end
 end
