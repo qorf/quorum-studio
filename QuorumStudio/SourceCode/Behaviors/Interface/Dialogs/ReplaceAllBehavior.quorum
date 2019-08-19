@@ -4,16 +4,24 @@ use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.ReplaceDialog
 use Libraries.Interface.Controls.Checkbox
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 
 class ReplaceAllBehavior is QuorumStudioBehavior
     ReplaceDialog dialog = undefined
+    CodeTextBox textBox = undefined
 
     action SetDialog(ReplaceDialog replaceDialog)
         me:dialog = replaceDialog
     end
 
+    action SetTextBox(CodeTextBox textBox)
+        me:textBox = textBox
+    end
+
     action Run (BehaviorEvent event)
-        dialog:ReplaceAll()
+        dialog:SetTextChangeListenerOn(false)
+        textBox:ReplaceAll(dialog:GetFindWord(), dialog:GetReplaceWord())
+        dialog:SetTextChangeListenerOn(true)
         dialog:UpdateTextBox()
     end
 end

@@ -25,8 +25,11 @@ class OpenReplaceDialogBehavior is QuorumStudioBehavior
         Item2D tabbedItem = tabPane:GetCurrentItem()
 
         if tabbedItem is CodeTextBox
-            dialog:SetTextBox(cast(CodeTextBox, tabbedItem))
-            dialog:Show()
+            CodeTextBox textBox = cast(CodeTextBox, tabbedItem)
+            if not textBox:GetIsDialogOpen()
+                dialog:SetTextBox(textBox)
+                dialog:Show()
+            end
         end
     end
 end

@@ -6,10 +6,11 @@ use Libraries.Development.Environment.Studio.Interface.FindDialog
 use Libraries.Interface.Controls.Dialog
 use Libraries.Development.Environment.Studio.Interface.ReplaceDialog
 use Libraries.Interface.Controls.Checkbox
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 
 class NextBehavior is QuorumStudioBehavior
     Dialog dialog = undefined
-
+    CodeTextBox textBox = undefined
     public constant integer FIND = 1
     public constant integer REPLACE = 2
 
@@ -23,16 +24,22 @@ class NextBehavior is QuorumStudioBehavior
         dialogType = type
     end 
 
+    action SetTextBox(CodeTextBox textBox)
+        me:textBox = textBox
+    end
+
     action Run (BehaviorEvent event)
         FindDialog findDialog
         ReplaceDialog replaceDialog
         
         if dialogType = FIND
             findDialog = cast(FindDialog, me:dialog)
-            findDialog:NextSelection()
+            textBox:NextSelection()
+            findDialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
         elseif dialogType = REPLACE
             replaceDialog = cast(ReplaceDialog, me:dialog)
-            replaceDialog:NextSelection()
+            textBox:NextSelection()
+            replaceDialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
         end
     end
 end

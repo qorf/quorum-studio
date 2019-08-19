@@ -1,0 +1,30 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.FindDialog
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+
+class FindBehavior is QuorumStudioBehavior
+    FindDialog dialog = undefined
+    CodeTextBox textBox = undefined
+    //text findWord = ""
+    //boolean isMatchCase = false
+    //boolean isWholeWord = false
+    
+    action SetDialog(FindDialog dialog)
+        me:dialog = dialog
+    end
+
+    action SetTextBox(CodeTextBox textBox)
+        me:textBox = textBox
+    end
+
+    action Run(BehaviorEvent event)
+       text findWord = dialog:GetFindWord()
+       boolean isMatchCase = dialog:GetIsMatchCase()
+       boolean isWholeWord = dialog:GetIsWholeWord()
+       textBox:FindText(findWord, isWholeWord, isMatchCase) 
+       dialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
+    end
+end

@@ -27,6 +27,7 @@ use Libraries.System.File
 use Libraries.Interface.Events.GutterListener
 use Libraries.Interface.Events.GutterEvent
 use Libraries.Interface.Controls.TextStyles.TextStyle
+use Libraries.Containers.Support.Pair
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -42,6 +43,14 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
 
     Array<text> findReplaceNames
     Array<TextStyle> findReplaceStyles
+    Array<Pair<integer>> findIndices
+    Array<Pair<integer>> removeIndices
+    text findWord = ""
+    text replaceWord = ""
+    boolean findIsWholeWord = false
+    boolean findIsMatchCase = false
+    boolean isDialogOpen = false
+    integer findSelection = -1
 
     on create
         GameStateManager manager
@@ -504,5 +513,377 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     action EmptyFindReplaceStyles
         findReplaceNames:Empty()
         findReplaceStyles:Empty()
+    end
+
+    action SetFindSelectionsToClosedDialog
+        //if Dialog:IsClosed()
+        
+
+    end
+
+    action SetIsDialogOpen(boolean state)
+        isDialogOpen = state
+    end
+    
+    action GetIsDialogOpen returns boolean
+        return isDialogOpen
+    end
+
+    
+
+
+    action FindText(text find, boolean wholeWord, boolean matchCase)
+        
+        text textValue = GetText() //+ bufferSpace
+        if findSelection >= 0
+            RemoveCurrentSelection()
+        end
+        integer findIndex = 0
+        integer findSize = find:GetSize()       //size of the word we are searching for
+        integer endIndex = textValue:GetSize() - 1
+        
+        if find not= ""
+            removeIndices = findIndices:CopyToArray()       //remove any previously highlighted instances of find 
+            findIndices:Empty()
+
+            if removeIndices:GetSize() not= 0 
+                RemoveSelections()
+            end
+
+            if textValue:GetSize() not= 0
+                repeat while (findIndex >= 0) and ((findIndex + findSize) < endIndex)   //start from beginning of text and go through til the end
+                    Pair<integer> indices
+                    if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
+                        indices:Set(findIndex, (findIndex + (findSize - 1)))
+                        findIndices:Add(indices)
+                        findIndex = findIndex + findSize
+                    else
+                        findIndex = findIndex + 1
+                    end
+                end
+            end
+
+            if matchCase
+                findIsMatchCase = true
+                MatchCaseFindText(find)
+            else
+                findIsMatchCase = false
+            end
+
+            if wholeWord
+                findIsWholeWord = true
+                WholeWordFindText(find)
+            else
+                findIsWholeWord = false
+            end
+
+            UpdateSelections()
+            SetSelection()
+
+        end
+    end
+
+    /* Called by FindText()
+    Sets the current selection to the findIndices starting index that is before 
+    the caret position in the textbox. Calls UpdateCurrentSelection to highlight
+    this selection in the textbox */
+    private action SetSelection()
+        if findIndices:GetSize() not= 0
+            integer caretIndex = GetCaretPosition()
+            integer startIndex = 0
+            integer arrayIndex = 0
+
+            repeat while startIndex < caretIndex and arrayIndex < findIndices:GetSize()
+                startIndex = findIndices:Get(arrayIndex):GetFirstValue()
+                arrayIndex = arrayIndex + 1
+            end
+            selection = (arrayIndex - 1)
+            UpdateCurrentSelection(-1)
+        end
+    end
+
+    /* Called by FindText() and passed the find text from the dialog.
+    If there are any instances of find that do not meet the MatchCase criteria 
+    then the Pair<startIndex, endIndex> are added to the removeIndices array */
+    private action MatchCaseFindText(text find)
+        text subtext = ""
+        integer startIndex = 0
+        integer endIndex = 0
+        text textValue = GetText()
+        
+        integer i = 0
+        repeat while i < findIndices:GetSize()
+            startIndex = findIndices:Get(i):GetFirstValue()
+            endIndex = findIndices:Get(i):GetSecondValue()
+            subtext = textValue:GetSubtext(startIndex, (endIndex + 1))
+            if not find:Equals(subtext)
+                removeIndices:Add(findIndices:Get(i))
+            end
+            i = i + 1
+        end
+    end
+
+    /* Called by FindText() and passed the find text from the dialog.
+    If there are any instances of find that do not meet the WholeWord criteria 
+    then the Pair<startIndex, endIndex> are added to the removeIndices array */
+    private action WholeWordFindText(text find)
+        text break = "
+"
+        integer startIndex = 0
+        integer endIndex = 0
+        integer previousIndex = 0
+        integer nextIndex = 0
+        text previousCharacter = ""
+        text nextCharacter = ""
+        text textValue = GetText()
+
+        integer i = 0
+        repeat while i < findIndices:GetSize()
+            startIndex = findIndices:Get(i):GetFirstValue()
+            endIndex = findIndices:Get(i):GetSecondValue()
+            previousIndex = startIndex - 1
+            nextIndex = endIndex + 1
+            if previousIndex < 0
+                previousCharacter = " "
+            else
+                previousCharacter = textValue:GetCharacter(previousIndex)
+            end
+            if nextIndex > textValue:GetSize() - 1
+                nextCharacter = " "
+            else
+                nextCharacter = textValue:GetCharacter(nextIndex)
+            end
+
+            if not((previousCharacter = " ") or (previousCharacter = ".") or (previousCharacter = "/")
+            or (previousCharacter = "*") or (previousCharacter = "(") or (previousCharacter = ")") or (previousCharacter = "+") 
+            or (previousCharacter = "-") or (previousCharacter = ">") or (previousCharacter = "<") or (previousCharacter = "=") 
+            or (previousCharacter = break) or (previousCharacter = ","))
+                removeIndices:Add(findIndices:Get(i))
+            elseif not ((nextCharacter = " ") or (nextCharacter = ".") or (nextCharacter = "/") 
+            or (nextCharacter = "*") or (nextCharacter = "(") or (nextCharacter = ")") or (nextCharacter = "+") 
+            or (nextCharacter = "-") or (nextCharacter = ">") or (nextCharacter = "<") or (nextCharacter = "=") 
+            or (nextCharacter = break) or (nextCharacter = ","))
+                removeIndices:Add(findIndices:Get(i))  
+            end
+            i = i + 1
+        end
+    end
+
+    action GetCurrentFindSelection returns integer
+        return findSelection
+    end
+
+    action GetFindMatches returns integer
+        return findIndices:GetSize()
+    end
+
+    action GetIsMatchCase returns boolean
+        return findIsMatchCase
+    end
+
+    action GetIsWholeWord returns boolean
+        return findIsWholeWord
+    end
+
+    action SetFindWord(text find)
+        findWord = find
+    end
+    
+    action GetFindWord returns text
+        return findWord
+    end
+
+    action SetReplaceWord(text replace)
+        replaceWord = replace
+    end
+
+    action GetReplaceWord returns text
+        return replaceWord
+    end
+
+    /* Updates the highlighted instances of "find" in the textBox
+    Calls RemoveSelections() to remove the Pair<startIndex, endIndex> that no 
+    longer apply due to MatchCase criteria, WholeWord criteria, or 
+    TextChange events */
+    private action UpdateSelections()
+        ColoredHighlight highlight
+        Color color
+        highlight:SetColor(color:Orange())
+        integer startIndex = 0
+        integer endIndex = 0
+
+        if removeIndices:GetSize() not= 0
+            RemoveSelections()
+        end
+
+        if findIndices:GetSize() not= 0
+            integer i = 0
+            repeat while i < findIndices:GetSize()
+                TextStyle textStyle
+                Pair<integer> indices
+                indices = findIndices:Get(i)
+                startIndex = indices:GetFirstValue()
+                endIndex = indices:GetSecondValue()
+                textStyle:SetIndex(startIndex)
+                textStyle:SetSize((endIndex - startIndex) + 1)
+                textStyle:SetHighlight(highlight)
+                AddFindReplaceStyle("highlight" + startIndex, textStyle)
+                i = i + 1
+            end
+        end
+    end
+    
+
+    /* Removes the highlighted instances of "find" that are no longer applicable 
+    due to MatchCase criteria, WholeWord criteria, or a TextChange event. */
+    private action RemoveSelections()
+        integer startIndex = 0
+        integer i = 0
+        repeat while i < removeIndices:GetSize()            
+            startIndex = removeIndices:Get(i):GetFirstValue()                        
+            findIndices:Remove(removeIndices:Get(i))
+            //RemoveFindReplaceStyle("highlight" + startIndex)
+            i = i + 1
+        end
+        removeIndices:Empty() 
+        RemoveFindReplaceStyles()
+    end   
+
+    /* moves the selection index to the next position and sends the 
+    previousSelection index to UpdatCurrentSelection() to add the new 
+    currentSelection highlight and remove the previousSelection highlight 
+    from the textBox */
+    action NextSelection()
+        if findIndices:GetSize() not= 0
+            integer previousSelection = findSelection
+            findSelection = findSelection + 1
+            UpdateCurrentSelection(previousSelection)
+        end
+    end
+
+    /* moves the selection index to the previous position and sends the 
+    previousSelection index to UpdatCurrentSelection() to add the new 
+    currentSelection highlight and remove the previousSelection highlight 
+    from the textBox */
+    action PreviousSelection()
+        if findIndices:GetSize() not= 0
+            integer previousSelection = findSelection
+            findSelection = findSelection - 1
+            UpdateCurrentSelection(previousSelection)
+        end
+    end
+    
+    /* called by PreviousSelection(), NextSelection(), and SetSelection() to 
+    update the current selection in the array of indices. Highlights the line 
+    of the current selection in light blue (currently not working as expected), 
+    highlights the current selection in a darker shade of blue, */
+    private action UpdateCurrentSelection(integer previousSelection)
+        if findSelection < 0
+            findSelection = (findIndices:GetSize() - 1)
+        end
+        if findSelection >= findIndices:GetSize()
+            findSelection = 0
+        end
+
+        integer wordStartIndex =  findIndices:Get(findSelection):GetFirstValue()
+        integer wordEndIndex = findIndices:Get(findSelection):GetSecondValue()        
+
+        integer lineStartIndex = GetLineIndexOfCharacter(wordStartIndex)
+        GoToLine(lineStartIndex)
+
+        ColoredHighlight highlight
+        ColoredHighlight selectionHighlight
+        TextStyle textStyle
+        TextStyle word
+        Color color
+        Color blue
+        blue:SetColor(0, 0, 0.4, 0.2)
+        highlight:SetColor(color:Orange())
+        selectionHighlight:SetColor(blue)
+
+        if previousSelection >= 0 
+            integer previousStartIndex = findIndices:Get(previousSelection):GetFirstValue()
+            integer previousEndIndex = findIndices:Get(previousSelection):GetSecondValue()
+            integer previousLineStartIndex = GetLineIndexOfCharacter(previousStartIndex)
+            textStyle:SetIndex(previousStartIndex)
+            textStyle:SetSize((previousEndIndex - previousStartIndex) + 1)
+            textStyle:SetHighlight(highlight)
+
+        //resets the previous selection back to the orange highlight and removes the line highlight
+            if not HasTextStyle("highlight" + previousStartIndex)
+                AddFindReplaceStyle("highlight" + previousStartIndex, textStyle)
+            end
+            if HasTextStyle("selectionHighlight" + previousStartIndex)
+                RemoveFindReplaceStyle("selectionHighlight" + previousStartIndex)
+            end
+        end
+
+        word:SetIndex(wordStartIndex)
+        word:SetSize((wordEndIndex - wordStartIndex)+ 1)
+        word:SetHighlight(selectionHighlight)
+
+        //sets the current selection to blue highlight
+        RemoveFindReplaceStyle("highlight" + wordStartIndex)       //remove the orange highlight
+        AddFindReplaceStyle("selectionHighlight" + wordStartIndex, word)    //add the blue highlight for current selection
+    end
+
+    /* removes the selection highlighting before updating the indices
+    called when there is a text, matchCase, or wholeWord change and when the
+    dialog is closed, to remove all highlights within the textBox */
+    private action RemoveCurrentSelection
+        if findIndices:GetSize() not= 0
+            integer wordStartIndex = findIndices:Get(findSelection):GetFirstValue()
+            RemoveFindReplaceStyle("selectionHighlight" + wordStartIndex)
+            findSelection = -1
+        end
+    end
+
+    /* replaces only the current selection of find with replace, if there is no
+    text in the replaceField of the dialog, then the findWOrd is replaced with a 
+    blank text. */
+    action Replace(text replaceWord) 
+        //SetTextChangeListenerOn(false) *In the ReplaceBehavior
+        me:replaceWord = replaceWord
+        if findSelection < 0
+            findSelection = 0
+        end
+
+        if findIndices:GetSize() not= 0
+            integer startIndex = findIndices:Get(findSelection):GetFirstValue()
+            integer endIndex = findIndices:Get(findSelection):GetSecondValue()
+            Delete(startIndex, (endIndex + 1))
+            Insert(startIndex, replaceWord)
+        end
+        //SetTextChangeListenerOn(true) *In the ReplaceBehavior*
+    end
+
+
+    /* replaces all instances of the current find word with the current replace 
+    word using an offset if necessary to correctly replace the findWord indices 
+    throughout the textBox. If the replaceField is empty, then the findWord is
+    replaced with blank text. */
+    action ReplaceAll(text findWord, text replaceWord)
+        me:replaceWord = replaceWord
+        if findIndices:GetSize() not= 0   
+            integer replaceSize = replaceWord:GetSize()
+            integer findSize = findWord:GetSize()
+            integer offset = replaceSize - findSize
+            integer startIndex = 0
+            integer endIndex = 0
+
+            integer i = 0
+            repeat while i < findIndices:GetSize()
+                if i not= 0
+                    startIndex = ((findIndices:Get(i):GetFirstValue()) + (offset * i))
+                    endIndex = ((findIndices:Get(i):GetSecondValue()) + (offset * i))
+                else
+                    startIndex = findIndices:Get(i):GetFirstValue()
+                    endIndex = findIndices:Get(i):GetSecondValue()
+                end
+                Delete(startIndex, (endIndex + 1))
+                Insert(startIndex, replaceWord)
+                i = i + 1
+            end
+        end
     end
 end
