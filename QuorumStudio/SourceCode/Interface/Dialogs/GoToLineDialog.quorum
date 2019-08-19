@@ -16,6 +16,9 @@ use Libraries.Development.Environment.Studio.Behaviors.GoToLineOkButtonBehavior
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
 use Libraries.Interface.Events.TextChangeListener
 use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Game.InputSet
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Game.InputTable
 
 class GoToLineDialog is Dialog, TextChangeListener
     boolean initialized = false
@@ -28,11 +31,14 @@ class GoToLineDialog is Dialog, TextChangeListener
     DialogCancelBehavior cancelBehavior
     on create
         SetModal(true)
+        parent:Item:visible = false
     end
 
     action Setup
         if initialized
-            output "WARNING: Re-initializing the FindDialog."
+//            output "WARNING: Re-initializing the FindDialog."
+            lineTextField:SetText("")
+            return now
         end
         initialized = true
 
@@ -88,6 +94,12 @@ class GoToLineDialog is Dialog, TextChangeListener
         lineTextField:SetNextFocus(cancel)
         lineTextField:SetPreviousFocus(ok)
 
+        InputSet enterSet
+        KeyboardEvent keys
+        enterSet:SetKeyboardInput(keys:ENTER)
+        InputTable table = lineTextField:GetInputTable()
+        table:Add(enterSet, okBehavior)
+
         lineTextField:SetText("")
         lineTextField:AddTextChangeListener(me)
 
@@ -110,41 +122,15 @@ class GoToLineDialog is Dialog, TextChangeListener
 
     action TextChanged(TextChangeEvent event)
         text value = lineTextField:GetText()
-        text newValue = Sanitize(value)
-        if not newValue:IsEmpty()
-            integer line = cast(integer, newValue)
-            okBehavior:SetLine(line - 1)
-        else
-            okBehavior:SetLine(0)
-        end
-
-        if value not= newValue
-            lineTextField:SetText(newValue)
-        end
-    end
-
-    private action Sanitize(text value) returns text
-        text result = ""
-        i = 0
-        repeat while i < value:GetSize()
-            text char = value:GetCharacter(i)
-            if IsInteger(char)
-                result = result + char
-            end
-            i = i + 1
-        end
-        return result
-    end
-
-    private action IsInteger(text char) returns boolean
-        if char = "1" or char = "2" or char = "3" or char = "4" or char = "5"
-            or char = "6" or char = "7" or char = "8" or char = "9" or char = "0"
-            return true
-        end
-        return false
+        okBehavior:SetLine(value)
     end
 
     action OnShow
         lineTextField:Focus()
+        parent:Item:visible = true
+    end
+    
+    action OnHide
+        parent:Item:visible = false
     end
 end

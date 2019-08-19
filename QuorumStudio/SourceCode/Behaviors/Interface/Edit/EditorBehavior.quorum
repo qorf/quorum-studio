@@ -15,29 +15,35 @@ use Libraries.Interface.Behaviors.Controls.TextBoxCopyToClipboardBehavior
 use Libraries.Interface.Controls.MenuItem
 use Libraries.Interface.Controls.MenuRoot
 use Libraries.Game.FocusManager
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Item2D
+use Libraries.Interface.Controls.Button
 
 class EditorBehavior is QuorumStudioBehavior
     action Run (BehaviorEvent event)
-        Item value = event:GetItem()
-        Item item = undefined
-        if value is MenuItem
-            MenuItem menuItem = cast(MenuItem, value)
-            MenuRoot value1 = menuItem:GetMenuRoot()
-            item = value1:GetLastFocus()
+        Item item = event:GetItem()
 
-            if item = undefined
-                GameStateManager manager
-                FocusManager focuser = manager:GetFocusManager()
-                Item value2 = focuser:GetFocus()
-                if value2 = undefined
-                    return now
-                end
-                Run(value2)
-            else 
-                Run(item)
+        QuorumStudio studio = GetMainApplication()
+        CodeEditorTabPane editors = studio:GetTabPane()
+        Item2D related = editors:GetCurrentItem()
+
+        if item is Button and related not= undefined
+            Run(related)
+            return now
+        end
+
+        if item is MenuItem
+            Item currentFocus = studio:GetCurrentFocus()
+            if currentFocus = undefined
+                return now
             end
+            Run(currentFocus)
         else 
-            Run(value)
+            Run(item)
         end        
     end
 

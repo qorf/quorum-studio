@@ -6,7 +6,6 @@ use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
-use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Item2D
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
@@ -14,7 +13,7 @@ use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Controls.Dialog
 
 class GoToLineOkButtonBehavior is Behavior
-    integer line = 0
+    text lineIn = "0"
     Dialog dialog = undefined
 
     action SetDialog(Dialog dialog)
@@ -25,24 +24,31 @@ class GoToLineOkButtonBehavior is Behavior
         return dialog
     end
 
-    action GetLine returns integer
-        return line
+    action GetLine returns text
+        return lineIn
     end
 
-    action SetLine(integer line)
-        me:line = line
+    action SetLine(text line)
+        me:lineIn = line
     end
 
     action Run(BehaviorEvent event)
+        integer line = 0
         GameStateManager manager
         Game game = manager:GetGame()
         QuorumStudio studio = cast(QuorumStudio, game)
         CodeEditorTabPane editors = studio:GetTabPane()
-        TabPaneSelection value = editors:GetSelection()
-        Tab tab = value:GetTab()
-        Item2D related = tab:GetRelatedItem()
-        if related is TextBox
+        Item2D related = editors:GetCurrentItem()
+        if related not= undefined and related is TextBox
             TextBox box = cast(TextBox, related)
+
+            check
+                line = lineIn:ParseInteger()
+                line = line - 1
+            detect e
+                line = box:GetCaretLine()
+            always
+
             if line < 0
                 line = 0
             end
@@ -57,6 +63,8 @@ class GoToLineOkButtonBehavior is Behavior
 
             box:SetCaretPositionToLine(line)
             box:GoToLine(line)
+            box:Focus()
+            end
         end
     end
 end

@@ -4,13 +4,14 @@ use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.System.File
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectManager
 
 
 class NewProjectOkBehavior is QuorumStudioBehavior
 
     QuorumProject project
     NewProjectDialog dialog = undefined
-    Button button
 
     action SetDialog(NewProjectDialog dialog)
         me:dialog = dialog
@@ -33,8 +34,12 @@ class NewProjectOkBehavior is QuorumStudioBehavior
             file = me:project:GetPropertiesLocation()
             me:project:LoadProperties(file)
             me:project:SetName(me:dialog:GetProjectName())
+            project:SaveProperties(file)
 
-            me:dialog:AppendToProjectPane(me:project)
+            QuorumStudio studio = GetMainApplication()
+            ProjectManager manager = studio:GetProjectManager()
+            manager:Open(file)
+
             me:dialog:Hide()
         end
     end
