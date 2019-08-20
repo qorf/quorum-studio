@@ -27,13 +27,21 @@ use Libraries.Development.Environment.Studio.Behaviors.FindBehavior
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Game.InputTable
 use Libraries.Game.InputSet
+use Libraries.Interface.Events.SelectionListener
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.TextBox
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
 
-class FindDialog is Dialog, TextChangeListener
+class FindDialog is Dialog, TextChangeListener, SelectionListener
     boolean initialized = false
+    boolean showing = false
     boolean textChangeListenerOn = true
 
     GameStateManager gameManager
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+    CodeEditorTabPane tabPane = studio:GetTabPane()
 
     // The TextBox that we're searching through.
     CodeTextBox textBox = undefined
@@ -49,23 +57,22 @@ class FindDialog is Dialog, TextChangeListener
 
     //FindDialog Control Behaviors
     WholeWordMatchCaseBehavior wholeWordMatchCaseBehavior
-    //PreviousBehavior previousBehavior
-    //NextBehavior nextBehavior
-    FindBehavior findBehavior
-    
+    FindBehavior findBehavior   
+    NextBehavior nextBehavior
+    PreviousBehavior previousBehavior
 
     on create
         findField:AddTextChangeListener(me)
         wholeWordMatchCaseBehavior:SetDialog(cast(Dialog, me))
         wholeWordMatchCaseBehavior:SetDialogType(wholeWordMatchCaseBehavior:FIND)
-        //previousBehavior:SetDialog(me)
-        //nextBehavior:SetDialog(me)
+        tabPane:AddSelectionListener(me)
         findBehavior:SetDialog(me)
         SetModal(false)
         //SetBehavior(nextBehavior)
     end
 
     action OnShow()
+        showing = true
         findField:Focus()
         wholeWord:SetToggleState(textBox:GetIsWholeWord())
         matchCase:SetToggleState(textBox:GetIsMatchCase())
@@ -74,6 +81,19 @@ class FindDialog is Dialog, TextChangeListener
         if findField:GetText() not= ""
             findButton:Activate()
         end
+
+        //Should be "ALT + N" (until ALT key works correctly using the same hotkey as the CodeTextBox)
+        KeyboardEvent keys
+        text inputGroup = GetInputGroup()
+        InputTable dialogInputs = studio:GetInputTable(inputGroup)
+        InputSet nextSet 
+        nextSet:SetKeyboardInput(keys:F3)
+        dialogInputs:Add(nextSet, nextBehavior)
+        //Should be "ALT + P" (until ALT key works correctly using the same hotkey as the CodeTextBox)
+        InputSet previousSet
+        previousSet:SetKeyboardInput(keys:F3)
+        previousSet:AddModifier(previousSet:SHIFT)
+        dialogInputs:Add(previousSet, previousBehavior)
     end
 
     action Initialize
@@ -173,7 +193,6 @@ class FindDialog is Dialog, TextChangeListener
         previous:SetFocusable(true)
         previous:SetNextFocus(next)
         previous:SetPreviousFocus(matchCase)
-        //previous:SetBehavior(previousBehavior)
         optionsContainer:Add(previous)
         
         next:SetName("Next")
@@ -185,7 +204,7 @@ class FindDialog is Dialog, TextChangeListener
         next:SetFocusable(true)
         next:SetNextFocus(findField)
         next:SetPreviousFocus(previous)
-        //next:SetBehavior(nextBehavior)
+        
         optionsContainer:Add(next)
 
         matchCase:SetName("Match Case")
@@ -199,21 +218,6 @@ class FindDialog is Dialog, TextChangeListener
         optionsContainer:Add(matchCase)
 
         createFindContainer:Add(optionsContainer)
-
-//        //Should be "ALT + N" (until ALT key works correctly using the same hotkey as the CodeTextBox)
-//        KeyboardEvent keys
-//        text inputGroup = GetInputGroup()
-//        InputTable dialogInputs = studio:GetInputTable(inputGroup)
-//        InputSet nextSet 
-//        nextSet:SetKeyboardInput(keys:F3)
-//        nextSet:AddModifier(nextSet:META)
-//        dialogInputs:Add(nextSet, nextBehavior)
-//        //Should be "ALT + P" (until ALT key works correctly using the same hotkey as the CodeTextBox)
-//        InputSet previousSet
-//        previousSet:SetKeyboardInput(keys:F3)
-//        previousSet:AddModifier(previousSet:META)
-//        previousSet:AddModifier(previousSet:SHIFT)
-//        dialogInputs:Add(previousSet, previousBehavior)
 
         return createFindContainer
     end
@@ -262,18 +266,35 @@ class FindDialog is Dialog, TextChangeListener
     action SetTextBox(CodeTextBox code)
         textBox = code
         textBox:AddTextChangeListener(me)
-        //still need to set textChange listener to off/on when replacing
         findBehavior:SetTextBox(textBox)
-        //textBox:SetPreviousBehavior(previousBehavior)
-        //textBox:SetNextBehavior(nextBehavior)
         textBox:SetDialog(me)
         wholeWordMatchCaseBehavior:SetTextBox(textBox)
-        previous:SetBehavior(textBox:GetPreviousBehavior())
-        next:SetBehavior(textBox:GetNextBehavior())     
+        previous:SetBehavior(previousBehavior)
+        next:SetBehavior(nextBehavior)     
     end
 
     action GetTextBox returns CodeTextBox
         return textBox
+    end
+
+    action SetFindField(TextField textField)
+        findField = textField
+    end
+
+    action SetMatchCase(Checkbox checkbox)
+        matchCase = checkbox
+    end
+
+    action SetWholeWord(Checkbox checkbox)
+        wholeWord = checkbox
+    end
+
+    action SetNextButton(Button button)
+        next = button
+    end
+
+    action SetPreviousButton(Button button)
+        previous = button
     end
 
     action GetFindWord() returns text
@@ -309,7 +330,6 @@ class FindDialog is Dialog, TextChangeListener
     //display the selection number in relation to the number of total matches found.
     action UpdateMatches(integer currentSelection, integer totalMatches)
         //if findField:GetText() not= ""
-        //if textBox:GetFindWord() not= ""
             if totalMatches = 0
                 matches:SetText("No matches")
             elseif totalMatches = 1
@@ -326,12 +346,11 @@ class FindDialog is Dialog, TextChangeListener
         //end
     end
 
-
     //repopulates the highlighting for any remaining instances that were not replaced by calling FindText (not currently working)
     action UpdateTextBox()
-        //textValue = textBox:GetText()
         findButton:Activate()
     end
+
     //Listens for text change within the findField and text change events in the 
     //current textBox that is being searched. Calls to update the selections if
     //there is a text change event that occurs in either field.
@@ -341,7 +360,6 @@ class FindDialog is Dialog, TextChangeListener
             find = findField:GetText()
             if event:GetEventType() = event:ADDED
                 if find not= ""
-                    //FindText(find)
                     findButton:Activate()
                 end
             elseif event:GetEventType() = event:DELETED
@@ -368,15 +386,27 @@ class FindDialog is Dialog, TextChangeListener
         end
     end
 
+    action SelectionChanged(SelectionEvent event) 
+        if showing
+            TabPaneSelection selection = tabPane:GetSelection()
+            Tab tab = selection:GetTab()
+            if tab not= undefined and tab is EditorTab
+                EditorTab t = cast(EditorTab, tab)
+                TextBox box = t:GetTextBox()
+                if box not= undefined
+                    textBox:RemoveFindReplaceStyles()
+                    SetTextBox(cast(CodeTextBox, box))
+                    UpdateTextBox()
+                end
+            end
+        end
+    end
+
     //Removes any highlights in the textBox, empties the arrays and textFields and resets the selection index.
     action OnHide
-        //textBox:RemoveFindReplaceStyles()
+        showing = false
         textBox:SetFindWord(findField:GetText())
-        textBox:SetIsDialogOpen(false)
-        //RemoveSelections()
-        //findField:Empty()
-        //selection = -1
-        //UpdateMatches()        
+        textBox:SetIsDialogOpen(false)       
     end
 
 end

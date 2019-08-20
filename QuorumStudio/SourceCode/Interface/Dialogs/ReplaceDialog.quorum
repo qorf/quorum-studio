@@ -27,14 +27,21 @@ use Libraries.Development.Environment.Studio.Behaviors.FindBehavior
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Game.InputTable
 use Libraries.Game.InputSet
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.TextBox
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
 
 
-class ReplaceDialog is FindDialog, TextChangeListener
+class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
+    boolean showing = false
     boolean initialized = false
     boolean textChangeListenerOn = true     //flag for TextChangeListener for when Replace and ReplaceAll are invoked
 
     GameStateManager gameManager
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+    CodeEditorTabPane tabPane = studio:GetTabPane()
 
     // The TextBox that we're searching through.
     CodeTextBox textBox = undefined
@@ -53,8 +60,8 @@ class ReplaceDialog is FindDialog, TextChangeListener
 
     //ReplaceDialog Control Behaviors
     WholeWordMatchCaseBehavior wholeWordMatchCaseBehavior
-    //PreviousBehavior previousBehavior
-    //NextBehavior nextBehavior
+    PreviousBehavior previousBehavior 
+    NextBehavior nextBehavior 
     ReplaceAllBehavior replaceAllBehavior
     ReplaceBehavior replaceBehavior
     FindBehavior findBehavior
@@ -63,17 +70,18 @@ class ReplaceDialog is FindDialog, TextChangeListener
         findField:AddTextChangeListener(me)
         wholeWordMatchCaseBehavior:SetDialog(cast(Dialog, me))
         wholeWordMatchCaseBehavior:SetDialogType(wholeWordMatchCaseBehavior:REPLACE)
-        //previousBehavior:SetDialog(me)
-        //nextBehavior:SetDialog(me)
         replaceAllBehavior:SetDialog(me)
         replaceBehavior:SetDialog(me) 
         findBehavior:SetDialog(me)
+        tabPane:AddSelectionListener(me)
         SetMatchesLabel(matches)
         SetModal(false)
         //SetBehavior(nextBehavior)
     end
 
     action OnShow()
+        showing = true
+        
         findField:Focus()
         wholeWord:SetToggleState(textBox:GetIsWholeWord())
         matchCase:SetToggleState(textBox:GetIsMatchCase())
@@ -83,6 +91,33 @@ class ReplaceDialog is FindDialog, TextChangeListener
         if findField:GetText() not= ""
             findButton:Activate()
         end
+        
+        //Should be "ALT + N" (until ALT key works correctly using the same hotkey as the CodeTextBox)
+        KeyboardEvent keys
+        text inputGroup = GetInputGroup()
+        InputTable dialogInputs = studio:GetInputTable(inputGroup)
+        InputSet nextSet 
+        nextSet:SetKeyboardInput(keys:F3)
+        dialogInputs:Add(nextSet, nextBehavior)
+
+        //Should be "ALT + P" (until ALT key works correctly using the same hotkey as the CodeTextBox)
+        InputSet previousSet
+        previousSet:SetKeyboardInput(keys:F3)
+        previousSet:AddModifier(previousSet:SHIFT)
+        dialogInputs:Add(previousSet, previousBehavior)
+
+        //Should be "ALT + R" (until ALT key works correctly using CMD+SHIFT+R)
+        InputSet replaceSet
+        replaceSet:SetKeyboardInput(keys:R)
+        replaceSet:AddModifier(replaceSet:SHIFT)
+        dialogInputs:Add(replaceSet, replaceBehavior)
+
+        //Should be "ALT + A" (until ALT key works correctly using CMD+SHIFT+A)
+        InputSet replaceAllSet
+        replaceAllSet:SetKeyboardInput(keys:A)
+        replaceAllSet:AddModifier(replaceAllSet:SHIFT)
+        dialogInputs:Add(replaceAllSet, replaceAllBehavior)
+        
     end
 
     action Initialize
@@ -257,7 +292,6 @@ class ReplaceDialog is FindDialog, TextChangeListener
         next:SetPercentageWidth(1.0)
         next:SetFocusable(true)
         next:SetNextFocus(replace)
-        //next:SetBehavior(nextBehavior)
         next:SetPreviousFocus(previous)
         
         replaceAll:SetName("Replace All")
@@ -270,42 +304,10 @@ class ReplaceDialog is FindDialog, TextChangeListener
         replaceAll:SetPreviousFocus(replace)
         replaceAll:SetBehavior(replaceAllBehavior)
         buttons2Container:Add(next)
-        buttons2Container:Add(replaceAll)
-        
-        optionsContainer:Add(buttons2Container)
-        
+        buttons2Container:Add(replaceAll)       
+        optionsContainer:Add(buttons2Container)       
         createReplaceContainer:Add(optionsContainer)
 
-//        //Should be "ALT + N" (until ALT key works correctly using the same hotkey as the CodeTextBox)
-        KeyboardEvent keys
-        text inputGroup = GetInputGroup()
-        InputTable dialogInputs = studio:GetInputTable(inputGroup)
-//        InputSet nextSet 
-//        nextSet:SetKeyboardInput(keys:F3)
-//        nextSet:AddModifier(nextSet:META)
-//        dialogInputs:Add(nextSet, nextBehavior)
-//
-//        //Should be "ALT + P" (until ALT key works correctly using the same hotkey as the CodeTextBox)
-//        InputSet previousSet
-//        previousSet:SetKeyboardInput(keys:F3)
-//        previousSet:AddModifier(previousSet:META)
-//        previousSet:AddModifier(previousSet:SHIFT)
-//        dialogInputs:Add(previousSet, previousBehavior)
-//
-        //Should be "ALT + R" (until ALT key works correctly using CMD+SHIFT+R)
-        InputSet replaceSet
-        replaceSet:SetKeyboardInput(keys:R)
-        replaceSet:AddModifier(replaceSet:SHIFT)
-        replaceSet:AddModifier(replaceSet:META)
-        dialogInputs:Add(replaceSet, replaceBehavior)
-
-        //Should be "ALT + A" (until ALT key works correctly using CMD+SHIFT+A)
-        InputSet replaceAllSet
-        replaceAllSet:SetKeyboardInput(keys:A)
-        replaceAllSet:AddModifier(replaceAllSet:SHIFT)
-        replaceAllSet:AddModifier(replaceAllSet:META)
-        dialogInputs:Add(replaceAllSet, replaceAllBehavior)
-        
         return createReplaceContainer
     end
 
@@ -332,13 +334,11 @@ class ReplaceDialog is FindDialog, TextChangeListener
         textBox:AddTextChangeListener(me)
         findBehavior:SetTextBox(textBox)
         wholeWordMatchCaseBehavior:SetTextBox(textBox)
-        //textBox:SetNextBehavior(nextBehavior)
-        //textBox:SetPreviousBehavior(previousBehavior)
         textBox:SetDialog(me)
         replaceBehavior:SetTextBox(textBox)
         replaceAllBehavior:SetTextBox(textBox)
-        previous:SetBehavior(textBox:GetPreviousBehavior())
-        next:SetBehavior(textBox:GetNextBehavior())
+        previous:SetBehavior(previousBehavior)
+        next:SetBehavior(nextBehavior)
     end
 
     action GetTextBox returns CodeTextBox
@@ -369,27 +369,6 @@ class ReplaceDialog is FindDialog, TextChangeListener
         return replaceField:GetText()
     end
 
-
-    //Updates the matches label on the Dialog to reflect how many instances of 
-    //"find" were found in the textBox. If there is a currentSelection it will also 
-    //display the selection number in relation to the number of total matches found.
-//    action UpdateMatches(integer currentSelection, integer totalMatches)
-//        if findField:GetText() not= ""
-//            if totalMatches = 0
-//                matches:SetText("No matches")
-//            elseif totalMatches = 1
-//                matches:SetText(cast(text, totalMatches) + " match")
-//            else
-//                if currentSelection >= 0
-//                    matches:SetText(cast(text, (currentSelection + 1)) + " of " + cast(text, totalMatches) + " matches")
-//                else
-//                    matches:SetText(cast(text, totalMatches) + " matches")
-//                end
-//            end
-//        else 
-//            matches:SetText("") 
-//        end
-//    end
 
     //called after replace and replaceAll to update the textValue to include the textBox modifications
     //repopulates the highlighting for any remaining instances that were not replaced by calling FindText (not currently working)
@@ -437,8 +416,25 @@ class ReplaceDialog is FindDialog, TextChangeListener
         end
     end
 
+    action SelectionChanged(SelectionEvent event) 
+        if showing
+            TabPaneSelection selection = tabPane:GetSelection()
+            Tab tab = selection:GetTab()
+            if tab not= undefined and tab is EditorTab
+                EditorTab t = cast(EditorTab, tab)
+                TextBox box = t:GetTextBox()
+                if box not= undefined
+                    textBox:RemoveFindReplaceStyles()
+                    SetTextBox(cast(CodeTextBox, box))
+                    UpdateTextBox()
+                end
+            end
+        end
+    end
+
     //Removes any highlights in the textBox, empties the arrays and textFields and resets the selection index.
     action OnHide
+        showing = false
         //textBox:RemoveFindReplaceStyles()
         textBox:SetFindWord(findField:GetText())
         textBox:SetReplaceWord(replaceField:GetText())

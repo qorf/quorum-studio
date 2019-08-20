@@ -533,7 +533,8 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         return isDialogOpen
     end
 
-    action FindText(text find, boolean wholeWord, boolean matchCase)        
+    action FindText(text find, boolean wholeWord, boolean matchCase) 
+        findWord = find
         text textValue = GetText() //+ bufferSpace
         if findSelection >= 0
             RemoveCurrentSelection()
@@ -541,15 +542,14 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         integer findIndex = 0
         integer findSize = find:GetSize()       //size of the word we are searching for
         integer endIndex = textValue:GetSize() - 1
-        
+                
+        removeIndices = findIndices:CopyToArray()       //remove any previously highlighted instances of find 
+        findIndices:Empty()
+
+        if removeIndices:GetSize() not= 0 
+            RemoveSelections()
+        end
         if find not= ""
-            removeIndices = findIndices:CopyToArray()       //remove any previously highlighted instances of find 
-            findIndices:Empty()
-
-            if removeIndices:GetSize() not= 0 
-                RemoveSelections()
-            end
-
             if textValue:GetSize() not= 0
                 repeat while (findIndex >= 0) and ((findIndex + findSize) < endIndex)   //start from beginning of text and go through til the end
                     Pair<integer> indices
@@ -579,8 +579,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
 
             UpdateSelections()
             SetSelection()
-
-        end
+        end            
     end
 
     /* Called by FindText()
@@ -588,7 +587,8 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     the caret position in the textbox. Calls UpdateCurrentSelection to highlight
     this selection in the textbox */
     private action SetSelection()
-        if findIndices:GetSize() not= 0
+        if findIndices:GetSize() not= 0 
+            if findSelection < 0
             integer caretIndex = GetCaretPosition()
             integer startIndex = 0
             integer arrayIndex = 0
@@ -597,8 +597,9 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
                 startIndex = findIndices:Get(arrayIndex):GetFirstValue()
                 arrayIndex = arrayIndex + 1
             end
-            selection = (arrayIndex - 1)
-            UpdateCurrentSelection(-1)
+            findSelection = (arrayIndex - 1)
+            end
+            UpdateCurrentSelection(-1)            
         end
     end
 
@@ -701,22 +702,6 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         return replaceWord
     end
 
-//    action SetPreviousBehavior(PreviousBehavior behavior)
-//        previousBehavior = behavior
-//        //previousBehavior:SetTextBox(me)
-//
-//        GameStateManager gameManager
-//        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
-//
-//        KeyboardEvent keys
-//        text inputGroup = GetInputGroup()
-//        InputTable textBoxInputs = studio:GetInputTable(inputGroup)
-//        InputSet previousSet 
-//        previousSet:SetKeyboardInput(keys:F3)
-//        previousSet:AddModifier(previousSet:META)
-//        previousSet:AddModifier(previousSet:SHIFT)
-//        textBoxInputs:Add(previousSet, previousBehavior)
-//    end
 
     action GetPreviousBehavior returns PreviousBehavior
         return previousBehavior
@@ -726,21 +711,6 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         return nextBehavior
     end
 
-//    action SetNextBehavior(NextBehavior behavior)
-//        nextBehavior = behavior
-//        //nextBehavior:SetTextBox(me)
-//
-//        GameStateManager gameManager
-//        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
-//
-//        KeyboardEvent keys
-//        text inputGroup = GetInputGroup()
-//        InputTable textBoxInputs = studio:GetInputTable(inputGroup)
-//        InputSet nextSet 
-//        nextSet:SetKeyboardInput(keys:F3)
-//        nextSet:AddModifier(nextSet:META)
-//        textBoxInputs:Add(nextSet, nextBehavior)
-//    end
 
     action SetDialog(FindDialog dialog)
         findDialog = dialog
@@ -778,7 +748,6 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         end
     end
     
-
     /* Removes the highlighted instances of "find" that are no longer applicable 
     due to MatchCase criteria, WholeWord criteria, or a TextChange event. */
     private action RemoveSelections()
@@ -883,7 +852,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         if findIndices:GetSize() not= 0
             integer wordStartIndex = findIndices:Get(findSelection):GetFirstValue()
             RemoveFindReplaceStyle("selectionHighlight" + wordStartIndex)
-            findSelection = -1
+            //findSelection = -1   
         end
     end
 
