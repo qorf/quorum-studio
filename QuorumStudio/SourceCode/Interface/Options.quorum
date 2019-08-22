@@ -11,6 +11,8 @@ use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Development.Environment.Studio.Build.BuildManager
 use Libraries.Language.Debug.Breakpoint
 use Libraries.System.Properties
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Projects.ProjectTreeItem
 
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
@@ -26,6 +28,8 @@ class Options is ProjectListener
     constant text SCALE = "Scale"
     constant text WINDOW_WIDTH = "Width"
     constant text WINDOW_HEIGHT = "Height"
+    constant text TREE_STATE = "Tree State"
+    constant text TREE_SELECT = "Tree Select"
 
     File optionsLocation
     File keymapLocation
@@ -67,6 +71,7 @@ class Options is ProjectListener
     end
 
     HashTable<text, text> projects 
+    HashTable<text, text> treeState
     Array<File> filesOpenAtBoot
     QuorumStudio studio = undefined
     BuildManager manager = undefined
@@ -77,6 +82,7 @@ class Options is ProjectListener
     number scale = 2
     integer width = 2500
     integer height = 1500
+    text treeSelect = ""
 
     action GetInterfaceScale returns number
         return scale
@@ -137,6 +143,14 @@ class Options is ProjectListener
 
     action GetFilesOpenOnStartup returns Iterator<File>
         return filesOpenAtBoot:GetIterator()
+    end
+
+    action GetTreeState returns HashTable<text, text>
+        return treeState
+    end
+
+    action GetTreeSelect returns text
+        return treeSelect
     end
 
     action GetKeyMapFile returns File
@@ -243,7 +257,23 @@ class Options is ProjectListener
                 activeBreakpoints:Add(JSONValueProcessor(bp:GetFile():GetAbsolutePath()), bp:GetLine())
             end
         end
+           
+        JavaScriptObjectNotation openTrees
+        openTrees:SetArray()
+        notation:Add(TREE_STATE, openTrees)
+        ProjectTree projectTree = studio:GetProjectTree()
+        Iterator<text> openItems = projectTree:GetExpandState():GetValueIterator()
+        repeat while openItems:HasNext()
+            text path = openItems:Next()
+            path = JSONValueProcessor(path)
+            JavaScriptObjectNotation item
+            item:SetText(path)
+            openTrees:Add(item)
+        end
 
+        ProjectTreeItem select = cast(ProjectTreeItem, projectTree:GetSelection():GetTreeItem())
+        notation:Add(TREE_SELECT, select:GetFile():GetAbsolutePath())
+        
         text value = notation:ToText()
         //write to disk once this is fixed
         //sanitize the input first
@@ -366,6 +396,24 @@ class Options is ProjectListener
                     manager:ToggleBreakpoint(file, line)
                 end
                 i = i + 1
+            end
+        elseif key = TREE_STATE
+            if object:IsEmpty() or not object:IsArray()
+                return now
+            end
+            i = 0
+            repeat while i < object:GetSize()
+                JavaScriptObjectNotation value = object:Get(i)
+                if value:IsText()
+                    text item = value:GetText()
+                    treeState:Add(item, item)
+                end
+                i = i + 1
+            end
+
+        elseif key = TREE_SELECT
+            if object:IsText()
+                me:treeSelect = object:GetText()
             end
         end
     end

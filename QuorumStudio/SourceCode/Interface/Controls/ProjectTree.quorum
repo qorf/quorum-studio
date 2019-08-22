@@ -16,14 +16,18 @@ use Libraries.Concurrency.ThreadRunner
 use Libraries.Development.Environment.Studio.Behaviors.ProjectLoadBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ThreadedBehavior
 use Libraries.Interface.Events.FocusEvent
+use Libraries.Containers.HashTable
+use Libraries.Interface.Events.TreeChangeListener
+use Libraries.Interface.Events.TreeChangeEvent
 
-class ProjectTree is Tree, SelectionListener, ProjectListener
+class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListener
     ProjectManager manager = undefined
     Resources resources = undefined
     QuorumStudio studio = undefined
-    
+    HashTable<text, text> opened
     on create
         SetName("Projects")
+        AddTreeChangeListener(me)
     end
 
     action OnFocus
@@ -51,6 +55,91 @@ class ProjectTree is Tree, SelectionListener, ProjectListener
 
     action GetProjectManager returns ProjectManager
         return manager
+    end
+
+    action GetExpandState returns HashTable<text, text>
+        return opened
+    end
+
+    action LoadSelection(text path)
+        //tree is expected to have relevant treeItems already open
+        if path not= ""
+            Iterator<TreeItem> items = GetTreeItems()
+            repeat while items:HasNext()
+                ProjectTreeItem curr = cast(ProjectTreeItem, items:Next())
+                if path = curr:GetFile():GetAbsolutePath()
+                    Select(curr:GetTreePath())
+                    return now
+                end
+                if curr:IsOpen()
+                    if LoadSelection(path, curr)
+                        return now
+                    end
+                end
+            end
+        end
+    end
+
+    //helper recursive search for selection
+    private action LoadSelection(text path, ProjectTreeItem item) returns boolean
+        Iterator<TreeItem> items = item:GetTreeItems()
+        repeat while items:HasNext()
+            ProjectTreeItem curr = cast(ProjectTreeItem, items:Next())
+            if path = curr:GetFile():GetAbsolutePath()
+                Select(curr:GetTreePath())
+                return true
+            end
+            if curr:IsOpen()
+                return LoadSelection(path, curr)
+            end
+        end
+        return false
+    end
+
+    //pass in hash table of all treeitems that were open
+    action LoadExpandState(HashTable<text, text> states)
+        if states:IsEmpty()
+            return now
+        end
+        integer counter = 0
+        Iterator<TreeItem> items = GetTreeItems()
+        ProjectTreeItem curr
+        repeat while items:HasNext()
+            curr = cast(ProjectTreeItem, items:Next())
+            if states:HasKey(curr:GetFile():GetAbsolutePath())
+                curr:Open()
+                if curr:IsSubtree()
+                    OpenExpandState(states, curr)
+                end
+            end
+            counter = counter + 1
+        end
+    end
+
+    //recursive helper function that goes deeper into the project tree
+    private action OpenExpandState(HashTable<text, text> states, ProjectTreeItem parentItem)
+        Iterator<TreeItem> value = parentItem:GetTreeItems()
+        integer counter = 0
+        repeat while value:HasNext()
+            ProjectTreeItem curr = cast(ProjectTreeItem, value:Next())
+            if states:HasKey(curr:GetFile():GetAbsolutePath())
+                curr:Open()
+                if curr:IsSubtree()
+                    OpenExpandState(states, curr)
+                end
+            end
+            counter = counter + 1
+        end
+    end
+
+    action OpenedTree(TreeChangeEvent event)
+        ProjectTreeItem item = cast(ProjectTreeItem, event:GetTreeItem())
+        opened:Add(item:GetFile():GetAbsolutePath(), item:GetFile():GetAbsolutePath())
+    end
+
+    action ClosedTree(TreeChangeEvent event)
+        ProjectTreeItem item = cast(ProjectTreeItem, event:GetTreeItem())
+        opened:RemoveKey(item:GetFile():GetAbsolutePath())
     end
 
     action SelectionChanged(Selection selection)
