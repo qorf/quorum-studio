@@ -56,7 +56,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     text replaceWord = ""
     boolean findIsWholeWord = false
     boolean findIsMatchCase = false
-    boolean isDialogOpen = false
+    boolean dialogIsOpen = false
     integer findSelection = -1
     PreviousBehavior previousBehavior
     NextBehavior nextBehavior
@@ -526,11 +526,11 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     end
 
     action SetIsDialogOpen(boolean state)
-        isDialogOpen = state
+        dialogIsOpen = state
     end
     
     action GetIsDialogOpen returns boolean
-        return isDialogOpen
+        return dialogIsOpen
     end
 
     action FindText(text find, boolean wholeWord, boolean matchCase) 
@@ -541,7 +541,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         end
         integer findIndex = 0
         integer findSize = find:GetSize()       //size of the word we are searching for
-        integer endIndex = textValue:GetSize() - 1
+        integer endIndex = textValue:GetSize()
                 
         removeIndices = findIndices:CopyToArray()       //remove any previously highlighted instances of find 
         findIndices:Empty()
@@ -823,9 +823,11 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             textStyle:SetSize((previousEndIndex - previousStartIndex) + 1)
             textStyle:SetHighlight(highlight)
 
-        //resets the previous selection back to the orange highlight and removes the line highlight
-            if not HasTextStyle("highlight" + previousStartIndex)
-                AddFindReplaceStyle("highlight" + previousStartIndex, textStyle)
+            if dialogIsOpen
+            //resets the previous selection back to the orange highlight and removes the line highlight
+                if not HasTextStyle("highlight" + previousStartIndex)
+                    AddFindReplaceStyle("highlight" + previousStartIndex, textStyle)
+                end
             end
             if HasTextStyle("selectionHighlight" + previousStartIndex)
                 RemoveFindReplaceStyle("selectionHighlight" + previousStartIndex)
@@ -842,6 +844,13 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
 
         if findDialog not= undefined
             findDialog:UpdateMatches(findSelection, findIndices:GetSize())
+        end
+    end
+
+    action DialogClosed
+        RemoveFindReplaceStyles()
+        if findIndices:GetSize() not= 0
+            UpdateCurrentSelection(-1)
         end
     end
 

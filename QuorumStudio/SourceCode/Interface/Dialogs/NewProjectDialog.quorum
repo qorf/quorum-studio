@@ -42,6 +42,8 @@ use Libraries.Interface.Layouts.TabFlowLayout
 use Libraries.Containers.Array
 use Libraries.Interface.Events.SelectionListener
 use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Development.Environment.Studio.Behaviors.NewProjectApplicationsListBehavior
 
 class NewProjectDialog is Dialog
     boolean initialized = false
@@ -62,11 +64,18 @@ class NewProjectDialog is Dialog
     Tab advancedTab
     Tab basicTab
 
+    List applicationsList
+    Array<Icon> iconsList
+    Array<text> descriptionsList
+    Icon currentIcon
+    TextBox descriptionBox
+
     //Dialog Behaviors
     DialogCancelBehavior cancelBehavior
     NewProjectApplicationsBehavior buttonsBehavior
     NewProjectBrowseBehavior browseBehavior
     NewProjectOkBehavior okayBehavior
+    NewProjectApplicationsListBehavior listBehavior
     
     //set by the browseBehavior, used by the okayBehavior to set the QuorumProject location
     File locationPath
@@ -80,6 +89,20 @@ class NewProjectDialog is Dialog
     ToggleButton legoIcon
     ToggleButton webServerIcon
 
+    ListItem blank
+    ListItem game
+    ListItem android
+    ListItem lego
+    ListItem document
+    ListItem imageSheets
+    ListItem internet
+    ListItem legoMove
+    ListItem physics2D
+    ListItem physics3D
+    ListItem sineWaves
+    ListItem skybox
+    ListItem userInterface
+    ListItem webServer
 
 
     //Application Descriptions
@@ -146,7 +169,9 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         cancelBehavior:SetDialog(me)
         buttonsBehavior:SetDialog(me)
         okayBehavior:SetDialog(me)
+        listBehavior:SetDialog(me)
         okayBehavior:SetMainApplication(studio)
+        applicationsList:SetItemActivationBehavior(listBehavior)
         SetBehavior(okayBehavior)
     end
 
@@ -171,9 +196,313 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
         panel:SetBorderColor(color:Black())
         panel:SetBorderThickness(1)
-        panel:Add(CreateNewProjectControl())
+        panel:Add(CreateNewProjectControlTwo())
         panel:SetView2D(view)
         Add(panel)
+    end
+
+    private action CreateNewProjectControlTwo returns Control
+        Color color
+        Control control
+        FlowLayout layout
+        control:SetLayout(layout)
+        control:SetPercentageWidth(1.0)
+        control:SetVerticalLayoutMode(control:FIT_CONTENTS)
+
+        Control applicationsContainer
+        FlowLayout applicationsLayout
+        applicationsContainer:SetLayout(applicationsLayout)
+        applicationsContainer:SetPercentageWidth(0.4)
+        applicationsContainer:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
+        applicationsContainer:SetTopPadding(6)
+        applicationsContainer:SetLeftPadding(10)
+        applicationsContainer:SetRightPadding(10)
+        applicationsContainer:SetBottomPadding(6)
+
+        Label applicationsLabel
+        applicationsLabel:SetText("New Project Templates: ")
+        applicationsLabel:SetFontSize(16)
+        applicationsLabel:SetPercentageWidth(1.0)
+        applicationsLabel:SetVerticalLayoutMode(applicationsLabel:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        applicationsLabel:SetLeftPadding(6)
+        applicationsLabel:SetTopPadding(6)
+        applicationsLabel:SetBottomPadding(10)
+        applicationsContainer:Add(applicationsLabel)       
+
+        listBehavior:SetList(applicationsList)
+        applicationsList:Add(0, "Blank")
+        applicationsList:Add(1, "Game")
+        applicationsList:Add(2, "Android")
+        applicationsList:Add(3, "Lego")
+        applicationsList:Add(4, "Document")
+        applicationsList:Add(5, "Image Sheets")
+        applicationsList:Add(6, "Internet Services")
+        applicationsList:Add(7, "Lego Move")
+        applicationsList:Add(8, "Physics 2D")
+        applicationsList:Add(9, "Physics 3D")
+        applicationsList:Add(10, "Sine Waves")
+        applicationsList:Add(11, "Skybox")
+        applicationsList:Add(12, "User Interface")
+        applicationsList:Add(13, "Web Server")
+        
+        applicationsList:SetName("New Project Templates")
+        applicationsList:SetHorizontalLayoutMode(applicationsList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        applicationsList:SetVerticalLayoutMode(applicationsList:parent:Libraries.Interface.Controls.Control:STANDARD)
+        applicationsList:SetPercentageWidth(1.0)
+        applicationsList:SetPixelHeight(250)
+        applicationsList:SetLeftPadding(6)
+        applicationsList:SetTopPadding(6)
+        applicationsContainer:Add(applicationsList)
+        
+        control:Add(applicationsContainer)
+
+        Control descriptionsContainer
+        FlowLayout descriptionsLayout
+        descriptionsContainer:SetLayout(descriptionsLayout)
+        descriptionsContainer:SetPercentageWidth(0.55)
+        descriptionsContainer:SetVerticalLayoutMode(descriptionsContainer:FIT_CONTENTS)
+        descriptionsContainer:SetTopPadding(6)
+        descriptionsContainer:SetLeftPadding(10)
+        descriptionsContainer:SetRightPadding(10)
+        descriptionsContainer:SetBottomPadding(6)
+
+        Label descriptionsLabel
+        descriptionsLabel:SetText("Description: ")  
+        descriptionsLabel:SetFontSize(16)
+        descriptionsLabel:SetPercentageWidth(1.0)
+        descriptionsLabel:SetVerticalLayoutMode(descriptionsLabel:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        descriptionsLabel:SetLeftPadding(10)
+        descriptionsLabel:SetTopPadding(6)
+        descriptionsLabel:SetBottomPadding(10)
+        descriptionsContainer:Add(descriptionsLabel)
+
+        SetupIconsList()
+
+        //icons area
+        Control iconPadding
+        FlowLayout iconPaddingLayout
+        iconPadding:SetLayout(iconPaddingLayout)
+        iconPadding:SetPercentageWidth(0.2)
+        iconPadding:SetVerticalLayoutMode(iconPadding:FIT_CONTENTS)
+        descriptionsContainer:Add(iconPadding)
+
+//Need to add the icons as a button, not displaying properly
+        Control iconContainer
+        FlowLayout iconLayout
+        iconContainer:SetLayout(iconLayout)
+        iconContainer:SetLeftPadding(300)
+        iconContainer:SetPercentageWidth(0.6)
+        iconContainer:SetVerticalLayoutMode(iconContainer:FIT_CONTENTS)
+        //iconContainer:Add(iconsList:Get(0))
+
+        Button button
+        Font font = undefined   
+        button:SetHorizontalLayoutMode(button:parent:Libraries.Interface.Controls.Control:STANDARD)
+        button:SetFont(font)
+        button:SetIcon(iconsList:Get(0))
+        iconContainer:Add(button)
+        descriptionsContainer:Add(iconContainer)
+        descriptionsContainer:Add(iconPadding)
+
+        SetupDescriptionsList()
+
+        descriptionBox:SetName("Project Description")
+        descriptionBox:SetPercentageWidth(1.0)
+        descriptionBox:SetPixelHeight(100)
+        descriptionBox:SetLeftPadding(6)
+        descriptionBox:SetTopPadding(10)
+        descriptionBox:SetRightPadding(6)
+        descriptionBox:SetBottomPadding(10)
+        descriptionBox:SetText(descriptionsList:Get(0))
+        descriptionsContainer:Add(descriptionBox)   
+        control:Add(descriptionsContainer)
+        
+        FlowLayout projectNameLayout
+        Control projectNameContainer
+        projectNameContainer:SetLayout(projectNameLayout)
+        projectNameContainer:SetPercentageWidth(1.0)
+        projectNameContainer:SetPixelHeight(30)
+        projectNameContainer:SetTopPadding(50)
+        projectNameContainer:SetLeftPadding(10)
+        projectNameContainer:SetRightPadding(10)
+        projectNameContainer:SetBottomPadding(10)
+
+        Label nameLabel
+        nameLabel:SetText("Name:")
+        nameLabel:SetRightPadding(37)
+        projectNameContainer:Add(nameLabel)
+
+        nameField:SetText("BlankQuorumApplication") 
+        nameField:SetName("Name")
+        nameField:SetPercentageWidth(0.92)
+        projectNameContainer:Add(nameField)
+        control:Add(projectNameContainer)
+
+        FlowLayout projectLocationLayout
+        Control projectLocationContainer
+        projectLocationContainer:SetLayout(projectLocationLayout)
+        projectLocationContainer:SetPercentageWidth(1.0)
+        projectLocationContainer:SetPixelHeight(80)
+        projectLocationContainer:SetTopPadding(10)
+        projectLocationContainer:SetLeftPadding(10)
+        projectLocationContainer:SetRightPadding(10)
+
+        Label locationLabel
+        locationLabel:SetText("Location:")
+        locationLabel:SetRightPadding(6)
+        projectLocationContainer:Add(locationLabel)
+        
+        locationField:SetText(locationPath:GetPath())    //set to current directory?
+        locationField:SetPercentageWidth(0.82)
+        locationField:SetRightPadding(10)
+        locationField:SetName("Location")
+        projectLocationContainer:Add(locationField)
+
+        browseButton:SetName("Browse...")
+        browseButton:SetPercentageWidth(0.1)
+        browseButton:SetHorizontalLayoutMode(browseButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        projectLocationContainer:Add(browseButton)
+        control:Add(projectLocationContainer)
+
+        FlowLayout closingButtonsLayout
+        Control closingButtonsContainer
+        closingButtonsContainer:SetLayout(closingButtonsLayout)
+        closingButtonsContainer:SetPercentageWidth(1.0)
+        closingButtonsContainer:SetVerticalLayoutMode(closingButtonsContainer:FIT_CONTENTS)
+        closingButtonsContainer:SetBottomPadding(50)
+        
+        Control closingPadding
+        closingPadding:SetPercentageWidth(0.78)
+        closingPadding:SetPixelHeight(1)
+        closingButtonsContainer:Add(closingPadding)
+
+        cancelButton:SetName("Cancel")
+        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancelButton:SetPercentageWidth(0.1)
+        closingButtonsContainer:Add(cancelButton)
+
+        Gradient okayGradient
+        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
+        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
+        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
+
+        okayButton:SetName("OK")
+        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        okayButton:SetBackgroundColor(okayGradient)
+        okayButton:SetPercentageWidth(0.1)
+        okayButton:SetLeftPadding(10)
+        closingButtonsContainer:Add(okayButton)
+        control:Add(closingButtonsContainer)
+
+        return control
+    end
+
+    private action SetupDescriptionsList()
+        descriptionsList:Add(0, blankDescription)
+        descriptionsList:Add(1, gameDescription)
+        descriptionsList:Add(2, androidDescription)
+        descriptionsList:Add(3, legoDescription)
+        descriptionsList:Add(4, documentDescription)
+        descriptionsList:Add(5, imageSheetsDescription)
+        descriptionsList:Add(6, internetServicesDescription)
+        descriptionsList:Add(7, legoMoveDescription)
+        descriptionsList:Add(8, physics2DDescription)
+        descriptionsList:Add(9, physics3DDescription)
+        descriptionsList:Add(10, sineWavesDescription)
+        descriptionsList:Add(11, skyboxDescription)
+        descriptionsList:Add(12, userInterfaceDescription)
+        descriptionsList:Add(13, webServerDescription)
+    end
+
+    private action SetupIconsList()
+        Icon blankIcon
+        Icon gameIcon
+        Icon androidIcon
+        Icon legoIcon
+        Icon documentIcon
+        Icon imageIcon
+        Icon internetIcon
+        Icon legoMoveIcon
+        Icon physics2DIcon
+        Icon physics3DIcon        
+        Icon sineIcon
+        Icon skyboxIcon
+        Icon userInterfaceIcon
+        Icon serverIcon
+
+        File blankFile
+        File gameFile 
+        File androidFile
+        File legoFile
+        File documentFile
+        File imageFile
+        File internetFile
+        File legoMoveFile
+        File physics2DFile
+        File physics3DFile
+        File sineFile
+        File skyboxFile
+        File userInterfaceFile
+        File serverFile
+
+        blankFile:SetPath("/Resources/Graphics/Projects/BlankIcon.png")
+        gameFile:SetPath("/Resources/Graphics/Projects/GameIcon.png")
+        androidFile:SetPath("/Resources/Graphics/Projects/AndroidIcon.png")
+        legoFile:SetPath("/Resources/Graphics/Projects/LegoIcon.png")
+        documentFile:SetPath("/Resources/Graphics/Projects/DocumentIcon.png")
+        imageFile:SetPath("/Resources/Graphics/Projects/ImageSheetsIcon.png")
+        internetFile:SetPath("/Resources/Graphics/Projects/InternetIcon.png")
+        legoMoveFile:SetPath("/Resources/Graphics/Projects/LegoMoveIcon.png")
+        physics2DFile:SetPath("/Resources/Graphics/Projects/Physics2DIcon.png")
+        physics3DFile:SetPath("/Resources/Graphics/Projects/Physics3DIcon.png")
+        sineFile:SetPath("/Resources/Graphics/Projects/SineWavesIcon.png")
+        skyboxFile:SetPath("/Resources/Graphics/Projects/SkyboxIcon.png")
+        userInterfaceFile:SetPath("/Resources/Graphics/Projects/UserInterfaceIcon.png")
+        serverFile:SetPath("/Resources/Graphics/Projects/WebServerIcon.png")
+
+        blankIcon:Load(blankFile)
+        gameIcon:Load(gameFile)
+        androidIcon:Load(androidFile)
+        legoIcon:Load(legoFile)
+        documentIcon:Load(documentFile)
+        imageIcon:Load(imageFile)
+        internetIcon:Load(internetFile)
+        internetIcon:SetSize(50, 50)
+        legoMoveIcon:Load(legoFile)
+        legoMoveIcon:SetSize(50, 50)
+        physics2DIcon:Load(physics2DFile)
+        physics3DIcon:Load(physics3DFile)
+        sineIcon:Load(sineFile)
+        skyboxIcon:Load(skyboxFile)
+        userInterfaceIcon:Load(userInterfaceFile)
+        serverIcon:Load(serverFile)
+
+        iconsList:Add(0, blankIcon)
+        iconsList:Add(1, gameIcon)
+        iconsList:Add(2, androidIcon)
+        iconsList:Add(3, legoIcon)
+        iconsList:Add(4, documentIcon)
+        iconsList:Add(5, imageIcon)
+        iconsList:Add(6, internetIcon)
+        iconsList:Add(7, legoMoveIcon)
+        iconsList:Add(8, physics2DIcon)
+        iconsList:Add(9, physics3DIcon)
+        iconsList:Add(10, sineIcon)
+        iconsList:Add(11, skyboxIcon)
+        iconsList:Add(12, userInterfaceIcon)
+        iconsList:Add(13, serverIcon)
+    end
+
+    /* called by the applications list behavior, passes the current index of the 
+    selected list item */
+    action SetCurrentDescription(integer index)
+        //sets the description and icon depending on the index passed in.
+        descriptionBox:SetText(descriptionsList:Get(index))
+        SetCurrentProjectIcon(index)
+    end
+
+    private action SetCurrentProjectIcon(integer index)
+        currentIcon:SetIcon(iconsList:Get(index))
     end
 
     private action CreateNewProjectControl returns Control
@@ -1021,12 +1350,12 @@ messages in any Java Container (e.g., Tomcat, Glassfish)."
         locationField:Empty()
     end
 
-    action OnShow
-        tabPane:Focus()
-        Tab tab = tabPane:GetSelectedTab()
-        if not tab:Equals(tabPane:Get(0))
-            tab:Activate()
-        end
-    end
+//    action OnShow
+//        tabPane:Focus()
+//        Tab tab = tabPane:GetSelectedTab()
+//        if not tab:Equals(tabPane:Get(0))
+//            tab:Activate()
+//        end
+//    end
 
 end

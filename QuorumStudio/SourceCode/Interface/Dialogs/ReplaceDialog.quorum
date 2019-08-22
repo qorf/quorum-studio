@@ -68,8 +68,7 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
 
     on create
         findField:AddTextChangeListener(me)
-        wholeWordMatchCaseBehavior:SetDialog(cast(Dialog, me))
-        wholeWordMatchCaseBehavior:SetDialogType(wholeWordMatchCaseBehavior:REPLACE)
+        wholeWordMatchCaseBehavior:SetDialog(me)
         replaceAllBehavior:SetDialog(me)
         replaceBehavior:SetDialog(me) 
         findBehavior:SetDialog(me)
@@ -435,9 +434,9 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
     //Removes any highlights in the textBox, empties the arrays and textFields and resets the selection index.
     action OnHide
         showing = false
-        //textBox:RemoveFindReplaceStyles()
         textBox:SetFindWord(findField:GetText())
         textBox:SetReplaceWord(replaceField:GetText())
         textBox:SetIsDialogOpen(false)
+        textBox:DialogClosed()
     end   
 end

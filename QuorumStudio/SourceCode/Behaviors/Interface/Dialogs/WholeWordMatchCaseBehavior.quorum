@@ -9,52 +9,24 @@ use Libraries.Interface.Controls.Checkbox
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 
 class WholeWordMatchCaseBehavior is QuorumStudioBehavior
-    Dialog dialog = undefined
+    FindDialog dialog = undefined
     CodeTextBox textBox = undefined
-    public constant integer FIND = 1
-    public constant integer REPLACE = 2
 
-    integer dialogType = FIND
-
-    action SetDialog(Dialog dialog)
+    action SetDialog(FindDialog dialog)
         me:dialog = dialog
     end
-
-    action SetDialogType(integer type)
-        dialogType = type
-    end 
 
     action SetTextBox(CodeTextBox textBox)
         me:textBox = textBox
     end
 
     action Run (BehaviorEvent event)
-        FindDialog findDialog
-        ReplaceDialog replaceDialog
-        
-        if dialogType = FIND
-            findDialog = cast(FindDialog, me:dialog)
-            textBox:FindText(findDialog:GetFindWord(), findDialog:GetIsWholeWord(), findDialog:GetIsMatchCase())
-            findDialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
-        elseif dialogType = REPLACE
-            replaceDialog = cast(ReplaceDialog, me:dialog)
-            textBox:FindText(replaceDialog:GetFindWord(), replaceDialog:GetIsWholeWord(), replaceDialog:GetIsMatchCase())
-            replaceDialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
-        end
+        textBox:FindText(dialog:GetFindWord(), dialog:GetIsWholeWord(), dialog:GetIsMatchCase())
+        dialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
     end
 
     action Dispose
-        FindDialog findDialog
-        ReplaceDialog replaceDialog
-
-        if dialogType = FIND
-            findDialog = cast(FindDialog, me:dialog)
-            textBox:FindText(findDialog:GetFindWord(), findDialog:GetIsWholeWord(), findDialog:GetIsMatchCase())
-            findDialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
-        elseif dialogType = REPLACE
-            replaceDialog = cast(ReplaceDialog, me:dialog)
-            textBox:FindText(replaceDialog:GetFindWord(), replaceDialog:GetIsWholeWord(), replaceDialog:GetIsMatchCase())
-            replaceDialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
-        end
+        textBox:FindText(dialog:GetFindWord(), dialog:GetIsWholeWord(), dialog:GetIsMatchCase())
+        dialog:UpdateMatches(textBox:GetCurrentFindSelection(), textBox:GetFindMatches())
     end
 end

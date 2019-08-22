@@ -1,0 +1,33 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Selections.ListSelection
+use Libraries.Development.Environment.Studio.Interface.NewProjectDialog
+
+class NewProjectApplicationsListBehavior is QuorumStudioBehavior
+    NewProjectDialog dialog = undefined
+    ListSelection listSelection = undefined
+    ListItem listItem = undefined
+    List list = undefined
+    
+    action SetDialog(NewProjectDialog dialog)
+        me:dialog = dialog
+    end
+
+    action SetList(List list)
+        me:list = list
+    end
+
+    action GetList returns List
+        return me:list
+    end
+
+    action Run(BehaviorEvent event)
+        listSelection = me:list:GetSelection()
+        integer index = listSelection:GetIndex()       
+        dialog:SetCurrentDescription(index)
+    end
+end

@@ -63,8 +63,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
 
     on create
         findField:AddTextChangeListener(me)
-        wholeWordMatchCaseBehavior:SetDialog(cast(Dialog, me))
-        wholeWordMatchCaseBehavior:SetDialogType(wholeWordMatchCaseBehavior:FIND)
+        wholeWordMatchCaseBehavior:SetDialog(me)
         tabPane:AddSelectionListener(me)
         findBehavior:SetDialog(me)
         SetModal(false)
@@ -406,7 +405,8 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
     action OnHide
         showing = false
         textBox:SetFindWord(findField:GetText())
-        textBox:SetIsDialogOpen(false)       
+        textBox:SetIsDialogOpen(false) 
+        textBox:DialogClosed()
     end
 
 end
