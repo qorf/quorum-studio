@@ -58,6 +58,7 @@ class OutputEditorTabPane is TabPane
 
     action SetBehaviors(Behaviors behaviors)
         me:behaviors = behaviors
+        outputTab:SetBehaviors(behaviors)
         breakpointsTab:SetBehaviors(behaviors)
         variablesTab:SetBehaviors(behaviors)
         errorTab:SetBehaviors(behaviors)
@@ -128,71 +129,7 @@ class OutputEditorTabPane is TabPane
     end
 
     action SetupTabs
-        Control outputPanel
-        LayoutProperties outputPanelLayout = outputPanel:GetDefaultLayoutProperties()
-        outputPanelLayout:SetPercentageX(0)
-        outputPanelLayout:SetPercentageY(0)
-        outputPanelLayout:SetPercentageWidth(1)
-        outputPanelLayout:SetPercentageHeight(1)
-
-        FlowLayout flow
-        outputPanel:SetLayout(flow)
-
-        TextBox textBoxForConsoleOutput  
-        textBoxForConsoleOutput:SetBackgroundColor(color:White())
-        textBoxForConsoleOutput:SetText("Welcome to Quorum Studio!")
-        textBoxForConsoleOutput:SetMoveFocusOnTab(true)
-        textBoxForConsoleOutput:SetName("Console output")
-
-        LayoutProperties textBoxPanelLayout = textBoxForConsoleOutput:GetDefaultLayoutProperties()
-        textBoxPanelLayout:SetPercentageX(0)
-        textBoxPanelLayout:SetPercentageY(0.2)
-        textBoxPanelLayout:SetPercentageWidth(1)
-        textBoxPanelLayout:SetPercentageHeight(0.8)
-
-        TextBox inputTextBoxForOutputPane
-        inputTextBoxForOutputPane:SetName("Input Text Box")
-
-        LayoutProperties textBoxPanelLayoutForInput = inputTextBoxForOutputPane:GetDefaultLayoutProperties()
-        textBoxPanelLayoutForInput:SetPercentageX(0)
-        textBoxPanelLayoutForInput:SetPercentageY(0)
-        textBoxPanelLayoutForInput:SetPercentageWidth(0.8)
-        textBoxPanelLayoutForInput:SetPercentageHeight(0.2)
-        textBoxPanelLayoutForInput:SetTopPadding(3)
-
-        inputTextBoxForOutputPane:SetBackgroundColor(color:White())
-        inputTextBoxForOutputPane:SetMoveFocusOnTab(true)
-        InputBehavior behavior = behaviors:GetInputBehavior()
-        
-        Button sendButtonOutputPane
-        LayoutProperties buttonProperties = sendButtonOutputPane:GetDefaultLayoutProperties()
-        buttonProperties:SetHorizontalLayoutMode(buttonProperties:FILL)
-        buttonProperties:SetVerticalLayoutMode(buttonProperties:FILL)
-        buttonProperties:SetTopPadding(2)
-        sendButtonOutputPane:SetName("Send")
-
-        //Set the focus system up for these controls
-        sendButtonOutputPane:SetNextFocus(textBoxForConsoleOutput)
-        sendButtonOutputPane:SetPreviousFocus(inputTextBoxForOutputPane)
-        inputTextBoxForOutputPane:SetNextFocus(sendButtonOutputPane)
-        inputTextBoxForOutputPane:SetPreviousFocus(textBoxForConsoleOutput)
-        textBoxForConsoleOutput:SetNextFocus(inputTextBoxForOutputPane)
-        textBoxForConsoleOutput:SetPreviousFocus(sendButtonOutputPane)
-
-        //setup some behaviors
-        behavior:SetInputTextBox(inputTextBoxForOutputPane)
-        sendButtonOutputPane:SetBehavior(behavior)
-
-        outputPanel:Add(textBoxForConsoleOutput)
-        outputPanel:Add(inputTextBoxForOutputPane)
-        outputPanel:Add(sendButtonOutputPane)
-        
-        outputTab:SetTextBox(textBoxForConsoleOutput)
-        outputTab:SetFocusTarget(textBoxForConsoleOutput)
-        outputTab:SetName("Console")
-        outputTab:SetRelatedItem(outputPanel)
-        outputTab:DisplayCloseButton(true)
-        
+        outputTab:Setup()
         errorTab:Setup()
 
         callStackTab:SetName("Call Stack")

@@ -4,17 +4,36 @@ use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Controls.TextBox
 use Libraries.Containers.Array
 use Libraries.Interface.Events.FocusEvent
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Development.Environment.Studio.Behaviors.InputBehavior
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Game.InputSet
+use Libraries.Game.InputTable
+use Libraries.Interface.Behaviors.Controls.TextBoxNewLineBehavior
 
 class OutputTab is Tab
     TextBox box = undefined
     Array<text> lines
     boolean empty = false
+    Behaviors behaviors
+ 
     action SetTextBox(TextBox box)
         me:box = box
     end
 
     action GetTextBox returns TextBox
         return box
+    end
+
+    action GetBehaviors returns Behaviors
+        return behaviors
+    end
+
+    action SetBehaviors(Behaviors behaviors)
+        me:behaviors = behaviors
     end
 
     action GainedFocus(FocusEvent event)
@@ -28,6 +47,97 @@ class OutputTab is Tab
 
     action Append(text line)
         lines:Add(line + line:GetLineFeed())
+    end
+
+    action Setup
+        Control outputPanel
+        Color color
+        LayoutProperties outputPanelLayout = outputPanel:GetDefaultLayoutProperties()
+        outputPanelLayout:SetPercentageX(0)
+        outputPanelLayout:SetPercentageY(0)
+        outputPanelLayout:SetPercentageWidth(1)
+        outputPanelLayout:SetPercentageHeight(1)
+
+        FlowLayout flow
+        outputPanel:SetLayout(flow)
+
+        TextBox textBoxForConsoleOutput  
+        textBoxForConsoleOutput:SetBackgroundColor(color:White())
+        textBoxForConsoleOutput:SetText("Welcome to Quorum Studio!")
+        textBoxForConsoleOutput:SetMoveFocusOnTab(true)
+        textBoxForConsoleOutput:SetName("Console output")
+
+        LayoutProperties textBoxPanelLayout = textBoxForConsoleOutput:GetDefaultLayoutProperties()
+        textBoxPanelLayout:SetPercentageX(0)
+        textBoxPanelLayout:SetPercentageY(0.2)
+        textBoxPanelLayout:SetPercentageWidth(1)
+        textBoxPanelLayout:SetPercentageHeight(0.8)
+
+        TextBox inputTextBoxForOutputPane
+        inputTextBoxForOutputPane:SetName("Input Text Box")
+
+        LayoutProperties textBoxPanelLayoutForInput = inputTextBoxForOutputPane:GetDefaultLayoutProperties()
+        textBoxPanelLayoutForInput:SetPercentageX(0)
+        textBoxPanelLayoutForInput:SetPercentageY(0)
+        textBoxPanelLayoutForInput:SetPercentageWidth(0.8)
+        textBoxPanelLayoutForInput:SetPercentageHeight(0.2)
+        textBoxPanelLayoutForInput:SetTopPadding(3)
+
+        inputTextBoxForOutputPane:SetBackgroundColor(color:White())
+        inputTextBoxForOutputPane:SetMoveFocusOnTab(true)
+        InputBehavior behavior = behaviors:GetInputBehavior()
+
+        //input box will send on ENTER and newLine on SHIFT+ENTER
+        KeyboardEvent keys
+        InputSet enterSet
+        enterSet:SetKeyboardInput(keys:ENTER)
+        
+        InputSet numEnterSet
+        numEnterSet:SetKeyboardInput(keys:NUMPAD_ENTER)
+
+        InputSet shiftEnterSet
+        shiftEnterSet:SetKeyboardInput(keys:ENTER)
+        shiftEnterSet:AddModifier(shiftEnterSet:SHIFT)
+
+        InputSet shiftNumEnterSet
+        numEnterSet:SetKeyboardInput(keys:NUMPAD_ENTER)
+        shiftNumEnterSet:AddModifier(shiftNumEnterSet:SHIFT)
+
+        TextBoxNewLineBehavior newLine
+        InputTable table = inputTextBoxForOutputPane:GetInputTable()
+        table:Add(enterSet, behavior)
+        table:Add(numEnterSet, behavior)
+        table:Add(shiftEnterSet, newLine)
+        table:Add(shiftNumEnterSet, newLine)
+        
+        Button sendButtonOutputPane
+        LayoutProperties buttonProperties = sendButtonOutputPane:GetDefaultLayoutProperties()
+        buttonProperties:SetHorizontalLayoutMode(buttonProperties:FILL)
+        buttonProperties:SetVerticalLayoutMode(buttonProperties:FILL)
+        buttonProperties:SetTopPadding(2)
+        sendButtonOutputPane:SetName("Send")
+
+        //Set the focus system up for these controls
+        sendButtonOutputPane:SetNextFocus(textBoxForConsoleOutput)
+        sendButtonOutputPane:SetPreviousFocus(inputTextBoxForOutputPane)
+        inputTextBoxForOutputPane:SetNextFocus(sendButtonOutputPane)
+        inputTextBoxForOutputPane:SetPreviousFocus(textBoxForConsoleOutput)
+        textBoxForConsoleOutput:SetNextFocus(inputTextBoxForOutputPane)
+        textBoxForConsoleOutput:SetPreviousFocus(sendButtonOutputPane)
+
+        //setup some behaviors
+        behavior:SetInputTextBox(inputTextBoxForOutputPane)
+        sendButtonOutputPane:SetBehavior(behavior)
+
+        outputPanel:Add(textBoxForConsoleOutput)
+        outputPanel:Add(inputTextBoxForOutputPane)
+        outputPanel:Add(sendButtonOutputPane)
+        
+        SetTextBox(textBoxForConsoleOutput)
+        SetFocusTarget(textBoxForConsoleOutput)
+        SetName("Console")
+        SetRelatedItem(outputPanel)
+        DisplayCloseButton(true)
     end
 
     action Update(number seconds)
