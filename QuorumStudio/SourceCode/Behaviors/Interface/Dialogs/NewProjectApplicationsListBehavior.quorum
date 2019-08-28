@@ -6,13 +6,19 @@ use Libraries.Interface.Controls.ListItem
 use Libraries.Interface.Controls.List
 use Libraries.Interface.Selections.ListSelection
 use Libraries.Development.Environment.Studio.Interface.NewProjectDialog
+use Libraries.Interface.Controls.Tree
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Selections.TreeSelection
 
 class NewProjectApplicationsListBehavior is QuorumStudioBehavior
     NewProjectDialog dialog = undefined
     ListSelection listSelection = undefined
     ListItem listItem = undefined
     List list = undefined
-    
+    Tree tree = undefined
+    TreeItem treeItem = undefined
+    TreeSelection treeSelection = undefined
+
     action SetDialog(NewProjectDialog dialog)
         me:dialog = dialog
     end
@@ -25,9 +31,18 @@ class NewProjectApplicationsListBehavior is QuorumStudioBehavior
         return me:list
     end
 
+    action SetTree(Tree tree)
+        me:tree = tree
+    end
+
+    action GetTree returns Tree
+        return me:tree
+    end
+
+
     action Run(BehaviorEvent event)
-        listSelection = me:list:GetSelection()
-        integer index = listSelection:GetIndex()       
-        dialog:SetCurrentDescription(index)
+        treeSelection = me:tree:GetSelection()
+        treeItem = treeSelection:GetTreeItem()
+        dialog:SetCurrentDescription(treeItem)
     end
 end
