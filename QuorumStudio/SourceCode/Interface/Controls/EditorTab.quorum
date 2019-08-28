@@ -28,6 +28,7 @@ class EditorTab is Tab, TextChangeListener
             box:AddTextChangeListener(me)
             number scale = GetInterfaceScale()
             box:SetInterfaceScale(scale)
+            box:SetEditorTab(me)
         end
     end
 
@@ -64,6 +65,10 @@ class EditorTab is Tab, TextChangeListener
             CodeTextBox box = GetTextBox()
             text value = box:GetText()
             file:Write(value)
+            if dirty
+                SetIsDirty(false)
+                SetIsParseDirty(true)
+            end
         end
     end
 

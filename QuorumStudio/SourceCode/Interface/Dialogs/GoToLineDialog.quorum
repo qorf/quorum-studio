@@ -95,10 +95,15 @@ class GoToLineDialog is Dialog, TextChangeListener
         lineTextField:SetPreviousFocus(ok)
 
         InputSet enterSet
+        InputSet numEnterSet
         KeyboardEvent keys
         enterSet:SetKeyboardInput(keys:ENTER)
-        InputTable table = lineTextField:GetInputTable()
+        numEnterSet:SetKeyboardInput(keys:NUMPAD_ENTER)
+        InputTable table = lineTextField:CopyAndActivateInputTable("GTLTextField")
+        lineTextField:SetInputGroup("GTLTextField")
         table:Add(enterSet, okBehavior)
+        table:Add(numEnterSet, okBehavior)
+        
 
         lineTextField:SetText("")
         lineTextField:AddTextChangeListener(me)
