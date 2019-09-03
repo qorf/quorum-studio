@@ -19,6 +19,11 @@ use Libraries.Interface.Events.FocusEvent
 use Libraries.Containers.HashTable
 use Libraries.Interface.Events.TreeChangeListener
 use Libraries.Interface.Events.TreeChangeEvent
+use Libraries.Game.InputTable
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Game.InputSet
+use Libraries.Development.Environment.Studio.Behaviors.TreeSelectFirst
+use Libraries.Development.Environment.Studio.Behaviors.TreeSelectLast
 
 class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListener
     ProjectManager manager = undefined
@@ -168,5 +173,19 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
             end
         end
         Resize()
+    end
+
+    action Setup
+        KeyboardEvent keys
+        InputSet homeSet
+        homeSet:SetKeyboardInput(keys:HOME)
+        InputSet endSet
+        endSet:SetKeyboardInput(keys:END)
+
+        TreeSelectFirst first
+        TreeSelectLast  last
+        InputTable table = me:GetInputTable()
+        table:Add(homeSet, first)
+        table:Add(endSet , last)
     end
 end
