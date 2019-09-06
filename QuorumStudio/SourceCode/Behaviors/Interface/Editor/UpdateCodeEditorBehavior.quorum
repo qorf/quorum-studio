@@ -83,7 +83,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
         CodeTextBox box = cast(CodeTextBox, event:GetItem())
-
+        File file = box:GetFile()
         boolean isStandardLibrary = false
         Library library = manager:GetLibrary()
         Lexer lexer = library:GetLexer(path:GetAbsolutePath())
@@ -138,6 +138,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
 
         if not isStandardLibrary
             CompilerErrorManager errors = compilerResult:compilerErrorManager
+            box:SetCompilerErrorManager(errors)
             if errors = undefined
                 return now
             end
@@ -168,19 +169,22 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                 i = 0
                 repeat while hinterator:HasNext()
                     Hint hint = hinterator:Next()
-                    integer index = hint:GetIndex()
-                    integer indexEnd = hint:GetIndexEnd()
-                    TextStyle style
-                    TextUnderline underline
-                    underline:SetColor(green)
-                    style:SetHighlight(underline)
-                    style:SetIndex(index)
-                    if indexEnd - index - 1 > 0
-                        style:SetSize(indexEnd - index - 1)
-                    else
-                        style:SetSize(1)
+                    text value = hint:GetAbsolutePath()
+                    if file not= undefined and value = file:GetAbsolutePath()
+                        integer index = hint:GetIndex()
+                        integer indexEnd = hint:GetIndexEnd()
+                        TextStyle style
+                        TextUnderline underline
+                        underline:SetColor(green)
+                        style:SetHighlight(underline)
+                        style:SetIndex(index)
+                        if indexEnd - index - 1 > 0
+                            style:SetSize(indexEnd - index - 1)
+                        else
+                            style:SetSize(1)
+                        end
+                        box:AddTextStyle("Hints" + i, style)
                     end
-                    box:AddTextStyle("Hints" + i, style)
                     i = i + 1
                 end
             end

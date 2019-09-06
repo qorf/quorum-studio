@@ -1,0 +1,40 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Language.Compile.Hints.Hint
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+
+class ExecuteEditorHintBehavior is Behavior
+    Hint hint = undefined
+    CodeTextBox box = undefined
+
+    action GetCodeTextBox returns CodeTextBox
+        return box
+    end
+
+    action SetCodeTextBox(CodeTextBox box)
+        me:box = box
+    end
+
+    action SetHint(Hint hint)
+        me:hint = hint
+    end
+
+    action GetHint returns Hint
+        return hint
+    end
+
+    action Run(BehaviorEvent event)
+        if hint not= undefined and box not= undefined
+            integer start = hint:GetStartOffset()
+            integer finish = hint:GetEndOffset()
+
+            text insert = hint:GetInsertionText()
+            if start = finish
+                box:Insert(start, insert)
+            else
+                //for now we can't handle the case where we're replacing a set of text.
+            end
+        end
+    end
+end
