@@ -46,6 +46,7 @@ use Attack.FakeFocusManager
 use Libraries.Sound.Audio
 use Libraries.Interface.Events.ResizeListener
 use Libraries.Interface.Events.ResizeEvent
+use Libraries.Containers.HashTable
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant number VERSION = 1.0
@@ -72,6 +73,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     Resources resources
     Behaviors behaviors
     Array<Item> focusList
+    HashTable<text, integer> windowsList
     integer focus = -1
 
     Item currentFocus = undefined
@@ -121,10 +123,23 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         return previousFocus
     end
 
-
     action GainedFocus(FocusEvent event)
         currentFocus = event:GetNewFocus()
         previousFocus = event:GetLastFocus()
+
+        //Bubble up the parents until you find which window you're in
+        //then set the window focus cycle to move there
+        Item2D newFocus = cast(Item2D, currentFocus)
+        if newFocus not= undefined and newFocus:GetParent() not= undefined
+            boolean notFound = true
+            repeat while notFound and newFocus:GetParent() not= undefined
+                if windowsList:HasKey(newFocus:GetParent():GetName())
+                    focus = windowsList:GetValue(newFocus:GetParent():GetName())
+                    notFound = false
+                end
+                newFocus = newFocus:GetParent()
+            end
+        end
     end
 
     action LostFocus(FocusEvent event)
@@ -145,10 +160,6 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     action GetTabPane returns CodeEditorTabPane
         return codeTabs
-    end
-
-    action GetFocus returns Item
-        return focusList:Get(focus)
     end
 
     action NextFocus returns Item
@@ -263,10 +274,20 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     end
 
     action SetupFocus
+    /*
+        The order the items are added to the focusList and the value
+        associated with them in the hashTable affect the way in which
+        focus cycles between the main windows
+    */
         focusList:Add(toolbar)
         focusList:Add(projectTree)
         focusList:Add(codeTabs)
         focusList:Add(outputWindow)
+        windowsList:Add(toolbar:GetName(), 0)
+        windowsList:Add(projectTree:GetName(), 1)
+        windowsList:Add(codeTabs:GetName(), 2)
+        windowsList:Add(outputWindow:GetName(), 3)
+
         KeyMap keyMap = resources:GetKeyMap()
         
         AddFocusListener(me)
@@ -365,6 +386,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
         FlowLayout layout
         mainContentPane:SetLayout(layout)
+        mainContentPane:SetName("Main Content")
 
         CreateProjectsWindow()
         CreateCodeEditor()
@@ -375,6 +397,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         inputOutputProperties:SetVerticalLayoutMode(inputOutputProperties:FILL)
         FlowLayout inputOutputLayout
         inputOutputPane:SetLayout(inputOutputLayout)
+        inputOutputPane:SetName("Input Output")
 
         mainContentPane:Add(projectPane)
         inputOutputPane:Add(codeTabs)
@@ -392,6 +415,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         scrollLayout:SetPixelWidth(300)
 
         projectPane:SetBackgroundColor(resources:GetBackgroundColor())
+        projectPane:SetName("Project Pane")
         projectPane:Add(projectTree)
     end
 
