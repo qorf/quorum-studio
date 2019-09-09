@@ -1,0 +1,26 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Item
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Language.Compile.CompilerErrorManager
+use Libraries.Containers.Iterator
+use Libraries.Language.Compile.Hints.Hint
+
+
+class EditorHintBehavior is QuorumStudioBehavior
+    action Run(BehaviorEvent event)
+        Item item = event:GetItem()
+        if item not= undefined and item is CodeTextBox
+            CodeTextBox box = cast(CodeTextBox, item)
+            CompilerErrorManager errors = box:GetCompilerErrorManager()
+            integer line = box:GetCaretLine()
+            Iterator<Hint> iterator = box:GetHintsAtLine(line)
+            repeat while iterator:HasNext()
+                Hint hint = iterator:Next()
+                output hint:GetHintMessage()
+            end
+        end
+        output "Editor Hint Fired."
+    end
+end

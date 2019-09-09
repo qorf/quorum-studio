@@ -22,11 +22,13 @@ use Libraries.Language.Compile.Symbol.Class
 use Libraries.Development.Environment.Studio.Build.BuildInformation
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Language.Compile.Library
+use Libraries.Language.Compile.Hints.Hint
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
     CompilerResult compilerResult = undefined
     File path
     Color blue
+    Color green
     Color orange
     Color grey
     Color purple
@@ -40,6 +42,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     on create
         blue = blue:Blue()
         orange:SetColor(206.0/255, 123.0/255, 0, 1.0)
+        green:SetColor(0/255, 255.0/255, 0/255, 1.0)
         grey:SetColor(152.0/255, 152.0/255, 152.0/255, 1.0)
         caretColor:SetColor(233.0/255.0, 239.0/255.0, 248.0/255.0, 1.0)
         breakpointColor:SetColor(252.0/255.0, 157.0/255.0, 159.0/255.0, 1.0)
@@ -80,7 +83,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
         CodeTextBox box = cast(CodeTextBox, event:GetItem())
-
+        File file = box:GetFile()
         boolean isStandardLibrary = false
         Library library = manager:GetLibrary()
         Lexer lexer = library:GetLexer(path:GetAbsolutePath())
@@ -135,6 +138,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
 
         if not isStandardLibrary
             CompilerErrorManager errors = compilerResult:compilerErrorManager
+            box:SetCompilerErrorManager(errors)
             if errors = undefined
                 return now
             end
@@ -159,7 +163,33 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                     i = i + 1
                 end
             end
+
+            if errors:HasHints()
+                Iterator<Hint> hinterator = errors:GetHintIterator()
+                i = 0
+                repeat while hinterator:HasNext()
+                    Hint hint = hinterator:Next()
+                    text value = hint:GetAbsolutePath()
+                    if file not= undefined and value = file:GetAbsolutePath()
+                        integer index = hint:GetIndex()
+                        integer indexEnd = hint:GetIndexEnd()
+                        TextStyle style
+                        TextUnderline underline
+                        underline:SetColor(green)
+                        style:SetHighlight(underline)
+                        style:SetIndex(index)
+                        if indexEnd - index - 1 > 0
+                            style:SetSize(indexEnd - index - 1)
+                        else
+                            style:SetSize(1)
+                        end
+                        box:AddTextStyle("Hints" + i, style)
+                    end
+                    i = i + 1
+                end
+            end
         end
+
         //now set the cursor line
         integer caret = box:GetCaretPosition()
         ColoredHighlight caretHighlight

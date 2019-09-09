@@ -1,0 +1,83 @@
+package Libraries.Development.Environment.Studio.Interface
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Containers.Iterator
+use Libraries.Language.Compile.Hints.Hint
+use Libraries.Interface.Behaviors.Controls.TextBoxCopyToClipboardBehavior
+use Libraries.Interface.Behaviors.Controls.TextBoxPasteFromClipboardBehavior
+use Libraries.Interface.Behaviors.Controls.TextBoxCutToClipboardBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ExecuteEditorHintBehavior
+
+class CodeTextBoxPopupMenu is PopupMenu
+    CodeTextBox box = undefined
+    MenuItem cut
+    MenuItem copy    
+    MenuItem paste
+    TextBoxCopyToClipboardBehavior copyBehavior
+    TextBoxCutToClipboardBehavior cutBehavior
+    TextBoxPasteFromClipboardBehavior pasteBehavior
+
+    on create
+        
+        cut:SetName("Cut")
+        //build:SetBehavior(behaviors:GetThreadedBuildProjectBehavior())
+
+        
+        copy:SetName("Copy")
+        //build:SetBehavior(behaviors:GetThreadedBuildProjectBehavior())
+
+        
+        paste:SetName("Paste")
+        //build:SetBehavior(behaviors:GetThreadedBuildProjectBehavior())
+
+        
+    end
+
+    action GetCodeTextBox returns CodeTextBox
+        return box
+    end
+
+    action SetCodeTextBox(CodeTextBox box)
+        me:box = box
+    end
+
+    private action GenerateContextSensitiveMenus
+        if box:HasHints()
+            MenuItem hints
+            hints:SetName("Hints")
+
+            i = 0
+            Iterator<Hint> iterator = box:GetHintsAtLine(box:GetCaretLine())
+            repeat while iterator:HasNext()
+                Hint hint = iterator:Next()
+                MenuItem hintItem
+                hintItem:SetName(hint:GetHintMessage())
+                ExecuteEditorHintBehavior behave
+                behave:SetHint(hint)
+                behave:SetCodeTextBox(box)
+
+                hintItem:SetBehavior(behave)
+                hints:Add(hintItem)
+                i = i + 1
+            end
+
+            if i > 0
+                Add(hints)
+            end
+        end
+    end
+
+    action OpenAtCursor
+        //first regenerate the menu based upon context
+        parent:PopupMenu:panel:Empty()
+        if box not= undefined
+            GenerateContextSensitiveMenus()
+        end
+
+        Add(cut)
+        Add(copy)
+        Add(paste)
+
+        parent:PopupMenu:OpenAtCursor()
+    end
+end

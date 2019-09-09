@@ -6,7 +6,7 @@ Caption "Quorum Studio"
 Icon "quorum.ico"
 OutFile "QuorumStudio.exe"
 
-RequestExecutionLevel none
+RequestExecutionLevel user
 
 SilentInstall silent
 AutoCloseWindow true
