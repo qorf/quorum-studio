@@ -36,6 +36,10 @@ use Libraries.Game.InputTable
 use Libraries.Game.InputSet
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Selections.TextBoxSelection
+use Libraries.Language.Compile.CompilerErrorManager
+use Libraries.Language.Compile.Hints.Hint
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -63,6 +67,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     PreviousBehavior previousBehavior
     NextBehavior nextBehavior
     FindDialog findDialog = undefined
+    CompilerErrorManager errors = undefined
 
     on create
         GameStateManager manager
@@ -72,6 +77,23 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         breakpointColor:SetColor(252.0/255.0, 157.0/255.0, 159.0/255.0, 1.0)
         Add(gutter)
         gutter:AddGutterListener(me)
+        SetPopupMenu(GeneratePopupMenu())
+    end
+
+    private action GeneratePopupMenu returns PopupMenu
+        CodeTextBoxPopupMenu menu
+        menu:SetCodeTextBox(me)
+        
+
+        return menu
+    end
+
+    action GetCompilerErrorManager returns CompilerErrorManager
+        return errors
+    end
+
+    action SetCompilerErrorManager(CompilerErrorManager manager)
+        errors = manager
     end
 
     action GutterClicked(GutterEvent event)
@@ -159,6 +181,38 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
 
     action SetEditorTab(EditorTab tab)
         me:tab = tab
+    end
+
+    action HasHints returns boolean
+        if GetFile() not= undefined and errors not= undefined
+            text path = GetFile():GetAbsolutePath()
+            return errors:HintsAtKey(path)
+        end
+        return false
+    end
+
+    action GetHintsAtLine(integer line) returns Iterator<Hint>
+        if GetFile() not= undefined and errors not= undefined
+            text path = GetFile():GetAbsolutePath()
+            Array<Hint> newHints
+            Iterator<Hint> hints = errors:GetHintsAtKey(path)
+            repeat while hints:HasNext()
+                Hint hint = hints:Next()
+                if hint:GetLineNumber() - 1 = line
+                    newHints:Add(hint)
+                end
+            end
+            return newHints:GetIterator()
+        end
+        return undefined
+    end
+
+    action GetFile returns File
+        EditorTab tab = GetEditorTab()
+        if tab = undefined
+            return undefined
+        end
+        return tab:GetFile()
     end
 
     action SmartNavigateUp
