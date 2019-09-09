@@ -35,6 +35,7 @@ use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Game.InputTable
 use Libraries.Game.InputSet
 use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Selections.TextBoxSelection
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -173,6 +174,25 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         end
     end
 
+    action SelectSmartNavigateUp        
+        if clazz = undefined
+            return now
+        end
+
+        TextBoxSelection selection = GetSelection() //gets the current caret position
+        integer endIndex = selection:GetEndIndex()
+        
+        integer line = GetCaretLine()
+        Action closest = FindPreviousAction(line)
+        
+        if closest not= undefined and closest:GetLineNumber() > 0
+            NavigateTo(closest:GetLineNumber())
+        end
+
+        integer startIndex = GetCaretPosition()
+        selection:Set(startIndex, endIndex, true, false)
+    end
+
     action SmartNavigateDown
         if clazz = undefined
             return now
@@ -184,6 +204,25 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         if closest not= undefined and closest:GetLineNumber() < GetLineCount()
             NavigateTo(closest:GetLineNumber())
         end
+    end
+
+    action SelectSmartNavigateDown
+        if clazz = undefined
+            return now
+        end
+        
+        TextBoxSelection selection = GetSelection()
+        integer startIndex = selection:GetStartIndex()
+
+        integer line = GetCaretLine()
+        Action closest = FindNextAction(line)
+        
+        if closest not= undefined and closest:GetLineNumber() < GetLineCount()
+            NavigateTo(closest:GetLineNumber())
+        end
+        
+        integer endIndex = GetCaretPosition()
+        selection:Set(startIndex, endIndex, false, false)
     end
 
     private action FindPreviousAction(integer line) returns Action
@@ -679,7 +718,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         end
     end
 
-    action GetCurrentFindSelection returns integer
+    action GetCurrentFindIndex returns integer
         return findSelection
     end
 
@@ -701,6 +740,21 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     
     action GetFindWord returns text
         return findWord
+    end
+
+    action HasSelection returns boolean
+        TextBoxSelection selection = GetSelection()
+        if selection:GetStartIndex() = selection:GetEndIndex()
+            return false
+        else
+            return true
+        end
+
+    end
+
+    action GetFindSelection returns text
+        TextBoxSelection selection = GetSelection()
+        return selection:GetText()
     end
 
     action SetReplaceWord(text replace)

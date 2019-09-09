@@ -75,7 +75,11 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         findField:Focus()
         wholeWord:SetToggleState(textBox:GetIsWholeWord())
         matchCase:SetToggleState(textBox:GetIsMatchCase())
-        findField:SetText(textBox:GetFindWord())
+        if (textBox:HasSelection())
+            findField:SetText(textBox:GetFindSelection())
+        else
+            findField:SetText(textBox:GetFindWord())
+        end
         textBox:SetIsDialogOpen(true)
         if findField:GetText() not= ""
             findButton:Activate()

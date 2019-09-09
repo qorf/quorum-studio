@@ -84,7 +84,12 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
         findField:Focus()
         wholeWord:SetToggleState(textBox:GetIsWholeWord())
         matchCase:SetToggleState(textBox:GetIsMatchCase())
-        findField:SetText(textBox:GetFindWord())
+        if(textBox:HasSelection())
+            findField:SetText(textBox:GetFindSelection())
+            textBox:SetReplaceWord("")
+        else    
+            findField:SetText(textBox:GetFindWord())
+        end
         replaceField:SetText(textBox:GetReplaceWord())
         textBox:SetIsDialogOpen(true)
         if findField:GetText() not= ""
