@@ -148,8 +148,20 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                 Iterator<CompilerError> iterator = errors:GetIterator()
                 repeat while iterator:HasNext()
                     CompilerError error = iterator:Next()
+
+                    //first check if this is a multi-line error. 
+                    //If it is, highlight the entire line, but no more.
+                    integer line = error:GetLineNumber()
+                    integer lineEnd = error:GetLineNumberEnd()
+                    
                     integer index = error:GetIndex()
                     integer indexEnd = error:GetIndexEnd()
+
+                    //change the index to just be the end of the line
+                    if line not= lineEnd
+                        text value = box:GetLine(line - 1)
+                        indexEnd = index + value:GetSize()
+                    end
                     TextStyle style
                     TextUnderline underline
                     style:SetHighlight(underline)
