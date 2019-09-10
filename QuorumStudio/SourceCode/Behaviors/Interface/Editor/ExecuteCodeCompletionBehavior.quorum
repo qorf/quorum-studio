@@ -1,0 +1,57 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Language.Compile.Hints.Hint
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Language.Compile.CodeCompletionItem
+use Libraries.Interface.Controls.TextBox
+use Libraries.Language.Compile.CodeCompletionResult
+
+class ExecuteCodeCompletionBehavior is Behavior
+    CodeCompletionItem completion = undefined
+    TextBox box = undefined
+    CodeCompletionResult result = undefined
+
+    action GetTextBox returns TextBox
+        return box
+    end
+
+    action SetTextBox(TextBox box)
+        me:box = box
+    end
+
+    action GetCodeCompletionResult returns CodeCompletionResult
+        return result
+    end
+
+    action SetCodeCompletionResult(CodeCompletionResult result)
+        me:result = result
+    end
+
+    action SetCodeCompletionItem(CodeCompletionItem completion)
+        me:completion = completion
+    end
+
+    action GetCodeCompletionItem returns CodeCompletionItem
+        return completion
+    end
+
+    action Run(BehaviorEvent event)
+        if completion not= undefined and box not= undefined and result not= undefined
+            text value = completion:completionText
+            text filter = result:filter
+            value = value:GetSubtext(filter:GetSize())
+            integer position = box:GetCaretPosition()
+
+            if completion:isActionWithoutParameters
+                value = value + "()"
+            end
+            //position = position + completion:caretOffset
+            //position = position + filter:GetSize()
+            box:Insert(position, value)
+            output "Dot offset: " + completion:dotOffset
+            output "Caret Offset: " + completion:caretOffset
+            output value
+        end
+    end
+end

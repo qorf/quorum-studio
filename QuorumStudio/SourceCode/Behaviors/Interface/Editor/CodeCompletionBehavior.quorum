@@ -15,6 +15,8 @@ use Libraries.Language.Compile.CodeCompletionRequest
 use Libraries.Language.Compile.CodeCompletionResult
 use Libraries.Containers.Iterator
 use Libraries.Language.Compile.CodeCompletionItem
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
 
 class CodeCompletionBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
@@ -47,9 +49,26 @@ class CodeCompletionBehavior is QuorumStudioBehavior
             return now
         end
 
+        PopupMenu menu
         repeat while iterator:HasNext()
-            CodeCompletionItem item = iterator:Next()
-            //do the popup
+            CodeCompletionItem code = iterator:Next()
+
+            if code:displayText:StartsWith(result:filter)
+                MenuItem item
+                item:SetName(code:displayText)
+                item:SetShortcut(code:rightDisplayText)
+                ExecuteCodeCompletionBehavior behave
+                behave:SetTextBox(box)
+                behave:SetCodeCompletionItem(code)
+                behave:SetCodeCompletionResult(result)
+                item:SetBehavior(behave)
+
+                menu:Add(item)
+            end
         end
+
+        number x = box:GetCaretGlobalX()
+        number y = box:GetCaretGlobalY()
+        menu:OpenAt(x, y)
     end
 end
