@@ -207,6 +207,19 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         return undefined
     end
 
+    /*
+        If there exists a hint at this line, return the top one. If not, then
+        return undefined.
+    */
+    action GetTopHintAtLine(integer line) returns Hint
+        Iterator<Hint> iterator = GetHintsAtLine(line)
+        repeat while iterator:HasNext()
+            Hint hint = iterator:Next()
+            return hint
+        end
+        return undefined
+    end
+
     action GetFile returns File
         EditorTab tab = GetEditorTab()
         if tab = undefined

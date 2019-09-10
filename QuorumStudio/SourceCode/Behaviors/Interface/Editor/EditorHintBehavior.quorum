@@ -8,19 +8,19 @@ use Libraries.Containers.Iterator
 use Libraries.Language.Compile.Hints.Hint
 
 
-class EditorHintBehavior is QuorumStudioBehavior
-    action Run(BehaviorEvent event)
-        Item item = event:GetItem()
+class EditorHintBehavior is EditorBehavior
+    action Run(Item item)
         if item not= undefined and item is CodeTextBox
             CodeTextBox box = cast(CodeTextBox, item)
             CompilerErrorManager errors = box:GetCompilerErrorManager()
             integer line = box:GetCaretLine()
-            Iterator<Hint> iterator = box:GetHintsAtLine(line)
-            repeat while iterator:HasNext()
-                Hint hint = iterator:Next()
-                output hint:GetHintMessage()
+            Hint hint = box:GetTopHintAtLine(line)
+            if hint not= undefined
+                ExecuteEditorHintBehavior behave
+                behave:SetCodeTextBox(box)
+                behave:SetHint(hint)
+                behave:Run(undefined)
             end
         end
-        output "Editor Hint Fired."
     end
 end
