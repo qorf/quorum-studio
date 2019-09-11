@@ -5,12 +5,13 @@
 ;Include Modern UI
 
   !include "MUI2.nsh"
-
+  !include "FileAssociation.nsh"
+  !include "FileFunc.nsh"
 ;--------------------------------
 ;General
 
   ;Name and file
-  !define VERSION "1.0 Beta 1"
+  !define VERSION "1.0 Beta 2"
   !define REGISTRY_KEY "Software\QuorumStudio"
 
   Name "Quorum Studio ${VERSION}"
@@ -92,10 +93,24 @@ Section "Core" SecDummy
 
   ;Store installation folder
   WriteRegStr HKCU ${REGISTRY_KEY} "" $INSTDIR
-  
+
+  ; Quorum Project file Association
+    WriteRegStr HKCR ".qp" "" "QuorumStudio.Project"
+    WriteRegStr HKCR "QuorumStudio.Project" "" "Quorum Studio Project File"
+    WriteRegStr HKCR "QuorumStudio.Project\shell" "" "Play"
+    WriteRegStr HKCR "QuorumStudio.Project\shell\Play\command" "" '"$INSTDIR\QuorumStudio.exe" "%1"' 
+    WriteRegStr HKCR "QuorumStudio.Project\DefaultIcon" "" "$INSTDIR\quorum.ico"
+    Call RefreshShellIcons
+
+
+
+  ;${registerExtension} "$INSTDIR\QuorumStudio.exe" ".qp" "Quorum Project File"
+
   ;Create uninstaller
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   
+  ;;${unregisterExtension} ".qp" "Quorum Project File"
+
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
     
     ;Create shortcuts
@@ -104,12 +119,14 @@ Section "Core" SecDummy
     CreateShortcut "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
   
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\QuorumStudio" \
-                 "DisplayName" "Quorum Studio 1.0 Beta 1"
+                 "DisplayName" "Quorum Studio ${VERSION}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\QuorumStudio" \
                  "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
   !insertmacro MUI_STARTMENU_WRITE_END
 
 SectionEnd
+
+
 
 ;--------------------------------
 ;Descriptions
@@ -143,8 +160,19 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk"
   RMDir "$SMPROGRAMS\$StartMenuFolder"
 
+  DeleteRegKey HKCR "QuorumStudio.Project"
+  DeleteRegKey HKCR "QuorumStudio.Project\shell\Play\command"
+  ;Call RefreshShellIcons
+
+
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\QuorumStudio"
   
   DeleteRegKey /ifempty HKCU ${REGISTRY_KEY}
 
 SectionEnd
+
+Function RefreshShellIcons
+  !define SHCNE_ASSOCCHANGED 0x08000000
+  !define SHCNF_IDLIST 0
+  System::Call 'shell32.dll::SHChangeNotify(i, i, i, i) v (${SHCNE_ASSOCCHANGED}, ${SHCNF_IDLIST}, 0, 0)'
+FunctionEnd
