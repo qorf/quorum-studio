@@ -47,10 +47,11 @@ use Libraries.Sound.Audio
 use Libraries.Interface.Events.ResizeListener
 use Libraries.Interface.Events.ResizeEvent
 use Libraries.Containers.HashTable
+use Libraries.System.Console
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant number VERSION = 1.0
-    constant text NAME = "Quorum Studio " + VERSION + " Beta 1"
+    constant text NAME = "Quorum Studio " + VERSION + " Beta 2"
     integer DEFAULT_WINDOW_WIDTH = 2500
     integer DEFAULT_WINDOW_HEIGHT = 1500
     ScrollPane projectPane
@@ -356,6 +357,19 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         repeat while iterator:HasNext()
             File file = iterator:Next()
             codeTabs:OpenNewTab(file)
+        end
+
+        Console console
+        Array<text> flags = console:GetConsoleArguments()
+        if flags not= undefined and flags:GetSize() > 0
+            i = 0
+            repeat while i < flags:GetSize()
+                text value = flags:Get(i)
+                File file
+                file:SetAbsolutePath(value)
+                manager:Open(file)
+            i = i + 1
+            end
         end
     end
 
