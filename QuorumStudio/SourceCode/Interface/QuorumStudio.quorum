@@ -376,9 +376,14 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
             i = 0
             repeat while i < flags:GetSize()
                 text value = flags:Get(i)
+                check
                 File file
                 file:SetAbsolutePath(value)
-                manager:Open(file)
+                if file:Exists()
+                    manager:Open(file)
+                end
+                detect e //if the user passed junk, just ignore it
+                end
                 i = i + 1
             end
         end
