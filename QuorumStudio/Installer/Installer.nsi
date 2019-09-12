@@ -5,7 +5,6 @@
 ;Include Modern UI
 
   !include "MUI2.nsh"
-  !include "FileAssociation.nsh"
   !include "FileFunc.nsh"
 ;--------------------------------
 ;General

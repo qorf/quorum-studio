@@ -1,6 +1,9 @@
 ; Java Launcher
 ;--------------
- 
+
+!include FileFunc.nsh
+!insertmacro GetParameters
+
 Name "Quorum Studio"
 Caption "Quorum Studio"
 Icon "quorum.ico"
@@ -19,8 +22,9 @@ Section ""
   Call GetJRE
   Pop $R0
  
+    ${GetParameters} $R1
   ; change for your purpose (-jar etc.)
-  StrCpy $0 '"$R0" -jar "${CLASSPATH}"'
+  StrCpy $0 '"$R0" -jar "${CLASSPATH}" "$R1'
  
     ;ExecWait 'javaw.exe -jar QuorumStudio.jar'
   SetOutPath $EXEDIR
