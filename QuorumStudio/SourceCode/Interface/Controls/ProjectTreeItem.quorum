@@ -3,6 +3,14 @@ package Libraries.Development.Environment.Projects
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.System.File
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Development.Environment.Studio.Behaviors.OpenTabBehavior
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Development.Environment.Studio.Behaviors.DeleteFileBehavior
+use Libraries.Development.Environment.Studio.Behaviors.OpenNewFileBehavior
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Development.Environment.Studio.QuorumStudio
 
 class ProjectTreeItem is TreeItem
     QuorumProject project = undefined
@@ -23,5 +31,65 @@ class ProjectTreeItem is TreeItem
     action SetFile(File file)
         me:file = file
         SetName(file:GetFileName())
+    end
+
+    action GetPopupMenu returns PopupMenu
+        if parent:Control:contextMenu not= undefined
+            return parent:Control:contextMenu
+        end
+
+        PopupMenu exampleContextMenu
+        if file:IsDirectory()
+            text dq = ""
+            dq = dq:GetDoubleQuote()
+
+            OpenNewFileBehavior openNewFileBehavior
+            MenuItem newFileMenuItem
+            newFileMenuItem:SetName("New File")
+            newFileMenuItem:SetBehavior(openNewFileBehavior)
+            //exampleContextMenu:Add(newFileMenuItem)
+
+            MenuItem renameMenuItem
+            renameMenuItem:SetName("Rename")
+            //exampleContextMenu:Add(renameMenuItem)
+            //value:SetPopupMenu(exampleContextMenu)
+
+            MenuItem deleteFolderMenuItem
+            deleteFolderMenuItem:SetName("Delete")
+            exampleContextMenu:Add(deleteFolderMenuItem)
+        else
+            OpenTabBehavior openTabBehavior
+
+            
+            MenuItem openMenuItem
+            openMenuItem:SetName("Open")
+            exampleContextMenu:Add(openMenuItem)
+            openMenuItem:SetBehavior(openTabBehavior)
+
+            MenuItem renameMenuItem
+            renameMenuItem:SetName("Rename")
+            //exampleContextMenu:Add(renameMenuItem)
+
+            DeleteFileBehavior deleteFileBehavior
+            MenuItem deleteMenuItem
+            deleteMenuItem:SetName("Delete")
+            deleteFileBehavior:SetFile(file)
+            deleteFileBehavior:SetItem(me)
+            deleteMenuItem:SetBehavior(deleteFileBehavior)
+            exampleContextMenu:Add(deleteMenuItem)
+
+    //                SetProgramStart startBehavior
+    //                MenuItem setMainFileMenuItem
+    //                setMainFileMenuItem:SetBehavior(startBehavior)
+    //                setMainFileMenuItem:SetName("Set Program Start")
+    //                exampleContextMenu:Add(setMainFileMenuItem)
+
+
+            GameStateManager manager
+            QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+            openTabBehavior:SetMainApplication(studio)
+            //openTabBehavior:SetFile(file)
+        end
+        return exampleContextMenu
     end
 end

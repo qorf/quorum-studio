@@ -17,6 +17,7 @@ use Libraries.Development.Environment.Projects.ProjectTreeItem
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
     constant text KEYMAP_FILE = "Configuration/KeyMap.json"
+    constant text PROJECTS_LOCATION = "Projects Folder"
     constant text OPEN_PROJECTS = "Open Projects"
     constant text OPEN_FILES = "Open Files"
     constant text BREAKPOINTS = "Breakpoints"
@@ -33,11 +34,13 @@ class Options is ProjectListener
 
     File optionsLocation
     File keymapLocation
+    File projectsLocation
     boolean placeConfigInAppDataOnWindows = true
 
     on create
         Properties prop
         text value = prop:GetEnvironmentVariable("APPDATA")
+        text projLocation = ""
 
         //If we're on windows, we need to place our config files into app data
         //to avoid requiring admin access in the installed version
@@ -58,6 +61,8 @@ class Options is ProjectListener
             newKeyMapFile:SetWorkingDirectory(file:GetAbsolutePath())
             newKeyMapFile:SetPath("KeyMap.json")
             keymapLocation = newKeyMapFile
+
+            projLocation = prop:GetEnvironmentVariable("USERPROFILE") + "\Documents"
         else
             File file
             file:SetPath("Configuration")
@@ -65,9 +70,13 @@ class Options is ProjectListener
                 file:CreateDirectory()
             end
 
+            projLocation = prop:GetEnvironmentVariable("HOME")
+
             optionsLocation:SetPath(OPTIONS_FILE)
             keymapLocation:SetPath(KEYMAP_FILE)
         end
+        projectsLocation:SetWorkingDirectory(projLocation)
+        projectsLocation:SetPath("QuorumStudioProjects")
     end
 
     HashTable<text, text> projects 
@@ -161,6 +170,10 @@ class Options is ProjectListener
         return optionsLocation
     end
 
+    action GetProjectsFolder returns File
+        return projectsLocation
+    end
+
     action OpenedProject(QuorumProject project)
         File file = project:GetPropertiesLocation()
         if file not= undefined
@@ -220,6 +233,7 @@ class Options is ProjectListener
             array:Add(item)
         end
 
+        notation:Add(PROJECTS_LOCATION, projectsLocation:GetAbsolutePath())
         notation:Add(FRAME_LIMITED, IsFrameLimited())
         notation:Add(FRAME_RATE, frameRate)
         notation:Add(STARTUP_SOUNDS, startupSounds)
@@ -227,7 +241,7 @@ class Options is ProjectListener
         notation:Add(SCALE, scale)
         notation:Add(WINDOW_WIDTH, width)
         notation:Add(WINDOW_HEIGHT, height)
-
+        
         //if Quorum Studio instance is not null, write any other behavior 
         //we are interested in storing
 
@@ -415,6 +429,11 @@ class Options is ProjectListener
         elseif key = TREE_SELECT
             if object:IsText()
                 me:treeSelect = object:GetText()
+            end
+
+        elseif key = PROJECTS_LOCATION
+            if object:IsText()
+                me:projectsLocation:SetAbsolutePath(object:GetText())
             end
         end
     end

@@ -13,6 +13,7 @@ use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Development.Environment.Studio.Behaviors.OpenNewFileBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SetProgramStartBehavior
 use Libraries.Development.Environment.Studio.Behaviors.DeleteFileBehavior
+use Libraries.Interface.Controls.Icon
 
 class QuorumProjectView is ProjectView
     QuorumProject project = undefined
@@ -136,6 +137,16 @@ class QuorumProjectView is ProjectView
         return projectItem
     end
 
+    private action GetFileIcon(File file) returns Icon
+        if file:IsDirectory()
+            return resources:GetFolder()
+        elseif not project:IsMainFile(file)
+            return resources:GetQuorumFile()
+        else //THERE CAN ONLY BE ONE
+            return resources:GetMainFile()
+        end
+    end
+
     private action GetItem(File source) returns ProjectTreeItem
         ProjectTreeItem value
         Array<File> files = source:GetDirectoryListing()
@@ -151,82 +162,30 @@ class QuorumProjectView is ProjectView
                 ProjectTreeItem directory = GetItem(file)
                 items:Add(directory)
             else
-                PopupMenu exampleContextMenu
                 ProjectTreeItem item
-                text dq = ""
-                dq = dq:GetDoubleQuote()
-                OpenTabBehavior behavior
-
-                MenuItem openMenuItem
-                openMenuItem:SetName("Open")
-                exampleContextMenu:Add(openMenuItem)
-                openMenuItem:SetBehavior(behavior)
-
-                MenuItem renameMenuItem
-                renameMenuItem:SetName("Rename")
-                //exampleContextMenu:Add(renameMenuItem)
-
-                DeleteFileBehavior deleteFileBehavior
-                MenuItem deleteMenuItem
-                deleteMenuItem:SetName("Delete")
-                deleteFileBehavior:SetFile(file)
-                deleteFileBehavior:SetItem(item)
-                deleteMenuItem:SetBehavior(deleteFileBehavior)
-                exampleContextMenu:Add(deleteMenuItem)
-
-//                SetProgramStart startBehavior
-//                MenuItem setMainFileMenuItem
-//                setMainFileMenuItem:SetBehavior(startBehavior)
-//                setMainFileMenuItem:SetName("Set Program Start")
-//                exampleContextMenu:Add(setMainFileMenuItem)
-
-                
                 item:SetFile(file)
                 
-                behavior:SetMainApplication(studio)
-                behavior:SetFile(file)
-                item:SetBehavior(behavior)
                 item:SetName(file:GetFileName())
                 item:SetProject(project)
-                
+                item:SetIcon(GetFileIcon(file))
+
+                OpenTabBehavior openTabBehavior = behaviors:GetOpenTabBehavior()
+                item:SetBehavior(openTabBehavior)
+                openTabBehavior:SetMainApplication(studio)
+
                 if not project:IsMainFile(file)
-                    item:SetIcon(resources:GetQuorumFile())
+                    
                 else //THERE CAN ONLY BE ONE
-                    item:SetIcon(resources:GetMainFile())
                     project:SetMainFileProjectTreeItem(item)
                 end
                 items:Add(item)
-
-                item:SetPopupMenu(exampleContextMenu)
             end
             i = i + 1
         end
 
+        value:SetIcon(GetFileIcon(source))
         if source:IsDirectory()
-            value:SetIcon(resources:GetFolder())
             value:SetFile(source)
-
-            PopupMenu exampleContextMenu
-            text dq = ""
-            dq = dq:GetDoubleQuote()
-
-            OpenNewFileBehavior openNewFileBehavior
-            MenuItem newFileMenuItem
-            newFileMenuItem:SetName("New File")
-            newFileMenuItem:SetBehavior(openNewFileBehavior)
-            //exampleContextMenu:Add(newFileMenuItem)
-
-            MenuItem renameMenuItem
-            renameMenuItem:SetName("Rename")
-            //exampleContextMenu:Add(renameMenuItem)
-            //value:SetPopupMenu(exampleContextMenu)
-
-            MenuItem deleteFolderMenuItem
-            deleteFolderMenuItem:SetName("Delete")
-            exampleContextMenu:Add(deleteFolderMenuItem)
-            //value:SetPopupMenu(exampleContextMenu)
-        else
-            value:SetIcon(resources:GetQuorumFile())
         end
 
         value:SetName(source:GetFileName())

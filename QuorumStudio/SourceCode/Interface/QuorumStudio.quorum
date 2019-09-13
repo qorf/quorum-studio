@@ -71,6 +71,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     number tempXOffset = 0
 
     Options options
+    File projectsFolder
     Resources resources
     Behaviors behaviors
     Array<Item> focusList
@@ -161,6 +162,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     action GetTabPane returns CodeEditorTabPane
         return codeTabs
+    end
+
+    action GetProjectsFolder returns File
+        return projectsFolder
     end
 
     action NextFocus returns Item
@@ -342,6 +347,12 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     action Load
         //load the user's settings
         options:Read()
+
+        me:projectsFolder = options:GetProjectsFolder()
+        if not projectsFolder:Exists()
+            projectsFolder:CreateDirectories()
+        end
+
         Array<text> projects = options:GetProjects()
 
         i = 0
@@ -365,10 +376,15 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
             i = 0
             repeat while i < flags:GetSize()
                 text value = flags:Get(i)
+                check
                 File file
                 file:SetAbsolutePath(value)
-                manager:Open(file)
-            i = i + 1
+                if file:Exists()
+                    manager:Open(file)
+                end
+                detect e //if the user passed junk, just ignore it
+                end
+                i = i + 1
             end
         end
     end

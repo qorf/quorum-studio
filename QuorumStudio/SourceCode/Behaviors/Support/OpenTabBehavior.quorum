@@ -3,10 +3,12 @@ use Libraries.Interface.Events.BehaviorEvent
 use Libraries.System.File
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.ProjectTreeItem
 
 class OpenTabBehavior is QuorumStudioBehavior
-    File file = undefined
-    CodeEditorTabPane pane = undefined
     QuorumStudio studio = undefined
 
     action SetMainApplication(QuorumStudio studio)
@@ -18,15 +20,25 @@ class OpenTabBehavior is QuorumStudioBehavior
     end
 
     action Run(BehaviorEvent event)
-        pane = studio:GetTabPane()
-        pane:OpenNewTab(file)
+        CodeEditorTabPane pane = studio:GetTabPane()
+        ProjectTree tree = studio:GetProjectTree()
+        TreeSelection selection = tree:GetSelection()
+        TreeItem treeItem = selection:GetTreeItem()
+        if treeItem is ProjectTreeItem
+            ProjectTreeItem item = cast(ProjectTreeItem, treeItem)
+            File file = item:GetFile()
+            if file not= undefined
+                pane:OpenNewTab(file)
+            end
+        end
+        
     end
 
-    action GetFile returns File
-        return file
-    end
-
-    action SetFile(File file)
-        me:file = file
-    end
+//    action GetFile returns File
+//        return file
+//    end
+//
+//    action SetFile(File file)
+//        me:file = file
+//    end
 end
