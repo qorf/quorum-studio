@@ -34,8 +34,11 @@ class ProjectTreeItem is TreeItem
     end
 
     action GetPopupMenu returns PopupMenu
-        PopupMenu exampleContextMenu
+        if parent:Control:contextMenu not= undefined
+            return parent:Control:contextMenu
+        end
 
+        PopupMenu exampleContextMenu
         if file:IsDirectory()
             text dq = ""
             dq = dq:GetDoubleQuote()
@@ -57,6 +60,7 @@ class ProjectTreeItem is TreeItem
         else
             OpenTabBehavior openTabBehavior
 
+            
             MenuItem openMenuItem
             openMenuItem:SetName("Open")
             exampleContextMenu:Add(openMenuItem)
@@ -84,7 +88,7 @@ class ProjectTreeItem is TreeItem
             GameStateManager manager
             QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
             openTabBehavior:SetMainApplication(studio)
-            openTabBehavior:SetFile(file)
+            //openTabBehavior:SetFile(file)
         end
         return exampleContextMenu
     end
