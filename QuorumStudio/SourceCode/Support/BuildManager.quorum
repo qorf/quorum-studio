@@ -86,6 +86,10 @@ class BuildManager is DebuggerListener, ProcessListener
 
     CodeTextBox debuggerLineTextBox = undefined
 
+    action GetRecentCompilerResult(text project) returns CompilerResult
+        return recentCompilerResults:GetValue(project)
+    end
+
     on create
         debugger:Add(me)
     end
@@ -412,7 +416,7 @@ class BuildManager is DebuggerListener, ProcessListener
         File libraryLocation
         libraryLocation:SetPath(DEFAULT_LIBRARY_PATH)
         library:SetLocation(libraryLocation)
-        library:SetCachingLibraryOpcodes(true)
+        library:SetCachingLibraryOpcodes(false)
 
 
         File outputLocation
@@ -530,6 +534,15 @@ class BuildManager is DebuggerListener, ProcessListener
 
         text displayedTime = GetFormattedTime(start, finish)
         info:result = result
+        text value = project:GetLocation():GetAbsolutePath()
+        //this will need to be changed to update the editor once red lines exist.
+        CompilerErrorManager errors = result:compilerErrorManager
+        
+        if errors:IsCompilationErrorFree()
+            goodCompilerResults:Add(value, result)
+        end
+
+        recentCompilerResults:Add(value, result)
 
         CodeTextBox box = info:box
         if box not= undefined
@@ -537,19 +550,11 @@ class BuildManager is DebuggerListener, ProcessListener
             UpdateCodeEditorBehavior updater
             updater:SetBuildInformation(info)
             updater:SetBuildManager(me)
-            updater:SetCompilerResult(result)
+            updater:SetProjectKey(value)
+            //updater:SetCompilerResult(result)
             updater:SetPath(info:recompile)
             box:AddBehavior(updater)
         end
-
-        //this will need to be changed to update the editor once red lines exist.
-        CompilerErrorManager errors = result:compilerErrorManager
-        text value = project:GetLocation():GetAbsolutePath()
-        if errors:IsCompilationErrorFree()
-            goodCompilerResults:Add(value, result)
-        end
-
-        recentCompilerResults:Add(value, result)
     end
 
     action Bootstrap(BuildInformation info)

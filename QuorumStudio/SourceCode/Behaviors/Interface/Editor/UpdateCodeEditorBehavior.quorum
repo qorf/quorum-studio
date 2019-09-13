@@ -23,9 +23,10 @@ use Libraries.Development.Environment.Studio.Build.BuildInformation
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Language.Compile.Library
 use Libraries.Language.Compile.Hints.Hint
+use Libraries.Language.Compile.Translate.ClassOpcode
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
-    CompilerResult compilerResult = undefined
+    //CompilerResult compilerResult = undefined
     File path
     Color blue
     Color green
@@ -36,6 +37,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     Color breakpointColor
     BuildManager manager = undefined
     BuildInformation info = undefined
+    text projectKey = ""
     /*
         
     */
@@ -49,13 +51,13 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         purple = blue:Purple()
     end
 
-    action SetCompilerResult(CompilerResult result)
-        compilerResult = result
-    end
-
-    action GetCompilerResult returns CompilerResult
-        return compilerResult
-    end
+//    action SetCompilerResult(CompilerResult result)
+//       // compilerResult = result
+//    end
+//
+//    action GetCompilerResult returns CompilerResult
+//        return compilerResult
+//    end
 
     action SetBuildInformation(BuildInformation info)
         me:info = info
@@ -87,6 +89,8 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         boolean isStandardLibrary = false
         Library library = manager:GetLibrary()
         Lexer lexer = library:GetLexer(path:GetAbsolutePath())
+        CompilerResult compilerResult = manager:GetRecentCompilerResult(projectKey)
+        
         if lexer = undefined
             lexer = compilerResult:lexers:GetValue(path:GetAbsolutePath())
         else 
@@ -235,7 +239,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         else
             f = info:recompile
         end
-
+        info = undefined //kill it, because we have to
         
         SymbolTable table = undefined
         if isStandardLibrary
@@ -246,6 +250,12 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
 
         if table not= undefined
             Class clazz = table:GetClassInFile(f:GetAbsolutePath())
+
+            if clazz = undefined
+                ClassOpcode op = library:GetOpcode(f:GetAbsolutePath()) 
+                clazz = op:GetClass()
+            end
+
             if clazz not= undefined
                 box:SetClass(clazz)
                 box:SetStaticKey(clazz:GetStaticKey())
@@ -334,5 +344,17 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         end
 
         return false
+    end
+
+    action IsFinished returns boolean
+        return true
+    end
+
+    action GetProjectKey returns text
+        return projectKey
+    end
+
+    action SetProjectKey(text projectKey)
+        me:projectKey = projectKey
     end
 end
