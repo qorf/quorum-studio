@@ -473,6 +473,43 @@ class BuildManager is DebuggerListener, ProcessListener
 
     action FastBuild(BuildInformation info)
         QuorumProject project = info:project
+        File theFileCompiled = info:recompile
+
+        text path = theFileCompiled:GetAbsolutePath()
+        integer val = path:IndexOf("/Library/Standard/Libraries")
+
+        SymbolTable symbol = library:GetSymbolTable()
+        Class libraryClass = undefined
+        text libraryClassPath = undefined
+        //if this value exists, it's very likely this is in the standard library.
+        if val not= -1
+            Iterator<Class> iterator = symbol:GetClasses()
+            Class clazz = iterator:Next()
+            if clazz not= undefined
+                File file = clazz:GetFile()
+                text actualPath = file:GetAbsolutePath()
+                integer newVal = actualPath:IndexOf("/Library/Standard/Libraries")
+                if newVal not= -1
+                    text value2 = actualPath:GetSubtext(0, newVal)
+                    text value3 = path:GetSubtext(val)
+                    libraryClassPath = value2 + value3
+                    libraryClass = symbol:GetClassInFile(libraryClassPath)
+                end
+            end
+        end
+        
+        if libraryClass not= undefined
+            CodeTextBox box = info:box
+            if box not= undefined
+                box:SetBuildManager(me)
+                UpdateCodeEditorBehavior updater
+                updater:SetBuildManager(me)
+                File file
+                file:SetAbsolutePath(libraryClassPath)
+                updater:SetPath(file)
+                box:AddBehavior(updater)
+            end
+        end
         if project = undefined
             return now
         end
@@ -548,7 +585,7 @@ class BuildManager is DebuggerListener, ProcessListener
         if box not= undefined
             box:SetBuildManager(me)
             UpdateCodeEditorBehavior updater
-            updater:SetBuildInformation(info)
+            //updater:SetBuildInformation(info)
             updater:SetBuildManager(me)
             updater:SetProjectKey(value)
             //updater:SetCompilerResult(result)
