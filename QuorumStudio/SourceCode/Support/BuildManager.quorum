@@ -452,11 +452,16 @@ class BuildManager is DebuggerListener, ProcessListener
         end
 
         QuorumProject project = cast(QuorumProject, projectManager:IsProjectSourceFile(file))
+        Compiler compiler = undefined
+        text resultKey = undefined
         if project = undefined
-            return undefined
+            compiler = standardLibraryCompiler
+            resultKey = SINGLE_FILE_COMPILE_KEY
+        else
+            compiler = project:GetCompiler()
+            File location = project:GetLocation()
+            resultKey = location:GetAbsolutePath()
         end
-
-        File location = project:GetLocation()
 
         CodeTextBox box = tab:GetTextBox()
         text source = box:GetText()
@@ -466,12 +471,10 @@ class BuildManager is DebuggerListener, ProcessListener
         request:fileKey = file:GetAbsolutePath()
         request:source = source
         request:caretLocation = index
-        request:result = recentCompilerResults:GetValue(location:GetAbsolutePath())
-        request:lastCompiledResult = goodCompilerResults:GetValue(location:GetAbsolutePath())
-
-        Compiler compiler = project:GetCompiler()
+        request:result = recentCompilerResults:GetValue(resultKey)
+        request:lastCompiledResult = goodCompilerResults:GetValue(resultKey)
+ 
         CodeCompletionResult result = compiler:Request(request)
-
         return result
     end
 
