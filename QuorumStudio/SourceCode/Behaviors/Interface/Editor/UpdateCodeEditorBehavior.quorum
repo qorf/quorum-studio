@@ -38,6 +38,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     BuildManager manager = undefined
     //BuildInformation info = undefined
     text projectKey = ""
+    text helpPathComparison = undefined
     /*
         
     */
@@ -75,6 +76,14 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         me:manager = manager
     end
 
+    action GetHintPathComparison returns text
+        return helpPathComparison
+    end
+
+    action SetHintPathComparison(text value)
+        me:helpPathComparison = value
+    end
+
     action GetPath returns File
         return path
     end
@@ -88,14 +97,16 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         File file = box:GetFile()
         boolean isStandardLibrary = false
         Library library = manager:GetLibrary()
-        Lexer lexer = library:GetLexer(path:GetAbsolutePath())
         CompilerResult compilerResult = manager:GetRecentCompilerResult(projectKey)
+        Lexer lexer = compilerResult:lexers:GetValue(path:GetAbsolutePath())
+        //Lexer lexer = library:GetLexer(path:GetAbsolutePath())
         
-        if lexer = undefined
-            lexer = compilerResult:lexers:GetValue(path:GetAbsolutePath())
-        else 
-            isStandardLibrary = true
-        end
+        
+//        if lexer = undefined
+//            lexer = compilerResult:lexers:GetValue(path:GetAbsolutePath())
+//        else 
+//            isStandardLibrary = true
+//        end
 
         if lexer = undefined
             return now
@@ -147,6 +158,11 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                 return now
             end
 
+            text pathToCompare = file:GetAbsolutePath()
+            if helpPathComparison not= undefined
+                pathToCompare = helpPathComparison
+            end
+
             if not errors:IsCompilationErrorFree()
                 i = 0
                 Iterator<CompilerError> iterator = errors:GetIterator()
@@ -155,27 +171,29 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
 
                     //first check if this is a multi-line error. 
                     //If it is, highlight the entire line, but no more.
-                    integer line = error:GetLineNumber()
-                    integer lineEnd = error:GetLineNumberEnd()
-                    
-                    integer index = error:GetIndex()
-                    integer indexEnd = error:GetIndexEnd()
+                    if error:GetAbsolutePath() = pathToCompare
+                        integer line = error:GetLineNumber()
+                        integer lineEnd = error:GetLineNumberEnd()
 
-                    //change the index to just be the end of the line
-                    if line not= lineEnd
-                        text value = box:GetLine(line - 1)
-                        indexEnd = index + value:GetSize()
+                        integer index = error:GetIndex()
+                        integer indexEnd = error:GetIndexEnd()
+
+                        //change the index to just be the end of the line
+                        if line not= lineEnd
+                            text value = box:GetLine(line - 1)
+                            indexEnd = index + value:GetSize()
+                        end
+                        TextStyle style
+                        TextUnderline underline
+                        style:SetHighlight(underline)
+                        style:SetIndex(index)
+                        if indexEnd - index + 1 > 0
+                            style:SetSize(indexEnd - index + 1)
+                        else
+                            style:SetSize(1)
+                        end
+                        box:AddTextStyle("Errors" + i, style)
                     end
-                    TextStyle style
-                    TextUnderline underline
-                    style:SetHighlight(underline)
-                    style:SetIndex(index)
-                    if indexEnd - index + 1 > 0
-                        style:SetSize(indexEnd - index + 1)
-                    else
-                        style:SetSize(1)
-                    end
-                    box:AddTextStyle("Errors" + i, style)
                     i = i + 1
                 end
             end
@@ -186,7 +204,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                 repeat while hinterator:HasNext()
                     Hint hint = hinterator:Next()
                     text value = hint:GetAbsolutePath()
-                    if file not= undefined and value = file:GetAbsolutePath()
+                    if file not= undefined and value = pathToCompare
                         integer index = hint:GetIndex()
                         integer indexEnd = hint:GetIndexEnd()
                         TextStyle style

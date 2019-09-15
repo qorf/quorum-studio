@@ -85,6 +85,10 @@ class BuildManager is DebuggerListener, ProcessListener
     HashTable<text, CompilerResult> recentCompilerResults
 
     CodeTextBox debuggerLineTextBox = undefined
+    //this compiler can be used to store and clear out single file compiles
+    //it uses a magic key for compilation
+    text SINGLE_FILE_COMPILE_KEY = "Magic_ld93jfhf83p2nflk_Star_Wars_Rules_dh9238fdcsllsdoi9348fnkjsnd"
+    Compiler standardLibraryCompiler
 
     action GetRecentCompilerResult(text project) returns CompilerResult
         return recentCompilerResults:GetValue(project)
@@ -471,6 +475,83 @@ class BuildManager is DebuggerListener, ProcessListener
         return result
     end
 
+    private action ChangeErrorLocations(CompilerErrorManager errors, text key, text libraryKey)
+        errors:ChangeErrorKey(libraryKey, key)
+        errors:ChangeHintKey(libraryKey, key)
+    end
+
+    private action FastBuildStandardLibraryFile(BuildInformation info, text key, text libraryKey)
+        OutputTab out = info:outputTab
+        if info:clearOutput
+            out:Empty()
+        end
+
+        Array<File> sources
+        File libraryFile
+        libraryFile:SetAbsolutePath(libraryKey)
+        sources:Add(libraryFile)
+       
+        File fakeMain
+        fakeMain:SetPath("Resources/Files/Main.quorum")
+        sources:Add(fakeMain)
+
+        //get the project type
+        CompilerRequest request
+        request:SetOutputType(request:JAVA_BYTECODE)
+        
+        
+        File main = fakeMain
+        request:library = library
+        request:files = sources
+        request:isFastCompileRequest = true
+
+        //these are the core changes
+        CodeTextBox box = info:box
+        if box not= undefined
+            request:recompileValue = box:GetText()
+        else 
+            request:recompileValue = info:recompileValue
+        end
+        
+        request:recompile = libraryFile
+        
+        request:main = main
+        Compiler compiler = standardLibraryCompiler
+        info:request = request
+//
+//
+        DateTime time
+        number start = time:GetEpochTime()
+        CompilerResult result = compiler:Compile(request)
+        number finish = time:GetEpochTime()
+//
+        text displayedTime = GetFormattedTime(start, finish)
+        info:result = result
+        //text value = project:GetLocation():GetAbsolutePath()
+        //this will need to be changed to update the editor once red lines exist.
+        CompilerErrorManager errors = result:compilerErrorManager
+        ChangeErrorLocations(errors, key, libraryKey)
+
+        if errors:IsCompilationErrorFree()
+            goodCompilerResults:Add(SINGLE_FILE_COMPILE_KEY, result)
+        end
+//
+        recentCompilerResults:Add(SINGLE_FILE_COMPILE_KEY, result)
+//
+        
+        if box not= undefined
+            box:SetBuildManager(me)
+            UpdateCodeEditorBehavior updater
+            //updater:SetHintPathComparison(libraryKey)
+            //updater:SetBuildInformation(info)
+            updater:SetBuildManager(me)
+            updater:SetProjectKey(SINGLE_FILE_COMPILE_KEY)
+            //updater:SetCompilerResult(result)
+            updater:SetPath(libraryFile)
+            box:AddBehavior(updater)
+        end
+    end
+
     action FastBuild(BuildInformation info)
         QuorumProject project = info:project
         File theFileCompiled = info:recompile
@@ -498,18 +579,27 @@ class BuildManager is DebuggerListener, ProcessListener
             end
         end
         
+        //in this case, we have a class in the standard library
+        //run a compile, but tell the compiler what's up.
         if libraryClass not= undefined
-            CodeTextBox box = info:box
-            if box not= undefined
-                box:SetBuildManager(me)
-                UpdateCodeEditorBehavior updater
-                updater:SetBuildManager(me)
-                File file
-                file:SetAbsolutePath(libraryClassPath)
-                updater:SetPath(file)
-                box:AddBehavior(updater)
-            end
+            FastBuildStandardLibraryFile(info, path, libraryClassPath)
+            return now
+//            CodeTextBox box = info:box
+//            if box not= undefined
+//                box:SetBuildManager(me)
+//                UpdateCodeEditorBehavior updater
+//                updater:SetBuildManager(me)
+//                File file
+//                file:SetAbsolutePath(libraryClassPath)
+//                updater:SetPath(file)
+//                box:AddBehavior(updater)
+//            end
         end
+
+        //if the project is undefined, the user might be trying to 
+        //compile just a standalone Quorum file
+        //We don't support this in Quorum Studio 1.0, but this is where it would
+        //go if we did.
         if project = undefined
             return now
         end
