@@ -469,6 +469,14 @@ class BuildManager is DebuggerListener, ProcessListener
 
         CodeCompletionRequest request
         request:fileKey = file:GetAbsolutePath()
+
+        Class libraryClass = GetStandardLibraryPath(file)
+        text path = file:GetAbsolutePath()
+        text libraryClassPath = undefined
+        if libraryClass not= undefined
+            request:fileKey = libraryClass:GetFile():GetAbsolutePath()
+        end
+
         request:source = source
         request:caretLocation = index
         request:result = recentCompilerResults:GetValue(resultKey)
@@ -555,11 +563,8 @@ class BuildManager is DebuggerListener, ProcessListener
         end
     end
 
-    action FastBuild(BuildInformation info)
-        QuorumProject project = info:project
-        File theFileCompiled = info:recompile
-
-        text path = theFileCompiled:GetAbsolutePath()
+    private action GetStandardLibraryPath(File original) returns Class
+        text path = original:GetAbsolutePath()
         integer val = path:IndexOf("/Library/Standard/Libraries")
 
         SymbolTable symbol = library:GetSymbolTable()
@@ -578,25 +583,52 @@ class BuildManager is DebuggerListener, ProcessListener
                     text value3 = path:GetSubtext(val)
                     libraryClassPath = value2 + value3
                     libraryClass = symbol:GetClassInFile(libraryClassPath)
+                    if libraryClass not= undefined
+                        return libraryClass
+                    end
                 end
             end
         end
+        return undefined
+    end
+
+    action FastBuild(BuildInformation info)
+        QuorumProject project = info:project
+        File theFileCompiled = info:recompile
+        Class libraryClass = GetStandardLibraryPath(theFileCompiled)
+        text path = theFileCompiled:GetAbsolutePath()
+        text libraryClassPath = undefined
+        if libraryClass not= undefined
+            libraryClassPath = libraryClass:GetFile():GetAbsolutePath()
+        end
+//        text path = theFileCompiled:GetAbsolutePath()
+//        integer val = path:IndexOf("/Library/Standard/Libraries")
+//
+//        SymbolTable symbol = library:GetSymbolTable()
+//        Class libraryClass = undefined
+//        text libraryClassPath = undefined
+//        //if this value exists, it's very likely this is in the standard library.
+//        if val not= -1
+//            Iterator<Class> iterator = symbol:GetClasses()
+//            Class clazz = iterator:Next()
+//            if clazz not= undefined
+//                File file = clazz:GetFile()
+//                text actualPath = file:GetAbsolutePath()
+//                integer newVal = actualPath:IndexOf("/Library/Standard/Libraries")
+//                if newVal not= -1
+//                    text value2 = actualPath:GetSubtext(0, newVal)
+//                    text value3 = path:GetSubtext(val)
+//                    libraryClassPath = value2 + value3
+//                    libraryClass = symbol:GetClassInFile(libraryClassPath)
+//                end
+//            end
+//        end
         
         //in this case, we have a class in the standard library
         //run a compile, but tell the compiler what's up.
         if libraryClass not= undefined
             FastBuildStandardLibraryFile(info, path, libraryClassPath)
             return now
-//            CodeTextBox box = info:box
-//            if box not= undefined
-//                box:SetBuildManager(me)
-//                UpdateCodeEditorBehavior updater
-//                updater:SetBuildManager(me)
-//                File file
-//                file:SetAbsolutePath(libraryClassPath)
-//                updater:SetPath(file)
-//                box:AddBehavior(updater)
-//            end
         end
 
         //if the project is undefined, the user might be trying to 
