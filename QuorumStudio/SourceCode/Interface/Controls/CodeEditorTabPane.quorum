@@ -144,6 +144,15 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         then it returns the one already there.
     */
     action OpenNewTab(File file) returns EditorTab
+        EditorTab returnedTab = undefined
+        boolean value = openFiles:HasKey(file:GetAbsolutePath())
+        if value //it's already open
+            Tab tab = openTabs:GetValue(file:GetAbsolutePath())
+            //now we have to give that tab the focus
+            tab:Activate()
+            returnedTab = cast(EditorTab, tab)
+            return returnedTab
+        end
         text contents = ""
 
         check
@@ -214,31 +223,20 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         else
             icon = resources:GetQuorumFile()
         end 
-
-        EditorTab returnedTab = undefined
-        boolean value = openFiles:HasKey(file:GetAbsolutePath())
-        if value //it's already open
-            Tab tab = openTabs:GetValue(file:GetAbsolutePath())
-            //now we have to give that tab the focus
-            tab:Activate()
-            returnedTab = cast(EditorTab, tab)
-        else
-            EditorTab tab
-            tab:SetName(file:GetPath())
-            tab:SetRelatedItem(textBox)
-            tab:SetIcon(icon)
-            tab:DisplayCloseButton(true)
-            tab:SetFile(file)
-            number scale = GetInterfaceScale()
-            tab:SetInterfaceScale(scale)
-            tab:Setup()
-            openFiles:Add(file:GetAbsolutePath(), file)
-            openTabs:Add(file:GetAbsolutePath(), tab)
-            Add(cast(Tab,tab))
-            tab:Activate()
-            returnedTab = tab
-        end
-
+        EditorTab tab
+        tab:SetName(file:GetPath())
+        tab:SetRelatedItem(textBox)
+        tab:SetIcon(icon)
+        tab:DisplayCloseButton(true)
+        tab:SetFile(file)
+        number scale = GetInterfaceScale()
+        tab:SetInterfaceScale(scale)
+        tab:Setup()
+        openFiles:Add(file:GetAbsolutePath(), file)
+        openTabs:Add(file:GetAbsolutePath(), tab)
+        Add(cast(Tab,tab))
+        tab:Activate()
+        returnedTab = tab
         Resize()
         return returnedTab
     end
