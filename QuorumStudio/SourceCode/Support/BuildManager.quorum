@@ -529,16 +529,14 @@ class BuildManager is DebuggerListener, ProcessListener
         request:main = main
         Compiler compiler = standardLibraryCompiler
         info:request = request
-//
-//
+
         DateTime time
         number start = time:GetEpochTime()
         CompilerResult result = compiler:Compile(request)
         number finish = time:GetEpochTime()
-//
         text displayedTime = GetFormattedTime(start, finish)
         info:result = result
-        //text value = project:GetLocation():GetAbsolutePath()
+
         //this will need to be changed to update the editor once red lines exist.
         CompilerErrorManager errors = result:compilerErrorManager
         ChangeErrorLocations(errors, key, libraryKey)
@@ -546,9 +544,7 @@ class BuildManager is DebuggerListener, ProcessListener
         if errors:IsCompilationErrorFree()
             goodCompilerResults:Add(SINGLE_FILE_COMPILE_KEY, result)
         end
-//
         recentCompilerResults:Add(SINGLE_FILE_COMPILE_KEY, result)
-//
         
         if box not= undefined
             box:SetBuildManager(me)
@@ -601,28 +597,6 @@ class BuildManager is DebuggerListener, ProcessListener
         if libraryClass not= undefined
             libraryClassPath = libraryClass:GetFile():GetAbsolutePath()
         end
-//        text path = theFileCompiled:GetAbsolutePath()
-//        integer val = path:IndexOf("/Library/Standard/Libraries")
-//
-//        SymbolTable symbol = library:GetSymbolTable()
-//        Class libraryClass = undefined
-//        text libraryClassPath = undefined
-//        //if this value exists, it's very likely this is in the standard library.
-//        if val not= -1
-//            Iterator<Class> iterator = symbol:GetClasses()
-//            Class clazz = iterator:Next()
-//            if clazz not= undefined
-//                File file = clazz:GetFile()
-//                text actualPath = file:GetAbsolutePath()
-//                integer newVal = actualPath:IndexOf("/Library/Standard/Libraries")
-//                if newVal not= -1
-//                    text value2 = actualPath:GetSubtext(0, newVal)
-//                    text value3 = path:GetSubtext(val)
-//                    libraryClassPath = value2 + value3
-//                    libraryClass = symbol:GetClassInFile(libraryClassPath)
-//                end
-//            end
-//        end
         
         //in this case, we have a class in the standard library
         //run a compile, but tell the compiler what's up.
