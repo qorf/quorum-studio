@@ -560,10 +560,16 @@ class BuildManager is DebuggerListener, ProcessListener
         end
     end
 
+    private action GetIndexOf(text path) returns integer
+        integer val = path:IndexOf("/Library/Standard/Libraries")
+        if val = -1//try the other pathing
+            val = path:IndexOf("\Library\Standard\Libraries")
+        end
+        return val
+    end
     private action GetStandardLibraryPath(File original) returns Class
         text path = original:GetAbsolutePath()
-        integer val = path:IndexOf("/Library/Standard/Libraries")
-
+        integer val = GetIndexOf(path)
         SymbolTable symbol = library:GetSymbolTable()
         Class libraryClass = undefined
         text libraryClassPath = undefined
@@ -574,7 +580,7 @@ class BuildManager is DebuggerListener, ProcessListener
             if clazz not= undefined
                 File file = clazz:GetFile()
                 text actualPath = file:GetAbsolutePath()
-                integer newVal = actualPath:IndexOf("/Library/Standard/Libraries")
+                integer newVal = GetIndexOf(actualPath)
                 if newVal not= -1
                     text value2 = actualPath:GetSubtext(0, newVal)
                     text value3 = path:GetSubtext(val)
