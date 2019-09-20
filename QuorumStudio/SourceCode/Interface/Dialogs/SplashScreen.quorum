@@ -10,6 +10,7 @@ use Libraries.Interface.Views.LabelBoxView
 use Libraries.Game.Graphics.Color
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.ProgressBar
 
 class SplashScreen is Dialog
     boolean initialized = false
@@ -18,6 +19,7 @@ class SplashScreen is Dialog
     Icon logo
     Label studio
     Label loading
+    ProgressBar progress
     on create
         SetModal(true)
         SetTopBarVisible(false)
@@ -65,14 +67,18 @@ class SplashScreen is Dialog
         panel:SetBorderThickness(1)
         panel:Add(logo)
 
-
+        panel:Add(progress)
         panel:Add(studio)
         panel:Add(loading)
         panel:SetView2D(view)
         Add(panel)
+        progress:SetFocusable(true)
+        progress:Focus()
     end
 
     action Update(number seconds)
         logo:Rotate(seconds * 90)
+        value = seconds / 3.0
+        progress:SetValue(value)
     end
 end
