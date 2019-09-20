@@ -43,6 +43,7 @@ use Libraries.Interface.Controls.MenuItem
 use Libraries.Interface.Undo.TextBoxEdit
 use Libraries.Interface.Undo.TextBoxEditState
 use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Interface.Controls.IndentationStrategy
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -230,6 +231,60 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             return undefined
         end
         return tab:GetFile()
+    end
+
+    /*
+        This action overrides the default TextBox AddIndentation to account for 
+        selecting multiple lines. Assumes that the code text box will not move on tab
+    */
+    action AddIndentation
+        if GetSelection():IsEmpty()
+            parent:TextBox:AddIndentation()
+        else
+            //if there is a selection it wont replace the selection
+            //instead it will indent the selected lines 
+            AddMultipleIndentation()
+        end
+    end
+
+    private action AddMultipleIndentation
+        //Get information from the selection to form a new one after
+        integer index = GetSelection():GetFirstLine()
+        integer stop = GetSelection():GetLastLine()
+        integer newSelectStart = GetSelection():GetStartIndex()
+        integer newSelectEnd = GetSelection():GetEndIndex() + GetIndentationStrategy():GetSize() * (stop - index + 1)
+        integer newCaretPos = GetCaretPosition()
+
+        if newCaretPos not= GetIndexOfLine(GetCaretLine())
+            newCaretPos = newCaretPos + GetIndentationStrategy():GetSize()
+            newSelectStart = newSelectStart + GetIndentationStrategy():GetSize()
+        end
+
+        //save edit state for a proper undo
+        TextBoxEdit edit
+        edit:SetTextBox(me)
+        TextBoxEditState oldState = GetCurrentEditState()
+        edit:SetUndoState(oldState)
+
+        //empty the selection so the inserts can happen properly
+        EmptySelectionEvent(false)
+        repeat while index <= stop
+            parent:TextBox:AddIndentation(GetIndexOfLine(index))
+            index = index + 1
+        end
+        
+        //update the caret and update to new selection
+        SetCaretPosition(newCaretPos)
+        Select(newSelectStart , newSelectEnd, false)
+
+        //add new edit state
+        TextBoxEditState newState = GetCurrentEditState()
+        edit:SetRedoState(newState)
+        /*
+            Here we would make sure that there are no edit states created by the
+            individual indentations but we cant as of writing this
+        */
+        parent:TextBox:editManager:Add(edit)
     end
 
     action SmartNavigateUp
