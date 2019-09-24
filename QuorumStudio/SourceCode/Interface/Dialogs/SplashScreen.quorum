@@ -24,16 +24,15 @@ class SplashScreen is Dialog, CompilerListener
     Label loading
     ProgressBar progress
     Library library = undefined
+    number currentPercent = 0
 
     on create
         SetModal(true)
         SetTopBarVisible(false)
     end
 
-    number value = 0
-    number current = 0
     action UpdatePercentageComplete(number percent)
-        progress:SetValue(percent)
+        currentPercent = percent
     end
 
     action UpdateLabel(text label)
@@ -99,8 +98,7 @@ class SplashScreen is Dialog, CompilerListener
 
     action Update(number seconds)
         logo:Rotate(seconds * 90)
-        value = seconds / 3.0
-        progress:SetValue(value)
+        progress:SetValue(currentPercent)
     end
 
     action GetLibrary returns Library

@@ -17,6 +17,7 @@ use Libraries.Containers.Iterator
 use Libraries.Language.Compile.CodeCompletionItem
 use Libraries.Interface.Controls.PopupMenu
 use Libraries.Interface.Controls.MenuItem
+use Libraries.Game.Graphics.Color
 
 class CodeCompletionBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
@@ -50,6 +51,13 @@ class CodeCompletionBehavior is QuorumStudioBehavior
         end
 
         PopupMenu menu
+
+        Color firstColor
+        firstColor = firstColor:White()
+        Color secondColor = firstColor:CustomColor(0.9, 0.9, 0.9, 1)
+
+        boolean useFirstColor = true
+
         repeat while iterator:HasNext()
             CodeCompletionItem code = iterator:Next()
 
@@ -57,6 +65,15 @@ class CodeCompletionBehavior is QuorumStudioBehavior
                 MenuItem item
                 item:SetName(code:displayText)
                 item:SetShortcut(code:rightDisplayText)
+
+                if useFirstColor
+                    item:SetBackgroundColor(firstColor)
+                else
+                    item:SetBackgroundColor(secondColor)
+                end
+
+                useFirstColor = not useFirstColor
+
                 ExecuteCodeCompletionBehavior behave
                 behave:SetTextBox(box)
                 behave:SetCodeCompletionItem(code)
