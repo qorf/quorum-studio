@@ -25,7 +25,6 @@ class Options is ProjectListener
     constant text FRAME_LIMITED = "Frame Limit"
     constant text FRAME_RATE = "Frame Rate"
     constant text FRAMES_PER_SECOND_COUNTER = "Frames Per Second Counter"
-    constant text STARTUP_SOUNDS = "StartupSounds"
     constant text SCALE = "Scale"
     constant text WINDOW_WIDTH = "Width"
     constant text WINDOW_HEIGHT = "Height"
@@ -86,7 +85,6 @@ class Options is ProjectListener
     BuildManager manager = undefined
     boolean isFrameLimited = true
     number frameRate = 80
-    boolean startupSounds = true
     boolean fpsCounter = false
     number scale = 2
     integer width = 2500
@@ -131,10 +129,6 @@ class Options is ProjectListener
 
     action GetFrameRateLimit returns number
         return frameRate
-    end
-
-    action IsStartupSound returns boolean
-        return startupSounds
     end
 
     action SetMainApplication(QuorumStudio studio)
@@ -236,7 +230,6 @@ class Options is ProjectListener
         notation:Add(PROJECTS_LOCATION, projectsLocation:GetAbsolutePath())
         notation:Add(FRAME_LIMITED, IsFrameLimited())
         notation:Add(FRAME_RATE, frameRate)
-        notation:Add(STARTUP_SOUNDS, startupSounds)
         notation:Add(FRAMES_PER_SECOND_COUNTER, fpsCounter)
         notation:Add(SCALE, scale)
         notation:Add(WINDOW_WIDTH, width)
@@ -388,11 +381,6 @@ class Options is ProjectListener
                 else
                     me:height = value
                 end
-            end
-        elseif key = STARTUP_SOUNDS
-            if object:IsBoolean()
-                boolean value = object:GetBoolean()
-                me:startupSounds = value
             end
         elseif key = BREAKPOINTS
             if object:IsEmpty()
