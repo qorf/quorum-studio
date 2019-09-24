@@ -30,12 +30,22 @@ class SplashScreen is Dialog, CompilerListener
         SetTopBarVisible(false)
     end
 
+    number value = 0
+    number current = 0
     action UpdatePercentageComplete(number percent)
-        progress:SetValue(percent)
+        if value - current > 5
+            progress:SetValue(percent)
+            current = percent
+            value = 0
+            output percent
+        end
+
+        value = percent
     end
 
     action UpdateLabel(text label)
         loading:SetText(label)
+        output label
     end
 
     action Initialize
