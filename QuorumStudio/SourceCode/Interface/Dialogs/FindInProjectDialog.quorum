@@ -1,0 +1,216 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Controls.Button
+use Libraries.Game.Graphics.Gradient
+
+
+class FindInProjectDialog is Dialog
+    boolean initialized = false
+    Label folderField
+
+    on create
+        
+    end
+
+    action IsInitialized returns boolean
+        return initialized
+    end
+
+    action OnShow()
+
+    end
+
+    action Initialize
+        Color color
+        initialized = true
+
+        SetName("Find In Project")
+        SetPixelWidth(400)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+
+        LabelBoxView view
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL - view:TOP)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+
+        Control panel
+        FlowLayout layout
+        panel:SetLayout(layout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+        panel:Add(CreateFindInProjectControl())
+        panel:SetView2D(view)
+        Add(panel)
+    end
+
+    action CreateFindInProjectControl returns Control
+        Color color
+        Control panel
+        FlowLayout layout
+        panel:SetLayout(layout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+
+        Control folderContainer
+        FlowLayout folderLayout
+        folderContainer:SetLayout(folderLayout)
+        folderContainer:SetPercentageWidth(1.0)
+        folderContainer:SetVerticalLayoutMode(folderContainer:FIT_CONTENTS)
+        folderContainer:SetLeftPadding(6)
+        folderContainer:SetRightPadding(6)
+        folderContainer:SetBottomPadding(10)
+        folderContainer:SetTopPadding(10)
+        
+        Control labelsContainer
+        FlowLayout labelsLayout
+        labelsContainer:SetLayout(labelsLayout)
+        labelsContainer:SetPercentageWidth(0.24)
+        labelsContainer:SetVerticalLayoutMode(labelsContainer:FIT_CONTENTS)
+        labelsContainer:SetLeftPadding(6)
+        labelsContainer:SetRightPadding(6)
+        labelsContainer:SetTopPadding(10)
+        labelsContainer:SetBottomPadding(10)
+
+        Label folderLabel
+        folderLabel:SetText("Folder Name:")
+        folderLabel:SetFontSize(14)
+        folderLabel:SetPercentageWidth(1.0)
+        labelsContainer:Add(folderLabel)
+
+        Label queryLabel
+        queryLabel:SetText("Contains Text:")
+        queryLabel:SetTopPadding(20)
+        queryLabel:SetFontSize(14)
+        queryLabel:SetPercentageWidth(1.0)
+        labelsContainer:Add(queryLabel)  
+        panel:Add(labelsContainer)
+
+        Control fieldsContainer
+        FlowLayout fieldsLayout
+        fieldsContainer:SetLayout(fieldsLayout)
+        fieldsContainer:SetPercentageWidth(0.73)
+        fieldsContainer:SetVerticalLayoutMode(fieldsContainer:FIT_CONTENTS)
+        fieldsContainer:SetTopPadding(10)
+        fieldsContainer:SetRightPadding(6)
+        fieldsContainer:SetBottomPadding(10)
+        
+        //Eventually switch this to a textfield with a flag set to disable modifications, when this feature is available
+        //Label folderField
+        folderField:SetText("Folder Name")
+        folderField:SetPercentageWidth(1.0)
+        folderField:Focus()
+        fieldsContainer:Add(folderField)
+
+        Control queryContainer
+        FlowLayout queryLayout
+        queryContainer:SetLayout(queryLayout)
+        queryContainer:SetPercentageWidth(1.0)
+        queryContainer:SetVerticalLayoutMode(queryContainer:FIT_CONTENTS)
+        queryContainer:SetTopPadding(10)
+        queryContainer:SetLeftPadding(6)
+        queryContainer:SetRightPadding(6)
+        queryContainer:SetBottomPadding(10)
+        
+        TextField queryField
+        queryField:SetName("Contains Text")
+        queryField:SetTopPadding(20)
+        queryField:SetPercentageWidth(1.0)
+        fieldsContainer:Add(queryField)
+        panel:Add(fieldsContainer)
+
+        Control optionsContainer
+        FlowLayout optionsLayout
+        optionsContainer:SetLayout(optionsLayout)
+        optionsContainer:SetPercentageWidth(1.0)
+        optionsContainer:SetVerticalLayoutMode(optionsContainer:FIT_CONTENTS)
+        optionsContainer:SetTopPadding(20)
+        optionsContainer:SetLeftPadding(6)
+        optionsContainer:SetRightPadding(6)
+        optionsContainer:SetBottomPadding(10)
+
+        Checkbox matchCaseCheckbox
+        matchCaseCheckbox:SetName("Match Case")
+        matchCaseCheckbox:SetFontSize(14)
+        matchCaseCheckbox:SetLeftPadding(20)
+        matchCaseCheckbox:SetRightPadding(40)
+        matchCaseCheckbox:SetPercentageWidth(0.25)
+        optionsContainer:Add(matchCaseCheckbox)
+
+        Checkbox wholeWordCheckbox
+        wholeWordCheckbox:SetName("Whole Word")
+        wholeWordCheckbox:SetFontSize(14)
+        wholeWordCheckbox:SetPercentageWidth(0.25)
+        optionsContainer:Add(wholeWordCheckbox)
+        panel:Add(optionsContainer)
+
+        Control closingContainer
+        FlowLayout closingLayout
+        closingContainer:SetLayout(closingLayout)
+        closingContainer:SetPercentageWidth(1.0)
+        closingContainer:SetVerticalLayoutMode(closingContainer:FIT_CONTENTS)
+        closingContainer:SetTopPadding(20)
+        closingContainer:SetRightPadding(6)
+        closingContainer:SetBottomPadding(20)
+
+        Control closingPadding
+        closingPadding:SetPercentageWidth(0.7) 
+        closingPadding:SetPixelHeight(1)
+        closingContainer:Add(closingPadding)
+
+        Button cancelButton
+        cancelButton:SetName("Cancel")
+        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancelButton:SetPercentageWidth(0.14)
+        closingContainer:Add(cancelButton)
+
+        Gradient findGradient
+        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
+        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
+        findGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)       
+
+        Button findButton
+        findButton:SetName("Find")
+        findButton:SetHorizontalLayoutMode(findButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        findButton:SetBackgroundColor(findGradient)
+        findButton:SetPercentageWidth(0.13)
+        findButton:SetLeftPadding(10)
+        closingContainer:Add(findButton)
+        panel:Add(closingContainer)
+
+        folderField:SetNextFocus(queryField)
+        queryField:SetNextFocus(matchCaseCheckbox)
+        matchCaseCheckbox:SetNextFocus(wholeWordCheckbox)
+        wholeWordCheckbox:SetNextFocus(cancelButton)
+        cancelButton:SetNextFocus(findButton)
+        findButton:SetNextFocus(folderField)
+
+        folderField:SetPreviousFocus(findButton)
+        queryField:SetPreviousFocus(folderField)
+        matchCaseCheckbox:SetPreviousFocus(queryField)
+        wholeWordCheckbox:SetPreviousFocus(matchCaseCheckbox)
+        cancelButton:SetPreviousFocus(wholeWordCheckbox)
+        findButton:SetPreviousFocus(cancelButton) 
+        return panel
+    end
+
+    action SetFolderName(text name)
+        folderField:SetText(name)
+    end
+
+    action Show
+        parent:Dialog:Show()
+    end
+
+    action OnHide()
+
+    end
+end
