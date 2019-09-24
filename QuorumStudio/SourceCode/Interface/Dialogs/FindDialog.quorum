@@ -77,8 +77,10 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         matchCase:SetToggleState(textBox:GetIsMatchCase())
         if (textBox:HasSelection())
             findField:SetText(textBox:GetFindSelection())
+            findField:SetCaretPosition(findField:GetSize())
         else
             findField:SetText(textBox:GetFindWord())
+            findField:SetCaretPosition(findField:GetSize())
         end
         textBox:SetIsDialogOpen(true)
         if findField:GetText() not= ""
@@ -100,7 +102,6 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
     end
 
     action Initialize
-
         initialized = true
 
         SetName("Find")
@@ -326,6 +327,10 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
 
     action GetMatchesLabel returns Label
         return matches
+    end
+
+    action ResetFindFocus
+        findField:Focus()
     end
 
     //Updates the matches label on the Dialog to reflect how many instances of 

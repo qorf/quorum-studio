@@ -86,11 +86,14 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
         matchCase:SetToggleState(textBox:GetIsMatchCase())
         if(textBox:HasSelection())
             findField:SetText(textBox:GetFindSelection())
+            findField:SetCaretPosition(findField:GetSize())
             textBox:SetReplaceWord("")
         else    
             findField:SetText(textBox:GetFindWord())
+            findField:SetCaretPosition(findField:GetSize())
         end
         replaceField:SetText(textBox:GetReplaceWord())
+        replaceField:SetCaretPosition(replaceField:GetSize())
         textBox:SetIsDialogOpen(true)
         if findField:GetText() not= ""
             findButton:Activate()
@@ -373,6 +376,9 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
         return replaceField:GetText()
     end
 
+    action ResetFindFocus
+        findField:Focus()
+    end
 
     //called after replace and replaceAll to update the textValue to include the textBox modifications
     //repopulates the highlighting for any remaining instances that were not replaced by calling FindText (not currently working)
