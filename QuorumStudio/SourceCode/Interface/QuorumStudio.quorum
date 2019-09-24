@@ -84,12 +84,6 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     BuildLoop buildLoop
     SplashScreen splashScreen = undefined
     boolean splashScreenHide = false
-    boolean starting = true
-    boolean clicking = false
-    boolean doneing = false
-    Audio startup
-    Audio click
-    Audio done
 
     action Start
         DesktopConfiguration config = GetDesktopConfiguration()
@@ -209,10 +203,6 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         resources:SetOptions(options)
 
         AddResizeListener(me)
-        startup:Load("Resources/Audio/Startup.ogg")
-        click:Load("Resources/Audio/Click.ogg")
-        done:Load("Resources/Audio/Done.ogg")
-
         FakeFocusManager fake
         SetFocusManager(fake)
         SetInterfaceScale(2)
@@ -505,47 +495,20 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     number timer = 0.0
     action Update(number seconds)
-        if starting and startup:IsLoaded()// and timer > 0.5
-            //startup:Play()
-            starting = false
-            clicking = true
-            timer = 0
-        end
-
-        if clicking
-            timer = timer + seconds
-        end
-
-        if clicking and click:IsLoaded() and timer > 1.0
-            if options:IsStartupSound()
-                click:Play()
-            end
-            timer = 0.0
-        end
-
-        
         if splashScreenHide 
             splashScreen:Hide()
-            SetFocus(projectTree)
             splashScreenHide = false
-            clicking = false
-            starting = false
-            doneing = true
             //The projects have to loaded to correctly open all the subtrees
             //so this is happening here
             projectTree:LoadExpandState(options:GetTreeState())
             projectTree:LoadSelection(options:GetTreeSelect())
-        end
-
-        if doneing and done:IsLoaded()
-            //done:Play()
-            doneing = false
+            SetFocus(projectTree)
         end
 
         if options:IsFrameLimited()
             number cap = options:GetFrameRateLimit()
             number mil = 1000.0 / cap
-            if seconds < mil and not starting and not clicking and not doneing
+            if seconds < mil
                 number value = (mil - seconds)
                 integer sleep = cast(integer, value)
                 if sleep > 0
