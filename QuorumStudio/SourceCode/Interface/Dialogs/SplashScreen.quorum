@@ -11,8 +11,11 @@ use Libraries.Game.Graphics.Color
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Controls.ProgressBar
+use Libraries.Language.Compile.Library
 
-class SplashScreen is Dialog
+use Libraries.Language.Compile.CompilerListener
+
+class SplashScreen is Dialog, CompilerListener
     boolean initialized = false
     //Label loading = undefined
     //GameStateManager manager
@@ -20,9 +23,19 @@ class SplashScreen is Dialog
     Label studio
     Label loading
     ProgressBar progress
+    Library library = undefined
+
     on create
         SetModal(true)
         SetTopBarVisible(false)
+    end
+
+    action UpdatePercentageComplete(number percent)
+        progress:SetValue(percent)
+    end
+
+    action UpdateLabel(text label)
+        loading:SetText(label)
     end
 
     action Initialize
@@ -86,5 +99,14 @@ class SplashScreen is Dialog
         logo:Rotate(seconds * 90)
         value = seconds / 3.0
         progress:SetValue(value)
+    end
+
+    action GetLibrary returns Library
+        return library
+    end
+
+    action SetLibrary(Library library)
+        me:library = library
+        library:AddListener(me)
     end
 end
