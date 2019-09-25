@@ -104,8 +104,16 @@ class NewFileDialog is Dialog
     action SetProperties(QuorumProject project, TreeSelection selection)
         me:project = project
         projectName = project:GetName()
-        locationNameField:SetText(selection:GetDisplayName())  
-    end 
+        text displayText = ""
+        if selection:GetPath():GetSize() = 1
+            displayText = selection:GetDisplayName()
+        else
+            File location = project:GetLocation()
+            ProjectTreeItem selected = cast(ProjectTreeItem, selection:GetTreeItem())
+            displayText = selected:GetFile():GetAbsolutePath():Replace(location:GetAbsolutePath() + "/", "")
+        end
+        locationNameField:SetText(displayText)
+    end
 
     action IsInitialized returns boolean
         return initialized
@@ -262,6 +270,9 @@ class NewFileDialog is Dialog
         end
 
         File mom = file:GetParentDirectory()
+        if mom:IsFile()
+            return now
+        end
         if not mom:Exists()
             mom:CreateDirectories()
         end
