@@ -44,6 +44,8 @@ use Libraries.Interface.Undo.TextBoxEdit
 use Libraries.Interface.Undo.TextBoxEditState
 use Libraries.Interface.Events.TextChangeEvent
 use Libraries.Interface.Controls.IndentationStrategy
+use Libraries.Language.Compile.Symbol.Variable
+use Libraries.Language.Compile.Location
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -213,6 +215,18 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     end
 
     action NavigateToDeclaration
+        if clazz = undefined
+            return now
+        end
+
+        Iterator<Variable> iterator = clazz:GetVariables()
+        repeat while iterator:HasNext()
+            Variable variable = iterator:Next()
+            Iterator<Location> locations = variable:GetUseLocations()
+            repeat while locations:HasNext()        
+                Location value = locations:Next()
+            end             
+        end
         output "We did it!"
     end
 

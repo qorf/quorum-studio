@@ -45,7 +45,8 @@ class CodeTextBoxPopupMenu is PopupMenu
         if box:HasHints()
             MenuItem hints
             hints:SetName("More Hints")
-            
+            integer numberOfHintsOnTop = 4
+
             i = 0
             Iterator<Hint> iterator = box:GetHintsAtLine(box:GetCaretLine())
             repeat while iterator:HasNext()
@@ -57,7 +58,7 @@ class CodeTextBoxPopupMenu is PopupMenu
                 behave:SetCodeTextBox(box)
 
                 hintItem:SetBehavior(behave)
-                if i = 0
+                if i <= numberOfHintsOnTop
                     Add(hintItem)
                 else
                     hints:Add(hintItem)
@@ -66,7 +67,7 @@ class CodeTextBoxPopupMenu is PopupMenu
                 i = i + 1
             end
 
-            if i > 1
+            if i > numberOfHintsOnTop
                 Add(hints)
             end
         end
