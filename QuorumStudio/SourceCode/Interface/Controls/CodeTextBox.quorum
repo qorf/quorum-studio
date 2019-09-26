@@ -714,6 +714,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     action FindText(text find, boolean wholeWord, boolean matchCase) 
         findWord = find
         text textValue = GetText() //+ bufferSpace
+        //if there is a current selection then it needs to be removed
         if findSelection >= 0
             RemoveCurrentSelection()
         end
@@ -755,7 +756,9 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
                 findIsWholeWord = false
             end
 
-            UpdateSelections()
+            if dialogIsOpen
+                UpdateSelections()
+            end
             SetSelection()
         end            
     end
@@ -777,7 +780,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             end
             findSelection = (arrayIndex - 1)
             end
-            UpdateCurrentSelection(-1)            
+            UpdateCurrentSelection(-1, false)            
         end
     end
 
@@ -915,6 +918,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     TextChange events */
     private action UpdateSelections()
         ColoredHighlight highlight
+        highlight:SetVisibleWhileSelected(true)
         Color color
         highlight:SetColor(color:Orange())
         integer startIndex = 0
@@ -964,7 +968,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         if findIndices:GetSize() not= 0
             integer previousSelection = findSelection
             findSelection = findSelection + 1
-            UpdateCurrentSelection(previousSelection)
+            UpdateCurrentSelection(previousSelection, true)
         end
     end
 
@@ -976,7 +980,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         if findIndices:GetSize() not= 0
             integer previousSelection = findSelection
             findSelection = findSelection - 1
-            UpdateCurrentSelection(previousSelection)
+            UpdateCurrentSelection(previousSelection, true)
         end
     end
     
@@ -984,7 +988,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     update the current selection in the array of indices. Highlights the line 
     of the current selection in light blue (currently not working as expected), 
     highlights the current selection in a darker shade of blue, */
-    private action UpdateCurrentSelection(integer previousSelection)
+    private action UpdateCurrentSelection(integer previousSelection, boolean moveCaret)
         if findSelection < 0
             findSelection = (findIndices:GetSize() - 1)
         end
@@ -992,19 +996,25 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             findSelection = 0
         end
 
+        
         integer wordStartIndex =  findIndices:Get(findSelection):GetFirstValue()
         integer wordEndIndex = findIndices:Get(findSelection):GetSecondValue()        
 
         integer lineStartIndex = GetLineIndexOfCharacter(wordStartIndex)
-        GoToLine(lineStartIndex)
+        //only go to the line when using next and previous functionality
+        if moveCaret
+            GoToLine(lineStartIndex)
+        end
 
         ColoredHighlight highlight
         ColoredHighlight selectionHighlight
+        highlight:SetVisibleWhileSelected(true)
+        selectionHighlight:SetVisibleWhileSelected(true)
         TextStyle textStyle
         TextStyle word
         Color color
         Color blue
-        blue:SetColor(0, 0, 0.4, 0.2)
+        blue:SetColor(0, 0, 0.5, 0.2)
         highlight:SetColor(color:Orange())
         selectionHighlight:SetColor(blue)
 
@@ -1043,7 +1053,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     action DialogClosed
         RemoveFindReplaceStyles()
         if findIndices:GetSize() not= 0
-            UpdateCurrentSelection(-1)
+            UpdateCurrentSelection(-1, false)
         end
     end
 

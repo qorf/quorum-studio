@@ -5,6 +5,10 @@ use Libraries.Development.Environment.Studio.Interface.FindInProjectDialog
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Interface.Selections.TreeSelection
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 
 class OpenFindInProjectDialogBehavior is QuorumStudioBehavior
     FindInProjectDialog dialog = undefined
@@ -13,7 +17,23 @@ class OpenFindInProjectDialogBehavior is QuorumStudioBehavior
         QuorumStudio studio = GetMainApplication()
         ProjectTree tree = studio:GetProjectTree()
         TreeSelection selection = tree:GetSelection()
-        //Get Tree Item to get the name of the folder and path is needed as well.
+        text path = ""
+        if not selection:IsEmpty()
+            Array<TreeItem> items = selection:GetPath()
+            integer size = items:GetSize()
+            ProjectTreeItem subFolder = cast(ProjectTreeItem, items:Get(size - 1))
+            ProjectTreeItem value = cast(ProjectTreeItem, items:Get(0))
+            QuorumProject project = value:GetProject()
+            integer i = 0
+            repeat while i < size
+                TreeItem currentItem = items:Get(i)
+                path = path + currentItem:GetName() + "/"
+                i = i + 1
+            end  
+        end
+        TreeItem treeItem = selection:GetTreeItem()
+        
+        //iterate from value down to subFolder and append each folder name to the path name to display in the dialog folder name
 
             if dialog = undefined
                 FindInProjectDialog findDialog
@@ -21,7 +41,8 @@ class OpenFindInProjectDialogBehavior is QuorumStudioBehavior
                 dialog:Initialize()
             end
            
-            //dialog:SetFolderName(selection)
+            //sets the path for the folder we are searching through in the dialog
+            dialog:SetFolderName(path)
             dialog:Show()
     end
 end

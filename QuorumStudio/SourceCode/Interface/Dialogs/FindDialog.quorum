@@ -33,6 +33,8 @@ use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Controls.TextBox
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Interface.Undo.TextBoxEditState
+use Libraries.Interface.Undo.TextBoxEdit
 
 class FindDialog is Dialog, TextChangeListener, SelectionListener
     boolean initialized = false
@@ -270,6 +272,14 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
     action SetTextBox(CodeTextBox code)
         textBox = code
         textBox:AddTextChangeListener(me)
+        //This is the original textbox state, need to use the textChangeListener to determine if there is a textChange which will 
+        //invoke a new textBox state which when typing in the text box pauses will be used to "Find" the query again using the new caret position
+        //where the edit takes place
+        TextBoxEdit edit
+        edit:SetTextBox(textBox)
+        TextBoxEditState state = textBox:GetCurrentEditState()
+        edit:SetUndoState(state)
+
         findBehavior:SetTextBox(textBox)
         textBox:SetDialog(me)
         wholeWordMatchCaseBehavior:SetTextBox(textBox)
@@ -380,11 +390,15 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         end
 
         if textBox not= undefined
-            if event:GetControl():Equals(cast(Object, textBox))                
+            if event:GetControl():Equals(cast(Object, textBox)) 
                 if textChangeListenerOn
+                    //determine if findWord is in the added or removed text before updating the textbox.
+                    //integer startIndex = event:GetIndex() //index where the text change event is occurring, can be used to check this changed text area in the textbox before updating the textbox
                     if event:GetEventType() = event:ADDED
+                        //text addedText = event:GetAddedText()
                         UpdateTextBox()
                     elseif event:GetEventType() = event:DELETED
+                        //text deletedText = event:GetDeletedText()
                         UpdateTextBox()
                     elseif event:GetEventType() = event:MODIFIED   
                         UpdateTextBox()
