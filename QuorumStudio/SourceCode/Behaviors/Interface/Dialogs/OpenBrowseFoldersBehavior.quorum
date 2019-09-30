@@ -42,13 +42,17 @@ class OpenBrowseFoldersBehavior is QuorumStudioBehavior
         QuorumProject project = dialog:GetProject()
         ProjectView projectView = project:GetProjectView()
         TreeItem treeItem = projectView:GetLogicalTree()
-        
-        File location = project:GetLocation()
-        
+
+        File location = project:GetLocation()        
         File folder = chooser:ChooseFolderDialog(location)
 
-        if folder not= undefined
-            me:folderName = folder:GetFileName()
+        //only update the folder name if the path is within the path of the project
+        if folder not= undefined and folder:GetAbsolutePath():Contains(location:GetAbsolutePath())
+            if folder:GetAbsolutePath():Equals(location:GetAbsolutePath())
+                me:folderName = project:GetName()
+            else
+                me:folderName = folder:GetAbsolutePath():Replace(location:GetAbsolutePath() + "/", "")
+            end
             dialog:UpdateFolderName(folderName)
         end
 
