@@ -1,0 +1,33 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Containers.Array
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.Interface.FindInProjectDialog
+
+class FindInProjectBehavior is QuorumStudioBehavior
+    text find = ""
+    Array<File> files
+    FindInProjectDialog dialog = undefined
+
+    action SetDialog(FindInProjectDialog dialog)
+        me:dialog = dialog
+    end
+
+    action Run(BehaviorEvent event)
+        if dialog not= undefined
+            find = dialog:GetQuery()
+            files = dialog:GetSearchFiles()
+            integer i = 0
+            repeat while i < files:GetSize()
+                output files:Get(i):GetFileName()
+                i = i + 1
+            end
+
+            dialog:Hide()
+        end
+
+        
+    end
+end
