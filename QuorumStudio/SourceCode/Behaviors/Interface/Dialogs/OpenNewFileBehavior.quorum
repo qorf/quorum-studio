@@ -20,12 +20,19 @@ class OpenNewFileBehavior is QuorumStudioBehavior
         QuorumStudio studio = GetMainApplication()
         ProjectTree tree = studio:GetProjectTree()
         TreeSelection selection = tree:GetSelection()
+        text path = ""
         if not selection:IsEmpty()
             Array<TreeItem> items = selection:GetPath()
             integer size = items:GetSize()
             ProjectTreeItem subFolder = cast(ProjectTreeItem, items:Get(size - 1))
             ProjectTreeItem value = cast(ProjectTreeItem, items:Get(0))
             QuorumProject project = value:GetProject()
+            integer i = 1
+            repeat while i < size
+                TreeItem currentItem = items:Get(i)
+                path = path + currentItem:GetName() + "/"
+                i = i + 1
+            end
 
             if dialog = undefined
                 NewFileDialog properties
@@ -33,7 +40,7 @@ class OpenNewFileBehavior is QuorumStudioBehavior
                 dialog:Initialize()
             end
             
-            dialog:SetProperties(project, selection)
+            dialog:SetProperties(project, path)
             dialog:Show()
         end
     end

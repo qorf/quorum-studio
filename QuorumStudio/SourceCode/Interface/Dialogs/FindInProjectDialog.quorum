@@ -9,14 +9,29 @@ use Libraries.Interface.Controls.TextField
 use Libraries.Interface.Controls.Checkbox
 use Libraries.Interface.Controls.Button
 use Libraries.Game.Graphics.Gradient
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Controls.Tree
+use Libraries.Containers.Iterator
+use Libraries.System.File
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.FindInProjectBehavior
 
 
 class FindInProjectDialog is Dialog
     boolean initialized = false
     Label folderField
+    TextField queryField
+    Array<File> searchFiles
+
+    DialogCancelBehavior cancelBehavior
+    FindInProjectBehavior findBehavior
 
     on create
-        
+        searchFiles:Empty()
+        findBehavior:SetDialog(me)
     end
 
     action IsInitialized returns boolean
@@ -120,7 +135,6 @@ class FindInProjectDialog is Dialog
         queryContainer:SetRightPadding(6)
         queryContainer:SetBottomPadding(10)
         
-        TextField queryField
         queryField:SetName("Contains Text")
         queryField:SetTopPadding(20)
         queryField:SetPercentageWidth(1.0)
@@ -170,6 +184,7 @@ class FindInProjectDialog is Dialog
         cancelButton:SetName("Cancel")
         cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
         cancelButton:SetPercentageWidth(0.14)
+        cancelButton:SetBehavior(cancelBehavior)
         closingContainer:Add(cancelButton)
 
         Gradient findGradient
@@ -183,6 +198,7 @@ class FindInProjectDialog is Dialog
         findButton:SetBackgroundColor(findGradient)
         findButton:SetPercentageWidth(0.13)
         findButton:SetLeftPadding(10)
+        findButton:SetBehavior(findBehavior)
         closingContainer:Add(findButton)
         panel:Add(closingContainer)
 
@@ -202,6 +218,38 @@ class FindInProjectDialog is Dialog
         return panel
     end
 
+    action GetQuery returns text
+        return queryField:GetText()
+    end
+
+    action GetSearchFiles returns Array<File>
+        return searchFiles
+    end
+
+    action SetRootSelection(TreeSelection selection)
+        TreeItem item = selection:GetTreeItem()     //gets the selected TreeItem
+        ProjectTreeItem treeItem = cast(ProjectTreeItem, item)
+        File file = treeItem:GetFile()
+        SetSearchFiles(file)
+    end
+
+    /* recursive function to add all of the files to an array that are within the 
+    currently selected folder and/or any of its subfolders */
+    action SetSearchFiles(File file)
+        if file:IsDirectory()
+            Array<File> files = file:GetDirectoryListing()
+            Iterator<File> it = files:GetIterator()
+            
+            repeat while it:HasNext()
+                File f = it:Next()
+                SetSearchFiles(f)
+            end
+        end
+        if file:GetFileExtension() = "quorum"
+            searchFiles:Add(file)
+        end
+    end
+
     action SetFolderName(text name)
         folderField:SetText(name)
     end
@@ -211,6 +259,6 @@ class FindInProjectDialog is Dialog
     end
 
     action OnHide()
-
+        searchFiles:Empty()
     end
 end
