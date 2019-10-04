@@ -5,29 +5,170 @@ use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Containers.Array
 use Libraries.System.File
 use Libraries.Development.Environment.Studio.Interface.FindInProjectDialog
+use Libraries.Containers.Support.Pair
+use Libraries.Containers.HashTable
+use Libraries.Containers.Iterator
 
 class FindInProjectBehavior is QuorumStudioBehavior
     text find = ""
     Array<File> files
+    HashTable<File, Array<Pair<integer>>> fileIndices
     FindInProjectDialog dialog = undefined
+    boolean isMatchCase = false
+    boolean isWholeWord = false
+    integer totalFinds = 0
+    integer totalFiles = 0
 
     action SetDialog(FindInProjectDialog dialog)
         me:dialog = dialog
     end
 
     action Run(BehaviorEvent event)
+        ResetQuery()
+
         if dialog not= undefined
             find = dialog:GetQuery()
             files = dialog:GetSearchFiles()
-            integer i = 0
-            repeat while i < files:GetSize()
-                output files:Get(i):GetFileName()
-                i = i + 1
-            end
+            isMatchCase = dialog:GetIsMatchCase()
+            isWholeWord = dialog:GetIsWholeWord()
+            /* If there is a find word and files for searching, then go through each file in the array of 
+            search files and call FindQuery() on each file. This will return an array of indices for each
+            instance of find in the file. If there are no instances of find in the file then we skip the
+            file and move on to the next one. Otherwise we increment the count of files by one, we increment 
+            the count of totalFinds by the size of the array of indices returned and we add the File and its 
+            associated array of indices to the hash table fileIndices.*/
+            if ((find not= "") and (not files:IsEmpty()))   
+                integer i = 0
+                repeat while i < files:GetSize()
+                    Array<Pair<integer>> temp = FindQuery(find, files:Get(i), isMatchCase, isWholeWord)
+                    if not temp:IsEmpty()
+                        fileIndices:Add(files:Get(i), temp)
+                        totalFinds = totalFinds + temp:GetSize()    //counter for the total number of find instances in all of the files
+                        totalFiles = totalFiles + 1                 //counter for the total number of files which contain instances of find
+                    end
+                    i = i + 1
+                end
 
+                /* Some output statements for testing, will use when implementing the search tab. 
+                In the search tab will implement as a tree with each 'File' tree item acting as a parent tree to 
+                each of that file's 'index' tree items. */
+                output "'" + find + "'" + " was found " + totalFinds + " times in " + totalFiles + " files."
+                Iterator<File> it = fileIndices:GetKeyIterator()
+                repeat while it:HasNext()
+                    File file = it:Next()
+                    Array<Pair<integer>> temp = fileIndices:GetValue(file)
+                    output "File Name: " + file:GetFileName() + " found " + temp:GetSize() + " instances of " + find 
+                    output "Index Listing: "
+                    text textValue = file:Read()
+                    integer j = 0
+                    repeat while j < temp:GetSize()
+                        integer index = temp:Get(j):GetFirstValue()
+                        output "    index: " + index
+                        //NEXT STEP: determine how to get the correct line numbers for the file when it is opened in a
+                        //textbox and use the start index to get the entire line of text that the start index is 
+                        //on to display on the screen so that the user can see the context in which the find word  
+                        //is used in the file.
+                        j = j + 1
+                    end
+                end
+            end
             dialog:Hide()
         end
-
-        
     end
+
+    action ResetQuery()
+        totalFinds = 0
+        totalFiles = 0
+        fileIndices:Empty()
+    end
+
+    /* Find the query in the file and return an array of Pair<Integer>'s representing 
+    the indices for each instance in the current file. This array of Pair<integer> 
+    will need to be stored in a hash table with the file name as the key and the
+    indices array as the associated value. Only store the array of indices if there
+    is at least one instance of the find query in the file. */
+    action FindQuery(text query, File file, boolean isMatchCase, boolean isWholeWord) returns Array<Pair<integer>>
+        Array<Pair<integer>> indices
+        text textValue = file:Read()
+        integer querySize = query:GetSize()
+        integer fileSize = textValue:GetSize()
+        integer index = 0
+
+        /* Go through the text character by character until a substring is reached that
+        matches the query. If the isMatchCase flag is set then the substring will need to 
+        match the query with case sensitivity, else the substring will be matched ignoring 
+        the case. All matches are added to the indices array as a Pair which includes the 
+        start and end index of the match in the file. */
+        if isMatchCase
+            repeat while index <= (fileSize - querySize)
+                if(query:Equals(textValue:GetSubtext(index, (index + querySize))))
+                    Pair<integer> i
+                    i:Set(index, (index + querySize))
+                    index = index + querySize
+                else 
+                    index = index + 1
+                end
+            end
+        else
+            repeat while index <= (fileSize - querySize)
+                text temp = textValue:GetSubtext(index, (index + querySize))
+                if(query:EqualsIgnoringCase(textValue:GetSubtext(index, (index + querySize))))
+                    Pair<integer> i
+                    i:Set(index, (index + querySize))
+                    indices:Add(i)
+                    index = index + querySize
+                else
+                    index = index + 1
+                end
+            end
+        end
+
+        /* NOT WORKING!!!! Get the word, check the character before and the character after the word to 
+        see if it is either a special character or whitespace if not then remove the 
+        Pair from the indices array. */
+        if isWholeWord
+            boolean disposeIndex = true
+            integer startIndex = 0
+            integer endIndex = 0
+            integer i = 0
+            repeat while i < indices:GetSize()
+                Pair<integer> w = indices:Get(i)
+                startIndex = w:GetFirstValue()
+                endIndex = w:GetSecondValue()
+                text prevChar = textValue:GetCharacter(startIndex - 1)
+                text nextChar = textValue:GetCharacter(endIndex)
+                if (IsSpecialCharacter(prevChar) or IsWhiteSpace(prevChar))
+                    if (IsSpecialCharacter(nextChar) or IsWhiteSpace(nextChar))
+                        disposeIndex = false
+                    end
+                end
+                if disposeIndex
+                    indices:RemoveAt(i)
+                end
+                i = i + 1
+            end 
+        end
+        
+        return indices
+    end
+
+    private action IsSpecialCharacter(text value) returns boolean
+        boolean isSpecialCharacter = false
+        if value = "." or value = "/" or value = "*" or value = "-" or value = "+"
+        or value = "(" or value = ")" or value = ":" or value = "<" or value = ">"
+        or value = ";" or value = "," or value = value:GetDoubleQuote()
+            isSpecialCharacter = true
+        end
+        return isSpecialCharacter
+    end
+
+    private action IsWhiteSpace(text value) returns boolean
+        boolean isWhiteSpace = false
+        if value = " " or value = value:GetCarriageReturn() or value = value:GetLineFeed() or 
+        value = value:GetTab()
+            isWhiteSpace = true
+        end
+        return isWhiteSpace
+    end
+    
 end

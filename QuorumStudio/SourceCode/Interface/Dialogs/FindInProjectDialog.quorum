@@ -24,6 +24,8 @@ class FindInProjectDialog is Dialog
     boolean initialized = false
     Label folderField
     TextField queryField
+    Checkbox matchCaseCheckbox
+    Checkbox wholeWordCheckbox
     Array<File> searchFiles
 
     DialogCancelBehavior cancelBehavior
@@ -32,6 +34,7 @@ class FindInProjectDialog is Dialog
     on create
         searchFiles:Empty()
         findBehavior:SetDialog(me)
+        SetBehavior(findBehavior)
     end
 
     action IsInitialized returns boolean
@@ -39,7 +42,7 @@ class FindInProjectDialog is Dialog
     end
 
     action OnShow()
-
+        queryField:Focus()
     end
 
     action Initialize
@@ -151,7 +154,6 @@ class FindInProjectDialog is Dialog
         optionsContainer:SetRightPadding(6)
         optionsContainer:SetBottomPadding(10)
 
-        Checkbox matchCaseCheckbox
         matchCaseCheckbox:SetName("Match Case")
         matchCaseCheckbox:SetFontSize(14)
         matchCaseCheckbox:SetLeftPadding(20)
@@ -159,7 +161,6 @@ class FindInProjectDialog is Dialog
         matchCaseCheckbox:SetPercentageWidth(0.25)
         optionsContainer:Add(matchCaseCheckbox)
 
-        Checkbox wholeWordCheckbox
         wholeWordCheckbox:SetName("Whole Word")
         wholeWordCheckbox:SetFontSize(14)
         wholeWordCheckbox:SetPercentageWidth(0.25)
@@ -224,6 +225,14 @@ class FindInProjectDialog is Dialog
 
     action GetSearchFiles returns Array<File>
         return searchFiles
+    end
+
+    action GetIsMatchCase returns boolean
+        return matchCaseCheckbox:GetToggleState()
+    end
+
+    action GetIsWholeWord returns boolean
+        return wholeWordCheckbox:GetToggleState()
     end
 
     action SetRootSelection(TreeSelection selection)
