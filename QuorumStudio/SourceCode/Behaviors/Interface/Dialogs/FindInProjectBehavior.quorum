@@ -8,6 +8,8 @@ use Libraries.Development.Environment.Studio.Interface.FindInProjectDialog
 use Libraries.Containers.Support.Pair
 use Libraries.Containers.HashTable
 use Libraries.Containers.Iterator
+use Libraries.System.FileReader
+use Libraries.Containers.MultipleLineText
 
 class FindInProjectBehavior is QuorumStudioBehavior
     text find = ""
@@ -55,19 +57,24 @@ class FindInProjectBehavior is QuorumStudioBehavior
                 output "'" + find + "'" + " was found " + totalFinds + " times in " + totalFiles + " files."
                 Iterator<File> it = fileIndices:GetKeyIterator()
                 repeat while it:HasNext()
-                    File file = it:Next()
+                    File file = it:Next()   
                     Array<Pair<integer>> temp = fileIndices:GetValue(file)
                     output "File Name: " + file:GetFileName() + " found " + temp:GetSize() + " instances of " + find 
-                    output "Index Listing: "
-                    text textValue = file:Read()
+                    MultipleLineText value
+                    value:Initialize(file:Read())
+
                     integer j = 0
                     repeat while j < temp:GetSize()
                         integer index = temp:Get(j):GetFirstValue()
-                        output "    index: " + index
+                        integer lineIndex = value:LineIndexFromCharacterIndex(index)
+                        MultipleLineText line = value:GetLine(lineIndex)
+                        text lineText = line:GetText()
+                        output (lineIndex + 1) + ": " + lineText:Trim() + "     [column " + (index - value:CharacterIndexFromLineIndex(lineIndex)) + "]"
+                        
                         //NEXT STEP: determine how to get the correct line numbers for the file when it is opened in a
                         //textbox and use the start index to get the entire line of text that the start index is 
                         //on to display on the screen so that the user can see the context in which the find word  
-                        //is used in the file.
+                        //is used in the file. 
                         j = j + 1
                     end
                 end
@@ -123,26 +130,34 @@ class FindInProjectBehavior is QuorumStudioBehavior
             end
         end
 
-        /* NOT WORKING!!!! Get the word, check the character before and the character after the word to 
+        /* Get the word, check the character before and the character after the word to 
         see if it is either a special character or whitespace if not then remove the 
         Pair from the indices array. */
         if isWholeWord
-            boolean disposeIndex = true
             integer startIndex = 0
             integer endIndex = 0
+            integer previousIndex = 0
+            integer nextIndex = 0
             integer i = 0
+            text previousCharacter = ""
+            text nextCharacter = ""
             repeat while i < indices:GetSize()
                 Pair<integer> w = indices:Get(i)
                 startIndex = w:GetFirstValue()
                 endIndex = w:GetSecondValue()
-                text prevChar = textValue:GetCharacter(startIndex - 1)
-                text nextChar = textValue:GetCharacter(endIndex)
-                if (IsSpecialCharacter(prevChar) or IsWhiteSpace(prevChar))
-                    if (IsSpecialCharacter(nextChar) or IsWhiteSpace(nextChar))
-                        disposeIndex = false
-                    end
+                previousIndex = startIndex - 1
+                nextIndex = endIndex + 1
+                if previousIndex < 0
+                    previousCharacter = " "
+                else
+                    previousCharacter = textValue:GetCharacter(previousIndex)
                 end
-                if disposeIndex
+                if nextIndex > textValue:GetSize() - 1
+                    nextCharacter = " "
+                else
+                    nextCharacter = textValue:GetCharacter(nextIndex)
+                end
+                if (not(IsSpecialCharacter(previousCharacter) or IsWhiteSpace(previousCharacter)) or not(IsSpecialCharacter(nextCharacter) or IsWhiteSpace(nextCharacter)))
                     indices:RemoveAt(i)
                 end
                 i = i + 1
