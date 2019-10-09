@@ -72,7 +72,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         //SetBehavior(nextBehavior)
     end
 
-    action OnShow()
+    action OnShow()  
         showing = true
         findField:Focus()
         wholeWord:SetToggleState(textBox:GetIsWholeWord())
@@ -424,12 +424,30 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         end
     end
 
+    /* Sets all Open CodeTextBox tabs findDialogIsOpen fields to false, so that when the
+    find dialog is closed in a different tab than the one it was opened in, it will still show as
+    closed in all of the CodeTextBox it was used in. */
+    action CloseFindDialogs
+        integer size = tabPane:GetSize()
+        integer i = 0
+        repeat while i < size
+            Tab tab = tabPane:Get(i)
+            EditorTab t = cast(EditorTab, tab)
+            TextBox textBox = t:GetTextBox()
+            if textBox not= undefined
+                CodeTextBox c = cast(CodeTextBox, textBox)
+                c:SetFindWord(findField:GetText())
+                c:SetIsDialogOpen(false)
+                c:DialogClosed()
+            end
+            i = i + 1
+        end
+    end
+
     //Removes any highlights in the textBox, empties the arrays and textFields and resets the selection index.
     action OnHide
         showing = false
-        textBox:SetFindWord(findField:GetText())
-        textBox:SetIsDialogOpen(false) 
-        textBox:DialogClosed()
+        CloseFindDialogs()
     end
 
 end
