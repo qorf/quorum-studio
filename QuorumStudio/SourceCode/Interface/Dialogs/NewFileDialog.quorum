@@ -36,6 +36,7 @@ use Libraries.Game.GameStateManager
 use Libraries.Interface.Events.KeyboardListener
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Interface.Selections.TreeSelection
+use Libraries.Containers.HashTable
 
 
 class NewFileDialog is Dialog
@@ -291,19 +292,25 @@ class NewFileDialog is Dialog
         boolean found = false
         ProjectTreeItem oldProjectHeader = undefined
 
+        integer counter = 0
         repeat while items:HasNext() and found = false
             oldProjectHeader = cast(ProjectTreeItem, items:Next())
             if oldProjectHeader:GetProject() = project
                 found = true
-            end
+            else
+                counter = counter + 1
+            end      
         end
 
         if found = false
             return now
         end
 
+        HashTable<text, text> expand = projectTree:GetExpandState()
         projectTree:Remove(cast(TreeItem, oldProjectHeader))
-        projectTree:Add(treeItem)
+        projectTree:Add(counter, treeItem)
+        
+        projectTree:LoadExpandState(expand)
     end
 
     action GetFileName returns text
