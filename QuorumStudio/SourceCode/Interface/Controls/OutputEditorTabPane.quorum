@@ -28,6 +28,7 @@ use Libraries.Development.Environment.Studio.Behaviors.InputBehavior
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Events.FocusEvent
 use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Development.Environment.Studio.Interface.SearchResultsTab
 
 class OutputEditorTabPane is TabPane
     Color color
@@ -36,6 +37,7 @@ class OutputEditorTabPane is TabPane
     ErrorTab errorTab
     BreakpointsTab breakpointsTab
     CallStackTab callStackTab
+    SearchResultsTab searchResultsTab
 
     
     Resources resources = undefined
@@ -63,6 +65,7 @@ class OutputEditorTabPane is TabPane
         variablesTab:SetBehaviors(behaviors)
         errorTab:SetBehaviors(behaviors)
         callStackTab:SetBehaviors(behaviors)
+        searchResultsTab:SetBehaviors(behaviors)
     end
 
     on create
@@ -102,6 +105,10 @@ class OutputEditorTabPane is TabPane
         return callStackTab
     end
 
+    action GetSearchResultsTab returns SearchResultsTab
+        return searchResultsTab  
+    end
+
     action Setup
         LayoutProperties properties = GetDefaultLayoutProperties()
         properties:SetHorizontalLayoutMode(properties:STANDARD)
@@ -123,6 +130,7 @@ class OutputEditorTabPane is TabPane
         array:Add(variablesTab)
         array:Add(breakpointsTab)
         array:Add(callStackTab)
+        array:Add(searchResultsTab)
         Add(array)
 
         Select(0)
@@ -139,5 +147,6 @@ class OutputEditorTabPane is TabPane
 
         breakpointsTab:Setup()
         variablesTab:Setup()
+        searchResultsTab:Setup()
     end
 end

@@ -1,0 +1,122 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Tab
+
+use Libraries.Interface.Controls.Tab
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Interface.Layouts.Layout
+use Libraries.Interface.Controls.Tree
+use Libraries.Development.Environment.Resources
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Language.Debug.Debugger
+use Libraries.Language.Debug.VariablesModel
+use Libraries.Containers.Array
+use Libraries.Language.Debug.Variable
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Events.TreeChangeListener
+use Libraries.Interface.Events.TreeChangeEvent
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.Icon
+use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Interface.Controls.Column
+use Libraries.Interface.Controls.Cell
+use Libraries.Language.Compile.CompilerError
+use Libraries.Development.Environment.Studio.Behaviors.FindInProjectBehavior
+use Libraries.Interface.Controls.ScrollPane
+use Libraries.System.File
+use Libraries.Containers.HashTable
+use Libraries.Containers.Support.Pair
+use Libraries.Containers.MultipleLineText
+use Libraries.Containers.Iterator
+
+class SearchResultsTab is Tab, TreeChangeListener
+    Behaviors behaviors = undefined
+    Tree searchResultsTree
+    TreeItem searchResultsRoot
+    BreakpointScrollPane pane
+    HashTable<File, Array<Pair<integer>>> fileIndices
+
+    on create
+        searchResultsTree:AddTreeChangeListener(me) 
+    end
+
+    action Setup     
+        LayoutProperties properties = searchResultsTree:GetDefaultLayoutProperties()
+        properties:SetHorizontalLayoutMode(properties:STANDARD)
+        properties:SetPercentageWidth(1.0)
+        pane:Add(searchResultsTree)
+        pane:Resize()
+
+        SetName("Search Results")
+        SetRelatedItem(GetPane())
+        DisplayCloseButton(true)
+        SetFocusTarget(searchResultsTree)
+    end
+
+    action SetBehaviors(Behaviors behaviors)
+        me:behaviors = behaviors
+    end
+
+    action GetBehaviors returns Behaviors
+        return behaviors
+    end
+
+    action GetPane returns BreakpointScrollPane
+        return pane
+    end
+
+//    private action SetupSearchTree
+//        Iterator<File> it = fileIndices:GetKeyIterator()
+//        repeat while it:HasNext()
+//            File file = it:Next()  
+//            TreeItem fileItem
+//            fileItem:SetName(file:GetFileName())
+//            Array<Pair<integer>> temp = fileIndices:GetValue(file)
+//            //output "File Name: " + file:GetFileName() + " found " + temp:GetSize() + " instances of " + find 
+//            MultipleLineText value
+//            value:Initialize(file:Read())
+//
+//            integer j = 0
+//            repeat while j < temp:GetSize()
+//                TreeItem indexItem
+//                integer index = temp:Get(j):GetFirstValue()
+//                integer lineIndex = value:LineIndexFromCharacterIndex(index)
+//                MultipleLineText line = value:GetLine(lineIndex)
+//                text lineText = line:GetText()
+//                indexItem:SetName((lineIndex + 1) + ": " + lineText:Trim() + "     [column " + (index - value:CharacterIndexFromLineIndex(lineIndex)) + "]")
+//                //output (lineIndex + 1) + ": " + lineText:Trim() + "     [column " + (index - value:CharacterIndexFromLineIndex(lineIndex)) + "]"
+//                fileItem:Add(indexItem)
+//                j = j + 1
+//            end
+//            AddFileTreeItem(fileItem)
+//        end
+//    end
+
+    action InitializeSearchResultsTree(TreeItem item)
+        searchResultsRoot = item
+        searchResultsTree:Add(searchResultsRoot)
+        searchResultsTree:Resize()
+    end
+
+    action AddFileTreeItem(TreeItem item)
+        searchResultsRoot:Add(item)
+        searchResultsTree:Resize()
+    end
+
+    action SetSearchResults(HashTable<File, Array<Pair<integer>>> fileIndices)
+        me:fileIndices = fileIndices
+        //NEXT STEP: Linking the files with the TreeItems in the SearchResultsTab, so that if clicked 
+        //the file will open and the instance of the find word will be selected. The user can then
+        //navigate through all instances of find within that File.
+
+        //SetupSearchTree()
+    end
+
+    action ClearSearchResults
+        searchResultsTree:Empty()
+        fileIndices:Empty()
+    end
+    
+
+end

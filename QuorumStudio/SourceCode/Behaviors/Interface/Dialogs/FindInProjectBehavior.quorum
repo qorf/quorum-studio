@@ -10,16 +10,21 @@ use Libraries.Containers.HashTable
 use Libraries.Containers.Iterator
 use Libraries.System.FileReader
 use Libraries.Containers.MultipleLineText
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Studio.Interface.SearchResultsTab
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+
 
 class FindInProjectBehavior is QuorumStudioBehavior
     text find = ""
     Array<File> files
-    HashTable<File, Array<Pair<integer>>> fileIndices
+    HashTable<File, Array<Pair<integer>>> fileIndices       //each file has an array of find indices
     FindInProjectDialog dialog = undefined
     boolean isMatchCase = false
     boolean isWholeWord = false
     integer totalFinds = 0
     integer totalFiles = 0
+    SearchResultsTab searchResultsTab = undefined
 
     action SetDialog(FindInProjectDialog dialog)
         me:dialog = dialog
@@ -29,6 +34,7 @@ class FindInProjectBehavior is QuorumStudioBehavior
         ResetQuery()
 
         if dialog not= undefined
+            searchResultsTab = dialog:GetSearchResultsTab()           
             find = dialog:GetQuery()
             files = dialog:GetSearchFiles()
             isMatchCase = dialog:GetIsMatchCase()
@@ -54,28 +60,39 @@ class FindInProjectBehavior is QuorumStudioBehavior
                 /* Some output statements for testing, will use when implementing the search tab. 
                 In the search tab will implement as a tree with each 'File' tree item acting as a parent tree to 
                 each of that file's 'index' tree items. */
-                output "'" + find + "'" + " was found " + totalFinds + " times in " + totalFiles + " files."
-                Iterator<File> it = fileIndices:GetKeyIterator()
-                repeat while it:HasNext()
-                    File file = it:Next()   
-                    Array<Pair<integer>> temp = fileIndices:GetValue(file)
-                    output "File Name: " + file:GetFileName() + " found " + temp:GetSize() + " instances of " + find 
-                    MultipleLineText value
-                    value:Initialize(file:Read())
+                if searchResultsTab not= undefined
+                    searchResultsTab:ClearSearchResults()
+                    //TO DO: When FindInProjectBehavior is activated, the SearchResults tab should receive
+                    //the focus and the tab should be opened.
+                    searchResultsTab:Focus()
+                    searchResultsTab:SetSearchResults(fileIndices)
+                    TreeItem item
+                    item:SetName("Found " + totalFinds + " matches in " + totalFiles + " files.")
+                    searchResultsTab:InitializeSearchResultsTree(item)
+                    //output "'" + find + "'" + " was found " + totalFinds + " times in " + totalFiles + " files."
+                    Iterator<File> it = fileIndices:GetKeyIterator()
+                    repeat while it:HasNext()
+                        File file = it:Next()  
+                        TreeItem fileItem
+                        fileItem:SetName(file:GetFileName())
+                        Array<Pair<integer>> temp = fileIndices:GetValue(file)
+                        //output "File Name: " + file:GetFileName() + " found " + temp:GetSize() + " instances of " + find 
+                        MultipleLineText value
+                        value:Initialize(file:Read())
 
-                    integer j = 0
-                    repeat while j < temp:GetSize()
-                        integer index = temp:Get(j):GetFirstValue()
-                        integer lineIndex = value:LineIndexFromCharacterIndex(index)
-                        MultipleLineText line = value:GetLine(lineIndex)
-                        text lineText = line:GetText()
-                        output (lineIndex + 1) + ": " + lineText:Trim() + "     [column " + (index - value:CharacterIndexFromLineIndex(lineIndex)) + "]"
-                        
-                        //NEXT STEP: determine how to get the correct line numbers for the file when it is opened in a
-                        //textbox and use the start index to get the entire line of text that the start index is 
-                        //on to display on the screen so that the user can see the context in which the find word  
-                        //is used in the file. 
-                        j = j + 1
+                        integer j = 0
+                        repeat while j < temp:GetSize()
+                            TreeItem indexItem
+                            integer index = temp:Get(j):GetFirstValue()
+                            integer lineIndex = value:LineIndexFromCharacterIndex(index)
+                            MultipleLineText line = value:GetLine(lineIndex)
+                            text lineText = line:GetText()
+                            indexItem:SetName((lineIndex + 1) + ": " + lineText:Trim() + "     [column " + (index - value:CharacterIndexFromLineIndex(lineIndex)) + "]")
+                            //output (lineIndex + 1) + ": " + lineText:Trim() + "     [column " + (index - value:CharacterIndexFromLineIndex(lineIndex)) + "]"
+                            fileItem:Add(indexItem)
+                            j = j + 1
+                        end
+                        searchResultsTab:AddFileTreeItem(fileItem)
                     end
                 end
             end

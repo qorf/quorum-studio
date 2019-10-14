@@ -10,12 +10,15 @@ use Libraries.Containers.Array
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.System.File
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
 
 class OpenFindInProjectDialogBehavior is QuorumStudioBehavior
     FindInProjectDialog dialog = undefined
     
+
     action Run(BehaviorEvent event)
         QuorumStudio studio = GetMainApplication()
+        OutputEditorTabPane tabPane = studio:GetOutputPane()
         ProjectTree tree = studio:GetProjectTree()
         TreeSelection selection = tree:GetSelection()
         text path = ""
@@ -44,6 +47,7 @@ class OpenFindInProjectDialogBehavior is QuorumStudioBehavior
            
 
             //sets the path for the folder we are searching through in the dialog
+            dialog:SetSearchResultsTab(tabPane:GetSearchResultsTab())
             dialog:SetFolderName(path)
             dialog:SetRootSelection(selection)
             dialog:Show()

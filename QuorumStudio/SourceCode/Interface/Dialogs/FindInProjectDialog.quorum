@@ -18,6 +18,7 @@ use Libraries.Containers.Array
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
 use Libraries.Development.Environment.Studio.Behaviors.FindInProjectBehavior
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
 
 
 class FindInProjectDialog is Dialog
@@ -27,6 +28,8 @@ class FindInProjectDialog is Dialog
     Checkbox matchCaseCheckbox
     Checkbox wholeWordCheckbox
     Array<File> searchFiles
+
+    SearchResultsTab tab = undefined
 
     DialogCancelBehavior cancelBehavior
     FindInProjectBehavior findBehavior
@@ -261,6 +264,14 @@ class FindInProjectDialog is Dialog
 
     action SetFolderName(text name)
         folderField:SetText(name)
+    end
+
+    action SetSearchResultsTab (SearchResultsTab tab)
+        me:tab = tab
+    end
+
+    action GetSearchResultsTab returns SearchResultsTab
+        return tab
     end
 
     action Show
