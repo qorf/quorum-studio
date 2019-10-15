@@ -730,7 +730,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         end
         if find not= ""
             if textValue:GetSize() not= 0
-                repeat while (findIndex >= 0) and ((findIndex + findSize) < endIndex)   //start from beginning of text and go through til the end
+                repeat while (findIndex >= 0) and ((findIndex + findSize) < endIndex + 1)   //start from beginning of text and go through til the end
                     Pair<integer> indices
                     if find:EqualsIgnoringCase(textValue:GetSubtext(findIndex, (findIndex + findSize)))
                         indices:Set(findIndex, (findIndex + (findSize - 1)))
@@ -764,7 +764,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     end
 
     /* Called by FindText()
-    Sets the current selection to the findIndices starting index that is before 
+    Sets the current selection to the findIndices starting index that is after 
     the caret position in the textbox. Calls UpdateCurrentSelection to highlight
     this selection in the textbox */
     private action SetSelection()
@@ -773,12 +773,15 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             integer caretIndex = GetCaretPosition()
             integer startIndex = 0
             integer arrayIndex = 0
-
-            repeat while startIndex < caretIndex and arrayIndex < findIndices:GetSize()
-                startIndex = findIndices:Get(arrayIndex):GetFirstValue()
-                arrayIndex = arrayIndex + 1
-            end
-            findSelection = (arrayIndex - 1)
+            if caretIndex = 0
+                findSelection = 0
+            else
+                repeat while startIndex < caretIndex and arrayIndex < findIndices:GetSize()
+                    startIndex = findIndices:Get(arrayIndex):GetFirstValue()
+                    arrayIndex = arrayIndex + 1
+                end
+                findSelection = (arrayIndex - 1)
+                end
             end
             UpdateCurrentSelection(-1, false)            
         end
@@ -953,7 +956,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         repeat while i < removeIndices:GetSize()            
             startIndex = removeIndices:Get(i):GetFirstValue()                        
             findIndices:Remove(removeIndices:Get(i))
-            //RemoveFindReplaceStyle("highlight" + startIndex)
+            RemoveFindReplaceStyle("highlight" + startIndex)
             i = i + 1
         end
         removeIndices:Empty() 
@@ -1037,13 +1040,18 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             end
         end
 
-        word:SetIndex(wordStartIndex)
-        word:SetSize((wordEndIndex - wordStartIndex)+ 1)
-        word:SetHighlight(selectionHighlight)
+        if dialogIsOpen
+            word:SetIndex(wordStartIndex)
+            word:SetSize((wordEndIndex - wordStartIndex)+ 1)
+            word:SetHighlight(selectionHighlight)
 
-        //sets the current selection to blue highlight
-        RemoveFindReplaceStyle("highlight" + wordStartIndex)       //remove the orange highlight
-        AddFindReplaceStyle("selectionHighlight" + wordStartIndex, word)    //add the blue highlight for current selection
+            //sets the current selection to blue highlight
+            RemoveFindReplaceStyle("highlight" + wordStartIndex)       //remove the orange highlight
+            AddFindReplaceStyle("selectionHighlight" + wordStartIndex, word)    //add the blue highlight for current selection
+        else
+            SetCaretPosition(wordEndIndex + 1)
+            Select(wordStartIndex, wordEndIndex + 1, true)
+        end
 
         if findDialog not= undefined
             findDialog:UpdateMatches(findSelection, findIndices:GetSize())
@@ -1064,7 +1072,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         if findIndices:GetSize() not= 0
             integer wordStartIndex = findIndices:Get(findSelection):GetFirstValue()
             RemoveFindReplaceStyle("selectionHighlight" + wordStartIndex)
-            //findSelection = -1   
+            findSelection = -1   
         end
     end
 

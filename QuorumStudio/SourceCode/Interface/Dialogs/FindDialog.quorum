@@ -80,6 +80,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         if (textBox:HasSelection())
             findField:SetText(textBox:GetFindSelection())
             findField:SetCaretPosition(findField:GetSize())
+            textBox:SetCaretPosition(textBox:GetCaretPosition() - findField:GetSize())
         else
             findField:SetText(textBox:GetFindWord())
             findField:SetCaretPosition(findField:GetSize())
@@ -449,6 +450,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
     action OnHide
         showing = false
         CloseFindDialogs()
+        SetTextChangeListenerOn(false)
     end
 
 end
