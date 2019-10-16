@@ -247,7 +247,9 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         else
             //if there is a selection it wont replace the selection
             //instead it will indent the selected lines 
+            GetTextBoxEditManager():SetSpecialAction(true)
             AddMultipleIndentation()
+            GetTextBoxEditManager():SetSpecialAction(false)
         end
     end
 
@@ -264,12 +266,6 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             newSelectStart = newSelectStart + GetIndentationStrategy():GetSize()
         end
 
-        //save edit state for a proper undo
-        TextBoxEdit edit
-        edit:SetTextBox(me)
-        TextBoxEditState oldState = GetCurrentEditState()
-        edit:SetUndoState(oldState)
-
         //empty the selection so the inserts can happen properly
         EmptySelectionEvent(false)
         repeat while index <= stop
@@ -280,15 +276,6 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         //update the caret and update to new selection
         SetCaretPosition(newCaretPos)
         Select(newSelectStart , newSelectEnd, false)
-
-        //add new edit state
-        TextBoxEditState newState = GetCurrentEditState()
-        edit:SetRedoState(newState)
-        /*
-            Here we would make sure that there are no edit states created by the
-            individual indentations but we cant as of writing this
-        */
-        parent:TextBox:editManager:Add(edit)
     end
 
     action SmartNavigateUp

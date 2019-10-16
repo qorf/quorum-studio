@@ -8,14 +8,14 @@ use Libraries.Development.Environment.Studio.Interface.ReplaceDialog
 use Libraries.Interface.Controls.Checkbox
 use Libraries.Interface.Item
 use Libraries.Interface.Controls.TextBox
-use Libraries.Interface.Undo.EditManager
+use Libraries.Interface.Undo.TextBoxEditManager
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 
 class RedoBehavior is EditorBehavior
     action Run(Item item)
         if item is CodeTextBox
             CodeTextBox box = cast(CodeTextBox, item)
-            EditManager edits = box:GetEditManager()
+            TextBoxEditManager edits = box:GetTextBoxEditManager()
             if edits not= undefined and edits:CanRedo()
                 edits:Redo()
                 box:GetEditorTab():SetIsDirty(true)
