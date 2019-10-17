@@ -54,7 +54,7 @@ class FindInProjectBehavior is QuorumStudioBehavior
             associated array of indices to the hash table fileIndices.*/
             if ((find not= "") and (not files:IsEmpty()))   
                 integer i = 0
-                repeat while i < files:GetSize()
+                repeat while i < files:GetSize() and totalFinds < 5001
                     Array<Pair<integer>> temp = FindQuery(find, files:Get(i), isMatchCase, isWholeWord)
                     if not temp:IsEmpty()
                         fileIndices:Add(files:Get(i), temp)
@@ -63,16 +63,14 @@ class FindInProjectBehavior is QuorumStudioBehavior
                     end
                     i = i + 1
                 end
-
-                /* Some output statements for testing, will use when implementing the search tab. 
-                In the search tab will implement as a tree with each 'File' tree item acting as a parent tree to 
-                each of that file's 'index' tree items. */
                 if searchResultsTab not= undefined
                     searchResultsTab:ClearSearchResults()
-                    //TO DO: When FindInProjectBehavior is activated, the SearchResults tab should receive
-                    //the focus and the tab should be opened.
                     TreeItem item
-                    item:SetName("Found " + totalFinds + " matches of " + find + " in " + totalFiles + " files.")
+                    if totalFinds > 5000
+                        item:SetName("Found " + totalFinds + " matches of " + find + " in " + totalFiles + " so far. The search was stopped because the limit for number of matching occurences was reached or exceeded.")
+                    else
+                        item:SetName("Found " + totalFinds + " matches of " + find + " in " + totalFiles + " files.")
+                    end
                     searchResultsTab:InitializeSearchResultsTree(item)
                     searchResultsTab:SetSearchResults(fileIndices)
                 end
@@ -97,9 +95,9 @@ class FindInProjectBehavior is QuorumStudioBehavior
         Array<Pair<integer>> indices
 //NEXT STEP: FIND INDICES do not match up with the textbox selection indices, *I think* depending on the 
 //line separator, need to look into this
-        MultipleLineText value
-        value:Initialize(file:Read())
-        text lineSeparator = value:GetLineSeparator()
+//        MultipleLineText value
+//        value:Initialize(file:Read())
+//        text lineSeparator = value:GetLineSeparator()
         text textValue = file:Read()
         integer querySize = query:GetSize()
         integer fileSize = textValue:GetSize()
@@ -115,6 +113,7 @@ class FindInProjectBehavior is QuorumStudioBehavior
                 if(query:Equals(textValue:GetSubtext(index, (index + querySize))))
                     Pair<integer> i
                     i:Set(index, (index + querySize))
+                    indices:Add(i)
                     index = index + querySize
                 else 
                     index = index + 1
@@ -134,6 +133,8 @@ class FindInProjectBehavior is QuorumStudioBehavior
             end
         end
 
+
+
         /* Get the word, check the character before and the character after the word to 
         see if it is either a special character or whitespace if not then remove the 
         Pair from the indices array. */
@@ -150,7 +151,7 @@ class FindInProjectBehavior is QuorumStudioBehavior
                 startIndex = w:GetFirstValue()
                 endIndex = w:GetSecondValue()
                 previousIndex = startIndex - 1
-                nextIndex = endIndex + 1
+                nextIndex = endIndex
                 if previousIndex < 0
                     previousCharacter = " "
                 else
@@ -161,7 +162,7 @@ class FindInProjectBehavior is QuorumStudioBehavior
                 else
                     nextCharacter = textValue:GetCharacter(nextIndex)
                 end
-                if (not(IsSpecialCharacter(previousCharacter) or IsWhiteSpace(previousCharacter)) or not(IsSpecialCharacter(nextCharacter) or IsWhiteSpace(nextCharacter)))
+                if (not(IsSpecialCharacter(previousCharacter) or IsWhiteSpace(previousCharacter)) or (not(IsSpecialCharacter(nextCharacter) or IsWhiteSpace(nextCharacter))))
                     indices:RemoveAt(i)
                 end
                 i = i + 1

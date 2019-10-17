@@ -47,6 +47,9 @@ class SearchResultsTab is Tab
     HashTable<File, Array<Pair<integer>>> fileIndices
     HashTable<TreeItem, File> fileNames
     HashTable<TreeItem, Pair<integer>> treeItemIndices
+    
+    Button previousResult
+    Button nextResult
 
     OpenFindInProjectFileBehavior openFileBehavior
 
@@ -58,6 +61,7 @@ class SearchResultsTab is Tab
         LayoutProperties properties = searchResultsTree:GetDefaultLayoutProperties()
         properties:SetHorizontalLayoutMode(properties:STANDARD)
         properties:SetPercentageWidth(1.0)
+        searchResultsTree:SetBottomPadding(50)
         pane:Add(searchResultsTree)
         pane:Resize()
 
@@ -84,7 +88,6 @@ class SearchResultsTab is Tab
     end
 
     private action SetupSearchTree
-        
         Iterator<File> it = fileIndices:GetKeyIterator()
         repeat while it:HasNext()
             File file = it:Next()  
@@ -104,12 +107,14 @@ class SearchResultsTab is Tab
                 indexItem:SetBehavior(openFileBehavior)
                 treeItemIndices:Add(indexItem, temp:Get(j))
                 integer index = temp:Get(j):GetFirstValue()
+                integer size = temp:Get(j):GetSecondValue() - index
                 integer lineIndex = value:LineIndexFromCharacterIndex(index)
                 MultipleLineText line = value:GetLine(lineIndex)
                 text lineText = line:GetText()
+                integer indexInLine = index - value:CharacterIndexFromLineIndex(lineIndex)
 //NEXT STEP: Add color to the instance of the find word within the line, NetBeans uses Bold which
 //is not available, so will use different color to make the findQuery stick out
-                indexItem:SetName((lineIndex + 1) + ": " + lineText:Trim() + "     [column " + (index - value:CharacterIndexFromLineIndex(lineIndex)) + "]")
+                indexItem:SetName((lineIndex + 1) + ": " + lineText:Trim() + "     [column " + indexInLine + "]")
                 fileItem:Add(cast(TreeItem, indexItem))
                 j = j + 1
             end
@@ -130,12 +135,12 @@ class SearchResultsTab is Tab
 
     action SetSearchResults(HashTable<File, Array<Pair<integer>>> fileIndices)
         me:fileIndices = fileIndices
-        SetupSearchTree()
+        SetupSearchTree()   
+        searchResultsTree:Resize()
     end
 
     action ClearSearchResults
         searchResultsTree:Empty()
-        fileIndices:Empty()
         fileNames:Empty()
         treeItemIndices:Empty()
     end
