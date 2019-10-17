@@ -13,6 +13,9 @@ use Libraries.Containers.MultipleLineText
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Studio.Interface.SearchResultsTab
 use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
 
 
 class FindInProjectBehavior is QuorumStudioBehavior
@@ -34,6 +37,10 @@ class FindInProjectBehavior is QuorumStudioBehavior
         ResetQuery()
 
         if dialog not= undefined
+            GameStateManager gameManager
+            QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+            OutputEditorTabPane tabPane = studio:GetOutputPane()
+
             searchResultsTab = dialog:GetSearchResultsTab()           
             find = dialog:GetQuery()
             files = dialog:GetSearchFiles()
@@ -64,39 +71,14 @@ class FindInProjectBehavior is QuorumStudioBehavior
                     searchResultsTab:ClearSearchResults()
                     //TO DO: When FindInProjectBehavior is activated, the SearchResults tab should receive
                     //the focus and the tab should be opened.
-                    searchResultsTab:Focus()
-                    searchResultsTab:SetSearchResults(fileIndices)
                     TreeItem item
-                    item:SetName("Found " + totalFinds + " matches in " + totalFiles + " files.")
+                    item:SetName("Found " + totalFinds + " matches of " + find + " in " + totalFiles + " files.")
                     searchResultsTab:InitializeSearchResultsTree(item)
-                    //output "'" + find + "'" + " was found " + totalFinds + " times in " + totalFiles + " files."
-                    Iterator<File> it = fileIndices:GetKeyIterator()
-                    repeat while it:HasNext()
-                        File file = it:Next()  
-                        TreeItem fileItem
-                        fileItem:SetName(file:GetFileName())
-                        Array<Pair<integer>> temp = fileIndices:GetValue(file)
-                        //output "File Name: " + file:GetFileName() + " found " + temp:GetSize() + " instances of " + find 
-                        MultipleLineText value
-                        value:Initialize(file:Read())
-
-                        integer j = 0
-                        repeat while j < temp:GetSize()
-                            TreeItem indexItem
-                            integer index = temp:Get(j):GetFirstValue()
-                            integer lineIndex = value:LineIndexFromCharacterIndex(index)
-                            MultipleLineText line = value:GetLine(lineIndex)
-                            text lineText = line:GetText()
-                            indexItem:SetName((lineIndex + 1) + ": " + lineText:Trim() + "     [column " + (index - value:CharacterIndexFromLineIndex(lineIndex)) + "]")
-                            //output (lineIndex + 1) + ": " + lineText:Trim() + "     [column " + (index - value:CharacterIndexFromLineIndex(lineIndex)) + "]"
-                            fileItem:Add(indexItem)
-                            j = j + 1
-                        end
-                        searchResultsTab:AddFileTreeItem(fileItem)
-                    end
+                    searchResultsTab:SetSearchResults(fileIndices)
                 end
             end
             dialog:Hide()
+            tabPane:Select(searchResultsTab)
         end
     end
 
@@ -113,6 +95,11 @@ class FindInProjectBehavior is QuorumStudioBehavior
     is at least one instance of the find query in the file. */
     action FindQuery(text query, File file, boolean isMatchCase, boolean isWholeWord) returns Array<Pair<integer>>
         Array<Pair<integer>> indices
+//NEXT STEP: FIND INDICES do not match up with the textbox selection indices, *I think* depending on the 
+//line separator, need to look into this
+        MultipleLineText value
+        value:Initialize(file:Read())
+        text lineSeparator = value:GetLineSeparator()
         text textValue = file:Read()
         integer querySize = query:GetSize()
         integer fileSize = textValue:GetSize()

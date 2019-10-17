@@ -29,16 +29,29 @@ use Libraries.Containers.HashTable
 use Libraries.Containers.Support.Pair
 use Libraries.Containers.MultipleLineText
 use Libraries.Containers.Iterator
+use Libraries.Containers.Support.HashNode
+use Libraries.Interface.Events.SelectionListener
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.Behaviors.OpenFindInProjectFileBehavior
+use Libraries.Interface.Controls.SearchTreeItem
 
-class SearchResultsTab is Tab, TreeChangeListener
+class SearchResultsTab is Tab
     Behaviors behaviors = undefined
     Tree searchResultsTree
     TreeItem searchResultsRoot
     BreakpointScrollPane pane
     HashTable<File, Array<Pair<integer>>> fileIndices
+    HashTable<TreeItem, File> fileNames
+    HashTable<TreeItem, Pair<integer>> treeItemIndices
 
-    on create
-        searchResultsTree:AddTreeChangeListener(me) 
+    OpenFindInProjectFileBehavior openFileBehavior
+
+    on create 
+        openFileBehavior:SetSearchResultsTab(me)
     end
 
     action Setup     
@@ -62,36 +75,47 @@ class SearchResultsTab is Tab, TreeChangeListener
         return behaviors
     end
 
+    action SetResources(Resources resources) 
+        
+    end
+
     action GetPane returns BreakpointScrollPane
         return pane
     end
 
-//    private action SetupSearchTree
-//        Iterator<File> it = fileIndices:GetKeyIterator()
-//        repeat while it:HasNext()
-//            File file = it:Next()  
-//            TreeItem fileItem
-//            fileItem:SetName(file:GetFileName())
-//            Array<Pair<integer>> temp = fileIndices:GetValue(file)
-//            //output "File Name: " + file:GetFileName() + " found " + temp:GetSize() + " instances of " + find 
-//            MultipleLineText value
-//            value:Initialize(file:Read())
-//
-//            integer j = 0
-//            repeat while j < temp:GetSize()
-//                TreeItem indexItem
-//                integer index = temp:Get(j):GetFirstValue()
-//                integer lineIndex = value:LineIndexFromCharacterIndex(index)
-//                MultipleLineText line = value:GetLine(lineIndex)
-//                text lineText = line:GetText()
-//                indexItem:SetName((lineIndex + 1) + ": " + lineText:Trim() + "     [column " + (index - value:CharacterIndexFromLineIndex(lineIndex)) + "]")
-//                //output (lineIndex + 1) + ": " + lineText:Trim() + "     [column " + (index - value:CharacterIndexFromLineIndex(lineIndex)) + "]"
-//                fileItem:Add(indexItem)
-//                j = j + 1
-//            end
-//            AddFileTreeItem(fileItem)
-//        end
-//    end
+    private action SetupSearchTree
+        
+        Iterator<File> it = fileIndices:GetKeyIterator()
+        repeat while it:HasNext()
+            File file = it:Next()  
+            SearchTreeItem fileItem
+            fileNames:Add(fileItem, file)
+            fileItem:SetBehavior(openFileBehavior)
+            //fileItem:SetIcon(fileIcon)
+            fileItem:SetName(file:GetFileName())
+            Array<Pair<integer>> temp = fileIndices:GetValue(file)
+            MultipleLineText value
+            value:Initialize(file:Read())
+
+            integer j = 0
+            repeat while j < temp:GetSize()
+                SearchTreeItem indexItem
+                //indexItem:SetIcon(indexIcon)
+                indexItem:SetBehavior(openFileBehavior)
+                treeItemIndices:Add(indexItem, temp:Get(j))
+                integer index = temp:Get(j):GetFirstValue()
+                integer lineIndex = value:LineIndexFromCharacterIndex(index)
+                MultipleLineText line = value:GetLine(lineIndex)
+                text lineText = line:GetText()
+//NEXT STEP: Add color to the instance of the find word within the line, NetBeans uses Bold which
+//is not available, so will use different color to make the findQuery stick out
+                indexItem:SetName((lineIndex + 1) + ": " + lineText:Trim() + "     [column " + (index - value:CharacterIndexFromLineIndex(lineIndex)) + "]")
+                fileItem:Add(cast(TreeItem, indexItem))
+                j = j + 1
+            end
+            AddFileTreeItem(fileItem)
+        end
+    end
 
     action InitializeSearchResultsTree(TreeItem item)
         searchResultsRoot = item
@@ -106,17 +130,59 @@ class SearchResultsTab is Tab, TreeChangeListener
 
     action SetSearchResults(HashTable<File, Array<Pair<integer>>> fileIndices)
         me:fileIndices = fileIndices
-        //NEXT STEP: Linking the files with the TreeItems in the SearchResultsTab, so that if clicked 
-        //the file will open and the instance of the find word will be selected. The user can then
-        //navigate through all instances of find within that File.
-
-        //SetupSearchTree()
+        SetupSearchTree()
     end
 
     action ClearSearchResults
         searchResultsTree:Empty()
         fileIndices:Empty()
+        fileNames:Empty()
+        treeItemIndices:Empty()
     end
-    
 
+    action OpenTreeItemFile(TreeItem item)
+        GameStateManager gameManager
+        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+        CodeEditorTabPane tabPane = studio:GetTabPane()
+        
+        boolean setFirstSelection = true    
+        File file = undefined
+        TreeItem parentTreeItem = item:GetParentTreeItem()
+        if parentTreeItem not= undefined
+            if parentTreeItem:Equals(searchResultsRoot)
+                //this is the file name tree item
+                setFirstSelection = true
+                file = fileNames:GetValue(item)
+            else
+               file = fileNames:GetValue(parentTreeItem)
+               setFirstSelection = false
+            end
+            if file not= undefined
+                Array<Pair<integer>> indices = fileIndices:GetValue(file)
+                EditorTab tab = tabPane:OpenNewTab(file)
+                CodeTextBox textBox = tab:GetTextBox()
+                tabPane:Select(tab)
+                
+                /* If the File Name TreeItem was activated, then we will select 
+                the first instance of the find word in the file, else a line number
+                TreeItem was activated and we will select the instance associated
+                with that line number in the file. */
+                integer startIndex = 0
+                integer endIndex = 0
+                if(setFirstSelection)
+                    startIndex = indices:Get(0):GetFirstValue()
+                    endIndex = indices:Get(0):GetSecondValue()
+                else
+                    Pair<integer> index = treeItemIndices:GetValue(item)
+                    startIndex = index:GetFirstValue()
+                    //output "Start Index: " + startIndex
+                    endIndex = index:GetSecondValue()
+                    //output "Line Number: " + textBox:GetLineIndexOfCharacter(endIndex)
+                end
+                textBox:SetCaretPosition(endIndex)
+                textBox:GoToLine(textBox:GetLineIndexOfCharacter(endIndex))
+                textBox:Select(startIndex, endIndex, true)
+            end
+        end
+    end
 end

@@ -1,0 +1,24 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.SearchResultsTab
+use Libraries.Interface.Controls.TreeItem
+
+class OpenFindInProjectFileBehavior is Behavior
+    SearchResultsTab tab = undefined
+
+    action SetSearchResultsTab(SearchResultsTab tab)
+        me:tab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if tab not= undefined
+            if event:GetItem() is TreeItem
+                TreeItem item = cast(TreeItem, event:GetItem())
+                tab:OpenTreeItemFile(item)
+            end
+        end
+    end
+end
