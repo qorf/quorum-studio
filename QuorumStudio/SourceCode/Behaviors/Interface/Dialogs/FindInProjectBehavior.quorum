@@ -17,7 +17,6 @@ use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 
-
 class FindInProjectBehavior is QuorumStudioBehavior
     text find = ""
     Array<File> files
@@ -35,6 +34,8 @@ class FindInProjectBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
         ResetQuery()
+
+        
 
         if dialog not= undefined
             GameStateManager gameManager
@@ -54,7 +55,7 @@ class FindInProjectBehavior is QuorumStudioBehavior
             associated array of indices to the hash table fileIndices.*/
             if ((find not= "") and (not files:IsEmpty()))   
                 integer i = 0
-                repeat while i < files:GetSize() and totalFinds < 5001
+                repeat while i < files:GetSize() and totalFinds < 5001                 
                     Array<Pair<integer>> temp = FindQuery(find, files:Get(i), isMatchCase, isWholeWord)
                     if not temp:IsEmpty()
                         fileIndices:Add(files:Get(i), temp)
@@ -95,10 +96,47 @@ class FindInProjectBehavior is QuorumStudioBehavior
         Array<Pair<integer>> indices
 //NEXT STEP: FIND INDICES do not match up with the textbox selection indices, *I think* depending on the 
 //line separator, need to look into this
-//        MultipleLineText value
-//        value:Initialize(file:Read())
-//        text lineSeparator = value:GetLineSeparator()
         text textValue = file:Read()
+        text carriageReturn = textValue:GetCarriageReturn()
+        text lineFeed = textValue:GetLineFeed()
+        MultipleLineText value
+        value:Initialize(textValue)
+        text lineSeparator = value:GetLineSeparator()
+
+        /* Reusing the code from SanitizeLines in the TextBox class to swap the line separator to the current OS's
+        line separator style. The textValue is then rewritten to the file so that the line numbers and indices will 
+        match when highlighting the instances in the CodeTextBox */
+        //Windows style separators
+        if lineSeparator = (carriageReturn + lineFeed)
+            integer readIndex = 0
+            integer index = textValue:IndexOf(lineFeed, readIndex)
+            repeat while index >= 0
+                if index > 0 and value:GetCharacter(index - 1) = carriageReturn
+                    readIndex = index + 1
+                else
+                    if index = 0
+                        textValue = carriageReturn + textValue
+                    else
+                        text preText = textValue:GetSubtext(0, index) + carriageReturn
+                        text postText = textValue:GetSubtext(index)
+                        textValue = preText + postText
+                    end
+                end
+                readIndex = index + 2
+            end
+            
+            if readIndex >= textValue:GetSize()
+                index = -1
+            else
+                index = textValue:IndexOf(lineFeed, readIndex)
+            end
+
+        //UNIX style separators
+        elseif lineSeparator = lineFeed
+            textValue = textValue:Replace(carriageReturn + lineFeed, lineFeed)
+        end     
+
+        //text textValue = value:GetText()
         integer querySize = query:GetSize()
         integer fileSize = textValue:GetSize()
         integer index = 0
@@ -121,7 +159,7 @@ class FindInProjectBehavior is QuorumStudioBehavior
             end
         else
             repeat while index <= (fileSize - querySize)
-                text temp = textValue:GetSubtext(index, (index + querySize))
+                //text temp = textValue:GetText(index, (index + querySize))
                 if(query:EqualsIgnoringCase(textValue:GetSubtext(index, (index + querySize))))
                     Pair<integer> i
                     i:Set(index, (index + querySize))

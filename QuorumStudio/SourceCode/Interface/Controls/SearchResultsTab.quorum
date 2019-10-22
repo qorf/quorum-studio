@@ -97,8 +97,47 @@ class SearchResultsTab is Tab
             //fileItem:SetIcon(fileIcon)
             fileItem:SetName(file:GetFileName())
             Array<Pair<integer>> temp = fileIndices:GetValue(file)
+            text textValue = file:Read()
+            text carriageReturn = textValue:GetCarriageReturn()
+            text lineFeed = textValue:GetLineFeed()
             MultipleLineText value
-            value:Initialize(file:Read())
+            text lineSeparator = value:GetLineSeparator()
+
+            /* Reusing the code from SanitizeLines in the TextBox class to swap the line separator to the current OS's
+            line separator style. The textValue is then rewritten to the file so that the line numbers and indices will 
+            match when highlighting the instances in the CodeTextBox */
+            //Windows style separators
+            if lineSeparator = (carriageReturn + lineFeed)
+                integer readIndex = 0
+                integer index = textValue:IndexOf(lineFeed, readIndex)
+                repeat while index >= 0
+                    if index > 0 and value:GetCharacter(index - 1) = carriageReturn
+                        readIndex = index + 1
+                    else
+                        if index = 0
+                            textValue = carriageReturn + textValue
+                        else
+                            text preText = textValue:GetSubtext(0, index) + carriageReturn
+                            text postText = textValue:GetSubtext(index)
+                            textValue = preText + postText
+                        end
+                    end
+                    readIndex = index + 2
+                end
+
+                if readIndex >= textValue:GetSize()
+                    index = -1
+                else
+                    index = textValue:IndexOf(lineFeed, readIndex)
+                end
+
+            //UNIX style separators
+            elseif lineSeparator = lineFeed
+                textValue = textValue:Replace(carriageReturn + lineFeed, lineFeed)
+            end
+
+            value:Initialize(textValue)
+
 
             integer j = 0
             repeat while j < temp:GetSize()
@@ -112,8 +151,7 @@ class SearchResultsTab is Tab
                 MultipleLineText line = value:GetLine(lineIndex)
                 text lineText = line:GetText()
                 integer indexInLine = index - value:CharacterIndexFromLineIndex(lineIndex)
-//NEXT STEP: Add color to the instance of the find word within the line, NetBeans uses Bold which
-//is not available, so will use different color to make the findQuery stick out
+//NEXT STEP: Add color and Bold to the tree item text when textStyles are available for TreeItems
                 indexItem:SetName((lineIndex + 1) + ": " + lineText:Trim() + "     [column " + indexInLine + "]")
                 fileItem:Add(cast(TreeItem, indexItem))
                 j = j + 1
@@ -167,7 +205,8 @@ class SearchResultsTab is Tab
                 EditorTab tab = tabPane:OpenNewTab(file)
                 CodeTextBox textBox = tab:GetTextBox()
                 tabPane:Select(tab)
-                
+                MultipleLineText value = textBox:GetMultipleLineText()
+
                 /* If the File Name TreeItem was activated, then we will select 
                 the first instance of the find word in the file, else a line number
                 TreeItem was activated and we will select the instance associated
@@ -180,10 +219,9 @@ class SearchResultsTab is Tab
                 else
                     Pair<integer> index = treeItemIndices:GetValue(item)
                     startIndex = index:GetFirstValue()
-                    //output "Start Index: " + startIndex
                     endIndex = index:GetSecondValue()
-                    //output "Line Number: " + textBox:GetLineIndexOfCharacter(endIndex)
                 end
+                MultipleLineText lineText = value:GetLine(startIndex)
                 textBox:SetCaretPosition(endIndex)
                 textBox:GoToLine(textBox:GetLineIndexOfCharacter(endIndex))
                 textBox:Select(startIndex, endIndex, true)

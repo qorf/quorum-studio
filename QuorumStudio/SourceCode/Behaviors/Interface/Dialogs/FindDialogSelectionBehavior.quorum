@@ -1,0 +1,56 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Item
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Item2D
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Controls.Tree
+use Libraries.Development.Environment.Projects.ProjectTree
+
+/* Opens the correct Find Dialog based on the current focus */
+class FindDialogSelectionBehavior is QuorumStudioBehavior
+    OpenFindInProjectDialogBehavior findInProjectBehavior
+    OpenFindDialogBehavior findBehavior
+    Behaviors behaviors = undefined
+
+    action Run(BehaviorEvent event)
+        Item item = event:GetItem()
+
+        GameStateManager gameManager
+        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+        Item focusItem = studio:GetCurrentFocus()
+        
+        if item is MenuItem and focusItem is TextBox
+            if focusItem is CodeTextBox
+                CodeTextBox textBox = cast(CodeTextBox, focusItem)
+                Button control
+                control:SetBehavior(findBehavior)
+                control:Activate()
+                return now
+            else
+                return now
+            end
+        elseif item is MenuItem and focusItem is Tree
+            if focusItem is ProjectTree
+                ProjectTree treeItem = cast(ProjectTree, focusItem)
+                Button projectControl
+                projectControl:SetBehavior(findInProjectBehavior)
+                projectControl:Activate()
+                return now
+            else
+                return now
+            end
+        else
+            return now
+        end
+    
+    end
+    
+end

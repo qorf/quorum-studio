@@ -19,6 +19,9 @@ use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
 use Libraries.Development.Environment.Studio.Behaviors.FindInProjectBehavior
 use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
 
 
 class FindInProjectDialog is Dialog
@@ -28,13 +31,16 @@ class FindInProjectDialog is Dialog
     Checkbox matchCaseCheckbox
     Checkbox wholeWordCheckbox
     Array<File> searchFiles
-
+    Behaviors behaviors = undefined
     SearchResultsTab tab = undefined
 
     DialogCancelBehavior cancelBehavior
     FindInProjectBehavior findBehavior
 
     on create
+        GameStateManager gameManager
+        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+        behaviors = studio:GetBehaviors()
         searchFiles:Empty()
         findBehavior:SetDialog(me)
         SetBehavior(findBehavior)
@@ -126,8 +132,10 @@ class FindInProjectDialog is Dialog
         
         //Eventually switch this to a textfield with a flag set to disable modifications, when this feature is available
         //Label folderField
+        
         folderField:SetText("Folder Name")
         folderField:SetPercentageWidth(1.0)
+        folderField:SetHorizontalLayoutMode(folderField:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
         folderField:Focus()
         fieldsContainer:Add(folderField)
 
