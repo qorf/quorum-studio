@@ -6,6 +6,10 @@ use Libraries.Interface.Events.TextChangeListener
 use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Events.TextChangeEvent
 use Libraries.Game.GameStateManager
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Behaviors.Controls.TabCloseBehavior
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Behaviors.Controls.CloseAllEditorTabsBehavior
 
 class EditorTab is Tab, TextChangeListener
     boolean dirty = false
@@ -89,4 +93,28 @@ class EditorTab is Tab, TextChangeListener
     action Update(number seconds)
         timeSinceDirty = timeSinceDirty + seconds
     end
+
+   action GetPopupMenu returns PopupMenu
+        if parent:Control:contextMenu not= undefined
+            return parent:Control:contextMenu
+        end
+
+        PopupMenu tabContextMenu
+        TabCloseBehavior tabCloseBehavior
+        MenuItem closeTabMenuItem
+        tabCloseBehavior:SetTab(me)
+        closeTabMenuItem:SetName("Close")
+        closeTabMenuItem:SetBehavior(tabCloseBehavior)
+        tabContextMenu:Add(closeTabMenuItem)
+
+        CloseAllEditorTabsBehavior closeAllTabsBehavior
+        MenuItem closeAllTabsMenuItem
+        closeAllTabsBehavior:SetEditorTab(me)
+        closeAllTabsMenuItem:SetName("Close All")
+        closeAllTabsMenuItem:SetBehavior(closeAllTabsBehavior)
+        tabContextMenu:Add(closeAllTabsMenuItem)
+
+        return tabContextMenu
+    end
+
 end

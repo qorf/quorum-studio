@@ -1,0 +1,31 @@
+package Libraries.Interface.Behaviors.Controls
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Events.BehaviorEvent
+
+class CloseAllEditorTabsBehavior is Behavior
+    EditorTab tab = undefined
+
+    action SetEditorTab(EditorTab tab)
+        me:tab = tab
+    end
+    
+    action Run(BehaviorEvent event)
+        if tab not= undefined
+            CodeEditorTabPane tabPane = cast(CodeEditorTabPane, tab:GetTabPane())
+            integer openTabs = tabPane:GetSize()
+            
+            integer i = 0
+            repeat while i < openTabs
+                Tab tempTab = tabPane:GetSelectedTab()
+                if tempTab not= undefined
+                    tabPane:Remove(tempTab)
+                end
+                i = i + 1
+            end
+        end
+    end
+end
