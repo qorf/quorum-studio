@@ -1,0 +1,41 @@
+package Libraries.Interface.Behaviors.Controls
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.ToggleButton
+use Libraries.Interface.Controls.TabBar
+
+class CloseAllOtherEditorTabsBehavior is Behavior
+    Tab tab = undefined
+    
+    action SetTab(Tab tab)
+        me:tab = tab
+    end
+    
+    action Run(BehaviorEvent event)
+        if tab not= undefined
+            if tab:GetButtonGroup() is TabBar
+                TabBar tabBar
+                tabBar = cast(TabBar, tab:GetButtonGroup())
+
+                boolean isRunning = tabBar:GetSize() not= 1
+                integer i = 0
+                repeat while isRunning
+                    Tab tempTab = tabBar:Get(i)
+                    if(tab = tempTab)
+                        i = i + 1
+                    else
+                        tabBar:Remove(tempTab)
+                    end
+                    isRunning = tabBar:GetSize() not= 1
+                end
+
+            end   
+        end
+    end
+end
