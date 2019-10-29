@@ -100,7 +100,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     List imagesList
 
     Array<List> imagesListArray         //stores each associated imageSheetName with the correct list of images to be displayed in the imagesList
-    integer imageSheetCount = -1    
+    integer imageSheetCount = -1   
 
     // Variables for the Mobile tab.
     TextField mobileResourcesField
@@ -172,6 +172,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     end
 
     action SetProperties(QuorumProject project)
+        imageSheetCount = -1
         me:project = project
         sourceLocation = me:project:GetSourceLocation()
 
@@ -260,6 +261,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             ImageSheets sheets = project:GetImageSheets()
             Array<ImageSheet> imageSheets = sheets:GetSheets(true)
             Iterator<ImageSheet> sheetsIterator = imageSheets:GetIterator()
+            output imageSheetCount
             repeat while sheetsIterator:HasNext()
                 imageSheetCount = imageSheetCount + 1
                 ImageSheet sheet = sheetsIterator:Next()
@@ -545,88 +547,112 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         panel:SetLayout(layout)
         projectInfoTab:SetRelatedItem(panel)
 
-        Control programNameArea
-        FlowLayout programNameLayout
-        programNameArea:SetLayout(programNameLayout)
-        programNameArea:SetRightPadding(40)
-        programNameArea:SetTopPadding(20)
-        programNameArea:SetLeftPadding(20)
-        programNameArea:SetBottomPadding(10)
-        programNameArea:SetPercentageWidth(1.0)
-        programNameArea:SetVerticalLayoutMode(programNameArea:FIT_CONTENTS)
+        Control labelsArea
+        FlowLayout labelsLayout
+        labelsArea:SetLayout(labelsLayout)
+        labelsArea:SetLeftPadding(10)
+        labelsArea:SetRightPadding(40)
+        labelsArea:SetTopPadding(20)
+        labelsArea:SetBottomPadding(20)
+        labelsArea:SetPercentageWidth(0.2)
+        labelsArea:SetVerticalLayoutMode(labelsArea:FIT_CONTENTS)       
 
         Label programName
         programName:SetText("Program Name: ")
-        programNameArea:Add(programName)
+        programName:SetPercentageWidth(1.0)
+        labelsArea:Add(programName)
 
-        Control labelPadding
-        labelPadding:SetPercentageWidth(0.2)
-        labelPadding:SetPixelHeight(1)
-        programNameArea:Add(labelPadding)
-
-        programNameField:SetHorizontalLayoutMode(programNameField:parent:Libraries.Interface.Controls.Control:FILL)
-        programNameField:SetName("Program Name")
-        programNameArea:Add(programNameField)
-        panel:Add(programNameArea)
-
-        Control projectTypeArea
-        FlowLayout projectTypeLayout
-        projectTypeArea:SetLayout(projectTypeLayout)
-        projectTypeArea:SetRightPadding(10)
-        projectTypeArea:SetLeftPadding(20)
-        projectTypeArea:SetTopPadding(20)
-        projectTypeArea:SetBottomPadding(10)
-        projectTypeArea:SetPercentageWidth(1.0)
-        projectTypeArea:SetVerticalLayoutMode(projectTypeArea:FIT_CONTENTS)
-        
         Label projectType
         projectType:SetText("Select Project Type: ")
-        projectTypeArea:Add(projectType)
+        projectType:SetTopPadding(20)
+        projectType:SetPercentageWidth(1.0)
+        labelsArea:Add(projectType)
+
+        panel:Add(labelsArea)
+
+        Control controlsArea
+        FlowLayout controlsLayout
+        controlsArea:SetLayout(controlsLayout)
+        controlsArea:SetPercentageWidth(0.75)
+        controlsArea:SetRightPadding(10)
+        controlsArea:SetLeftPadding(10)
+        controlsArea:SetTopPadding(20)
+        controlsArea:SetBottomPadding(20)
+        controlsArea:SetVerticalLayoutMode(controlsArea:FIT_CONTENTS) 
+        //controlsArea:SetHorizontalLayoutMode(controlsArea:STANDARD)
+
+        programNameField:SetHorizontalLayoutMode(programNameField:parent:Libraries.Interface.Controls.Control:FILL)
+        programNameField:SetPercentageWidth(1.0)
+        programNameField:SetName("Program Name")
+        controlsArea:Add(programNameField)
 
         Control buttonPadding
-        buttonPadding:SetPercentageWidth(0.15)
+        buttonPadding:SetPercentageWidth(0.8)
         buttonPadding:SetPixelHeight(1)
-        projectTypeArea:Add(buttonPadding)
+        //controlsArea:Add(buttonPadding)
 
         Control buttonArea
         FlowLayout buttonLayout
         buttonArea:SetLayout(buttonLayout)
-        buttonArea:SetHorizontalLayoutMode(buttonArea:FILL)
+        buttonArea:SetHorizontalLayoutMode(buttonArea:STANDARD)
         buttonArea:SetVerticalLayoutMode(buttonArea:FIT_CONTENTS)
+        buttonArea:SetTopPadding(20)
+        buttonArea:SetPercentageWidth(1.0)
+
+        Control buttonArea1
+        FlowLayout buttonLayout1
+        buttonArea1:SetLayout(buttonLayout1)
+        buttonArea1:SetHorizontalLayoutMode(buttonArea1:STANDARD)
+        buttonArea1:SetVerticalLayoutMode(buttonArea1:FIT_CONTENTS)
+        buttonArea1:SetPercentageWidth(0.5)
 
         ButtonGroup buttonGroup
         standardProjectButton:SetName("Standard")
         standardProjectButton:SetFontSize(14)
-        standardProjectButton:SetRightPadding(33)
+        //standardProjectButton:SetRightPadding(33)
+        standardProjectButton:SetPercentageWidth(1.0)
         buttonGroup:AddButton(standardProjectButton)
-        buttonArea:Add(standardProjectButton)
-        buttonArea:Add(buttonPadding)
+        buttonArea1:Add(standardProjectButton)
+        buttonArea1:Add(buttonPadding)
 
         legoProjectButton:SetName("Lego")
         legoProjectButton:SetFontSize(14)
-        legoProjectButton:SetRightPadding(60)
+        legoProjectButton:SetTopPadding(20)
+        legoProjectButton:SetPercentageWidth(1.0)
         buttonGroup:AddButton(legoProjectButton)
-        buttonArea:Add(legoProjectButton)
-        buttonArea:Add(buttonPadding)
+        buttonArea1:Add(legoProjectButton)
+        //buttonArea:Add(buttonPadding)
+
+        buttonArea:Add(buttonArea1)
+
+        Control buttonArea2
+        FlowLayout buttonLayout2
+        buttonArea2:SetLayout(buttonLayout2)
+        buttonArea2:SetHorizontalLayoutMode(buttonArea2:STANDARD)
+        buttonArea2:SetVerticalLayoutMode(buttonArea2:FIT_CONTENTS)
+        buttonArea2:SetPercentageWidth(0.5)
 
         webServerProjectButton:SetName("Web Server")
         webServerProjectButton:SetFontSize(14)
-        webServerProjectButton:SetTopPadding(20)
+        //webServerProjectButton:SetTopPadding(20)
+        webServerProjectButton:SetPercentageWidth(1.0)
         buttonGroup:AddButton(webServerProjectButton)
-        buttonArea:Add(webServerProjectButton)
-        buttonArea:Add(buttonPadding)
-
+        buttonArea2:Add(webServerProjectButton)
+        buttonArea2:Add(buttonPadding)
 
         webBrowserProjectButton:SetName("Web Browser")
         webBrowserProjectButton:SetFontSize(14)
         webBrowserProjectButton:SetTopPadding(20)
-        webBrowserProjectButton:SetRightPadding(6)
+        //webBrowserProjectButton:SetRightPadding(10)
+        webBrowserProjectButton:SetPercentageWidth(1.0)
         buttonGroup:AddButton(webBrowserProjectButton)
-        buttonArea:Add(webBrowserProjectButton)
-        buttonArea:Add(buttonPadding)
+        buttonArea2:Add(webBrowserProjectButton)
+        //buttonArea:Add(buttonPadding)
 
-        projectTypeArea:Add(buttonArea)
-        panel:Add(projectTypeArea)
+        buttonArea:Add(buttonArea2)
+
+        controlsArea:Add(buttonArea)
+        panel:Add(controlsArea)
 
         Label pluginFolders
         pluginFolders:SetLeftPadding(20)
@@ -644,13 +670,18 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         pluginArea:SetPercentageWidth(1.0)
         pluginArea:SetLeftPadding(20)
 
+        ScrollPane javaScrollPane
+        javaScrollPane:SetPercentageWidth(0.7)
+        javaScrollPane:SetPixelHeight(100)
+        FlowLayout javaScrollLayout
+        javaScrollPane:SetLayout(javaScrollLayout)
+
         javaClassList:SetName("Additional Quorum Plugin Folders")
         javaClassList:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        javaClassList:SetVerticalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        javaClassList:SetPercentageWidth(0.7)
-        javaClassList:SetRightPadding(20)
-        javaClassList:SetPixelHeight(100)
-        pluginArea:Add(javaClassList)
+        javaClassList:SetVerticalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        javaClassList:SetPercentageWidth(1.0)
+        javaScrollPane:Add(javaClassList)
+        pluginArea:Add(javaScrollPane)
 
         Control pluginButtons
         FlowLayout pluginButtonsLayout
@@ -706,13 +737,18 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         jarArea:SetPercentageWidth(1.0)
         jarArea:SetLeftPadding(20)
 
+        ScrollPane jarScrollPane
+        jarScrollPane:SetPercentageWidth(0.7)
+        jarScrollPane:SetPixelHeight(100)
+        FlowLayout jarScrollLayout
+        jarScrollPane:SetLayout(jarScrollLayout)
+
         jarList:SetName("Additional Java Jar Libraries")
         jarList:SetHorizontalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        jarList:SetVerticalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        jarList:SetPercentageWidth(0.7)
-        jarList:SetRightPadding(20)
-        jarList:SetPixelHeight(100)
-        jarArea:Add(jarList)
+        jarList:SetVerticalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        jarList:SetPercentageWidth(1.0)
+        jarScrollPane:Add(jarList)
+        jarArea:Add(jarScrollPane)
 
         Control jarButtons
         FlowLayout jarButtonsLayout
@@ -767,14 +803,20 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         sourceArea:SetVerticalLayoutMode(sourceArea:FIT_CONTENTS)
         sourceArea:SetPercentageWidth(1.0)
         sourceArea:SetLeftPadding(20)
-
+        
+        ScrollPane sourcesScrollPane
+        sourcesScrollPane:SetPercentageWidth(0.7)
+        sourcesScrollPane:SetPixelHeight(100)
+        FlowLayout sourcesScrollLayout
+        sourcesScrollPane:SetLayout(sourcesScrollLayout)
+        
         quorumSourcesList:SetName("Additional Source Files")
         quorumSourcesList:SetHorizontalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        quorumSourcesList:SetVerticalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        quorumSourcesList:SetPercentageWidth(0.7)
-        quorumSourcesList:SetRightPadding(20)
-        quorumSourcesList:SetPixelHeight(100)
-        sourceArea:Add(quorumSourcesList)
+        quorumSourcesList:SetVerticalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        quorumSourcesList:SetPercentageWidth(1.0)
+
+        sourcesScrollPane:Add(quorumSourcesList)
+        sourceArea:Add(sourcesScrollPane)
 
         addSourceBehavior:SetList(quorumSourcesList)
         removeSourceBehavior:SetList(quorumSourcesList)
@@ -966,14 +1008,20 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         imageSheetsArea:SetLeftPadding(10)
         imageSheetsArea:SetTopPadding(10)
 
+        ScrollPane imageSheetsScrollPane
+        imageSheetsScrollPane:SetPixelHeight(100)
+        imageSheetsScrollPane:SetPercentageWidth(0.7)
+        FlowLayout imageSheetsScrollLayout
+        imageSheetsScrollPane:SetLayout(imageSheetsScrollLayout)
+
         imageSheetsList:SetName("Image Sheets List")
         imageSheetsList:SetHorizontalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        imageSheetsList:SetVerticalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        imageSheetsList:SetPercentageWidth(0.7)
-        imageSheetsList:SetPixelHeight(100)
+        imageSheetsList:SetVerticalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        imageSheetsList:SetPercentageWidth(1.0)
         //have to double click on the list item to initiate behavior
+        imageSheetsScrollPane:Add(imageSheetsList)
         imageSheetsList:SetItemActivationBehavior(imageSheetListBehavior)
-        imageSheetsArea:Add(imageSheetsList)
+        imageSheetsArea:Add(imageSheetsScrollPane)
 
         addImageSheetsBehavior:SetImageSheetsList(imageSheetsList)
         editImageSheetsBehavior:SetImageSheetsList(imageSheetsList)
@@ -1045,8 +1093,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         imagesList:SetVerticalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
         imagesList:SetPercentageWidth(1.0)
         //imagesList:SetPixelHeight(600)
-        //imagesArea:Add(imagesList)
-        
+        //imagesArea:Add(imagesList)       
         scrollPane:Add(imagesList)
         imagesArea:Add(scrollPane)
 
@@ -1204,7 +1251,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         emptyTextFieldBehavior:SetTextField(mobileResourcesField)
 
         mobileResourcesField:SetName("Mobile Resources")
-        mobileResourcesField:SetPercentageWidth(0.6)
+        mobileResourcesField:SetPercentageWidth(0.68)
         resourcesContainer:Add(mobileResourcesField)
 
         FlowLayout resourcesButtonLayout   
@@ -1228,7 +1275,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         resourcesClear:SetHorizontalLayoutMode(resourcesClear:parent:Libraries.Interface.Controls.Control:STANDARD)
         resourcesClear:SetPercentageWidth(0.45)
         resourcesClear:SetLeftPadding(20)
-        resourcesClear:SetRightPadding(20)
+        resourcesClear:SetRightPadding(10)
         resourcesClear:SetBehavior(emptyTextFieldBehavior)
         resourcesButtonContainer:Add(resourcesClear)
 

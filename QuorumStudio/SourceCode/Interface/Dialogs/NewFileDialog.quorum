@@ -37,6 +37,7 @@ use Libraries.Interface.Events.KeyboardListener
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Interface.Selections.TreeSelection
 use Libraries.Containers.HashTable
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
 
 
 class NewFileDialog is Dialog
@@ -285,6 +286,7 @@ class NewFileDialog is Dialog
 
         QuorumProjectView projectView = cast(QuorumProjectView, project:GetProjectView())
         TreeItem treeItem = projectView:GetLogicalTree()
+        CodeEditorTabPane tabPane = studio:GetTabPane()
 
         ProjectTree projectTree = studio:GetProjectTree()
         Iterator<TreeItem> items = projectTree:GetTreeItems()
@@ -311,6 +313,8 @@ class NewFileDialog is Dialog
         projectTree:Add(counter, treeItem)
         
         projectTree:LoadExpandState(expand)
+        EditorTab tab = tabPane:OpenNewTab(file)
+        tabPane:Select(tab)
     end
 
     action GetFileName returns text

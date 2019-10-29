@@ -22,6 +22,7 @@ use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Concurrency.ThreadRunner
 
 
 class FindInProjectDialog is Dialog
@@ -33,7 +34,7 @@ class FindInProjectDialog is Dialog
     Array<File> searchFiles
     Behaviors behaviors = undefined
     SearchResultsTab tab = undefined
-
+    ThreadRunner runner
     DialogCancelBehavior cancelBehavior
     FindInProjectBehavior findBehavior
 
@@ -43,6 +44,7 @@ class FindInProjectDialog is Dialog
         behaviors = studio:GetBehaviors()
         searchFiles:Empty()
         findBehavior:SetDialog(me)
+        findBehavior:SetThread(runner)
         SetBehavior(findBehavior)
     end
 

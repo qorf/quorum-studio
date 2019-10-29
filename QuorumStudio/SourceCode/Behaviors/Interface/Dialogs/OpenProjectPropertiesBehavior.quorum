@@ -9,13 +9,15 @@ use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environment.Studio.Interface.ProjectPropertiesDialog
+use Libraries.Game.GameStateManager
 
 class OpenProjectPropertiesBehavior is QuorumStudioBehavior
 
     ProjectPropertiesDialog dialog = undefined
 
     action Run(BehaviorEvent event)
-        QuorumStudio studio = GetMainApplication()
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
         ProjectTree tree = studio:GetProjectTree()
         TreeSelection selection = tree:GetSelection()
         if not selection:IsEmpty()

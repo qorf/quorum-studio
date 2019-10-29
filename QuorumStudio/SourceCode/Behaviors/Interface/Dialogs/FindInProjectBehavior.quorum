@@ -16,6 +16,7 @@ use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Concurrency.ThreadRunner
 
 class FindInProjectBehavior is QuorumStudioBehavior
     text find = ""
@@ -27,15 +28,22 @@ class FindInProjectBehavior is QuorumStudioBehavior
     integer totalFinds = 0
     integer totalFiles = 0
     SearchResultsTab searchResultsTab = undefined
+    ThreadRunner runner = undefined
 
     action SetDialog(FindInProjectDialog dialog)
         me:dialog = dialog
     end
 
+    action SetThread(ThreadRunner runner)
+        me:runner = runner
+    end
+
+    action GetThread returns ThreadRunner
+        return runner
+    end
+    
     action Run(BehaviorEvent event)
         ResetQuery()
-
-        
 
         if dialog not= undefined
             GameStateManager gameManager
@@ -64,6 +72,9 @@ class FindInProjectBehavior is QuorumStudioBehavior
                     end
                     i = i + 1
                 end
+
+
+                //Move to another behavior?
                 if searchResultsTab not= undefined
                     searchResultsTab:ClearSearchResults()
                     TreeItem item
@@ -77,7 +88,7 @@ class FindInProjectBehavior is QuorumStudioBehavior
                 end
             end
             dialog:Hide()
-            tabPane:Select(searchResultsTab)
+            searchResultsTab:Activate()
         end
     end
 
@@ -94,8 +105,6 @@ class FindInProjectBehavior is QuorumStudioBehavior
     is at least one instance of the find query in the file. */
     action FindQuery(text query, File file, boolean isMatchCase, boolean isWholeWord) returns Array<Pair<integer>>
         Array<Pair<integer>> indices
-//NEXT STEP: FIND INDICES do not match up with the textbox selection indices, *I think* depending on the 
-//line separator, need to look into this
         text textValue = file:Read()
         text carriageReturn = textValue:GetCarriageReturn()
         text lineFeed = textValue:GetLineFeed()
@@ -170,8 +179,6 @@ class FindInProjectBehavior is QuorumStudioBehavior
                 end
             end
         end
-
-
 
         /* Get the word, check the character before and the character after the word to 
         see if it is either a special character or whitespace if not then remove the 
