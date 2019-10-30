@@ -46,7 +46,7 @@ class NewFileDialog is Dialog
 
     GameStateManager gameManager
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
-
+    text os = gameManager:GetOperatingSystem()
     // The current Quorum project that we're modifying the properties of.
     // Set during the SetProperties(QuorumProject) action.
     QuorumProject project = undefined   
@@ -107,7 +107,11 @@ class NewFileDialog is Dialog
         me:project = project
         projectName = project:GetName()
         if displayText = "" 
-            displayText = project:PROJECT_SOURCES + "/"
+            if os:Contains("OS X")
+                displayText = project:PROJECT_SOURCES + "/"
+            else
+                displayText = project:PROJECT_SOURCES + "\"
+            end
         end
         locationNameField:SetText(displayText)
     end
@@ -141,7 +145,7 @@ class NewFileDialog is Dialog
         fileContainer:Add(fileName)
         
         fileNameField:SetHorizontalLayoutMode(fileNameField:parent:Libraries.Interface.Controls.Control:FILL)
-        fileNameField:SetName("Name")
+        fileNameField:SetName("New File Name")
         fileNameField:SetText("")
         fileNameField:SetFocusable(true)
         fileNameField:SetNextFocus(locationNameField)
@@ -258,9 +262,17 @@ class NewFileDialog is Dialog
         folder for adding new files is the source code folder, else add the new file to 
         the currently selected folder */
         if project:GetName():Equals(locationNameField:GetText():Trim())
-            path = path + "/" + project:PROJECT_SOURCES + "/" + fileNameField:GetText():Trim()
+            if os:Contains("OS X")
+                path = path + "/" + project:PROJECT_SOURCES + "/" + fileNameField:GetText():Trim()
+            else
+                path = path + "\" + project:PROJECT_SOURCES + "\" + fileNameField:GetText():Trim()
+            end
         else
-            path = path + "/" +  locationNameField:GetText():Trim() + fileNameField:GetText():Trim() 
+            if os:Contains("OS X")
+                path = path + "/" +  locationNameField:GetText():Trim() + fileNameField:GetText():Trim()
+            else
+                path = path + "\" +  locationNameField:GetText():Trim() + fileNameField:GetText():Trim()
+            end
         end
         
         file:SetAbsolutePath(path)

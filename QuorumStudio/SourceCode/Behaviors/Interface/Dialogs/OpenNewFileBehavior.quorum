@@ -20,6 +20,7 @@ class OpenNewFileBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
         GameStateManager manager
         QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        text os = manager:GetOperatingSystem()
         ProjectTree tree = studio:GetProjectTree()
         TreeSelection selection = tree:GetSelection()
         text path = ""
@@ -32,7 +33,11 @@ class OpenNewFileBehavior is QuorumStudioBehavior
             integer i = 1
             repeat while i < size
                 TreeItem currentItem = items:Get(i)
-                path = path + currentItem:GetName() + "/"
+                if os:Contains("OS X")
+                    path = path + currentItem:GetName() + "/"
+                else
+                    path = path + currentItem:GetName() + "\"
+                end
                 i = i + 1
             end
 
