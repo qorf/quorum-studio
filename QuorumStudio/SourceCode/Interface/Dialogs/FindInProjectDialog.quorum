@@ -46,6 +46,7 @@ class FindInProjectDialog is Dialog
         findBehavior:SetDialog(me)
         findBehavior:SetThread(runner)
         SetBehavior(findBehavior)
+        parent:Item:visible = false
     end
 
     action IsInitialized returns boolean
@@ -53,11 +54,19 @@ class FindInProjectDialog is Dialog
     end
 
     action OnShow()
+        if tab not= undefined
+            queryField:SetText(tab:GetQuery())
+            queryField:SetCaretPosition(queryField:GetText():GetSize())
+        end
         queryField:Focus()
     end
 
     action Initialize
         Color color
+        if IsShowing()
+            return now
+        end
+
         initialized = true
 
         SetName("Find In Project")
