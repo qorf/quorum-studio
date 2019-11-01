@@ -22,6 +22,7 @@ use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Concurrency.ThreadRunner
 
 
 class FindInProjectDialog is Dialog
@@ -33,7 +34,7 @@ class FindInProjectDialog is Dialog
     Array<File> searchFiles
     Behaviors behaviors = undefined
     SearchResultsTab tab = undefined
-
+    ThreadRunner runner
     DialogCancelBehavior cancelBehavior
     FindInProjectBehavior findBehavior
 
@@ -43,7 +44,9 @@ class FindInProjectDialog is Dialog
         behaviors = studio:GetBehaviors()
         searchFiles:Empty()
         findBehavior:SetDialog(me)
+        findBehavior:SetThread(runner)
         SetBehavior(findBehavior)
+        parent:Item:visible = false
     end
 
     action IsInitialized returns boolean
@@ -51,11 +54,19 @@ class FindInProjectDialog is Dialog
     end
 
     action OnShow()
+        if tab not= undefined
+            queryField:SetText(tab:GetQuery())
+            queryField:SetCaretPosition(queryField:GetText():GetSize())
+        end
         queryField:Focus()
     end
 
     action Initialize
         Color color
+        if IsShowing()
+            return now
+        end
+
         initialized = true
 
         SetName("Find In Project")
@@ -265,7 +276,7 @@ class FindInProjectDialog is Dialog
                 SetSearchFiles(f)
             end
         end
-        if file:GetFileExtension() = "quorum"
+        if not(file:IsDirectory()) and file:GetFileExtension() = "quorum"
             searchFiles:Add(file)
         end
     end

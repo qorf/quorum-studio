@@ -47,7 +47,7 @@ class SearchResultsTab is Tab
     HashTable<File, Array<Pair<integer>>> fileIndices
     HashTable<TreeItem, File> fileNames
     HashTable<TreeItem, Pair<integer>> treeItemIndices
-    
+    text query = ""
     Button previousResult
     Button nextResult
 
@@ -87,6 +87,14 @@ class SearchResultsTab is Tab
         return pane
     end
 
+    action GetQuery returns text
+        return query
+    end
+
+    action SetQuery(text query)
+        me:query = query
+    end
+
     private action SetupSearchTree
         Iterator<File> it = fileIndices:GetKeyIterator()
         repeat while it:HasNext()
@@ -111,7 +119,7 @@ class SearchResultsTab is Tab
                 integer readIndex = 0
                 integer index = textValue:IndexOf(lineFeed, readIndex)
                 repeat while index >= 0
-                    if index > 0 and value:GetCharacter(index - 1) = carriageReturn
+                    if index > 0 and textValue:GetCharacter(index - 1) = carriageReturn
                         readIndex = index + 1
                     else
                         if index = 0
@@ -123,13 +131,15 @@ class SearchResultsTab is Tab
                         end
                     end
                     readIndex = index + 2
+
+                    if readIndex >= textValue:GetSize()
+                        index = -1
+                    else
+                        index = textValue:IndexOf(lineFeed, readIndex)
+                    end
                 end
 
-                if readIndex >= textValue:GetSize()
-                    index = -1
-                else
-                    index = textValue:IndexOf(lineFeed, readIndex)
-                end
+
 
             //UNIX style separators
             elseif lineSeparator = lineFeed

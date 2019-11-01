@@ -16,6 +16,7 @@ use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Concurrency.ThreadRunner
 
 class FindInProjectBehavior is QuorumStudioBehavior
     text find = ""
@@ -27,15 +28,22 @@ class FindInProjectBehavior is QuorumStudioBehavior
     integer totalFinds = 0
     integer totalFiles = 0
     SearchResultsTab searchResultsTab = undefined
+    ThreadRunner runner = undefined
 
     action SetDialog(FindInProjectDialog dialog)
         me:dialog = dialog
     end
 
+    action SetThread(ThreadRunner runner)
+        me:runner = runner
+    end
+
+    action GetThread returns ThreadRunner
+        return runner
+    end
+    
     action Run(BehaviorEvent event)
         ResetQuery()
-
-        
 
         if dialog not= undefined
             GameStateManager gameManager
@@ -44,6 +52,7 @@ class FindInProjectBehavior is QuorumStudioBehavior
 
             searchResultsTab = dialog:GetSearchResultsTab()           
             find = dialog:GetQuery()
+            searchResultsTab:SetQuery(find)
             files = dialog:GetSearchFiles()
             isMatchCase = dialog:GetIsMatchCase()
             isWholeWord = dialog:GetIsWholeWord()
@@ -64,6 +73,8 @@ class FindInProjectBehavior is QuorumStudioBehavior
                     end
                     i = i + 1
                 end
+
+                //Move to another behavior?
                 if searchResultsTab not= undefined
                     searchResultsTab:ClearSearchResults()
                     TreeItem item
@@ -77,7 +88,7 @@ class FindInProjectBehavior is QuorumStudioBehavior
                 end
             end
             dialog:Hide()
-            tabPane:Select(searchResultsTab)
+            searchResultsTab:Activate()
         end
     end
 
@@ -94,8 +105,6 @@ class FindInProjectBehavior is QuorumStudioBehavior
     is at least one instance of the find query in the file. */
     action FindQuery(text query, File file, boolean isMatchCase, boolean isWholeWord) returns Array<Pair<integer>>
         Array<Pair<integer>> indices
-//NEXT STEP: FIND INDICES do not match up with the textbox selection indices, *I think* depending on the 
-//line separator, need to look into this
         text textValue = file:Read()
         text carriageReturn = textValue:GetCarriageReturn()
         text lineFeed = textValue:GetLineFeed()
@@ -104,37 +113,38 @@ class FindInProjectBehavior is QuorumStudioBehavior
         text lineSeparator = value:GetLineSeparator()
 
         /* Reusing the code from SanitizeLines in the TextBox class to swap the line separator to the current OS's
-        line separator style. The textValue is then rewritten to the file so that the line numbers and indices will 
-        match when highlighting the instances in the CodeTextBox */
+        line separator style. */
         //Windows style separators
-        if lineSeparator = (carriageReturn + lineFeed)
-            integer readIndex = 0
-            integer index = textValue:IndexOf(lineFeed, readIndex)
-            repeat while index >= 0
-                if index > 0 and value:GetCharacter(index - 1) = carriageReturn
-                    readIndex = index + 1
-                else
-                    if index = 0
-                        textValue = carriageReturn + textValue
+        if textValue not= ""
+            if lineSeparator = (carriageReturn + lineFeed)
+                integer readIndex = 0
+                integer index = textValue:IndexOf(lineFeed, readIndex)
+                repeat while index >= 0
+                    if index > 0 and textValue:GetCharacter(index - 1) = carriageReturn
+                        readIndex = index + 1
                     else
-                        text preText = textValue:GetSubtext(0, index) + carriageReturn
-                        text postText = textValue:GetSubtext(index)
-                        textValue = preText + postText
+                        if index = 0
+                            textValue = carriageReturn + textValue
+                        else
+                            text preText = textValue:GetSubtext(0, index) + carriageReturn
+                            text postText = textValue:GetSubtext(index)
+                            textValue = preText + postText
+                        end
+                    end
+                    readIndex = index + 2
+
+                    if readIndex >= textValue:GetSize()
+                        index = -1
+                    else
+                        index = textValue:IndexOf(lineFeed, readIndex)
                     end
                 end
-                readIndex = index + 2
-            end
-            
-            if readIndex >= textValue:GetSize()
-                index = -1
-            else
-                index = textValue:IndexOf(lineFeed, readIndex)
-            end
 
-        //UNIX style separators
-        elseif lineSeparator = lineFeed
-            textValue = textValue:Replace(carriageReturn + lineFeed, lineFeed)
-        end     
+            //UNIX style separators
+            elseif lineSeparator = lineFeed
+                textValue = textValue:Replace(carriageReturn + lineFeed, lineFeed)
+            end 
+        end
 
         //text textValue = value:GetText()
         integer querySize = query:GetSize()
@@ -170,8 +180,6 @@ class FindInProjectBehavior is QuorumStudioBehavior
                 end
             end
         end
-
-
 
         /* Get the word, check the character before and the character after the word to 
         see if it is either a special character or whitespace if not then remove the 
