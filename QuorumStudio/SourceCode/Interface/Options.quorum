@@ -13,6 +13,9 @@ use Libraries.Language.Debug.Breakpoint
 use Libraries.System.Properties
 use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Game.GameStateManager
+use Libraries.Game.DesktopApplication
+use Libraries.Game.DesktopConfiguration
 
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
@@ -22,7 +25,6 @@ class Options is ProjectListener
     constant text OPEN_FILES = "Open Files"
     constant text BREAKPOINTS = "Breakpoints"
     constant text BREAKPOINT = "Breakpoint"
-    constant text FRAME_LIMITED = "Frame Limit"
     constant text FRAME_RATE = "Frame Rate"
     constant text FRAMES_PER_SECOND_COUNTER = "Frames Per Second Counter"
     constant text SCALE = "Scale"
@@ -83,7 +85,6 @@ class Options is ProjectListener
     Array<File> filesOpenAtBoot
     QuorumStudio studio = undefined
     BuildManager manager = undefined
-    boolean isFrameLimited = true
     number frameRate = 80
     boolean fpsCounter = false
     number scale = 2
@@ -121,10 +122,6 @@ class Options is ProjectListener
 
     action SetIsShowingFramesPerSecondCounter(boolean frames)
         fpsCounter = frames
-    end
-
-    action IsFrameLimited returns boolean
-        return isFrameLimited
     end
 
     action GetFrameRateLimit returns number
@@ -228,7 +225,6 @@ class Options is ProjectListener
         end
 
         notation:Add(PROJECTS_LOCATION, projectsLocation:GetAbsolutePath())
-        notation:Add(FRAME_LIMITED, IsFrameLimited())
         notation:Add(FRAME_RATE, frameRate)
         notation:Add(FRAMES_PER_SECOND_COUNTER, fpsCounter)
         notation:Add(SCALE, scale)
@@ -334,11 +330,6 @@ class Options is ProjectListener
                 boolean value = object:GetBoolean()
                 me:fpsCounter = value
             end
-        elseif key = FRAME_LIMITED
-            if object:IsBoolean()
-                boolean value = object:GetBoolean()
-                me:isFrameLimited = value
-            end
         elseif key = FRAME_RATE
             if object:IsNumber()
                 number value = object:GetNumber()
@@ -348,6 +339,10 @@ class Options is ProjectListener
                 else
                     me:frameRate = value
                 end
+
+                GameStateManager manager
+                DesktopConfiguration configuration = manager:GetGame():GetDesktopConfiguration()
+                configuration:targetFramesPerSecond = cast(integer, me:frameRate)
             end
         elseif key = SCALE
             if object:IsNumber()
