@@ -80,6 +80,21 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             end
         end
     end
+
+    /*Check if a specific file is open*/
+    action IsOpen(File file) returns boolean
+        if openFiles:HasKey(file:GetAbsolutePath())
+            return true
+        end
+        return false
+    end
+
+    action CloseFile(File file)
+        if IsOpen(file)
+            Tab tab = openTabs:GetValue(file:GetAbsolutePath())
+            Remove(tab)
+        end
+    end
     
     action GetOpenFiles returns Iterator<File> 
         return openFiles:GetValueIterator()
