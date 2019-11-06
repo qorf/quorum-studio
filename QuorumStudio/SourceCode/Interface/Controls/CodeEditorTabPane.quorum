@@ -160,6 +160,14 @@ class CodeEditorTabPane is TabPane, TabChangeListener
     */
     action OpenNewTab(File file) returns EditorTab
         EditorTab returnedTab = undefined
+
+        GameStateManager manager
+        Game game = manager:GetGame()
+        QuorumStudio studio = cast(QuorumStudio, game)
+        if not studio:IsSupportedFile(file)
+            return returnedTab
+        end
+
         boolean value = openFiles:HasKey(file:GetAbsolutePath())
         if value //it's already open
             Tab tab = openTabs:GetValue(file:GetAbsolutePath())
@@ -197,9 +205,6 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         textBox:SetText(contents)
         textBox:SetName("Code Edit Text Box")
 
-        GameStateManager manager
-        Game game = manager:GetGame()
-        QuorumStudio studio = cast(QuorumStudio, game)
         InputTable table = game:GetInputTable(textBox:CODE_BOX_INPUT_GROUP)
         if table = undefined
             table = textBox:CopyAndActivateInputTable(textBox:CODE_BOX_INPUT_GROUP)
