@@ -38,7 +38,7 @@ class OutputEditorTabPane is TabPane
     BreakpointsTab breakpointsTab
     CallStackTab callStackTab
     SearchResultsTab searchResultsTab
-
+    Array<Tab> openTabs
     
     Resources resources = undefined
     Behaviors behaviors = undefined
@@ -52,6 +52,11 @@ class OutputEditorTabPane is TabPane
                 value:Focus()
             end
         end
+    end
+
+    action Remove(Tab tab)
+        openTabs:Remove(tab)
+        parent:TabPane:Remove(tab)
     end
 
     action GetBehaviors returns Behaviors
@@ -86,29 +91,53 @@ class OutputEditorTabPane is TabPane
     end
 
     action GetOutputTab returns OutputTab
+        if not openTabs:Has(outputTab)
+            Add(cast(Tab,outputTab))
+            openTabs:Add(outputTab)
+        end
         return outputTab
     end
 
     action GetVariablesTab returns VariablesTab
+        if not openTabs:Has(variablesTab)
+            Add(cast(Tab,variablesTab))
+            openTabs:Add(variablesTab)
+        end
         return variablesTab
     end
 
     action GetErrorTab returns ErrorTab
+        if not openTabs:Has(errorTab)
+            Add(cast(Tab,errorTab))
+            openTabs:Add(errorTab)
+        end
         return errorTab
     end
 
     action GetBreakpointsTab returns BreakpointsTab
+        if not openTabs:Has(breakpointsTab)
+            Add(cast(Tab,breakpointsTab))
+            openTabs:Add(breakpointsTab)
+        end
         return breakpointsTab
     end
 
     action GetCallStackTab returns CallStackTab
+        if not openTabs:Has(callStackTab)
+            Add(cast(Tab,callStackTab))
+            openTabs:Add(callStackTab)
+        end
         return callStackTab
     end
 
     action GetSearchResultsTab returns SearchResultsTab
+        if not openTabs:Has(searchResultsTab)
+            Add(cast(Tab,searchResultsTab))
+            openTabs:Add(searchResultsTab)
+        end
         return searchResultsTab  
     end
-
+    
     action Setup
         LayoutProperties properties = GetDefaultLayoutProperties()
         properties:SetHorizontalLayoutMode(properties:STANDARD)
@@ -130,6 +159,7 @@ class OutputEditorTabPane is TabPane
         array:Add(breakpointsTab)
         array:Add(callStackTab)
         array:Add(searchResultsTab)
+        openTabs = array
         Add(array)
 
         Select(0)
