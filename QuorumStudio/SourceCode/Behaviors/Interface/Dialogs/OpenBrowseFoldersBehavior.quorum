@@ -13,10 +13,12 @@ use Libraries.Interface.Controls.FileChooser
 use Libraries.Interface.Controls.FileFilter
 use Libraries.System.File
 use Libraries.Development.Environment.Projects.ProjectView
+use Libraries.Game.GameStateManager
 
 
 class OpenBrowseFoldersBehavior is QuorumStudioBehavior 
-    
+    GameStateManager manager 
+    text os = manager:GetOperatingSystem()
     NewFileDialog dialog = undefined
     text folderName = undefined
 
@@ -48,10 +50,18 @@ class OpenBrowseFoldersBehavior is QuorumStudioBehavior
 
         //only update the folder name if the path is within the path of the project
         if folder not= undefined and folder:GetAbsolutePath():Contains(location:GetAbsolutePath())
-            if folder:GetAbsolutePath():Equals(location:GetAbsolutePath())
-                me:folderName = project:PROJECT_SOURCES + "/"
+            if os:Contains("OS X")
+                if folder:GetAbsolutePath():Equals(location:GetAbsolutePath())
+                    me:folderName = project:PROJECT_SOURCES + "/"
+                else
+                    me:folderName = folder:GetAbsolutePath():Replace(location:GetAbsolutePath() + "/", "") + "/"
+                end
             else
-                me:folderName = folder:GetAbsolutePath():Replace(location:GetAbsolutePath() + "/", "") + "/"
+                if folder:GetAbsolutePath():Equals(location:GetAbsolutePath())
+                    me:folderName = project:PROJECT_SOURCES + "\"
+                else
+                    me:folderName = folder:GetAbsolutePath():Replace(location:GetAbsolutePath() + "\", "") + "\"
+                end                
             end
             dialog:UpdateFolderName(folderName)
         end
