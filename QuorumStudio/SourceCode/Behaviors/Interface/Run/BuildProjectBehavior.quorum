@@ -17,6 +17,9 @@ use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Studio.Build.BuildInformation
 use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Game.FocusManager
+use Libraries.Interface.Item
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 
 class BuildProjectBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
@@ -35,18 +38,24 @@ class BuildProjectBehavior is QuorumStudioBehavior
         OutputTab out = outPane:GetOutputTab()
         ErrorTab errors = outPane:GetErrorTab()
 
-        ProjectTree tree = studio:GetProjectTree()
-        TreeSelection selection = tree:GetSelection()
-        if not selection:IsEmpty()
-            Array<TreeItem> items = selection:GetPath()
-            ProjectTreeItem value = cast(ProjectTreeItem, items:Get(0))
-            QuorumProject project = value:GetProject()
+        FocusManager manager = studio:GetFocusManager()
+        Item item = manager:GetFocus()
+        if not (item is CodeTextBox)
+            ProjectTree tree = studio:GetProjectTree()
+            TreeSelection selection = tree:GetSelection()
+            if not selection:IsEmpty()
+                Array<TreeItem> items = selection:GetPath()
+                ProjectTreeItem value = cast(ProjectTreeItem, items:Get(0))
+                QuorumProject project = value:GetProject()
+    
+                BuildInformation info
+                info:outputTab = out
+                info:project = project
+                info:errorTab = errors
+                builder:Build(info)
+            end
+        elseif item is CodeTextBox
 
-            BuildInformation info
-            info:outputTab = out
-            info:project = project
-            info:errorTab = errors
-            builder:Build(info)
         end
     end
 end
