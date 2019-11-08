@@ -7,27 +7,31 @@ use Libraries.Interface.Behaviors.Controls.TextBoxCopyToClipboardBehavior
 use Libraries.Interface.Behaviors.Controls.TextBoxPasteFromClipboardBehavior
 use Libraries.Interface.Behaviors.Controls.TextBoxCutToClipboardBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ExecuteEditorHintBehavior
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
 
 class CodeTextBoxPopupMenu is PopupMenu
     CodeTextBox box = undefined
     MenuItem cut
     MenuItem copy    
     MenuItem paste
-    TextBoxCopyToClipboardBehavior copyBehavior
-    TextBoxCutToClipboardBehavior cutBehavior
-    TextBoxPasteFromClipboardBehavior pasteBehavior
 
     on create
-        
+        GameStateManager manager
+        QuorumStudio qs = cast(QuorumStudio, manager:GetGame())
+
         cut:SetName("Cut")
+        cut:SetBehavior(qs:GetBehaviors():GetCutBehavior())
         //build:SetBehavior(behaviors:GetThreadedBuildProjectBehavior())
 
         
         copy:SetName("Copy")
+        copy:SetBehavior(qs:GetBehaviors():GetCopyBehavior())
         //build:SetBehavior(behaviors:GetThreadedBuildProjectBehavior())
 
         
         paste:SetName("Paste")
+        paste:SetBehavior(qs:GetBehaviors():GetPasteBehavior())
         //build:SetBehavior(behaviors:GetThreadedBuildProjectBehavior())
 
         
@@ -73,7 +77,7 @@ class CodeTextBoxPopupMenu is PopupMenu
         end
     end
 
-    action OpenAtCursor
+    private action GenerateMenu
         //first regenerate the menu based upon context
         parent:PopupMenu:panel:Empty()
         if box not= undefined
@@ -83,7 +87,15 @@ class CodeTextBoxPopupMenu is PopupMenu
         Add(cut)
         Add(copy)
         Add(paste)
+    end
 
+    action OpenAtCursor
+        GenerateMenu()
         parent:PopupMenu:OpenAtCursor()
+    end
+
+    action OpenAt(number x, number y)
+        GenerateMenu()
+        parent:PopupMenu:OpenAt(x, y)
     end
 end
