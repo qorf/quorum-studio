@@ -1,0 +1,92 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Layouts.ManualLayout
+use Libraries.Interface.Behaviors.Controls.OptionDialogCancelBehavior
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.Button
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+
+class ErrorDialog is Dialog
+    Label lineLabel
+    boolean selectedOk = false
+    Control panel
+    Button ok
+    Button cancel
+
+//    action GetErrorMessage returns text
+//        return lineLabel:GetText()
+//    end
+//
+//    action SetErrorMessage(text errorMessage)
+//        lineLabel:SetText(errorMessage)
+//        lineLabel:SetName(errorMessage)
+//    end
+
+    DialogCancelBehavior defaultCancelBehavior
+    on create
+        SetModal(true)
+        SetName("Error!")
+        lineLabel:SetFocusable(true)
+        lineLabel:SetName("An Error Occured")
+        lineLabel:SetText("An Error Occured")
+        Setup()
+    end
+
+    private action Setup
+        SetPixelWidth(400)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        defaultCancelBehavior:SetDialog(me)
+
+        SetNextFocus(lineLabel)
+        SetPreviousFocus(ok)
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+
+        LayoutProperties props = lineLabel:GetDefaultLayoutProperties()
+        props:SetPercentageOriginX(0.5)
+        props:SetPercentageOriginY(0.5)
+        props:SetPercentageX(0.3)
+        props:SetPercentageY(0.5)
+        lineLabel:SetNextFocus(cancel)
+        lineLabel:SetPreviousFocus(cancel)
+
+        props = cancel:GetDefaultLayoutProperties()
+        props:SetPercentageOriginX(0.5)
+        props:SetPercentageOriginY(0.5)
+        props:SetPercentageX(0.7)
+        props:SetPercentageY(0.5)
+        cancel:SetName("OK")
+        cancel:SetFontSize(14)
+        cancel:SetHorizontalLayoutMode(props:STANDARD)
+        cancel:SetPercentageWidth(0.25)
+        cancel:SetFocusable(true)
+        cancel:SetNextFocus(lineLabel)
+        cancel:SetBehavior(defaultCancelBehavior)
+        cancel:SetPreviousFocus(lineLabel)
+
+
+        ManualLayout findLayout
+        panel:SetLayout(findLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetPixelHeight(60)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+
+        panel:Add(lineLabel)
+        panel:Add(cancel)
+        panel:SetView2D(view)
+        Add(panel)
+    end
+
+    action OnShow
+        cancel:Focus()
+    end
+end
