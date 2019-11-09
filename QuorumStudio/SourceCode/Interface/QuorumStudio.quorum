@@ -42,7 +42,7 @@ use Libraries.Interface.Controls.Dialog
 use Libraries.Game.Graphics.Label
 use Libraries.Development.Environment.Studio.Interface.SplashScreen
 use Libraries.Development.Environment.Studio.Build.ScanListener
-use Attack.FakeFocusManager
+use Libraries.Development.Environment.Studio.StudioFocusManager
 use Libraries.Sound.Audio
 use Libraries.Interface.Events.ResizeListener
 use Libraries.Interface.Events.ResizeEvent
@@ -203,9 +203,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         resources:SetOptions(options)
 
         AddResizeListener(me)
-        FakeFocusManager fake
-        SetFocusManager(fake)
-        SetInterfaceScale(2)
+        StudioFocusManager focusManager
+        SetFocusManager(focusManager)
         FlowLayout flowLayout
         SetLayout(flowLayout)
 
@@ -226,6 +225,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         SetInterfaceScale(size)
         SetScreenSize(width, height)
         mainContentPane:Resize()
+
+        SetApplicationIcon(resources:GetApplicationIcon())
 
         SplashScreen splash
         splashScreen = splash
@@ -504,7 +505,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         return false
     end
 
-    number timer = 0.0
+    action GetStudioFocusManager returns StudioFocusManager
+        return cast(StudioFocusManager, GetFocusManager())
+    end
+
     action Update(number seconds)
         if splashScreenHide 
             splashScreen:Hide()

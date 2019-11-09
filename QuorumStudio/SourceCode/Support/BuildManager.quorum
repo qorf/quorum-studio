@@ -1246,6 +1246,11 @@ class BuildManager is DebuggerListener, ProcessListener
         OutputTab out = info:outputTab
         Build(info)
         
+        // We don't want to run the project here if it isn't meant for desktop use.
+        if project:IsLegoType() or project:IsAndroidType() or project:IsIphoneType() or project:IsJavascriptType()
+            return now
+        end
+
         CompilerResult result = info:result
         CompilerErrorManager errors = result:compilerErrorManager
         if errors:IsCompilationErrorFree()

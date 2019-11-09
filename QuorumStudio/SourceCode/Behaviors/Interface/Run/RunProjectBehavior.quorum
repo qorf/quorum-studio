@@ -17,6 +17,7 @@ use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Studio.Build.BuildInformation
 use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Development.Environment.Studio.StudioFocusManager
 
 class RunProjectBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
@@ -36,16 +37,16 @@ class RunProjectBehavior is QuorumStudioBehavior
         ErrorTab errors = outPane:GetErrorTab()
         out:Empty()
 
-        ProjectTree tree = studio:GetProjectTree()
-        TreeSelection selection = tree:GetSelection()
-        if not selection:IsEmpty()
-            Array<TreeItem> items = selection:GetPath()
-            ProjectTreeItem value = cast(ProjectTreeItem, items:Get(0))
-            QuorumProject project = value:GetProject()
+        StudioFocusManager manager = studio:GetStudioFocusManager()
+        Project project = manager:GetProjectFocus()
 
+        // If the project is undefined, it fails this check.
+        if project is QuorumProject
+            QuorumProject quorumProject = cast(QuorumProject, project)
+    
             BuildInformation info
             info:outputTab = out
-            info:project = project
+            info:project = quorumProject
             info:errorTab = errors
             builder:Run(info)
         end

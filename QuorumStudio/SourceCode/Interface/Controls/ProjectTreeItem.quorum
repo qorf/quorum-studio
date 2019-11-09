@@ -12,10 +12,12 @@ use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.Behaviors.SetProgramStartBehavior
+use Libraries.Development.Environment.Studio.StudioFocusManager
 
 class ProjectTreeItem is TreeItem
     QuorumProject project = undefined
     File file = undefined
+    GameStateManager manager
     
     action GetProject returns QuorumProject
         return project
@@ -91,11 +93,21 @@ class ProjectTreeItem is TreeItem
             exampleContextMenu:Add(setMainFileMenuItem)
 
 
-            GameStateManager manager
             QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
             openTabBehavior:SetMainApplication(studio)
             //openTabBehavior:SetFile(file)
         end
         return exampleContextMenu
+    end
+
+    action GainedSelection
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        StudioFocusManager focusManager = studio:GetStudioFocusManager()
+        
+        if project not= undefined
+            focusManager:SetProjectFocus(project)
+        end
+
+        parent:TreeItem:GainedSelection()
     end
 end

@@ -44,10 +44,15 @@ use Libraries.Interface.Undo.TextBoxEdit
 use Libraries.Interface.Undo.TextBoxEditState
 use Libraries.Interface.Events.TextChangeEvent
 use Libraries.Interface.Controls.IndentationStrategy
+use Libraries.Interface.Events.FocusEvent
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Projects.Project
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
     BuildManager manager = undefined
+    GameStateManager gameStateManager
     text staticKey = ""
     Class clazz = undefined
     public constant text CARET_STYLE = "Caret"
@@ -74,8 +79,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     CompilerErrorManager errors = undefined
 
     on create
-        GameStateManager manager
-        Game game = manager:GetGame()
+        Game game = gameStateManager:GetGame()
         game:AddSelectionListener(me)
         caretColor:SetColor(233.0/255.0, 239.0/255.0, 248.0/255.0, 1.0)
         breakpointColor:SetColor(252.0/255.0, 157.0/255.0, 159.0/255.0, 1.0)
@@ -1110,5 +1114,22 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
                 i = i + 1
             end
         end
+    end
+
+    /*
+    When the CodeTextBox receives focus, it sets the project focus, if possible.
+    */
+    action GainedFocus(FocusEvent event)
+        QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
+        StudioFocusManager focusManager = studio:GetStudioFocusManager()
+        ProjectManager projectManager = studio:GetProjectManager()
+        
+        Project project = projectManager:IsProjectSourceFile(tab:GetFile())
+
+        if project not= undefined
+            focusManager:SetProjectFocus(project)
+        end
+
+        parent:TextBox:GainedFocus(event)
     end
 end
