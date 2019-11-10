@@ -154,15 +154,22 @@ class QuorumProject is Project
         be found, it returns false.
     */
     action IsSource(File file) returns boolean
-        Array<File> files = GetSources()
-        i = 0
-        repeat while i < files:GetSize()
-            File value = files:Get(i)
-            if file:GetAbsolutePath() = value:GetAbsolutePath()
-                return true
-            end
-            i = i + 1
+        if file = undefined
+            return false
         end
+
+        if file:GetFileExtension() not= DEFAULT_FILE_EXTENSION
+            return false //not a source code file
+        end
+        text path = file:GetAbsolutePath()
+        //check if the path is under the project location
+        File location = GetLocation()
+        text sourceLocation = sources:GetAbsolutePath()
+
+        if path:StartsWith(sourceLocation)
+            return true
+        end
+        
         return false
     end
 
