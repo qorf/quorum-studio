@@ -12,6 +12,7 @@ use Libraries.Development.Environment.Studio.Interface.NewFileDialog
 use Libraries.Interface.Controls.TextBox
 use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
 use Libraries.Game.GameStateManager
+use Libraries.System.File
 
 class OpenNewFileBehavior is QuorumStudioBehavior
     
@@ -32,13 +33,18 @@ class OpenNewFileBehavior is QuorumStudioBehavior
             QuorumProject project = value:GetProject()
             integer i = 1
             repeat while i < size
-                TreeItem currentItem = items:Get(i)
-                if os:Contains("OS X")
-                    path = path + currentItem:GetName() + "/"
+                ProjectTreeItem currentItem = cast(ProjectTreeItem, items:Get(i))
+                File file = currentItem:GetFile()
+                if file:IsDirectory()
+                    if os:Contains("OS X")
+                        path = path + currentItem:GetName() + "/"
+                    else
+                        path = path + currentItem:GetName() + "\"
+                    end
+                    i = i + 1
                 else
-                    path = path + currentItem:GetName() + "\"
+                    i = size
                 end
-                i = i + 1
             end
 
             if dialog = undefined
