@@ -83,9 +83,16 @@ class ErrorTab is Tab
         fileProperties:SetPercentageWidth(0.30)
 
         headerMessage:SetText("Message")
+        headerMessage:SetName("Message Header")
         headerLine:SetText("Line")
+        headerLine:SetName("Line Header")
         headerFile:SetText("File")
+        headerFile:SetName("File Header")
         
+        messageColumn:SetName("Message Column")
+        lineColumn:SetName("Line Column")
+        fileColumn:SetName("File Column")
+
         messageColumn:Add(headerMessage)
         lineColumn:Add(headerLine)
         fileColumn:Add(headerFile)
@@ -105,14 +112,9 @@ class ErrorTab is Tab
     end
 
     action Empty 
-        table:Empty()
         messageColumn:Empty()
         lineColumn:Empty()
         fileColumn:Empty()
-
-        table:Add(messageColumn)
-        table:Add(lineColumn)
-        table:Add(fileColumn)
 
         messageColumn:Add(headerMessage)
         lineColumn:Add(headerLine)
@@ -138,21 +140,5 @@ class ErrorTab is Tab
     action GetPane returns BreakpointScrollPane
         return pane
     end
-
-    action GetColumn returns Column
-        Column column
-
-        i = 0
-        repeat while i < 100
-            Cell cell
-            //LayoutProperties properties = cell:GetDefaultLayoutProperties()
-            //properties:SetPercentageWidth(0.33)
-            cell:SetText("" + i)
-            column:Add(cast(Cell, cell))
-            i = i + 10
-        end
-        return column
-    end
-
 
 end
