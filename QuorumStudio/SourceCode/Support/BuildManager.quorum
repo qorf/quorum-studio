@@ -60,6 +60,7 @@ use Libraries.Development.Environment.Studio.Behaviors.SetErrorsBehavior
 use Libraries.Development.Environment.Studio.Interface.CallStackTab
 use Libraries.Development.Environment.Studio.Behaviors.UpdateCallStackBehavior
 use Libraries.Language.Debug.DebuggerOutputEvent
+use Libraries.Language.Compile.CompilerProfiler
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -77,7 +78,7 @@ class BuildManager is DebuggerListener, ProcessListener
 
     //for the parsing and indexing procedures
     BuildLoop buildLoop
-    constant number PARSE_DELAY_SECONDS = 0.5
+    constant number PARSE_DELAY_SECONDS = 0.15
     
 
     //state storage from the build loop
@@ -655,6 +656,11 @@ class BuildManager is DebuggerListener, ProcessListener
         request:files = sources
         request:isFastCompileRequest = true
 
+        CompilerResult lastResult = recentCompilerResults:GetValue(project:GetLocation():GetAbsolutePath())
+        if lastResult not= undefined
+            request:symbolTable = lastResult:symbolTable
+        end
+
         //these are the core changes
         request:recompileValue = info:recompileValue
         request:recompile = info:recompile
@@ -663,10 +669,9 @@ class BuildManager is DebuggerListener, ProcessListener
         Compiler compiler = project:GetCompiler()
         info:request = request
 
-
         DateTime time
         number start = time:GetEpochTime()
-        CompilerResult result = compiler:Compile(request)
+        CompilerResult result = compiler:Compile(request)        
         number finish = time:GetEpochTime()
 
         text displayedTime = GetFormattedTime(start, finish)
@@ -681,7 +686,6 @@ class BuildManager is DebuggerListener, ProcessListener
         end
 
         recentCompilerResults:Add(value, result)
-
         CodeTextBox box = info:box
         if box not= undefined
             box:SetBuildManager(me)
