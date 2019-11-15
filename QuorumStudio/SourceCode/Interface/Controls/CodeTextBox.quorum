@@ -107,6 +107,9 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
 
     action GutterClicked(GutterEvent event)
         integer line = event:GetLine()
+        if line >= GetLineCount()
+            return now
+        end
         if clazz not= undefined
             File file = clazz:GetFile()
             manager:ToggleBreakpoint(file, line)
@@ -134,8 +137,11 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     end
 
     action ToggledBreakpoint(BreakpointEvent event)
+        Breakpoint bp = event:GetBreakpoint()
+        if bp:GetFile():GetAbsolutePath() not= GetFile():GetAbsolutePath()
+            return now
+        end
         if event:IsAdded()
-            Breakpoint bp = event:GetBreakpoint()
             integer line = bp:GetLine()
             ColoredHighlight breakpointHighlight
             breakpointHighlight:SetColor(breakpointColor)
@@ -145,7 +151,6 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             breakpointStyle:SetHighlight(breakpointHighlight)
             AddTextStyle("Breakpoint" + bp:GetLine(), breakpointStyle)
         else
-            Breakpoint bp = event:GetBreakpoint()
             integer line = bp:GetLine()
             RemoveTextStyle("Breakpoint" + bp:GetLine())
         end
