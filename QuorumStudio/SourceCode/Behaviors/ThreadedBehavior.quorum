@@ -8,6 +8,16 @@ use Libraries.Concurrency.ThreadRunner
 class ThreadedBehavior is QuorumStudioBehavior
     QuorumStudioBehavior nestedBehavior = undefined
     ThreadRunner runner = undefined
+    boolean killFutures = false
+
+    action IsKillingBehaviors returns boolean
+        return killFutures
+    end
+
+    action SetKillingBehaviors(boolean ifYouHaveTo)
+        killFutures = ifYouHaveTo
+    end
+
     action GetNestedBehavior returns QuorumStudioBehavior
         return nestedBehavior
     end
@@ -33,6 +43,10 @@ class ThreadedBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
         if nestedBehavior not= undefined and runner not= undefined
+
+            if killFutures
+                runner:Empty()
+            end
             runner:Add(nestedBehavior)
         end
     end
