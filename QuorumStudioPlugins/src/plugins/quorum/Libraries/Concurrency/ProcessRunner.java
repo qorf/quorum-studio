@@ -31,6 +31,7 @@ public class ProcessRunner {
     private File_ directory = null;
     public boolean cancelled = false;
     QuorumProcessWatcher watch = null;
+    Process process = null;
     
     public void Run(String name, Array_ flags) {
         myProcess = (quorum.Libraries.Concurrency.ProcessRunner) me_;
@@ -47,7 +48,7 @@ public class ProcessRunner {
         builder.directory(new File(directory.GetAbsolutePath()));
         try {
             myProcess.FireProcessStartedEvent();
-            Process process = builder.start();
+            process = builder.start();
             watch = new QuorumProcessWatcher(process.getInputStream());
             OutputStream outputStream = process.getOutputStream();
             watch.setStream(outputStream);
@@ -191,6 +192,12 @@ public class ProcessRunner {
                 } catch (IOException ex) {
                 } catch (InterruptedException ex) {
                 } 
+            }
+            
+            boolean alive = process.isAlive();
+            if(alive) {
+                System.out.println("DIE");
+                process.destroyForcibly();
             }
         }
 
