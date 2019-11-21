@@ -1,0 +1,64 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Views.View2D
+use Libraries.Interface.Views.ImageControlView
+use Libraries.Compute.Math
+
+class ButtonPulseBehavior is Behavior
+
+    Math math
+    Color color
+    Button button = undefined
+    ImageControlView view = undefined
+
+    // Used to modify the color over time.
+    number colorTimer = 0
+
+    boolean finished = false
+
+    action Run(BehaviorEvent event)
+        if event:GetItem() is Button
+            button = cast(Button, event:GetItem())
+            View2D view2D = button:GetView2D()
+            if view2D is ImageControlView
+                view = cast(ImageControlView, view2D)
+            end
+        end
+    end
+
+    action Update(number seconds)
+        if view = undefined
+            return now
+        end
+
+        colorTimer = colorTimer + seconds
+
+        number value = 0.5 + (math:Cosine(math:pi * colorTimer)) / 2.0
+        color:SetColor(value, value, value, 1)
+        view:SetColor(color)
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+
+    action SetFinished(boolean finish)
+        finished = finish
+    end
+
+    action Dispose
+        if view not= undefined
+            color:SetColor(1, 1, 1, 1)
+            view:SetColor(color)
+        end
+
+        finished = false
+        button = undefined
+        view = undefined
+    end
+
+end

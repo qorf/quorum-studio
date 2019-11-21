@@ -61,6 +61,11 @@ use Libraries.Development.Environment.Studio.Interface.CallStackTab
 use Libraries.Development.Environment.Studio.Behaviors.UpdateCallStackBehavior
 use Libraries.Language.Debug.DebuggerOutputEvent
 use Libraries.Language.Compile.CompilerProfiler
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.Toolbar
+use Libraries.Interface.Controls.Button
+use Libraries.Development.Environment.Studio.Behaviors.ButtonPulseBehavior
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -90,6 +95,14 @@ class BuildManager is DebuggerListener, ProcessListener
     //it uses a magic key for compilation
     text SINGLE_FILE_COMPILE_KEY = "Magic_ld93jfhf83p2nflk_Star_Wars_Rules_dh9238fdcsllsdoi9348fnkjsnd"
     Compiler standardLibraryCompiler
+
+    GameStateManager gameStateManager
+
+    // Used when programs are run or debug to make the associated button pulse.
+    ButtonPulseBehavior pulseBehavior
+
+    // Used when building or clean-and-building to make the associated buttons pulse.
+    ButtonPulseBehavior buildPulseBehavior
 
     action GetRecentCompilerResult(text project) returns CompilerResult
         return recentCompilerResults:GetValue(project)
@@ -324,7 +337,11 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action Run(DebuggerStartEvent event)
-        integer a = 5
+        QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
+        Toolbar toolbar = studio:GetToolbar()
+        Button debugButton = toolbar:GetButton("Debug")
+        pulseBehavior:SetFinished(false)
+        debugButton:AddBehavior(pulseBehavior)
     end
 
     action Run(DebuggerStopEvent event)
@@ -334,6 +351,7 @@ class BuildManager is DebuggerListener, ProcessListener
         end
 
         debuggingProgram = undefined
+        pulseBehavior:SetFinished(true)
     end
 
     /*
@@ -902,8 +920,10 @@ class BuildManager is DebuggerListener, ProcessListener
         runner:SetDirectory(copyFolder)
         Properties properties
         text os = properties:GetOperatingSystemName()
-        text java = properties:GetProperty("java.home")
-        java = java + "/" + "bin" + "/" + "java"
+        text java = FindJava()
+        if java = undefined
+            out:Append("I could not find Java. Is it installed?")
+        end
 
         text value = location:GetAbsolutePath()
         if processes:HasKey(value) //kill it, if you have to
@@ -945,6 +965,18 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action Build(BuildInformation info)
+        Build(info, true)
+    end
+
+    action Build(BuildInformation info, boolean pulseButton)
+        if pulseButton
+            QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
+            Toolbar toolbar = studio:GetToolbar()
+            Button buildButton = toolbar:GetButton("Build")
+            buildPulseBehavior:SetFinished(false)
+            buildButton:AddBehavior(buildPulseBehavior)
+        end
+
         QuorumProject project = info:project
         OutputTab out = info:outputTab
         if info:clearOutput
@@ -1000,6 +1032,11 @@ class BuildManager is DebuggerListener, ProcessListener
         elseif project:IsDocumentationStandardLibraryType()
             request:SetOutputType(request:DOCUMENT)
             GenerateStandardLibraryDocumentation(info)
+
+            if pulseButton
+                buildPulseBehavior:SetFinished(true)
+            end
+
             return now
         end
         
@@ -1023,8 +1060,13 @@ class BuildManager is DebuggerListener, ProcessListener
 
         CompilerErrorManager errors = result:compilerErrorManager
         OutputErrors(info, errors, "Build Successful in " + displayedTime + " seconds")
+ 
         if project:IsLegoType() and errors:IsCompilationErrorFree()
             SendToLego(info)
+        end
+
+        if pulseButton
+            buildPulseBehavior:SetFinished(true)
         end
     end
 
@@ -1112,8 +1154,20 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action CleanAndBuild(BuildInformation info)
+        // Make the clean and build button pulse.
+        QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
+        Toolbar toolbar = studio:GetToolbar()
+        Button buildButton = toolbar:GetButton("Clean and Build")
+        buildPulseBehavior:SetFinished(false)
+        buildButton:AddBehavior(buildPulseBehavior)
+
         Clean(info)
-        Build(info)
+
+        // False parameter keeps the default "Build" button from pulsing.
+        Build(info, false)
+
+        // Stop the button pulsing.
+        buildPulseBehavior:SetFinished(true)
     end
 
     action SendToAndroidDebugMode(BuildInformation info)
@@ -1245,6 +1299,32 @@ class BuildManager is DebuggerListener, ProcessListener
         debugger:Continue()
     end
 
+    private action FindJava returns text
+        //first check if there's a JRE underneat quorum studio
+        File file
+        text local = file:GetAbsolutePath() + "/jre/bin" + "/" + "java"
+        //You can't reliably know the file extension, so check the existence
+        //of the parent folder. 
+        File parentFolder
+        File javaFile
+        javaFile:SetAbsolutePath(local)
+        parentFolder:SetAbsolutePath(file:GetAbsolutePath() + "/jre/bin")
+        if parentFolder:Exists() //use the local one if you can.
+            return javaFile:GetAbsolutePath()
+        end
+
+        Properties properties
+        text home = properties:GetProperty("java.home")
+        home = home + "/" + "bin" + "/" + "java"
+
+        javaFile:SetAbsolutePath(home)
+        parentFolder:SetAbsolutePath(properties:GetProperty("java.home") + "/" + "bin")
+        if parentFolder:Exists() //use the local one if you can.
+            return javaFile:GetAbsolutePath()
+        end
+        return undefined
+    end
+
     action Run(BuildInformation info)
         QuorumProject project = info:project
         OutputTab out = info:outputTab
@@ -1265,9 +1345,10 @@ class BuildManager is DebuggerListener, ProcessListener
             runner:AddListener(me)
             Properties properties
             text os = properties:GetOperatingSystemName()
-            text java = properties:GetProperty("java.home")
-            java = java + "/" + "bin" + "/" + "java"
-            
+            text java = FindJava()
+            if java = undefined
+                out:Append("I could not find Java. Is it installed?")
+            end
             text value = project:GetLocation():GetAbsolutePath()
             if processes:HasKey(value) //kill it, if you have to
                 ProcessRunner old = processes:RemoveKey(value)
@@ -1331,6 +1412,15 @@ class BuildManager is DebuggerListener, ProcessListener
         repeat while iterator:HasNext()
             text key = iterator:Next()
             ProcessRunner process = processes:GetValue(key)
+            text value = process:GetProcessName()
+            output value
+
+            Array<text> parameters = process:GetParameters()
+            i = 0
+            repeat while i < parameters:GetSize()
+                output parameters:Get(i)
+                i = i + 1
+            end
             process:Cancel()
         end
         if debuggingProgram not= undefined
@@ -1340,9 +1430,15 @@ class BuildManager is DebuggerListener, ProcessListener
             DebuggerStopEvent ds
             Run(ds)
         end
+        pulseBehavior:SetFinished(true)
     end
 
     action Run(ProcessStartedEvent event)
+        QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
+        Toolbar toolbar = studio:GetToolbar()
+        Button debugButton = toolbar:GetButton("Run")
+        pulseBehavior:SetFinished(false)
+        debugButton:AddBehavior(pulseBehavior)
     end
 
     action Run(ProcessStoppedEvent event)
@@ -1351,6 +1447,8 @@ class BuildManager is DebuggerListener, ProcessListener
         if processes:HasKey(file:GetAbsolutePath()) //kill it, if you have to
             processes:RemoveKey(file:GetAbsolutePath()) //I think we can toss it
         end
+
+        pulseBehavior:SetFinished(true)
     end
 
     action Run(ProcessErrorEvent event)

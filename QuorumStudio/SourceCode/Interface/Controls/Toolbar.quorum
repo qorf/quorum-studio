@@ -25,6 +25,7 @@ use Libraries.Game.Graphics.TextureRegion
 use Libraries.Game.Graphics.Drawable
 use Libraries.System.File
 use Libraries.Development.Environment.Studio.Interface.KeyMap
+use Libraries.Containers.HashTable
 
 class Toolbar is ToolBar
     Layout layout = undefined
@@ -35,6 +36,7 @@ class Toolbar is ToolBar
     Behaviors behaviors = undefined
     KeyMap keymap = undefined
     Array<Button> buttons
+    HashTable<text, Button> buttonMap
 
     on create
         SetFocusable(true)
@@ -130,5 +132,15 @@ class Toolbar is ToolBar
         end
         Add(button)
         buttons:Add(button)
+
+        buttonMap:Add(name, button)
+    end
+
+    action GetButton(text name) returns Button
+        if buttonMap:HasKey(name)
+            return buttonMap:GetValue(name)
+        else
+            return undefined
+        end
     end
 end
