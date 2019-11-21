@@ -85,6 +85,7 @@ Section "Core" SecDummy
   File QuorumStudio.exe
   File quorum.ico
   File /nonfatal /r "..\Run\*.*"
+  File /nonfatal /r "..\..\..\openjdkbuild\java-1.8.0-openjdk-1.8.0.212-1\jre"
   File /nonfatal /r "..\External"
   File /nonfatal /r "..\Library"
   File /nonfatal /r "..\Resources"
