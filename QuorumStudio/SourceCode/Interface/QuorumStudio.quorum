@@ -48,6 +48,12 @@ use Libraries.Interface.Events.ResizeListener
 use Libraries.Interface.Events.ResizeEvent
 use Libraries.Containers.HashTable
 use Libraries.System.Console
+use Libraries.Development.Environment.Studio.Behaviors.CodeCompletionInputTable
+use Libraries.Interface.Behaviors.Controls.MenuRootDownBehavior
+use Libraries.Interface.Behaviors.Controls.MenuRootUpBehavior
+use Libraries.Interface.Behaviors.Controls.MenuRootActivateBehavior
+use Libraries.Interface.Behaviors.Controls.MenuRootCloseBehavior
+use Libraries.Game.InputSet
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant number VERSION = 1.0
@@ -152,6 +158,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     action GetProjectTree returns ProjectTree
         return projectTree
+    end
+
+    action GetToolbar returns Toolbar
+        return toolbar
     end
 
     action GetTabPane returns CodeEditorTabPane
@@ -333,6 +343,45 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         Add(menu)
         Add(toolbar)
         Add(mainContentPane)
+    end
+
+    action SetupInputTables
+        CodeCompletionInputTable codeCompletionTable
+        codeCompletionTable:SetIdentifier("CodeCompletionMenuRoot")
+
+        MenuRootDownBehavior menuDownBehavior
+        MenuRootUpBehavior menuUpBehavior
+        MenuRootActivateBehavior menuRunBehavior
+        MenuRootCloseBehavior menuCloseBehavior
+
+        InputSet downArrow
+        /*
+        InputTable menuRootTable
+        menuRootTable:SetIdentifier("MenuRoot")
+
+        MenuRootDownBehavior menuDownBehavior
+        MenuRootUpBehavior menuUpBehavior
+        MenuRootLeftBehavior menuLeftBehavior
+        MenuRootRightBehavior menuRightBehavior
+        MenuRootActivateBehavior menuRunBehavior
+        MenuRootCloseBehavior menuCloseBehavior
+
+        menuRootTable:Add(downArrow, menuDownBehavior)
+        menuRootTable:Add(upArrow, menuUpBehavior)
+        menuRootTable:Add(leftArrow, menuLeftBehavior)
+        menuRootTable:Add(rightArrow, menuRightBehavior)
+
+        InputSet spaceBar
+        spaceBar:SetKeyboardInput(keys:SPACE)
+
+        menuRootTable:Add(spaceBar, menuRunBehavior)
+        menuRootTable:Add(enter, menuRunBehavior)
+
+        InputSet escapeSet
+        escapeSet:SetKeyboardInput(keys:ESCAPE)
+        
+        menuRootTable:Add(escapeSet, menuCloseBehavior)
+        */
     end
 
     action Load
