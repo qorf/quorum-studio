@@ -306,6 +306,8 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         end
 
         TextBoxSelection selection = GetSelection() //gets the current caret position
+        integer startIndex = selection:GetStartIndex()
+        integer startIndexLine = GetLineIndexOfCharacter(startIndex)
         integer endIndex = selection:GetEndIndex()
         
         integer line = GetCaretLine()
@@ -315,8 +317,19 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             NavigateTo(closest:GetLineNumber())
         end
 
-        integer startIndex = GetCaretPosition()
-        selection:Set(startIndex, endIndex, true, false)
+        integer previousActionIndex = GetCaretPosition()
+        //there is no previous action, if there is an existing selection prior to the first action then it should be cleared so that there is no selection
+        if closest = undefined and previousActionIndex >= endIndex     
+            NavigateTo(GetLineIndexOfCharacter(startIndex))
+            Select(startIndex, startIndex, true)
+        //we are adding to the selection or there are no more actions to select so we want to maintain our current selection
+        elseif ((previousActionIndex < startIndex) or (closest = undefined and  previousActionIndex < endIndex)) 
+            Select(previousActionIndex, endIndex, false)
+        else        //we are removing from the current selection
+            Select(startIndex, previousActionIndex, true)
+        
+        end
+
     end
 
     action SmartNavigateDown
@@ -326,7 +339,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
 
         integer line = GetCaretLine()
         Action closest = FindNextAction(line)
-        
+ 
         if closest not= undefined and closest:GetLineNumber() < GetLineCount()
             NavigateTo(closest:GetLineNumber())
         end
@@ -339,16 +352,38 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         
         TextBoxSelection selection = GetSelection()
         integer startIndex = selection:GetStartIndex()
+        integer endIndex = selection:GetEndIndex()
 
         integer line = GetCaretLine()
         Action closest = FindNextAction(line)
+
+        if endIndex = startIndex
+            output "StartIndex = " + startIndex
+            startIndex = GetIndexOfLine(line)
+            output "Changed to Line Index = " + startIndex 
+        end
         
         if closest not= undefined and closest:GetLineNumber() < GetLineCount()
             NavigateTo(closest:GetLineNumber())
+        //there is not another action, so select to this action's end + 1
+        else    
+            Action last = FindPreviousAction(GetLineCount())
+            if last not= undefined and ((last:GetLineNumberEnd()) < GetLineCount())
+                NavigateTo(last:GetLineNumberEnd() + 1)
+            end
         end
         
-        integer endIndex = GetCaretPosition()
-        selection:Set(startIndex, endIndex, false, false)
+        integer nextActionIndex = GetCaretPosition()
+
+        if closest = undefined and nextActionIndex <= startIndex     
+            NavigateTo(GetLineIndexOfCharacter(endIndex))
+            Select(endIndex, endIndex, true)
+        //we are adding to the selection or we have reached the final action in the textbox so we want to maintain our current selection
+        elseif ((nextActionIndex > endIndex) or (closest = undefined and nextActionIndex > startIndex))   
+            Select(startIndex, nextActionIndex, true)  
+        else                            //we are removing from the current selection        
+            Select(nextActionIndex, endIndex, false)
+        end
     end
 
     private action FindPreviousAction(integer line) returns Action
