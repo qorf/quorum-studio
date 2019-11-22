@@ -965,14 +965,18 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action Build(BuildInformation info)
-        Build(info, true)
-    end
-
-    action Build(BuildInformation info, boolean pulseButton)
-        if pulseButton
+        if info:isCleanAndBuild = false
+            // Make the build button pulse.
             QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
             Toolbar toolbar = studio:GetToolbar()
             Button buildButton = toolbar:GetButton("Build")
+            buildPulseBehavior:SetFinished(false)
+            buildButton:AddBehavior(buildPulseBehavior)
+        else
+            // Make the clean and build button pulse.
+            QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
+            Toolbar toolbar = studio:GetToolbar()
+            Button buildButton = toolbar:GetButton("Clean and Build")
             buildPulseBehavior:SetFinished(false)
             buildButton:AddBehavior(buildPulseBehavior)
         end
@@ -1033,9 +1037,7 @@ class BuildManager is DebuggerListener, ProcessListener
             request:SetOutputType(request:DOCUMENT)
             GenerateStandardLibraryDocumentation(info)
 
-            if pulseButton
-                buildPulseBehavior:SetFinished(true)
-            end
+            buildPulseBehavior:SetFinished(true)
 
             return now
         end
@@ -1065,9 +1067,7 @@ class BuildManager is DebuggerListener, ProcessListener
             SendToLego(info)
         end
 
-        if pulseButton
-            buildPulseBehavior:SetFinished(true)
-        end
+        buildPulseBehavior:SetFinished(true)
     end
 
     private action OutputErrors(BuildInformation info, CompilerErrorManager errors, text message)
@@ -1154,20 +1154,9 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action CleanAndBuild(BuildInformation info)
-        // Make the clean and build button pulse.
-        QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
-        Toolbar toolbar = studio:GetToolbar()
-        Button buildButton = toolbar:GetButton("Clean and Build")
-        buildPulseBehavior:SetFinished(false)
-        buildButton:AddBehavior(buildPulseBehavior)
-
+        info:isCleanAndBuild = true
         Clean(info)
-
-        // False parameter keeps the default "Build" button from pulsing.
-        Build(info, false)
-
-        // Stop the button pulsing.
-        buildPulseBehavior:SetFinished(true)
+        Build(info)
     end
 
     action SendToAndroidDebugMode(BuildInformation info)
