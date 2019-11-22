@@ -1050,11 +1050,17 @@ class BuildManager is DebuggerListener, ProcessListener
         request:main = main
         Compiler compiler = project:GetCompiler()
         info:request = request
-
+        text path = project:GetLocation():GetAbsolutePath()
+        CompilerResult lastResult = recentCompilerResults:GetValue(path)
+        if lastResult not= undefined
+            request:symbolTable = lastResult:symbolTable
+            request:opcodes = lastResult:opcodes
+        end
 
         DateTime time
         number start = time:GetEpochTime()
         CompilerResult result = compiler:Compile(request)
+        recentCompilerResults:Add(path, result)
         number finish = time:GetEpochTime()
 
         text displayedTime = GetFormattedTime(start, finish)
