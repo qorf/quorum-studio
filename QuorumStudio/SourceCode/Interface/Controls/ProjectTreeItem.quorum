@@ -12,7 +12,8 @@ use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.Behaviors.SetProgramStartBehavior
-use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Studio.Behaviors.OpenFindInProjectDialogBehavior
 
 class ProjectTreeItem is TreeItem
     QuorumProject project = undefined
@@ -63,8 +64,15 @@ class ProjectTreeItem is TreeItem
             deleteFileBehavior:SetFile(file)
             deleteFileBehavior:SetItem(me)
             deleteFolderMenuItem:SetBehavior(deleteFileBehavior)
-
             exampleContextMenu:Add(deleteFolderMenuItem)
+
+            MenuItem findInProjectMenuItem
+            findInProjectMenuItem:SetName("Find")
+            OpenFindInProjectDialogBehavior findInProjectBehavior
+            findInProjectMenuItem:SetBehavior(findInProjectBehavior)
+            exampleContextMenu:Add(findInProjectMenuItem)
+            
+
         else
             OpenTabBehavior openTabBehavior
 
@@ -86,12 +94,17 @@ class ProjectTreeItem is TreeItem
             deleteMenuItem:SetBehavior(deleteFileBehavior)
             exampleContextMenu:Add(deleteMenuItem)
 
+            MenuItem findInProjectMenuItem
+            findInProjectMenuItem:SetName("Find")
+            OpenFindInProjectDialogBehavior findInProjectBehavior
+            findInProjectMenuItem:SetBehavior(findInProjectBehavior)
+            exampleContextMenu:Add(findInProjectMenuItem)
+
             SetProgramStartBehavior startBehavior
             MenuItem setMainFileMenuItem
             setMainFileMenuItem:SetBehavior(startBehavior)
             setMainFileMenuItem:SetName("Set Program Start")
             exampleContextMenu:Add(setMainFileMenuItem)
-
 
             QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
             openTabBehavior:SetMainApplication(studio)

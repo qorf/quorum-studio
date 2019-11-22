@@ -920,8 +920,10 @@ class BuildManager is DebuggerListener, ProcessListener
         runner:SetDirectory(copyFolder)
         Properties properties
         text os = properties:GetOperatingSystemName()
-        text java = properties:GetProperty("java.home")
-        java = java + "/" + "bin" + "/" + "java"
+        text java = FindJava()
+        if java = undefined
+            out:Append("I could not find Java. Is it installed?")
+        end
 
         text value = location:GetAbsolutePath()
         if processes:HasKey(value) //kill it, if you have to
@@ -1297,6 +1299,32 @@ class BuildManager is DebuggerListener, ProcessListener
         debugger:Continue()
     end
 
+    private action FindJava returns text
+        //first check if there's a JRE underneat quorum studio
+        File file
+        text local = file:GetAbsolutePath() + "/jre/bin" + "/" + "java"
+        //You can't reliably know the file extension, so check the existence
+        //of the parent folder. 
+        File parentFolder
+        File javaFile
+        javaFile:SetAbsolutePath(local)
+        parentFolder:SetAbsolutePath(file:GetAbsolutePath() + "/jre/bin")
+        if parentFolder:Exists() //use the local one if you can.
+            return javaFile:GetAbsolutePath()
+        end
+
+        Properties properties
+        text home = properties:GetProperty("java.home")
+        home = home + "/" + "bin" + "/" + "java"
+
+        javaFile:SetAbsolutePath(home)
+        parentFolder:SetAbsolutePath(properties:GetProperty("java.home") + "/" + "bin")
+        if parentFolder:Exists() //use the local one if you can.
+            return javaFile:GetAbsolutePath()
+        end
+        return undefined
+    end
+
     action Run(BuildInformation info)
         QuorumProject project = info:project
         OutputTab out = info:outputTab
@@ -1317,9 +1345,10 @@ class BuildManager is DebuggerListener, ProcessListener
             runner:AddListener(me)
             Properties properties
             text os = properties:GetOperatingSystemName()
-            text java = properties:GetProperty("java.home")
-            java = java + "/" + "bin" + "/" + "java"
-            
+            text java = FindJava()
+            if java = undefined
+                out:Append("I could not find Java. Is it installed?")
+            end
             text value = project:GetLocation():GetAbsolutePath()
             if processes:HasKey(value) //kill it, if you have to
                 ProcessRunner old = processes:RemoveKey(value)
@@ -1383,15 +1412,6 @@ class BuildManager is DebuggerListener, ProcessListener
         repeat while iterator:HasNext()
             text key = iterator:Next()
             ProcessRunner process = processes:GetValue(key)
-            text value = process:GetProcessName()
-            output value
-
-            Array<text> parameters = process:GetParameters()
-            i = 0
-            repeat while i < parameters:GetSize()
-                output parameters:Get(i)
-                i = i + 1
-            end
             process:Cancel()
         end
         if debuggingProgram not= undefined
