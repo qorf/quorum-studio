@@ -196,7 +196,6 @@ public class ProcessRunner {
             
             boolean alive = process.isAlive();
             if(alive) {
-                System.out.println("DIE");
                 process.destroyForcibly();
             }
         }
