@@ -339,7 +339,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
                 if IsInLocation(position, location) 
                     Location loc = var:GetTypeLocation()
                     SetCaretPosition(loc:GetIndex())
-                    GoToLine(location:GetLineNumber())
+                    GoToLine(loc:GetLineNumber())
                     return true
                 end
             end
@@ -348,7 +348,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     end
 
     private action IsInLocation(integer position, Location location) returns boolean
-        if location not= undefined and position >= location:GetIndex() and position < location:GetIndexEnd()
+        if location not= undefined and position >= location:GetIndex() and position < location:GetIndexEnd() + 1
             return true
         end
         return false
