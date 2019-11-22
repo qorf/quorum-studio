@@ -246,6 +246,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
         SetupFocus()
         SetupInterfaceScaling()
+        SetupInputTables()
         
         BuildManager builds = behaviors:GetBuildManager()
         builds:SetCodeEditorTabPane(codeTabs)
@@ -346,8 +347,9 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     end
 
     action SetupInputTables
+        KeyboardEvent keys
+
         CodeCompletionInputTable codeCompletionTable
-        codeCompletionTable:SetIdentifier("CodeCompletionMenuRoot")
 
         MenuRootDownBehavior menuDownBehavior
         MenuRootUpBehavior menuUpBehavior
@@ -355,33 +357,20 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         MenuRootCloseBehavior menuCloseBehavior
 
         InputSet downArrow
-        /*
-        InputTable menuRootTable
-        menuRootTable:SetIdentifier("MenuRoot")
-
-        MenuRootDownBehavior menuDownBehavior
-        MenuRootUpBehavior menuUpBehavior
-        MenuRootLeftBehavior menuLeftBehavior
-        MenuRootRightBehavior menuRightBehavior
-        MenuRootActivateBehavior menuRunBehavior
-        MenuRootCloseBehavior menuCloseBehavior
-
-        menuRootTable:Add(downArrow, menuDownBehavior)
-        menuRootTable:Add(upArrow, menuUpBehavior)
-        menuRootTable:Add(leftArrow, menuLeftBehavior)
-        menuRootTable:Add(rightArrow, menuRightBehavior)
-
-        InputSet spaceBar
-        spaceBar:SetKeyboardInput(keys:SPACE)
-
-        menuRootTable:Add(spaceBar, menuRunBehavior)
-        menuRootTable:Add(enter, menuRunBehavior)
-
+        InputSet upArrow
+        InputSet enterSet
         InputSet escapeSet
+        downArrow:SetKeyboardInput(keys:DOWN)
+        upArrow:SetKeyboardInput(keys:UP)
+        enterSet:SetKeyboardInput(keys:ENTER)
         escapeSet:SetKeyboardInput(keys:ESCAPE)
-        
-        menuRootTable:Add(escapeSet, menuCloseBehavior)
-        */
+
+        codeCompletionTable:Add(downArrow, menuDownBehavior)
+        codeCompletionTable:Add(upArrow, menuUpBehavior)
+        codeCompletionTable:Add(enterSet, menuRunBehavior)
+        codeCompletionTable:Add(escapeSet, menuCloseBehavior)
+
+        AddInputTable(codeCompletionTable)
     end
 
     action Load

@@ -1,0 +1,126 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Language.Compile.CodeCompletionResult
+use Libraries.Language.Compile.CodeCompletionItem
+use Libraries.Containers.Iterator
+use Libraries.Game.Graphics.Color
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Development.Environment.Studio.Behaviors.ExecuteCodeCompletionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.MenuItemComparison
+
+class CodeCompletionMenu is PopupMenu
+
+    CodeTextBox textBox = undefined
+    Color primaryColor
+    Color secondaryColor
+
+    on create
+        SetInputGroup("CodeCompletionMenuRoot")
+
+        primaryColor:SetColor(1.0, 1.0, 1.0, 1.0)
+        secondaryColor:SetColor(250.0/255.0, 250.0/255.0, 250.0/255.0, 1)
+
+        Color border = primaryColor:CustomColor(156.0/255.0, 156.0/255.0, 156.0/255.0, 1)
+        SetBorderColor(border)
+        SetBorderThickness(2)
+        // 15 is the integer constant value of the "ALL" border style in LayoutProperties
+        GetDefaultLayoutProperties():SetBorderStyle(15)
+    end
+
+    action GetTextBox returns CodeTextBox
+        return textBox
+    end
+
+    action SetTextBox(CodeTextBox textBox)
+        me:textBox = textBox
+    end
+
+    action Generate(BuildManager builder)
+        CodeCompletionResult result = builder:RequestCodeCompletion()
+        Iterator<CodeCompletionItem> iterator = result:GetIterator()
+        if not iterator:HasNext()
+            return now
+        end
+        
+        boolean useFirstColor = true
+
+        Array<MenuItem> other
+        Array<MenuItem> locals
+        Array<MenuItem> fields
+        Array<MenuItem> actions
+        repeat while iterator:HasNext()
+            CodeCompletionItem code = iterator:Next()
+
+            if code:displayText:StartsWith(result:filter)
+                MenuItem item
+                item:SetName(code:displayText)
+                item:SetShortcut(code:rightDisplayText)
+
+                if useFirstColor
+                    item:SetBackgroundColor(primaryColor)
+                else
+                    item:SetBackgroundColor(secondaryColor)
+                end
+
+                useFirstColor = not useFirstColor
+
+                ExecuteCodeCompletionBehavior behave
+                behave:SetTextBox(textBox)
+                behave:SetCodeCompletionItem(code)
+                behave:SetCodeCompletionResult(result)
+                item:SetBehavior(behave)
+
+                if code:GetType() = code:LOCAL_VARIABLE
+                    locals:Add(item)
+                elseif code:GetType() = code:PARAMETER
+                    locals:Add(item)
+                elseif code:GetType() = code:PRIVATE_FIELD_VARIABLE
+                    fields:Add(item)
+                elseif code:GetType() = code:PUBLIC_FIELD_VARIABLE
+                    fields:Add(item)
+                elseif code:GetType() = code:PRIVATE_ACTION
+                    actions:Add(item)
+                elseif code:GetType() = code:PUBLIC_ACTION
+                    actions:Add(item)
+                elseif code:GetType() = code:PRIVATE_SYSTEM_ACTION
+                    actions:Add(item)
+                elseif code:GetType() = code:PUBLIC_SYSTEM_ACTION
+                    actions:Add(item)
+                elseif code:GetType() = code:PUBLIC_BLUEPRINT_ACTION
+                    actions:Add(item)
+                elseif code:GetType() = code:CLASS
+                    other:Add(item)
+                elseif code:GetType() = code:PRIMITIVE
+                    other:Add(item)
+                elseif code:GetType() = code:CONTROL_STRUCTURE
+                    other:Add(item)
+                elseif code:GetType() = code:PACKAGE
+                    other:Add(item)
+                end
+                //items:Add(item)
+            end
+        end
+
+        MenuItemComparison compare
+        AddToResult(other, compare)
+        AddToResult(locals, compare)
+        AddToResult(fields, compare)
+        AddToResult(actions, compare)
+
+        number x = textBox:GetCaretGlobalX()
+        number y = textBox:GetCaretGlobalY()
+        OpenAt(x, y)
+    end
+
+    private action AddToResult(Array<MenuItem> items, MenuItemComparison compare)
+        items:Sort(compare)
+        i = 0
+        repeat while i < items:GetSize()
+            Add(items:Get(i))
+            i = i + 1
+        end
+    end
+end
