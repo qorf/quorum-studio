@@ -54,6 +54,7 @@ use Libraries.Language.Compile.Location
 use Libraries.Language.Compile.Symbol.Type
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Language.Compile.Symbol.ActionCallResolution
+use Libraries.Language.Compile.QualifiedName
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -254,6 +255,19 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
                 return now
             end
             integer position = GetCaretPosition()
+            Iterator<QualifiedName> parents = clazz:GetUnresolvedParents()
+            repeat while parents:HasNext()
+                QualifiedName momName = parents:Next()
+                if momName not= undefined and IsInLocation(position, momName)
+                    Class mom = clazz:GetValidUseName(momName:GetName())
+                    if mom not= undefined
+                        JumpToClass(mom, 0, 0, pane)
+                        return now
+                    end
+                end
+            end
+
+
             Iterator<Action> actions = clazz:GetActions()
             repeat while actions:HasNext()
                 Action act = actions:Next()
