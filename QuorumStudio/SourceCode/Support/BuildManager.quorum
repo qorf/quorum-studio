@@ -677,6 +677,7 @@ class BuildManager is DebuggerListener, ProcessListener
         CompilerResult lastResult = recentCompilerResults:GetValue(project:GetLocation():GetAbsolutePath())
         if lastResult not= undefined
             request:symbolTable = lastResult:symbolTable
+            request:opcodes = lastResult:opcodes
         end
 
         //these are the core changes
@@ -1054,10 +1055,13 @@ class BuildManager is DebuggerListener, ProcessListener
         CompilerResult lastResult = recentCompilerResults:GetValue(path)
         //this is the correct optimization, but appears to not be working as correctly
         //TODO: Fix this so that it still builds correctly with it in there.
-        //if lastResult not= undefined and not info:isCleanAndBuild
-        //    request:symbolTable = lastResult:symbolTable
-        //    request:opcodes = lastResult:opcodes
-        //end
+        if lastResult not= undefined and not info:isCleanAndBuild
+            request:symbolTable = lastResult:symbolTable
+            request:opcodes = lastResult:opcodes
+            if lastResult:opcodes = undefined
+                request:symbolTable = undefined //reset it, because something is wrong.
+            end
+        end
 
         DateTime time
         number start = time:GetEpochTime()
