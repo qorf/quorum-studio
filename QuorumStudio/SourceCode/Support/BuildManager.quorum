@@ -1052,10 +1052,12 @@ class BuildManager is DebuggerListener, ProcessListener
         info:request = request
         text path = project:GetLocation():GetAbsolutePath()
         CompilerResult lastResult = recentCompilerResults:GetValue(path)
-        if lastResult not= undefined and not info:isCleanAndBuild
-            request:symbolTable = lastResult:symbolTable
-            request:opcodes = lastResult:opcodes
-        end
+        //this is the correct optimization, but appears to not be working as correctly
+        //TODO: Fix this so that it still builds correctly with it in there.
+        //if lastResult not= undefined and not info:isCleanAndBuild
+        //    request:symbolTable = lastResult:symbolTable
+        //    request:opcodes = lastResult:opcodes
+        //end
 
         DateTime time
         number start = time:GetEpochTime()
