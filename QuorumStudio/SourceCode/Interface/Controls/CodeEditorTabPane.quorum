@@ -281,6 +281,22 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         end
     end
 
+    action GetDirtyTabsCount returns integer
+        integer dirtyTabs = 0
+        Iterator<File> iterator = GetOpenFileIterator()
+        repeat while iterator:HasNext()
+            File file = iterator:Next()
+            Tab tab = openTabs:GetValue(file:GetAbsolutePath())
+            if tab is EditorTab
+                EditorTab et = cast(EditorTab, tab)
+                if et:IsDirty()
+                    dirtyTabs = dirtyTabs + 1
+                end
+            end
+        end
+        return dirtyTabs
+    end
+
     action SaveDirtyTabs
         Iterator<File> iterator = GetOpenFileIterator()
         repeat while iterator:HasNext()

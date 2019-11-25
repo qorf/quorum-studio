@@ -1,0 +1,121 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Controls.Button
+use Libraries.Development.Environment.Studio.Behaviors.SaveChangesBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DiscardChangesBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CancelExitBehavior
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+
+class SaveBeforeClosingDialog is Dialog
+    GameStateManager manager
+    QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+
+    boolean initialized = false
+
+    Button saveButton
+    Button discardButton
+    Button cancelButton
+
+    SaveChangesBehavior saveBehavior
+    DiscardChangesBehavior discardBehavior
+    CancelExitBehavior cancelBehavior
+
+    on create
+        saveBehavior:SetDialog(me)
+        discardBehavior:SetDialog(me)
+        cancelBehavior:SetDialog(me)
+        SetBehavior(saveBehavior)
+    end
+
+    action Initialize
+        initialized = true
+
+        SetName("Save Before Closing")
+        SetPixelWidth(450)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL - view:TOP)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        
+        Control panel
+        FlowLayout newFileLayout
+        panel:SetLayout(newFileLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetPixelHeight(110)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+        panel:Add(CreateSaveChangesControl())
+        panel:SetView2D(view)
+        Add(panel)
+    end
+
+    private action CreateSaveChangesControl returns Control
+        Color color
+        Control control
+        FlowLayout layout
+        control:SetLayout(layout)
+        control:SetBorderThickness(1)
+        control:SetBorderColor(color:Black())
+        control:SetPercentageWidth(1.0)
+        control:SetVerticalLayoutMode(control:FIT_CONTENTS)
+        
+        Label warningLabel
+        warningLabel:SetText("You have unsaved changes , would you like to save before closing?")
+        warningLabel:SetTopPadding(20)
+        warningLabel:SetLeftPadding(10)
+        warningLabel:SetRightPadding(10)
+        warningLabel:SetPercentageWidth(1.0)
+        control:Add(warningLabel)
+
+        Control buttonContainer
+        FlowLayout buttonLayout
+        buttonContainer:SetLayout(buttonLayout)
+        buttonContainer:SetPercentageWidth(1.0)
+        buttonContainer:SetVerticalLayoutMode(buttonContainer:FIT_CONTENTS)
+        buttonContainer:SetTopPadding(50)
+        buttonContainer:SetBottomPadding(20)
+
+        Control buttonPadding
+        buttonPadding:SetPercentageWidth(0.2)
+        buttonPadding:SetPixelHeight(1)
+        buttonContainer:Add(buttonPadding)
+
+        saveButton:SetName("Save All")
+        saveButton:SetBehavior(saveBehavior) //sets the selection to save all integer value
+        saveButton:SetNextFocus(discardButton)
+        saveButton:SetPreviousFocus(cancelButton)
+        saveButton:SetRightPadding(50)
+        buttonContainer:Add(saveButton) 
+
+        discardButton:SetName("Discard All")
+        discardButton:SetBehavior(discardBehavior)   //sets the selection to discard changes integer value
+        discardButton:SetNextFocus(cancelButton)
+        discardButton:SetPreviousFocus(saveButton)
+        discardButton:SetRightPadding(50)
+        buttonContainer:Add(discardButton)
+
+        cancelButton:SetName("Cancel")
+        cancelButton:SetBehavior(cancelBehavior) //sets the selection to cancel exit integer value
+        cancelButton:SetNextFocus(saveButton)
+        cancelButton:SetPreviousFocus(cancelButton)
+        buttonContainer:Add(cancelButton)
+
+        buttonContainer:Add(buttonPadding)
+        control:Add(buttonContainer)
+        
+        return control
+    end
+
+    action OnHide()
+        studio:ResetExitFlag()   
+    end
+end
