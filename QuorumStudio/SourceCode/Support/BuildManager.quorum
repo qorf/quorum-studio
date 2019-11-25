@@ -677,6 +677,7 @@ class BuildManager is DebuggerListener, ProcessListener
         CompilerResult lastResult = recentCompilerResults:GetValue(project:GetLocation():GetAbsolutePath())
         if lastResult not= undefined
             request:symbolTable = lastResult:symbolTable
+            request:opcodes = lastResult:opcodes
         end
 
         //these are the core changes
@@ -965,14 +966,18 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action Build(BuildInformation info)
-        Build(info, true)
-    end
-
-    action Build(BuildInformation info, boolean pulseButton)
-        if pulseButton
+        if info:isCleanAndBuild = false
+            // Make the build button pulse.
             QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
             Toolbar toolbar = studio:GetToolbar()
             Button buildButton = toolbar:GetButton("Build")
+            buildPulseBehavior:SetFinished(false)
+            buildButton:AddBehavior(buildPulseBehavior)
+        else
+            // Make the clean and build button pulse.
+            QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
+            Toolbar toolbar = studio:GetToolbar()
+            Button buildButton = toolbar:GetButton("Clean and Build")
             buildPulseBehavior:SetFinished(false)
             buildButton:AddBehavior(buildPulseBehavior)
         end
@@ -1033,9 +1038,7 @@ class BuildManager is DebuggerListener, ProcessListener
             request:SetOutputType(request:DOCUMENT)
             GenerateStandardLibraryDocumentation(info)
 
-            if pulseButton
-                buildPulseBehavior:SetFinished(true)
-            end
+            buildPulseBehavior:SetFinished(true)
 
             return now
         end
@@ -1048,11 +1051,22 @@ class BuildManager is DebuggerListener, ProcessListener
         request:main = main
         Compiler compiler = project:GetCompiler()
         info:request = request
-
+        text path = project:GetLocation():GetAbsolutePath()
+        CompilerResult lastResult = recentCompilerResults:GetValue(path)
+        //this is the correct optimization, but appears to not be working as correctly
+        //TODO: Fix this so that it still builds correctly with it in there.
+        if lastResult not= undefined and not info:isCleanAndBuild
+            request:symbolTable = lastResult:symbolTable
+            request:opcodes = lastResult:opcodes
+            if lastResult:opcodes = undefined
+                request:symbolTable = undefined //reset it, because something is wrong.
+            end
+        end
 
         DateTime time
         number start = time:GetEpochTime()
         CompilerResult result = compiler:Compile(request)
+        recentCompilerResults:Add(path, result)
         number finish = time:GetEpochTime()
 
         text displayedTime = GetFormattedTime(start, finish)
@@ -1065,9 +1079,7 @@ class BuildManager is DebuggerListener, ProcessListener
             SendToLego(info)
         end
 
-        if pulseButton
-            buildPulseBehavior:SetFinished(true)
-        end
+        buildPulseBehavior:SetFinished(true)
     end
 
     private action OutputErrors(BuildInformation info, CompilerErrorManager errors, text message)
@@ -1154,20 +1166,9 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action CleanAndBuild(BuildInformation info)
-        // Make the clean and build button pulse.
-        QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
-        Toolbar toolbar = studio:GetToolbar()
-        Button buildButton = toolbar:GetButton("Clean and Build")
-        buildPulseBehavior:SetFinished(false)
-        buildButton:AddBehavior(buildPulseBehavior)
-
+        info:isCleanAndBuild = true
         Clean(info)
-
-        // False parameter keeps the default "Build" button from pulsing.
-        Build(info, false)
-
-        // Stop the button pulsing.
-        buildPulseBehavior:SetFinished(true)
+        Build(info)
     end
 
     action SendToAndroidDebugMode(BuildInformation info)
@@ -1412,15 +1413,6 @@ class BuildManager is DebuggerListener, ProcessListener
         repeat while iterator:HasNext()
             text key = iterator:Next()
             ProcessRunner process = processes:GetValue(key)
-            text value = process:GetProcessName()
-            output value
-
-            Array<text> parameters = process:GetParameters()
-            i = 0
-            repeat while i < parameters:GetSize()
-                output parameters:Get(i)
-                i = i + 1
-            end
             process:Cancel()
         end
         if debuggingProgram not= undefined

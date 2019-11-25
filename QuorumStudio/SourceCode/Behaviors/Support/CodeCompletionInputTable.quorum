@@ -3,30 +3,37 @@ package Libraries.Development.Environment.Studio.Behaviors
 use Libraries.Game.InputTable
 use Libraries.Game.InputSet
 use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.CodeCompletionMenu
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 
 class CodeCompletionInputTable is InputTable
 
-    InputTable passthrough = undefined
-
-    action GetPassthrough returns InputTable
-        return passthrough
+    on create
+        SetIdentifier("CodeCompletionMenuRoot")
     end
 
-    action SetPassthrough(InputTable passthrough)
-        me:passthrough = passthrough
+    action HasKey(InputSet set) returns boolean
+        return parent:InputTable:HasKey(set)
     end
 
     action ProcessInput(InputSet set, BehaviorEvent event) returns boolean
         boolean success = false
-
         if parent:InputTable:ProcessInput(set, event) = true
             return true
-        elseif passthrough not= undefined
-            success = passthrough:ProcessInput(set, event)
+        elseif event:GetItem() is CodeCompletionMenu
+            CodeCompletionMenu menu = cast(CodeCompletionMenu, event:GetItem())
+            CodeTextBox textBox = menu:GetTextBox()
+            InputTable table = textBox:GetInputTable()
+            event:SetItem(textBox)
+
+            success = table:ProcessInput(set, event)
 
             if success
                 // Do extra work here to see if we need to update the code completion filter or close the menu
             end
+
+            // Reset the BehaviorEvent to use the original item again.
+            event:SetItem(menu)
         end
         
         return success

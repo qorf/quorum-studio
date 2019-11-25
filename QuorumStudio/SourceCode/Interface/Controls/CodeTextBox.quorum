@@ -48,6 +48,13 @@ use Libraries.Interface.Events.FocusEvent
 use Libraries.Development.Environment.Studio.StudioFocusManager
 use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Development.Environment.Projects.Project
+use Libraries.Language.Compile.CompilerResult
+use Libraries.Language.Compile.Symbol.Variable
+use Libraries.Language.Compile.Location
+use Libraries.Language.Compile.Symbol.Type
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Language.Compile.Symbol.ActionCallResolution
+use Libraries.Language.Compile.QualifiedName
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -222,7 +229,143 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     end
 
     action NavigateToDeclaration
-        output "We did it!"
+        if GetFile() not= undefined and errors not= undefined
+            File file = GetFile()
+            QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
+            StudioFocusManager focusManager = studio:GetStudioFocusManager()
+            ProjectManager projectManager = studio:GetProjectManager()
+            Project project = projectManager:IsProjectSourceFile(file)
+            if project not= undefined
+                CompilerResult result = manager:GetRecentCompilerResult(project:GetLocation():GetAbsolutePath())
+                if result not= undefined
+                    ActuallyNavigateToDeclaration(result, file)
+                end
+            end
+            
+        end
+    end
+    private action ActuallyNavigateToDeclaration(CompilerResult result, File file)
+        SymbolTable table = result:symbolTable
+        QuorumStudio qs = cast(QuorumStudio, gameStateManager:GetGame())
+        CodeEditorTabPane pane = qs:GetTabPane()
+
+        if table not= undefined
+            Class clazz = table:GetClassInFile(file:GetAbsolutePath())
+            if clazz = undefined
+                return now
+            end
+            integer position = GetCaretPosition()
+            Iterator<QualifiedName> parents = clazz:GetUnresolvedParents()
+            repeat while parents:HasNext()
+                QualifiedName momName = parents:Next()
+                if momName not= undefined and IsInLocation(position, momName)
+                    Class mom = clazz:GetValidUseName(momName:GetName())
+                    if mom not= undefined
+                        JumpToClass(mom, 0, 0, pane)
+                        return now
+                    end
+                end
+            end
+
+
+            Iterator<Action> actions = clazz:GetActions()
+            repeat while actions:HasNext()
+                Action act = actions:Next()
+                Type returnType = act:GetReturnType()
+                if returnType not= undefined and not returnType:IsVoid()
+                    if IsInLocation(position, act:GetReturnLocation())
+                        text key = returnType:GetStaticKey()
+                        Class jumpToClass = table:GetClass(key)
+                        if jumpToClass not= undefined
+                            JumpToClass(jumpToClass, 0, 0, pane)
+                            return now
+                        end
+                    end
+                end
+
+                if IsInLocation(position, act)
+                    //check for variables
+                    Iterator<Variable> parameters = act:GetParameterIterator()
+                    if CheckForJump(parameters, table)
+                        return now
+                    end
+
+                    Iterator<Variable> variables = act:GetAllLocalVariables()
+                    if CheckForJump(variables, table)
+                        return now
+                    end
+                end
+
+                Iterator<ActionCallResolution> calls = act:GetActionCalls()
+                repeat while calls:HasNext()
+                    ActionCallResolution call = calls:Next()
+                    if IsInLocation(position, call:location)
+                        Class parentClass = call:resolvedAction:GetParentClass()
+                        if parentClass not= undefined
+                            JumpToClass(parentClass, call:resolvedAction:GetIndex(), call:resolvedAction:GetLineNumber(), pane)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    private action JumpToClass(Class clazz, integer position, integer line, CodeEditorTabPane pane)
+        File jumpFile = clazz:GetFile()
+        EditorTab tab = pane:OpenNewTab(jumpFile)
+        pane:Select(tab)
+        CodeTextBox box = tab:GetTextBox()
+        if box not= undefined
+            box:SetCaretPosition(position)
+            box:GoToLine(line)
+        end
+    end
+
+    private action CheckForJump(Iterator<Variable> variables, SymbolTable table) returns boolean
+        QuorumStudio qs = cast(QuorumStudio, gameStateManager:GetGame())
+        CodeEditorTabPane pane = qs:GetTabPane()
+
+        integer position = GetCaretPosition()
+        repeat while variables:HasNext()
+            Variable var = variables:Next()
+            Location location = var:GetTypeLocation()
+            if IsInLocation(position, location) 
+                //found the variable's type
+                Type type = var:GetType()
+                text key = type:GetStaticKey()
+                Class jumpToClass = table:GetClass(key)
+                if jumpToClass not= undefined
+                    JumpToClass(jumpToClass, 0, 0, pane)
+                    return true
+                else 
+                    return false
+                end
+            end
+        end
+
+        //perhaps it is a use for a variable.
+        variables:Rewind()
+        repeat while variables:HasNext()
+            Variable var = variables:Next()
+            Iterator<Location> locations = var:GetUseLocations()
+            repeat while locations:HasNext()
+                Location location = locations:Next()
+                if IsInLocation(position, location) 
+                    Location loc = var:GetTypeLocation()
+                    SetCaretPosition(loc:GetIndex())
+                    GoToLine(loc:GetLineNumber())
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
+    private action IsInLocation(integer position, Location location) returns boolean
+        if location not= undefined and position >= location:GetIndex() and position < location:GetIndexEnd() + 1
+            return true
+        end
+        return false
     end
 
     /*
@@ -358,7 +501,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         Action closest = FindNextAction(line)
 
         if endIndex = startIndex
-            startIndex = GetIndexOfLine(line)
+            startIndex = GetIndexOfLine(line) 
         end
         
         if closest not= undefined and closest:GetLineNumber() < GetLineCount()

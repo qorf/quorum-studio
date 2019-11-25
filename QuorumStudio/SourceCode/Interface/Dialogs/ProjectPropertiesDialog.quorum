@@ -586,72 +586,39 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         programNameField:SetName("Program Name")
         controlsArea:Add(programNameField)
 
-        Control buttonPadding
-        buttonPadding:SetPercentageWidth(0.8)
-        buttonPadding:SetPixelHeight(1)
-        //controlsArea:Add(buttonPadding)
+        ButtonGroup projectRadios
+        projectRadios:SetFocusable(true)
+        projectRadios:SetHorizontalLayoutMode(controlsArea:STANDARD)
+        projectRadios:SetTopPadding(20)
+        projectRadios:SetPercentageWidth(0.5)
 
-        Control buttonArea
-        FlowLayout buttonLayout
-        buttonArea:SetLayout(buttonLayout)
-        buttonArea:SetHorizontalLayoutMode(buttonArea:STANDARD)
-        buttonArea:SetVerticalLayoutMode(buttonArea:FIT_CONTENTS)
-        buttonArea:SetTopPadding(20)
-        buttonArea:SetPercentageWidth(1.0)
-
-        Control buttonArea1
-        FlowLayout buttonLayout1
-        buttonArea1:SetLayout(buttonLayout1)
-        buttonArea1:SetHorizontalLayoutMode(buttonArea1:STANDARD)
-        buttonArea1:SetVerticalLayoutMode(buttonArea1:FIT_CONTENTS)
-        buttonArea1:SetPercentageWidth(0.5)
-
-        ButtonGroup buttonGroup
         standardProjectButton:SetName("Standard")
         standardProjectButton:SetFontSize(14)
-        //standardProjectButton:SetRightPadding(33)
-        standardProjectButton:SetPercentageWidth(1.0)
-        buttonGroup:AddButton(standardProjectButton)
-        buttonArea1:Add(standardProjectButton)
-        buttonArea1:Add(buttonPadding)
+        standardProjectButton:SetRightPadding(83)
+        standardProjectButton:SetPercentageWidth(0.5)
+        projectRadios:Add(standardProjectButton)
 
         legoProjectButton:SetName("Lego")
         legoProjectButton:SetFontSize(14)
-        legoProjectButton:SetTopPadding(20)
-        legoProjectButton:SetPercentageWidth(1.0)
-        buttonGroup:AddButton(legoProjectButton)
-        buttonArea1:Add(legoProjectButton)
-        //buttonArea:Add(buttonPadding)
-
-        buttonArea:Add(buttonArea1)
-
-        Control buttonArea2
-        FlowLayout buttonLayout2
-        buttonArea2:SetLayout(buttonLayout2)
-        buttonArea2:SetHorizontalLayoutMode(buttonArea2:STANDARD)
-        buttonArea2:SetVerticalLayoutMode(buttonArea2:FIT_CONTENTS)
-        buttonArea2:SetPercentageWidth(0.5)
+//        legoProjectButton:SetTopPadding(20)
+//        legoProjectButton:SetPercentageWidth(1.0)
+        projectRadios:Add(legoProjectButton)
 
         webServerProjectButton:SetName("Web Server")
         webServerProjectButton:SetFontSize(14)
-        //webServerProjectButton:SetTopPadding(20)
-        webServerProjectButton:SetPercentageWidth(1.0)
-        buttonGroup:AddButton(webServerProjectButton)
-        buttonArea2:Add(webServerProjectButton)
-        buttonArea2:Add(buttonPadding)
+        webServerProjectButton:SetRightPadding(50)
+        webServerProjectButton:SetTopPadding(20)
+//        webServerProjectButton:SetPercentageWidth(1.0)
+        projectRadios:Add(webServerProjectButton)
 
         webBrowserProjectButton:SetName("Web Browser")
         webBrowserProjectButton:SetFontSize(14)
         webBrowserProjectButton:SetTopPadding(20)
-        //webBrowserProjectButton:SetRightPadding(10)
-        webBrowserProjectButton:SetPercentageWidth(1.0)
-        buttonGroup:AddButton(webBrowserProjectButton)
-        buttonArea2:Add(webBrowserProjectButton)
-        //buttonArea:Add(buttonPadding)
+//        webBrowserProjectButton:SetRightPadding(10)
+        webBrowserProjectButton:SetPercentageWidth(0.2)
+        projectRadios:Add(webBrowserProjectButton)
 
-        buttonArea:Add(buttonArea2)
-
-        controlsArea:Add(buttonArea)
+        controlsArea:Add(projectRadios)//button area prolly gonna be buttongroup
         panel:Add(controlsArea)
 
         Label pluginFolders
@@ -896,18 +863,12 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         panel:Add(confirmArea)
 
-        programNameField:SetNextFocus(standardProjectButton)
+        programNameField:SetNextFocus(projectRadios)
         programNameField:SetPreviousFocus(okayButton)
-        standardProjectButton:SetNextFocus(legoProjectButton)
-        standardProjectButton:SetPreviousFocus(programNameField)
-        legoProjectButton:SetNextFocus(webServerProjectButton)
-        legoProjectButton:SetPreviousFocus(standardProjectButton)
-        webServerProjectButton:SetNextFocus(webBrowserProjectButton)
-        webServerProjectButton:SetPreviousFocus(legoProjectButton)
-        webBrowserProjectButton:SetNextFocus(javaClassList)
-        webBrowserProjectButton:SetPreviousFocus(webServerProjectButton)
+        projectRadios:SetNextFocus(javaClassList)
+        projectRadios:SetPreviousFocus(programNameField)
         javaClassList:SetNextFocus(addPlugin)
-        javaClassList:SetPreviousFocus(webBrowserProjectButton)
+        javaClassList:SetPreviousFocus(projectRadios)
         addPlugin:SetNextFocus(removePlugin)
         addPlugin:SetPreviousFocus(javaClassList)
         removePlugin:SetNextFocus(clearPlugins)
