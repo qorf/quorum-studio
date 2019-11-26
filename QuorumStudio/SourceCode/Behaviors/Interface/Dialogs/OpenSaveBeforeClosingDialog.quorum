@@ -1,0 +1,31 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.Interface.SaveBeforeClosingDialog
+use Libraries.Interface.Events.BehaviorEvent
+
+class OpenSaveBeforeClosingDialog is QuorumStudioBehavior
+    SaveBeforeClosingDialog dialog = undefined
+    boolean exitFlag = true
+
+    action GetExitFlag returns boolean
+        return exitFlag  
+    end
+
+    action SetExitFlag (boolean flag)
+        me:exitFlag = flag
+    end
+
+    action Run()
+        if dialog = undefined   
+            SaveBeforeClosingDialog saveDialog   
+            dialog = saveDialog
+            dialog:Initialize() 
+        end
+        exitFlag = false   
+        dialog:Show()    
+    end
+       
+    action GetDialog returns SaveBeforeClosingDialog
+        return dialog
+    end
+end
