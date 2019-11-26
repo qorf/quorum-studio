@@ -223,6 +223,22 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             table:Add(keyMap:GetPreviousKey(), behaviors:GetPreviousBehavior())
             table:Add(keyMap:GetUndoKey(), behaviors:GetUndoBehavior())
             table:Add(keyMap:GetRedoKey(), behaviors:GetRedoBehavior())
+
+            // Extra behaviors and InputSets used to trap incoming periods and
+            // colons for use with code completion.
+
+            InputSet periodSet
+            InputSet colonSet
+            InputSet shiftSemicolonSet
+
+            periodSet:SetKeyboardInput(keys:PERIOD)
+            colonSet:SetKeyboardInput(keys:COLON)
+            shiftSemicolonSet:SetKeyboardInput(keys:SEMICOLON)
+            shiftSemicolonSet:AddModifier(shiftSemicolonSet:SHIFT)
+
+            table:Add(periodSet, behaviors:GetCodeCompletionBehavior())
+            table:Add(colonSet, behaviors:GetCodeCompletionBehavior())
+            table:Add(shiftSemicolonSet, behaviors:GetCodeCompletionBehavior())
         else 
             textBox:SetInputGroup(textBox:CODE_BOX_INPUT_GROUP)
         end

@@ -1,0 +1,29 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.Interface.CodeCompletionMenu
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Controls.TextBox
+use Libraries.Game.InputSet
+
+class CloseCodeCompletionBehavior  is QuorumStudioBehavior
+
+    KeyboardEvent keys
+
+    action Run(BehaviorEvent event)
+        if event:GetItem() is CodeCompletionMenu
+            CodeCompletionMenu menu = cast(CodeCompletionMenu, event:GetItem())
+            menu:Close()
+
+            // If the menu is closing due to space input, we'll want to pass it through.
+            InputSet set = event:GetInputSet()
+            if set not= undefined and set:GetInputValue() = keys:SPACE
+                TextBox box = menu:GetTextBox()
+                if box not= undefined
+                    box:Insert(" ")
+                end
+            end
+        end
+    end
+
+end

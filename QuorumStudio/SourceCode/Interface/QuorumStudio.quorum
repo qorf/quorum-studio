@@ -54,6 +54,9 @@ use Libraries.Interface.Behaviors.Controls.MenuRootUpBehavior
 use Libraries.Interface.Behaviors.Controls.MenuRootActivateBehavior
 use Libraries.Interface.Behaviors.Controls.MenuRootCloseBehavior
 use Libraries.Game.InputSet
+use Libraries.Development.Environment.Studio.Behaviors.CloseCodeCompletionBehavior
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant number VERSION = 1.0
@@ -354,21 +357,38 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         MenuRootDownBehavior menuDownBehavior
         MenuRootUpBehavior menuUpBehavior
         MenuRootActivateBehavior menuRunBehavior
-        MenuRootCloseBehavior menuCloseBehavior
+        CloseCodeCompletionBehavior menuCloseBehavior
+
+        // Used only to prevent certain inputs from propagating downward
+        Behavior emptyBehavior
+
+        QuorumStudioBehavior codeCompletionBehavior = behaviors:GetCodeCompletionBehavior()
 
         InputSet downArrow
         InputSet upArrow
         InputSet enterSet
         InputSet escapeSet
+        InputSet spaceSet
         downArrow:SetKeyboardInput(keys:DOWN)
         upArrow:SetKeyboardInput(keys:UP)
         enterSet:SetKeyboardInput(keys:ENTER)
         escapeSet:SetKeyboardInput(keys:ESCAPE)
+        spaceSet:SetKeyboardInput(keys:SPACE)
+
+        InputSet releaseDownArrow
+        InputSet releaseUpArrow
+        releaseDownArrow:SetKeyboardInput(keys:DOWN)
+        releaseDownArrow:SetInputTrigger(releaseDownArrow:FINISH)
+        releaseUpArrow:SetKeyboardInput(keys:UP)
+        releaseUpArrow:SetInputTrigger(releaseUpArrow:FINISH)
 
         codeCompletionTable:Add(downArrow, menuDownBehavior)
         codeCompletionTable:Add(upArrow, menuUpBehavior)
         codeCompletionTable:Add(enterSet, menuRunBehavior)
         codeCompletionTable:Add(escapeSet, menuCloseBehavior)
+        codeCompletionTable:Add(spaceSet, menuCloseBehavior)
+        codeCompletionTable:Add(releaseDownArrow, emptyBehavior)
+        codeCompletionTable:Add(releaseUpArrow, emptyBehavior)
 
         AddInputTable(codeCompletionTable)
     end
