@@ -14,9 +14,11 @@ use Libraries.Development.Environment.Studio.Behaviors.MenuItemComparison
 class CodeCompletionMenu is PopupMenu
 
     CodeTextBox textBox = undefined
+    BuildManager builder = undefined
     Color primaryColor
     Color secondaryColor
-
+
+
     on create
         SetInputGroup("CodeCompletionMenuRoot")
 
@@ -39,12 +41,24 @@ class CodeCompletionMenu is PopupMenu
     end
 
     action Generate(BuildManager builder)
+        me:builder = builder
+
+        Filter()
+
+        number x = textBox:GetCaretGlobalX()
+        number y = textBox:GetCaretGlobalY()
+        OpenAt(x, y)
+    end
+
+    action Filter
+        Empty()
+
         CodeCompletionResult result = builder:RequestCodeCompletion()
         Iterator<CodeCompletionItem> iterator = result:GetIterator()
         if not iterator:HasNext()
             return now
         end
-        
+
         boolean useFirstColor = true
 
         Array<MenuItem> other
@@ -110,9 +124,11 @@ class CodeCompletionMenu is PopupMenu
         AddToResult(fields, compare)
         AddToResult(actions, compare)
 
-        number x = textBox:GetCaretGlobalX()
-        number y = textBox:GetCaretGlobalY()
-        OpenAt(x, y)
+        if IsEmpty() = false and GetSelection():IsEmpty() = true
+            // Moving the selection down forces the menu to select the first
+            // item if the selection was empty.
+            MoveSelectionDown()
+        end
     end
 
     private action AddToResult(Array<MenuItem> items, MenuItemComparison compare)

@@ -20,8 +20,12 @@ use Libraries.Game.Graphics.Color
 use Libraries.Containers.Array
 use Libraries.Development.Environment.Studio.Interface.CodeCompletionMenu
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Game.InputSet
+use Libraries.Interface.Events.KeyboardEvent
 
 class CodeCompletionBehavior is QuorumStudioBehavior
+
+    KeyboardEvent keys
     BuildManager builder = undefined
     CodeCompletionMenu menu
 
@@ -38,6 +42,19 @@ class CodeCompletionBehavior is QuorumStudioBehavior
         Item item = event:GetItem()
         if item is CodeTextBox
             CodeTextBox box = cast(CodeTextBox, item)
+
+            // If we're opening this due to inputting a colon or period, insert
+            // it into the TextBox first.
+            InputSet set = event:GetInputSet()
+            if set not= undefined
+                integer value = set:GetInputValue()
+                if value = keys:PERIOD
+                    box:Insert(".")
+                elseif (value = keys:SEMICOLON and set:HasModifier(set:SHIFT)) or value = keys:COLON
+                    box:Insert(":")
+                end
+            end
+
             DoCodeCompletion(box)
         end
     end
@@ -49,5 +66,7 @@ class CodeCompletionBehavior is QuorumStudioBehavior
 
         menu:SetTextBox(box)
         menu:Generate(builder)
+
+        box:ShowCaret()
     end
 end
