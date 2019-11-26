@@ -37,6 +37,7 @@ class Options is ProjectListener
     File keymapLocation
     File projectsLocation
     boolean placeConfigInAppDataOnWindows = true
+    boolean placeConfigInApplicationSupportOnMac = true
 
     on create
         Properties prop
@@ -64,6 +65,27 @@ class Options is ProjectListener
             keymapLocation = newKeyMapFile
 
             projLocation = prop:GetEnvironmentVariable("USERPROFILE") + "\Documents"
+        elseif prop:IsMac() and placeConfigInApplicationSupportOnMac
+            ///Users/username/Library/Application Support
+            text home = prop:GetProperty("user.home")
+            File file
+            file:SetWorkingDirectory(home)
+            file:SetPath("Library/Application Support/Quorum Studio")
+            if not file:Exists()
+                file:CreateDirectory()
+            end
+
+            File newOptionsFile
+            newOptionsFile:SetWorkingDirectory(file:GetAbsolutePath())
+            newOptionsFile:SetPath("Options.json")
+            optionsLocation = newOptionsFile
+
+            File newKeyMapFile
+            newKeyMapFile:SetWorkingDirectory(file:GetAbsolutePath())
+            newKeyMapFile:SetPath("KeyMap.json")
+            keymapLocation = newKeyMapFile
+
+            projLocation = prop:GetEnvironmentVariable("HOME")
         else
             File file
             file:SetPath("Configuration")
