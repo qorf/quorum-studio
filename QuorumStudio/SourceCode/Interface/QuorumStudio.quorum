@@ -60,8 +60,8 @@ use Libraries.Development.Environment.Studio.Interface.SaveBeforeClosingDialog
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant number VERSION = 1.0
     constant text NAME = "Quorum Studio " + VERSION + " Beta 2"
-    public integer SAVE_CHANGES = 0	
-    public integer DISCARD_CHANGES = 1	
+    public integer SAVE_CHANGES = 0
+    public integer DISCARD_CHANGES = 1
     public integer CANCEL_EXIT = 2
     integer DEFAULT_WINDOW_WIDTH = 2500
     integer DEFAULT_WINDOW_HEIGHT = 1500
@@ -104,38 +104,38 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         StartGame()
     end
 
-    action SetExitStatus (integer status)	
-        exitStatus = status	
-    end	
+    action SetExitStatus (integer status)
+        exitStatus = status
+    end
 
-    action GetExitStatus returns integer	
-        return exitStatus	
-    end	
+    action GetExitStatus returns integer
+        return exitStatus
+    end
 
-    action ResetExitFlag	
-        openSaveBeforeClosingBehavior:SetExitFlag(true)	
-    end	
+    action ResetExitFlag
+        openSaveBeforeClosingBehavior:SetExitFlag(true)
+    end
 
-    action GetExitFlag returns boolean	
-        return openSaveBeforeClosingBehavior:GetExitFlag()	
+    action GetExitFlag returns boolean
+        return openSaveBeforeClosingBehavior:GetExitFlag()
     end
 
     action OnExit returns boolean
-        /* Checks to see if there are unsaved changes and if this is the first prompt for the unsaved	
-        changes. If yes, then the Save Changes Before Closing Dialog will pop up and the user can choose: 	
-        SAVE ALL changes in which QuorumStudio calls exit again (exitFlag = false, so the dialog 	
-        does not prompt the user again.	
-        DISCARD ALL changes calling exit again and saving the state of quorum studio without saving any 	
-        changes to the files themselves.	
-        or CANCEL EXIT in which the dialog is closed and the exitFlag is reset to true from the cancel exit behavior	
-        so that the next time the user goes to exit QuroumStudio they will be prompted with the dialog again.*/	
-        if codeTabs:GetDirtyTabsCount() > 0 and (openSaveBeforeClosingBehavior:GetExitFlag()) 	
-            openSaveBeforeClosingBehavior:Run()	
-            SaveBeforeClosingDialog dialog = openSaveBeforeClosingBehavior:GetDialog()	
-            return false	
-        end	
-        if exitStatus = CANCEL_EXIT	
-            return false	
+        /* Checks to see if there are unsaved changes and if this is the first prompt for the unsaved
+        changes. If yes, then the Save Changes Before Closing Dialog will pop up and the user can choose: 
+        SAVE ALL changes in which QuorumStudio calls exit again (exitFlag = false, so the dialog 
+        does not prompt the user again.
+        DISCARD ALL changes calling exit again and saving the state of quorum studio without saving any 
+        changes to the files themselves.
+        or CANCEL EXIT in which the dialog is closed and the exitFlag is reset to true from the cancel exit behavior
+        so that the next time the user goes to exit QuroumStudio they will be prompted with the dialog again.*/
+        if codeTabs:GetDirtyTabsCount() > 0 and (openSaveBeforeClosingBehavior:GetExitFlag()) 
+            openSaveBeforeClosingBehavior:Run()
+            SaveBeforeClosingDialog dialog = openSaveBeforeClosingBehavior:GetDialog()
+            return false
+        end
+        if exitStatus = CANCEL_EXIT
+            return false
         end
         ThreadRunner buildThreadRunner = behaviors:GetBuildThreadRunner()
         ThreadRunner indexThread = behaviors:GetBuildIndexingThread()
@@ -156,7 +156,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     action GetBuildManager returns BuildManager
         return behaviors:GetBuildManager()
-    end
+    end     
 
     action GetCurrentFocus returns Item
         return currentFocus
