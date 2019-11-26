@@ -66,6 +66,7 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.Toolbar
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Studio.Behaviors.ButtonPulseBehavior
+use Libraries.Development.Environment.Configuration.Options
 
 class BuildManager is DebuggerListener, ProcessListener
     Library library
@@ -103,6 +104,15 @@ class BuildManager is DebuggerListener, ProcessListener
 
     // Used when building or clean-and-building to make the associated buttons pulse.
     ButtonPulseBehavior buildPulseBehavior
+    Options options = undefined
+    
+    action GetOptions returns Options
+        return options
+    end
+
+    action SetOptions(Options options)
+        me:options = options
+    end
 
     action GetRecentCompilerResult(text project) returns CompilerResult
         return recentCompilerResults:GetValue(project)
@@ -436,15 +446,32 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action Scan
+        text locationPath = DEFAULT_LIBRARY_PATH
+        text outputPath = DEFAULT_LIBRARY_OUTPUT_PATH
         File libraryLocation
-        libraryLocation:SetPath(DEFAULT_LIBRARY_PATH)
-        library:SetLocation(libraryLocation)
-        library:SetCachingLibraryOpcodes(false)
-
-
         File outputLocation
-        outputLocation:SetPath(DEFAULT_LIBRARY_OUTPUT_PATH)
-        library:SetOutputFolder(outputLocation)
+
+        if options not= undefined and options:IsOverridingStandardLibrary()
+            locationPath = options:GetStandardLibraryOverrideLocation()
+            outputPath = options:GetStandardLibraryOutputOverrideLocation()
+
+            libraryLocation:SetAbsolutePath(locationPath)
+            library:SetLocation(libraryLocation)
+            library:SetCachingLibraryOpcodes(false)
+
+            outputLocation:SetAbsolutePath(outputPath)
+            library:SetOutputFolder(outputLocation)
+        else
+            libraryLocation:SetPath(locationPath)
+            library:SetLocation(libraryLocation)
+            library:SetCachingLibraryOpcodes(false)
+
+            outputLocation:SetPath(outputPath)
+            library:SetOutputFolder(outputLocation)
+        end
+
+        
+        
         library:Scan()
         Index()
     end

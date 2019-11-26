@@ -32,12 +32,28 @@ class Options is ProjectListener
     constant text WINDOW_HEIGHT = "Height"
     constant text TREE_STATE = "Tree State"
     constant text TREE_SELECT = "Tree Select"
+    constant text OVERRIDE_STANDARD_LIBRARY_PATH = "Override Standard Library"
+    constant text LIBRARY = "Library"
 
     File optionsLocation
     File keymapLocation
     File projectsLocation
     boolean placeConfigInAppDataOnWindows = true
     boolean placeConfigInApplicationSupportOnMac = true
+    boolean overrideLibraryLocation = false
+    text libraryOverridePath = ""
+
+    action IsOverridingStandardLibrary returns boolean
+        return overrideLibraryLocation
+    end
+
+    action GetStandardLibraryOverrideLocation returns text
+        return libraryOverridePath + "/Standard"
+    end
+
+    action GetStandardLibraryOutputOverrideLocation returns text
+        return libraryOverridePath + "/Compiled"
+    end
 
     on create
         Properties prop
@@ -66,7 +82,6 @@ class Options is ProjectListener
 
             projLocation = prop:GetEnvironmentVariable("USERPROFILE") + "\Documents"
         elseif prop:IsMac() and placeConfigInApplicationSupportOnMac
-            ///Users/username/Library/Application Support
             text home = prop:GetProperty("user.home")
             File file
             file:SetWorkingDirectory(home)
@@ -252,6 +267,8 @@ class Options is ProjectListener
         notation:Add(SCALE, scale)
         notation:Add(WINDOW_WIDTH, width)
         notation:Add(WINDOW_HEIGHT, height)
+        notation:Add(OVERRIDE_STANDARD_LIBRARY_PATH, overrideLibraryLocation)
+        notation:Add(LIBRARY, libraryOverridePath)
         
         //if Quorum Studio instance is not null, write any other behavior 
         //we are interested in storing
@@ -439,6 +456,14 @@ class Options is ProjectListener
         elseif key = PROJECTS_LOCATION
             if object:IsText()
                 me:projectsLocation:SetAbsolutePath(object:GetText())
+            end
+        elseif key = OVERRIDE_STANDARD_LIBRARY_PATH
+            if object:IsBoolean()
+                overrideLibraryLocation = object:GetBoolean()
+            end
+        elseif key = LIBRARY
+            if object:IsText()
+                libraryOverridePath = object:GetText()
             end
         end
     end
