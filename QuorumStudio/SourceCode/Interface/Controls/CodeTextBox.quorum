@@ -480,6 +480,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             return now
         end
 
+        
         integer line = GetCaretLine()
         Action closest = FindNextAction(line)
  
@@ -496,33 +497,38 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         TextBoxSelection selection = GetSelection()
         integer startIndex = selection:GetStartIndex()
         integer endIndex = selection:GetEndIndex()
+        integer caretPosition = GetCaretPosition()
 
         integer line = GetCaretLine()
-        Action closest = FindNextAction(line)
+        Action nextAction = FindNextAction(line)
+        Action thisAction = FindAction(line)
+        Action previousAction = FindPreviousAction(line)
 
-        if endIndex = startIndex
-            startIndex = GetIndexOfLine(line) 
+        if thisAction not= undefined
+            integer thisActionStartIndex = GetIndexOfLine(thisAction:GetLineNumber())
+            integer thisActionEndIndex = GetIndexOfLine(thisAction:GetLineNumberEnd())
         end
+        Action closest = FindNextAction(line)
         
-        if closest not= undefined and closest:GetLineNumber() < GetLineCount()
-            NavigateTo(closest:GetLineNumber())
+        //There is another action so we will highlight up to the next action
+        if nextAction not= undefined and nextAction:GetLineNumber() < GetLineCount()
+            NavigateTo(nextAction:GetLineNumber())
         //there is not another action, so select to this action's end + 1
-        else    
-            Action last = FindPreviousAction(GetLineCount())
-            if last not= undefined and ((last:GetLineNumberEnd()) < GetLineCount())
-                NavigateTo(last:GetLineNumberEnd() + 1)
-            end
+        elseif nextAction = undefined 
+            NavigateTo(thisAction:GetLineNumberEnd() + 1)
         end
         
         integer nextActionIndex = GetCaretPosition()
 
-        if closest = undefined and nextActionIndex <= startIndex     
-            NavigateTo(GetLineIndexOfCharacter(endIndex))
-            Select(endIndex, endIndex, true)
-        //we are adding to the selection or we have reached the final action in the textbox so we want to maintain our current selection
-        elseif ((nextActionIndex > endIndex) or (closest = undefined and nextActionIndex > startIndex))   
-            Select(startIndex, nextActionIndex, true)  
-        else                            //we are removing from the current selection        
+        //we are at the last action in the textbox, maintain our current selection
+        if ((endIndex = nextActionIndex) and (nextAction = undefined)) 
+            Select(startIndex, nextActionIndex, true)
+        //there is another action to select beneath this one and we are extending the current selection
+        elseif(endIndex < nextActionIndex and caretPosition < endIndex)
+            Select(endIndex, nextActionIndex, true)
+        elseif endIndex < nextActionIndex or startIndex = endIndex 
+            Select(startIndex, nextActionIndex, true)
+        elseif nextActionIndex < endIndex
             Select(nextActionIndex, endIndex, false)
         end
     end
