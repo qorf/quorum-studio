@@ -70,14 +70,17 @@ class CheckForUpdatesDialog is Dialog
         text result = ""
         if newVersion > version
             result = "Quorum Studio version " + newVersion + "
-Now available at https://quorumlanguage.com/download.html"
+Now available at https://quorumlanguage.com/download.html
+The download link was copied to the clipboard."
+
+            studio:SetClipboard("https://quorumlanguage.com/download.html")
         else
             result = "You are up to date!"
         end
 
         AccessibilityManager access = manager:GetAccessibilityManager()
         if access not= undefined
-            access:Notify(warningLabel, result)
+            access:Notify(warningLabel, result + ". The download link was copied to clipboard")
         end
 
         warningLabel:SetText(result)
