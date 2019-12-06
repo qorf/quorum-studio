@@ -1,0 +1,88 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Controls.Button
+use Libraries.Development.Environment.Studio.Behaviors.SaveChangesBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DiscardChangesBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CancelExitBehavior
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.AccessibilityManager
+use Libraries.Interface.Controls.Icon
+use Libraries.Interface.Layouts.LayoutProperties
+
+class AboutBoxDialog is Dialog
+    GameStateManager manager
+    QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+    Label warningLabel
+
+    boolean initialized = false
+    Icon logo
+    Label studioLabel
+    text name = ""
+
+    on create
+    end
+
+    action OnShow()
+        warningLabel:Focus()
+        AccessibilityManager access = manager:GetAccessibilityManager()
+        if access not= undefined
+            access:Notify(warningLabel, name)
+        end
+    end
+
+    action Initialize
+        if initialized
+            output "WARNING: Re-initializing the FindDialog."
+        end
+
+        initialized = true
+        number version = studio:VERSION
+        name = "Quorum Studio " + version + "
+The Awakening"
+        SetName("About Quorum Studio " + version)
+        SetPixelWidth(400)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        
+        logo:Load("Resources/Graphics/Interface/Quorum.png")
+
+        LayoutProperties properties
+        Control panel
+        FlowLayout findLayout
+        logo:SetPercentageHeight(0.75)
+        logo:SetPercentageWidth(logo:GetWidth()/ logo:GetHeight())
+        logo:SetHorizontalLayoutMode (properties:MAINTAIN_ASPECT_RATIO)
+        logo:SetLeftPadding(40)
+        logo:SetTopPadding(50)
+
+        studioLabel:SetText(name)
+        studioLabel:SetFontSize(20)
+        studioLabel:SetTopPadding(85)
+        studioLabel:SetLeftPadding(40)
+        panel:SetLayout(findLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetPixelHeight(140)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+        panel:Add(logo)
+
+        panel:Add(studioLabel)
+        panel:SetView2D(view)
+        Add(panel)
+    end
+
+    action OnHide()
+        studio:ResetExitFlag()   
+    end
+end
