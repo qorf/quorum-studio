@@ -18,6 +18,7 @@ use Libraries.Interface.Events.FocusEvent
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Events.SelectionListener
 use Libraries.Interface.Events.SelectionEvent
+use Libraries.Development.Environment.Studio.Behaviors.CheckForUpdatesBehavior
 
 class Menu is MenuBar, SelectionListener
     KeyboardEvent keys
@@ -98,7 +99,7 @@ class Menu is MenuBar, SelectionListener
         menuItems:Add(navigateMenu)
         menuItems:Add(runMenu)
         menuItems:Add(windowsMenu)
-        //menuItems:Add(helpMenu)
+        menuItems:Add(helpMenu)
         Add(menuItems)
         SetSelectingState(false)
         SetDefaultPopupShortcut()
@@ -490,11 +491,12 @@ class Menu is MenuBar, SelectionListener
 //        //findHelp:SetBehavior(undefined)
 //        helpItems:Add(findHelp)
 //
-//        MenuItem checkForUpdates
-//        checkForUpdates:SetName("Check for Updates")
-//        // Set a behavior to indicate what the menu item does when activated.
-//        //checkForUpdates:SetBehavior(undefined)
-//        helpItems:Add(checkForUpdates)
+        MenuItem checkForUpdates
+        checkForUpdates:SetName("Check for Updates")
+        
+        CheckForUpdatesBehavior updates
+        checkForUpdates:SetBehavior(updates)
+        helpItems:Add(checkForUpdates)
 
         helpMenu:SetName("Help")
         helpMenu:Add(helpItems)

@@ -1,0 +1,54 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Network.NetworkConnection
+use Libraries.Network.NetworkRequest
+use Libraries.Network.NetworkResponseEvent
+use Libraries.Network.NetworkRequestListener
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Studio.Interface.CheckForUpdatesDialog
+
+class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
+    QuorumStudio studio = undefined
+    ProjectManager manager = undefined
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+        manager = studio:GetProjectManager()
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
+
+    action Run(BehaviorEvent event)
+        NetworkRequest request
+        request:SetRequestTypeToGet()
+        request:SetWebAddress("https://quorumlanguage.com/studio/version.json")
+        NetworkConnection http
+        http:AddListener(me)
+        http:SendRequest(request)
+    end
+
+    action ResponseReceived(NetworkResponseEvent response)
+        text value = response:GetResponseText()
+        number version = -1
+        if value not= undefined
+            JavaScriptObjectNotation notation
+            notation:Read(value)
+            text formatted = notation:ToText()
+        
+            check
+                version = cast(number, notation:GetValue("Version"))
+            detect e //ignore this
+            end
+        end
+
+        CheckForUpdatesDialog dialog
+        dialog:SetNewVersion(version)
+        dialog:Initialize()
+        dialog:Show()
+    end
+end

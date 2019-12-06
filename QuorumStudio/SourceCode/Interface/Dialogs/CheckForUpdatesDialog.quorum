@@ -1,0 +1,122 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Controls.Button
+use Libraries.Development.Environment.Studio.Behaviors.SaveChangesBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DiscardChangesBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CancelExitBehavior
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.AccessibilityManager
+
+class CheckForUpdatesDialog is Dialog
+    GameStateManager manager
+    QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+    Label warningLabel
+
+    boolean initialized = false
+    number newVersion = 1.0
+
+    on create
+    end
+
+    action OnShow()
+        warningLabel:Focus()
+    end
+
+    action Initialize
+        initialized = true
+
+        SetName("Checking for Updates")
+        SetPixelWidth(450)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL - view:TOP)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        
+        Control panel
+        FlowLayout newFileLayout
+        panel:SetLayout(newFileLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetPixelHeight(110)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+        panel:Add(CreateControl())
+        panel:SetView2D(view)
+        Add(panel)
+    end
+
+    private action CreateControl returns Control
+        Color color
+        Control control
+        FlowLayout layout
+        control:SetLayout(layout)
+        control:SetBorderThickness(1)
+        control:SetBorderColor(color:Black())
+        control:SetPercentageWidth(1.0)
+        control:SetVerticalLayoutMode(control:FIT_CONTENTS)
+        
+        number version = studio:VERSION
+        
+        
+
+        text result = ""
+        if newVersion > version
+            result = "Quorum Studio version " + newVersion + "
+Now available at https://quorumlanguage.com/download.html"
+        else
+            result = "You are up to date!"
+        end
+
+        AccessibilityManager access = manager:GetAccessibilityManager()
+        if access not= undefined
+            access:Notify(warningLabel, result)
+        end
+
+        warningLabel:SetText(result)
+
+        warningLabel:SetTopPadding(20)
+        warningLabel:SetLeftPadding(10)
+        warningLabel:SetRightPadding(10)
+        warningLabel:SetPercentageWidth(1.0)
+        warningLabel:SetFocusable(true)
+        control:Add(warningLabel)
+
+        Control buttonContainer
+        FlowLayout buttonLayout
+        buttonContainer:SetLayout(buttonLayout)
+        buttonContainer:SetPercentageWidth(1.0)
+        buttonContainer:SetVerticalLayoutMode(buttonContainer:FIT_CONTENTS)
+        buttonContainer:SetTopPadding(50)
+        buttonContainer:SetBottomPadding(20)
+
+        Control buttonPadding
+        buttonPadding:SetPercentageWidth(0.2)
+        buttonPadding:SetPixelHeight(1)
+        buttonContainer:Add(buttonPadding)
+
+        buttonContainer:Add(buttonPadding)
+        control:Add(buttonContainer)
+        
+        return control
+    end
+
+    action OnHide()
+        studio:ResetExitFlag()   
+    end
+
+    action GetNewVersion returns number
+        return newVersion
+    end
+
+    action SetNewVersion(number new)
+        me:newVersion = new
+    end
+end
