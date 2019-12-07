@@ -29,7 +29,15 @@ class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
         request:SetWebAddress("https://quorumlanguage.com/studio/version.json")
         NetworkConnection http
         http:AddListener(me)
-        http:SendRequest(request)
+
+        check
+            http:SendRequest(request)
+        detect e
+            CheckForUpdatesDialog dialog
+            dialog:SetNewVersion(-10)
+            dialog:Initialize()
+            dialog:Show()
+        end
     end
 
     action ResponseReceived(NetworkResponseEvent response)
