@@ -355,6 +355,7 @@ class BuildManager is DebuggerListener, ProcessListener
     end
 
     action Run(DebuggerStopEvent event)
+        debugger:Stop()
         debuggingProgram = undefined
         if debuggerLineTextBox not= undefined
             debuggerLineTextBox:RemoveTextStyle("Debugger")
@@ -403,10 +404,22 @@ class BuildManager is DebuggerListener, ProcessListener
 
     action Run(BreakpointEvent event)
         Breakpoint bp = event:GetBreakpoint()
+        if bp = undefined or debuggingProgram = undefined
+            return now
+        end
+
         BuildInformation info = debuggingProgram
         CompilerResult result = info:result
         SymbolTable table = result:symbolTable
+        if table = undefined
+            return now
+        end
+
+
         Class value = table:GetClass(bp:GetDotName())
+        if value = undefined
+            return now
+        end
         File file = value:GetFile()
         integer line = bp:GetLine()
         UpdateDebugger(file, line)
