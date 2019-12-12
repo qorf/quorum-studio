@@ -10,6 +10,7 @@ use Libraries.Containers.Array
 use Libraries.Interface.Controls.MenuItem
 use Libraries.Development.Environment.Studio.Behaviors.ExecuteCodeCompletionBehavior
 use Libraries.Development.Environment.Studio.Behaviors.MenuItemComparison
+use Libraries.Interface.Events.BehaviorEvent
 
 class CodeCompletionMenu is PopupMenu
 
@@ -43,14 +44,14 @@ class CodeCompletionMenu is PopupMenu
     action Generate(BuildManager builder)
         me:builder = builder
 
-        Filter()
+        Filter(undefined)
 
         number x = textBox:GetCaretGlobalX()
         number y = textBox:GetCaretGlobalY()
         OpenAt(x, y)
     end
 
-    action Filter
+    action Filter(BehaviorEvent event)
         Empty()
 
         CodeCompletionResult result = builder:RequestCodeCompletion()
@@ -67,7 +68,7 @@ class CodeCompletionMenu is PopupMenu
         Array<MenuItem> actions
         repeat while iterator:HasNext()
             CodeCompletionItem code = iterator:Next()
-
+            
             if code:displayText:StartsWith(result:filter)
                 MenuItem item
                 item:SetName(code:displayText)
