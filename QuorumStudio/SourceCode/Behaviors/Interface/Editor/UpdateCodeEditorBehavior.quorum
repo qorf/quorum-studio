@@ -27,6 +27,7 @@ use Libraries.Language.Compile.Translate.ClassOpcode
 use Libraries.Language.Compile.Symbol.Variable
 use Libraries.Language.Compile.Location
 use Libraries.System.DateTime
+use Libraries.Language.Compile.Hints.UseHint
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
     //CompilerResult compilerResult = undefined
@@ -218,8 +219,10 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                 i = 0
                 repeat while hinterator:HasNext()
                     Hint hint = hinterator:Next()
+                    
                     text value = hint:GetAbsolutePath()
-                    if file not= undefined and value = pathToCompare
+                    //Only put in the green line if it's a use statement hint
+                    if file not= undefined and value = pathToCompare and hint is UseHint
                         integer index = hint:GetIndex()
                         integer indexEnd = hint:GetIndexEnd()
                         TextStyle style
