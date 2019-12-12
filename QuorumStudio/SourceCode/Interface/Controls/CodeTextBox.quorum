@@ -55,6 +55,7 @@ use Libraries.Language.Compile.Symbol.Type
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Language.Compile.Symbol.ActionCallResolution
 use Libraries.Language.Compile.QualifiedName
+use Libraries.Interface.AccessibilityManager
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -441,6 +442,8 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         if closest not= undefined and closest:GetLineNumber() > 0
             NavigateTo(closest:GetLineNumber())
         end
+
+        AnnounceCurrentLine()
     end
 
     action SelectSmartNavigateUp        
@@ -487,6 +490,8 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         if closest not= undefined and closest:GetLineNumber() < GetLineCount()
             NavigateTo(closest:GetLineNumber())
         end
+
+        AnnounceCurrentLine()
     end
 
     action SelectSmartNavigateDown
@@ -530,6 +535,15 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             Select(startIndex, nextActionIndex, true)
         elseif nextActionIndex < endIndex
             Select(nextActionIndex, endIndex, false)
+        end
+    end
+
+    // Used to announce the current line. Useful after moving the caret to an
+    // arbitrary line, e.g. using smart navigation or go to.
+    private action AnnounceCurrentLine
+        AccessibilityManager accessibility = gameStateManager:GetAccessibilityManager()
+        if accessibility not= undefined
+            accessibility:Notify(me, GetCurrentLineText(), accessibility:OTHER_NOTIFICATION)
         end
     end
 
@@ -741,10 +755,13 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             Token previous = lexer:Get(i)
             if IsSignificantToken(previous)
                 NavigateToIndex(previous:GetStartIndex())
+                AnnounceCurrentLine()
                 return now
             end
             i = i - 1
         end
+
+        AnnounceCurrentLine()
     end
 
     action SmartNavigateRight
@@ -770,10 +787,13 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             Token next = lexer:Get(i)
             if IsSignificantToken(next)
                 NavigateToIndex(next:GetStartIndex())
+                AnnounceCurrentLine()
                 return now
             end
             i = i + 1
         end
+
+        AnnounceCurrentLine()
     end
 
     action FindNextBlock(Block block) returns Block
