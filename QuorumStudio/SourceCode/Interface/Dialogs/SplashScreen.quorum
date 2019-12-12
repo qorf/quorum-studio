@@ -14,6 +14,7 @@ use Libraries.Interface.Controls.ProgressBar
 use Libraries.Language.Compile.Library
 
 use Libraries.Language.Compile.CompilerListener
+use Libraries.Interface.AccessibilityManager
 
 class SplashScreen is Dialog, CompilerListener
     boolean initialized = false
@@ -25,6 +26,7 @@ class SplashScreen is Dialog, CompilerListener
     ProgressBar progress
     Library library = undefined
     number currentPercent = 0
+    GameStateManager manager
 
     on create
         SetModal(true)
@@ -48,7 +50,11 @@ class SplashScreen is Dialog, CompilerListener
         elseif label = "All done!"
             result = "Ironing Baby Yoda"
         end
-
+        AccessibilityManager access = manager:GetAccessibilityManager()
+        if access not= undefined
+            access:Notify(me, result)
+        end
+        
         loading:SetText(result)
     end
 
