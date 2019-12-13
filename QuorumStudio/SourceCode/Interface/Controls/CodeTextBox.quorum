@@ -56,6 +56,7 @@ use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Language.Compile.Symbol.ActionCallResolution
 use Libraries.Language.Compile.QualifiedName
 use Libraries.Interface.AccessibilityManager
+use Libraries.Interface.Controls.Tab
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -313,7 +314,11 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
 
     private action JumpToClass(Class clazz, integer position, integer line, CodeEditorTabPane pane)
         File jumpFile = clazz:GetFile()
-        EditorTab tab = pane:OpenNewTab(jumpFile)
+        Tab tab1 = pane:OpenNewTab(jumpFile)
+        if not (tab1 is EditorTab)
+            return now
+        end
+        EditorTab tab = cast(EditorTab, tab1)
         pane:Select(tab)
         CodeTextBox box = tab:GetTextBox()
         if box not= undefined

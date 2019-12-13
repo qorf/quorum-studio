@@ -1,0 +1,63 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Game.Graphics.Model
+use Libraries.Game.Graphics.Color
+use Libraries.Containers.Array
+use Libraries.Game.Graphics.Material
+use Libraries.Game.Graphics.ColorAttribute
+use Libraries.Data.Formats.JavaScriptObjectNotation
+
+class InteractableItem is Model
+    
+    VisualEditorResources resources
+    VisualSceneController controller = undefined
+
+    on create
+        SetProperty(resources:EDITOR_TAG, undefined)
+        SetFocusable(true)
+        SetAccessibilityCode(parent:Item:CUSTOM)
+    end
+
+    action SetController(VisualSceneController controller)
+        me:controller = controller
+    end
+
+    action GetController returns VisualSceneController
+        return controller
+    end
+
+    action GetResources returns VisualEditorResources
+        return resources
+    end
+
+    action GetAccessibleParent returns Item
+        return GetController()
+    end
+
+    action NotifyAccessibility(text message)
+        controller:NotifyAccessibility(me, message)
+    end
+
+    action SetDiffuseColor(Color color)
+        integer counter = 0
+        Array<Material> materials = GetMaterials()
+        repeat materials:GetSize() times
+            Material material = materials:Get(counter)
+            ColorAttribute attribute
+            if material:HasAttribute(attribute:GetDiffuseValue())
+                attribute = cast(ColorAttribute, material:GetAttribute(attribute:GetDiffuseValue()))
+                attribute:SetAttribute(attribute:GetDiffuseValue(), color)
+            end
+            counter = counter + 1
+        end
+
+        JavaScriptObjectNotation colorJson
+        colorJson:SetKey("Color")
+        colorJson:SetArray()
+        colorJson:Add(color:GetRed())
+        colorJson:Add(color:GetGreen())
+        colorJson:Add(color:GetBlue())
+        colorJson:Add(color:GetAlpha())
+        SetProperty("Color", colorJson)
+    end
+end

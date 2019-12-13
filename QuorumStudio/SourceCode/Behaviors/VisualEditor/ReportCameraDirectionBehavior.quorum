@@ -1,0 +1,17 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+use Libraries.Compute.Math
+
+class ReportCameraDirectionBehavior is QuorumStudioBehavior
+
+    Math math
+
+    action Run(BehaviorEvent event)
+        if event:GetItem() is VisualSceneController
+            VisualSceneController controller = cast(VisualSceneController, event:GetItem())
+            controller:NotifyAccessibility(controller, "Camera yaw is " + math:Round(controller:GetYaw(), 1) + ", pitch is " + math:Round(controller:GetPitch(), 1))
+        end
+    end
+end

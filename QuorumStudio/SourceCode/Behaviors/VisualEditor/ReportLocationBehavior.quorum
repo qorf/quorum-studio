@@ -1,0 +1,26 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
+use Libraries.Compute.Math
+use Libraries.Compute.Vector3
+
+class ReportLocationBehavior is QuorumStudioBehavior
+
+    Math math
+
+    action Run(BehaviorEvent event)
+        if event:GetItem() is VisualSceneController
+            VisualSceneController controller = cast(VisualSceneController, event:GetItem())
+            Vector3 position = controller:GetEditorLayer():GetCamera():GetPosition()
+            text message = math:Round(position:GetX(), 2) + ", " + math:Round(position:GetY(), 2) + ", " + math:Round(position:GetZ(), 2)
+            controller:NotifyAccessibility(controller, "Camera at " + message)
+        elseif event:GetItem() is InteractableItem
+            InteractableItem item = cast(InteractableItem, event:GetItem())
+            Vector3 position = item:GetGlobalPosition()
+            text message = math:Round(position:GetX(), 2) + ", " + math:Round(position:GetY(), 2) + ", " + math:Round(position:GetZ(), 2)
+            item:NotifyAccessibility(message)
+        end
+    end
+end

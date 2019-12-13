@@ -33,6 +33,7 @@ use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
 
 class CodeEditorTabPane is TabPane, TabChangeListener
     KeyboardEvent keys
@@ -154,11 +155,8 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             end
         end
     end
-    /*
-        This action opens a new tab if one is not open. If one is already open, 
-        then it returns the one already there.
-    */
-    action OpenNewTab(File file) returns EditorTab
+
+    private action OpenQuorumFileTab(File file) returns EditorTab
         EditorTab returnedTab = undefined
 
         GameStateManager manager
@@ -276,6 +274,59 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         return returnedTab
     end
 
+    private action OpenQuorumSceneTab(File file) returns VisualEditorTab
+        VisualEditorTab tab
+        tab:SetFile(file)
+
+        GameStateManager manager
+        Game game = manager:GetGame()
+        QuorumStudio studio = cast(QuorumStudio, game)
+        ProjectManager projects = studio:GetProjectManager()
+        Iterator<QuorumProject> iterator = projects:GetIterator()
+        repeat while iterator not= undefined and iterator:HasNext()
+            QuorumProject project = iterator:Next()
+            if project:IsScene(file)
+                //This scene file is in a project's location somewhere.
+                tab:SetProjectLocation(project:GetLocation())
+            end
+        end
+
+        tab:Load()
+
+        tab:SetName(file:GetPath())
+        tab:SetIcon(resources:GetQuorumFile())
+        tab:DisplayCloseButton(true)
+        number scale = GetInterfaceScale()
+        tab:SetInterfaceScale(scale)
+        Add(cast(Tab,tab))
+        Resize()
+        return tab
+    end
+
+    /*
+        This action opens a new tab if one is not open. If one is already open, 
+        then it returns the one already there.
+    */
+    action OpenNewTab(File file) returns Tab
+        EditorTab returnedTab = undefined
+
+        GameStateManager manager
+        Game game = manager:GetGame()
+        QuorumStudio studio = cast(QuorumStudio, game)
+        if file = undefined or not studio:IsSupportedFile(file)
+            return returnedTab
+        end
+
+        text extension = file:GetFileExtension()
+        if extension = "quorum"
+            return OpenQuorumFileTab(file)
+        elseif extension = "qs"
+            return OpenQuorumSceneTab(file)
+        end
+
+        return undefined
+    end
+
     /*
     
     */
@@ -286,14 +337,17 @@ class CodeEditorTabPane is TabPane, TabChangeListener
 
     action Update(number seconds)
         if queuedFileOpen not= undefined
-            EditorTab tab = OpenNewTab(queuedFileOpen)
-            TextBox box = tab:GetTextBox()
-            if box not= undefined
-                box:SetCaretPositionToLine(queuedLine)
-                box:GoToLine(queuedLine)
-                box:Focus()
+            Tab tab1 = OpenNewTab(queuedFileOpen)
+            if tab1 is EditorTab
+                EditorTab tab = cast(EditorTab, tab1)
+                TextBox box = tab:GetTextBox()
+                if box not= undefined
+                    box:SetCaretPositionToLine(queuedLine)
+                    box:GoToLine(queuedLine)
+                    box:Focus()
+                end
+                queuedFileOpen = undefined
             end
-            queuedFileOpen = undefined
         end
     end
 

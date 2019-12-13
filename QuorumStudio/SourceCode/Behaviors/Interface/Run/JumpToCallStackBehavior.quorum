@@ -26,6 +26,7 @@ use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Language.Compile.Library
 use Libraries.Language.Compile.Symbol.SymbolTable
 use Libraries.Language.Compile.Symbol.Class
+use Libraries.Interface.Controls.Tab
 
 class JumpToCallStackBehavior is QuorumStudioBehavior
 
@@ -69,7 +70,11 @@ class JumpToCallStackBehavior is QuorumStudioBehavior
         CodeEditorTabPane editors = studio:GetTabPane()
         File file
         file:SetAbsolutePath(fileText)
-        EditorTab tab = editors:OpenNewTab(file)
+        Tab tab1 = editors:OpenNewTab(file)
+        if not (tab1 is EditorTab)
+            return now
+        end
+        EditorTab tab = cast(EditorTab, tab1)
         TextBox box = tab:GetTextBox()
 
         if line > 0

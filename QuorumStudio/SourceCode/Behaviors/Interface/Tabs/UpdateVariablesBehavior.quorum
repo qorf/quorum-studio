@@ -121,7 +121,11 @@ class UpdateVariablesBehavior is Behavior
                 oldTextBox:RemoveTextStyle(DEBUGGER_ANNOTATION)
             end
 
-            EditorTab tab = codeEditorTabPane:OpenNewTab(newFile)
+            Tab tab1 = codeEditorTabPane:OpenNewTab(newFile)
+            if not (tab1 is EditorTab)
+                return now
+            end
+            EditorTab tab = cast(EditorTab, tab1)
             if tab not= undefined
                 TextBox box = tab:GetTextBox()
                 if box not= undefined

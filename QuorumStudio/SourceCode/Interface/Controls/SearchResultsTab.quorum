@@ -212,7 +212,11 @@ class SearchResultsTab is Tab
             end
             if file not= undefined
                 Array<Pair<integer>> indices = fileIndices:GetValue(file)
-                EditorTab tab = tabPane:OpenNewTab(file)
+                Tab tab1 = tabPane:OpenNewTab(file)
+                if not (tab1 is EditorTab)
+                    return now
+                end
+                EditorTab tab = cast(EditorTab, tab1)
                 CodeTextBox textBox = tab:GetTextBox()
                 tabPane:Select(tab)
                 MultipleLineText value = textBox:GetMultipleLineText()

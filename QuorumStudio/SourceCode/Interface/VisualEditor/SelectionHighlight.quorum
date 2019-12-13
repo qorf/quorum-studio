@@ -1,0 +1,106 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Game.Graphics.Model
+use Libraries.Interface.Item3D
+use Libraries.Interface.Events.FocusEvent
+use Libraries.Game.Graphics.Color
+use Libraries.Compute.Vector3
+use Libraries.Game.BoundingBox
+
+class SelectionHighlight is InteractableItem
+    
+    Item3D item = undefined
+
+    on create
+        SetInputGroup("SelectionHighlight")
+    end
+
+    action Load(Item3D item, VisualSceneController controller)
+        Color color = undefined
+        VisualEditorResources resources = GetResources()
+
+        if IsFocused()
+            color = resources:SELECTION_HIGHLIGHT_SELECTED_COLOR
+        else
+            color = resources:SELECTION_HIGHLIGHT_UNSELECTED_COLOR
+        end
+
+        number padding = resources:SELECTION_HIGHLIGHT_PADDING
+
+        if item:GetShape() = undefined
+            LoadBox(item:GetWidth() + padding, item:GetHeight() + padding, item:GetDepth() + padding, color)
+        else
+            // Using the bounding box allows us to respect scaling.
+            BoundingBox box
+            item:GetShape():ComputeBoundingBox(box, item:GetCollisionTransform())
+            LoadBox(box:GetWidth() + padding, box:GetHeight() + padding, box:GetDepth() + padding, color)
+        end
+
+        SetPosition(item:GetGlobalPosition())
+
+        me:item = item
+        SetController(controller)
+    end
+
+    action GetItem returns Item3D
+        return item
+    end
+
+    action GainedFocus(FocusEvent event)
+        SetDiffuseColor(GetResources():SELECTION_HIGHLIGHT_SELECTED_COLOR)
+    end
+
+    action LostFocus(FocusEvent event)
+        SetDiffuseColor(GetResources():SELECTION_HIGHLIGHT_UNSELECTED_COLOR)
+    end
+
+    action Scale(Vector3 vector)
+        parent:Model:Scale(vector)
+        if item not= undefined
+            item:Scale(vector)
+        end
+    end
+
+    action Scale(number x, number y, number z)
+        parent:Model:Scale(x, y, z)
+        if item not= undefined
+            item:Scale(x, y, z)
+        end
+    end
+
+    action MoveX(number x)
+        parent:Model:MoveX(x)
+        if item not= undefined
+            item:MoveX(x)
+        end
+    end
+
+    action MoveY(number y)
+        parent:Model:MoveY(y)
+        if item not= undefined
+            item:MoveY(y)
+        end
+    end
+
+    action MoveZ(number z)
+        parent:Model:MoveZ(z)
+        if item not= undefined
+            item:MoveZ(z)
+        end
+    end
+
+    action Move(number x, number y, number z)
+        parent:Model:Move(x, y, z)
+        if item not= undefined
+            item:Move(x, y, z)
+        end
+    end
+
+    action Move(Vector3 vector)
+        parent:Model:Move(vector)
+        if item not= undefined
+            item:Move(vector)
+        end
+    end
+
+end

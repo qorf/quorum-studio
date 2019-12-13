@@ -1,0 +1,510 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.Camera
+use Libraries.Game.Layer3D
+use Libraries.Compute.Vector3
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditorResources
+use Libraries.Containers.Array
+use Libraries.Interface.Item3D
+use Libraries.Game.Graphics.Model
+use Libraries.Compute.Math
+use Libraries.Game.GameStateManager
+use Libraries.Compute.Matrix4
+use Libraries.Interface.AccessibilityManager
+
+/*
+A class used to represent the 2D space within a Visual Editor tab.
+The space this object takes up will be filled with the visual editor tab's Layer3D.
+*/
+class VisualSceneController is Control
+
+    Layer3D layer
+    VisualEditorResources visualResources
+
+    // The rotational speed, measured in degrees per second,
+    // and the directional speed, measured in 3D world units per second.
+    public constant number CAMERA_ROTATIONAL_SPEED = 90
+    public constant number CAMERA_DIRECTIONAL_SPEED = 5
+    public constant number SELECTION_ROTATIONAL_SPEED = 90
+    public constant number SELECTION_DIRECTIONAL_SPEED = 5
+
+    // Euler angles and velocities of the layer's camera.
+    // Directions are always -1, 0, or 1, and are multiplied by either the
+    // rotational or directional speed during the Update to produce the per-frame velocity.
+    number yaw = 0
+    number pitch = 0
+    integer yawDirection = 0
+    integer pitchDirection = 0
+    integer forwardDirection = 0
+    integer strafeDirection = 0
+    integer verticalDirection = 0
+
+    // The velocity of the currently selected item on each axis.
+    integer selectionXDirection = 0
+    integer selectionYDirection = 0
+    integer selectionZDirection = 0
+
+    // Vector which is constantly reused for frequent calculations.
+    Vector3 workVector
+
+    GameStateManager manager
+    AccessibilityManager accessibility = undefined
+    Math math
+    Color color
+
+    /*
+    A subset of the items, filtered in some way (e.g., the items in view of
+    the camera). These can be iterated over to query for more information or to
+    modify the elements.
+    */
+    Array<Item3D> filteredItems = undefined
+
+    /*
+    "Highlight" drawables used to show which items have been filtered.
+    */
+    Array<SelectionHighlight> filterHighlights
+
+    Color colorPreview = undefined
+    integer modelPresetPreview = 0
+    integer colorPresetPreview = 0
+
+    integer cubeCounter = 1
+    integer sphereCounter = 1
+    integer cylinderCounter = 1
+
+    on create
+        FlowLayout layout
+        SetLayout(layout)
+        SetPercentageWidth(1.0)
+        SetPercentageHeight(1.0)
+        
+        LabelBoxView view
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.925, 1), color:CustomColor(0.9, 0.9, 0.925, 1))
+        SetView2D(view)
+
+        SetInputGroup("VisualSceneController")
+        SetFocusable(true)
+        SetAccessibilityCode(parent:Item:CUSTOM)
+
+        accessibility = manager:GetAccessibilityManager()
+    end
+
+    action GetColorPreview returns Color
+        return colorPreview
+    end
+
+    action SetColorPreview(Color color)
+        colorPreview = color
+    end
+
+    action GetModelPresetPreview returns integer
+        return modelPresetPreview
+    end
+
+    action GetColorPresetPreview returns integer
+        return colorPresetPreview
+    end
+
+    action SetModelPresetPreview(integer preset)
+        modelPresetPreview = preset
+    end
+
+    action SetColorPresetPreview(integer preset)
+        colorPresetPreview = preset
+    end
+
+    action Resize
+        parent:Control:Resize()
+
+        if layer not= undefined    
+            layer:SetViewport(cast(integer, GetGlobalX()), cast(integer, GetGlobalY()), cast(integer, GetWidth()), cast(integer, GetHeight()))
+        end
+    end
+
+    action GetEditorTag returns text
+        return visualResources:EDITOR_TAG
+    end
+
+    action Update(number seconds)
+        Camera camera = layer:GetCamera()
+        boolean moved = false
+
+        if (yawDirection not= 0 or pitchDirection not= 0)
+            yaw = yaw + (yawDirection * CAMERA_ROTATIONAL_SPEED * seconds)
+            pitch = pitch + (pitchDirection * CAMERA_ROTATIONAL_SPEED * seconds)
+            if pitch > 90.0
+                pitch = 90.0
+            elseif pitch < -90.0
+                pitch = -90.0
+            end
+
+            moved = true
+            camera:SetYawPitchRoll(yaw, pitch, 0)
+        end
+
+        if forwardDirection not= 0
+            workVector:Set(camera:GetDirection())
+            workVector:Scale(forwardDirection * CAMERA_DIRECTIONAL_SPEED * seconds)
+            camera:Move(workVector)
+            moved = true
+        end
+
+        if strafeDirection not= 0
+            workVector:Set(camera:GetDirection())
+            workVector:CrossProduct(camera:GetUp())
+            camera:Move(workVector:Scale(strafeDirection * CAMERA_DIRECTIONAL_SPEED * seconds))
+            moved = true
+        end
+
+        if verticalDirection not= 0
+            workVector:Set(camera:GetUp())
+            workVector:Scale(verticalDirection * CAMERA_DIRECTIONAL_SPEED * seconds)
+            camera:Move(workVector)
+            moved = true
+        end
+
+        if moved
+            Vector3 temp = camera:GetPosition()
+            number x = math:Round(temp:GetX(), 2)
+            number y = math:Round(temp:GetY(), 2)
+            number z = math:Round(temp:GetZ(), 2)
+            temp = camera:GetDirection()
+            number xDirection = math:Round(temp:GetX(), 2)
+            number yDirection = math:Round(temp:GetY(), 2)
+            number zDirection = math:Round(temp:GetZ(), 2)
+//            SetDescription("Camera " + x + ", " + y + ", " + z + "; pointing " + xDirection + ", " + yDirection + ", " + zDirection)
+        end
+
+        if manager:GetFocus() is InteractableItem
+            moved = false
+            workVector:Set(0, 0, 0)
+            InteractableItem focus = cast(InteractableItem, manager:GetFocus())
+
+            if selectionXDirection not= 0
+                workVector:SetX(selectionXDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
+                moved = true
+            end
+
+            if selectionYDirection not= 0
+                workVector:SetY(selectionYDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
+                moved = true
+            end
+
+            if selectionZDirection not= 0
+                workVector:SetZ(selectionZDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
+                moved = true
+            end
+
+            if moved
+                focus:Move(workVector)
+
+                // Need to update highlight description here, and report the movement to accessibility
+            end
+        end
+    end
+
+    action SetFilteredItems(Array<Item3D> items)
+        filteredItems = items
+
+        // Remove previous highlights.
+        repeat while filterHighlights:IsEmpty() = false
+            SelectionHighlight highlight = filterHighlights:RemoveFromEnd()
+            layer:Remove(highlight)
+        end
+
+        // Display selection highlighting around the items.
+        integer counter = 0
+        repeat while counter < filteredItems:GetSize()
+            Item3D item = filteredItems:Get(counter)
+            SelectionHighlight highlight
+            highlight:Load(item, me)
+            filterHighlights:Add(highlight)
+            layer:Add(highlight)
+
+            counter = counter + 1
+        end
+
+        SetFilterHighlightData()
+
+        if filterHighlights:IsEmpty()
+            Focus()
+        else
+            filterHighlights:Get(0):Focus()
+        end
+    end
+
+    private action SetFilterHighlightData
+        integer counter = 0
+        repeat while counter < filterHighlights:GetSize()
+            SelectionHighlight highlight = filterHighlights:Get(counter)
+            Item3D item = highlight:GetItem()
+
+            if counter = 0
+                highlight:SetPreviousFocus(filterHighlights:GetFromEnd())
+            else
+                highlight:SetPreviousFocus(filterHighlights:Get(counter - 1))
+            end
+
+            if counter = filterHighlights:GetSize() - 1
+                highlight:SetNextFocus(filterHighlights:GetFromFront())
+            else
+                highlight:SetNextFocus(filterHighlights:Get(counter + 1))
+            end 
+
+            number x = math:Round(item:GetGlobalX(), 2)
+            number y = math:Round(item:GetGlobalY(), 2)
+            number z = math:Round(item:GetGlobalZ(), 2)
+
+            highlight:SetName(item:GetName())
+            highlight:SetDescription((counter + 1) + " of " + filterHighlights:GetSize() + ": " + x + ", " + y + ", " + z)
+            counter = counter + 1
+        end
+
+        if filterHighlights:IsEmpty() = false
+            SetPreviousFocus(filterHighlights:Get(filterHighlights:GetSize() - 1))
+            SetNextFocus(filterHighlights:Get(0))
+        else
+            SetPreviousFocus(undefined)
+            SetNextFocus(undefined)
+        end
+    end
+
+    // Removes the item that is selected by the given highlight, along with the highlight itself.
+    action Delete(SelectionHighlight highlight)
+        Item nextFocus = undefined
+
+        if highlight:IsFocused()
+            // If we're deleting the focused item, move the focus.
+            if highlight:GetPreviousFocus() not= undefined
+                nextFocus = highlight:GetPreviousFocus()
+            else
+                nextFocus = me
+            end
+        end
+
+        layer:Remove(highlight)
+        layer:Remove(highlight:GetItem())
+
+        integer index = filterHighlights:GetFirstLocation(highlight)
+        if index >= 0
+            filterHighlights:RemoveAt(index)
+
+            // Refresh filter highlight focus order and descriptions.
+            SetFilterHighlightData()
+        end
+
+        if nextFocus not= undefined
+            nextFocus:Focus()
+        end
+    end
+
+    action CreateNewItemPreview
+        NewItemPreview preview
+        preview:Load(me)
+        layer:Add(preview)
+        preview:Focus()
+    end
+
+    action CancelNewItemPreview(NewItemPreview preview)
+        layer:Remove(preview)
+
+        // This Dispose call currently does nothing, but if there are any
+        // resources that need to be cleaned up, it should be done here.
+        preview:Dispose()
+        Focus()
+
+        accessibility:Notify(me, "Cancelled placement")
+    end
+
+    Matrix4 previewTransform = undefined
+    action GetPreviewTransform returns Matrix4
+        return previewTransform
+    end
+
+    action SetPreviewTransform(Matrix4 transform)
+        previewTransform = transform
+    end
+
+    action ConfirmNewItemPreview(NewItemPreview preview)
+        Model model = preview:ConvertToModel()
+        previewTransform = preview:GetTransform()
+        //layer:Remove(preview)
+        layer:Add(model)
+
+        integer type = preview:GetModelPresetCode()
+
+        if type = 0
+            model:SetName("Box " + cubeCounter)
+            cubeCounter = cubeCounter + 1
+        elseif type = 1
+            model:SetName("Sphere " + sphereCounter)
+            sphereCounter = sphereCounter + 1
+        elseif type = 2
+            model:SetName("Cylinder " + cylinderCounter)
+            cylinderCounter = cylinderCounter + 1
+        end
+
+        // This Dispose call currently does nothing, but if there are any
+        // resources that need to be cleaned up, it should be done here.
+        //preview:Dispose()
+        //Focus()
+
+        accessibility:Notify(preview, "Placed " + model:GetName())
+    end
+
+    action SetEditorLayer(Layer3D layer)
+        me:layer = layer
+    end
+
+    action GetEditorLayer returns Layer3D
+        return layer
+    end
+
+    action SetYawDirection(integer direction)
+        yawDirection = direction
+
+        if direction = 0
+            accessibility:Notify(me, "Yaw " + math:Round(yaw, 1))
+        end
+    end
+
+    action GetYawDirection returns integer
+        return yawDirection
+    end
+
+    action SetPitchDirection(integer direction)
+        pitchDirection = direction
+
+        if direction = 0
+            accessibility:Notify(me, "Pitch " + math:Round(pitch, 1))
+        end
+    end
+
+    action GetPitchDirection returns integer
+        return pitchDirection
+    end
+
+    action IsCameraRotating returns boolean
+        return GetYawDirection() not= 0 or GetPitchDirection() not= 0
+    end
+
+    action GetYaw returns number
+        return yaw
+    end
+
+    action GetPitch returns number
+        return pitch
+    end
+
+    action SetForwardDirection(integer direction)
+        forwardDirection = direction
+
+        if IsCameraMoving() = false
+            Vector3 temp = layer:GetCamera():GetPosition()
+            number x = math:Round(temp:GetX(), 2)
+            number y = math:Round(temp:GetY(), 2)
+            number z = math:Round(temp:GetZ(), 2)
+            accessibility:Notify(me, "Camera " + x + ", " + y + ", " + z)
+        end
+    end
+
+    action GetForwardDirection returns integer
+        return forwardDirection
+    end
+
+    action SetStrafeDirection(integer direction)
+        strafeDirection = direction
+
+        if IsCameraMoving() = false
+            Vector3 temp = layer:GetCamera():GetPosition()
+            number x = math:Round(temp:GetX(), 2)
+            number y = math:Round(temp:GetY(), 2)
+            number z = math:Round(temp:GetZ(), 2)
+            accessibility:Notify(me, "Camera " + x + ", " + y + ", " + z)
+        end
+    end
+
+    action GetStrafeDirection returns integer
+        return strafeDirection
+    end
+
+    action SetVerticalDirection(integer direction)
+        verticalDirection = direction
+
+        if IsCameraMoving() = false
+            Vector3 temp = layer:GetCamera():GetPosition()
+            number x = math:Round(temp:GetX(), 2)
+            number y = math:Round(temp:GetY(), 2)
+            number z = math:Round(temp:GetZ(), 2)
+            accessibility:Notify(me, "Camera " + x + ", " + y + ", " + z)
+        end
+    end
+
+    action GetVerticalDirection returns integer
+        return verticalDirection
+    end
+
+    action IsCameraMoving returns boolean
+        return GetForwardDirection() not= 0 or GetStrafeDirection() not= 0 or GetVerticalDirection() not= 0
+    end
+
+    action SetSelectionXDirection(integer direction)
+        selectionXDirection = direction
+
+        if direction = 0
+            if manager:GetFocus() is InteractableItem
+                InteractableItem focus = cast(InteractableItem, manager:GetFocus())
+                number x = math:Round(focus:GetGlobalX(), 2)
+                accessibility:Notify(focus, "x " + x)
+            end
+        end
+    end
+
+    action GetSelectionXDirection returns integer
+        return selectionXDirection
+    end
+
+    action SetSelectionYDirection(integer direction)
+        selectionYDirection = direction
+
+        if direction = 0
+            if manager:GetFocus() is InteractableItem
+                InteractableItem focus = cast(InteractableItem, manager:GetFocus())
+                number y = math:Round(focus:GetGlobalY(), 2)
+                accessibility:Notify(focus, "y " + y)
+            end
+        end
+    end
+
+    action GetSelectionYDirection returns integer
+        return selectionYDirection
+    end
+
+    action SetSelectionZDirection(integer direction)
+        selectionZDirection = direction
+
+        if direction = 0
+            if manager:GetFocus() is InteractableItem
+                InteractableItem focus = cast(InteractableItem, manager:GetFocus())
+                number z = math:Round(focus:GetGlobalZ(), 2)
+                accessibility:Notify(focus, "z " + z)
+            end
+        end
+    end
+
+    action GetSelectionZDirection returns integer
+        return selectionZDirection
+    end
+
+    action IsSelectionMoving returns boolean
+        return GetSelectionXDirection() not= 0 or GetSelectionYDirection() not= 0 or GetSelectionZDirection() not= 0
+    end
+
+    action NotifyAccessibility(Item item, text message)
+        accessibility:Notify(item, message)
+    end
+end

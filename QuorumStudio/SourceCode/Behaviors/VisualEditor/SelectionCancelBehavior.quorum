@@ -1,0 +1,19 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SelectionHighlight
+use Libraries.Containers.Array
+use Libraries.Interface.Item3D
+
+class SelectionCancelBehavior is QuorumStudioBehavior
+
+    // An empty array passed to clear the filtered items list.
+    Array<Item3D> emptyArray
+
+    action Run(BehaviorEvent event)
+        if event:GetItem() is SelectionHighlight
+            SelectionHighlight highlight = cast(SelectionHighlight, event:GetItem())
+            highlight:GetController():SetFilteredItems(emptyArray)
+        end
+    end
+end

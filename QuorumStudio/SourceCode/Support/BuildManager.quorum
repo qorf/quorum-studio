@@ -231,10 +231,11 @@ class BuildManager is DebuggerListener, ProcessListener
         CodeEditorTabPane code = GetCodeEditorTabPane()
         TabPaneSelection selection = code:GetSelection()
 
-        EditorTab tab = cast(EditorTab, selection:GetTab())
-        if tab = undefined
+        Tab tab1 = selection:GetTab()
+        if tab1 = undefined or not (tab1 is EditorTab)
             return false
         end
+        EditorTab tab = cast(EditorTab, selection:GetTab())
 
         File file = tab:GetFile()
         //get the file the tab is using

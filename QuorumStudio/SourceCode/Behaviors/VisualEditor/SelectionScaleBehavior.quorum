@@ -1,0 +1,48 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
+use Libraries.Compute.Vector3
+
+class SelectionScaleBehavior is QuorumStudioBehavior
+
+    Vector3 scale
+
+    action SetScale(number x, number y, number z)
+        scale:Set(x, y, z)
+    end
+
+    action SetScale(Vector3 value)
+        scale:Set(value)
+    end
+
+    action GetScale returns Vector3
+        return scale
+    end
+
+    action Run(BehaviorEvent event)
+        if event:GetItem() is InteractableItem
+            InteractableItem item = cast(InteractableItem, event:GetItem())
+            item:Scale(scale)
+
+            // Temporary output while developing.
+            if (scale:GetX() > 1 and scale:GetY() > 1 and scale:GetZ() > 1)
+                item:NotifyAccessibility("Scaled up")
+            elseif (scale:GetX() < 1 and scale:GetY() < 1 and scale:GetZ() < 1)
+                item:NotifyAccessibility("Scaled down")
+            elseif scale:GetX() > 1
+                item:NotifyAccessibility("Scaled X up")
+            elseif scale:GetX() < 1
+                item:NotifyAccessibility("Scaled X down")
+            elseif scale:GetY() > 1
+                item:NotifyAccessibility("Scaled Y up")
+            elseif scale:GetY() < 1
+                item:NotifyAccessibility("Scaled Y down")
+            elseif scale:GetZ() > 1
+                item:NotifyAccessibility("Scaled Z up")
+            elseif scale:GetZ() < 1
+                item:NotifyAccessibility("Scaled Z down")
+            end
+        end
+    end
+end

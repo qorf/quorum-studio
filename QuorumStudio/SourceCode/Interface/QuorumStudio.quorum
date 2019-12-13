@@ -59,6 +59,26 @@ use Libraries.Development.Environment.Studio.Interface.SaveBeforeClosingDialog
 use Libraries.Development.Environment.Studio.Behaviors.CloseCodeCompletionBehavior
 use Libraries.Interface.Behaviors.Behavior
 use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CameraYawRotationBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CameraPitchRotationBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CameraMoveDirectionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CameraStrafeDirectionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CameraVerticalDirectionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CameraItemsInViewBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SelectionXDirectionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SelectionYDirectionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SelectionZDirectionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SelectionScaleBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SelectionDeleteBehavior
+use Libraries.Development.Environment.Studio.Behaviors.NewItemCycleModelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.NewItemCycleColorBehavior
+use Libraries.Development.Environment.Studio.Behaviors.NewItemCreatePreviewBehavior
+use Libraries.Development.Environment.Studio.Behaviors.NewItemCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.NewItemConfirmBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SelectionCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ReportLocationBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ReportItemsInViewBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ReportCameraDirectionBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     public constant number VERSION = 1.0
@@ -327,6 +347,262 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         end 
     end
 
+    action SetupVisualEditorInput
+        InputTable table
+        table:SetIdentifier("VisualSceneController")
+        KeyMap map = resources:GetKeyMap()
+
+        InputSet rotateLeftStart = map:GetCameraRotateLeftKey()
+        InputSet rotateLeftStop = map:GetCameraRotateLeftKey()
+        rotateLeftStop:SetInputTrigger(rotateLeftStop:FINISH)
+        InputSet rotateRightStart = map:GetCameraRotateRightKey()
+        InputSet rotateRightStop = map:GetCameraRotateRightKey()
+        rotateRightStop:SetInputTrigger(rotateRightStop:FINISH)
+
+        CameraYawRotationBehavior rotateLeftStartBehavior = behaviors:GetCameraStartRotatingLeftBehavior()
+        CameraYawRotationBehavior rotateRightStartBehavior = behaviors:GetCameraStartRotatingRightBehavior()
+        CameraYawRotationBehavior rotateYawStopBehavior = behaviors:GetCameraStopRotatingYawBehavior()
+
+        table:Add(rotateLeftStart, rotateLeftStartBehavior)
+        table:Add(rotateLeftStop, rotateYawStopBehavior)
+        table:Add(rotateRightStart, rotateRightStartBehavior)
+        table:Add(rotateRightStop, rotateYawStopBehavior)
+
+        InputSet rotateUpStart = map:GetCameraRotateUpKey()
+        InputSet rotateUpStop = map:GetCameraRotateUpKey()
+        rotateUpStop:SetInputTrigger(rotateUpStop:FINISH)
+        InputSet rotateDownStart = map:GetCameraRotateDownKey()
+        InputSet rotateDownStop = map:GetCameraRotateDownKey()
+        rotateDownStop:SetInputTrigger(rotateDownStop:FINISH)
+        
+        CameraPitchRotationBehavior rotateUpStartBehavior = behaviors:GetCameraStartRotatingUpBehavior()
+        CameraPitchRotationBehavior rotateDownStartBehavior = behaviors:GetCameraStartRotatingDownBehavior()
+        CameraPitchRotationBehavior rotatePitchStopBehavior = behaviors:GetCameraStopRotatingPitchBehavior()
+
+        table:Add(rotateUpStart, rotateUpStartBehavior)
+        table:Add(rotateUpStop, rotatePitchStopBehavior)
+        table:Add(rotateDownStart, rotateDownStartBehavior)
+        table:Add(rotateDownStop, rotatePitchStopBehavior)
+
+        InputSet moveForwardStart = map:GetCameraMoveForwardKey()
+        InputSet moveForwardStop = map:GetCameraMoveForwardKey()
+        moveForwardStop:SetInputTrigger(moveForwardStop:FINISH)
+        InputSet moveBackwardStart = map:GetCameraMoveBackwardKey()
+        InputSet moveBackwardStop = map:GetCameraMoveBackwardKey()
+        moveBackwardStop:SetInputTrigger(moveBackwardStop:FINISH)
+        
+        CameraMoveDirectionBehavior moveForwardStartBehavior = behaviors:GetCameraStartMovingForwardBehavior()
+        CameraMoveDirectionBehavior moveBackwardStartBehavior = behaviors:GetCameraStartMovingBackwardBehavior()
+        CameraMoveDirectionBehavior moveDirectionStopBehavior = behaviors:GetCameraStopMovingDirectionBehavior()
+
+        table:Add(moveForwardStart, moveForwardStartBehavior)
+        table:Add(moveForwardStop, moveDirectionStopBehavior)
+        table:Add(moveBackwardStart, moveBackwardStartBehavior)
+        table:Add(moveBackwardStop, moveDirectionStopBehavior)
+
+        InputSet strafeLeftStart = map:GetCameraStrafeLeftKey()
+        InputSet strafeLeftStop = map:GetCameraStrafeLeftKey()
+        strafeLeftStop:SetInputTrigger(strafeLeftStop:FINISH)
+        InputSet strafeRightStart = map:GetCameraStrafeRightKey()
+        InputSet strafeRightStop = map:GetCameraStrafeRightKey()
+        strafeRightStop:SetInputTrigger(strafeRightStop:FINISH)
+        
+        CameraStrafeDirectionBehavior strafeLeftStartBehavior = behaviors:GetCameraStartStrafingLeftBehavior()
+        CameraStrafeDirectionBehavior strafeRightStartBehavior = behaviors:GetCameraStartStrafingRightBehavior()
+        CameraStrafeDirectionBehavior strafeStopBehavior = behaviors:GetCameraStopStrafingBehavior()
+
+        table:Add(strafeLeftStart, strafeLeftStartBehavior)
+        table:Add(strafeLeftStop, strafeStopBehavior)
+        table:Add(strafeRightStart, strafeRightStartBehavior)
+        table:Add(strafeRightStop, strafeStopBehavior)
+
+        InputSet moveUpStart = map:GetCameraMoveUpKey()
+        InputSet moveUpStop = map:GetCameraMoveUpKey()
+        moveUpStop:SetInputTrigger(moveUpStop:FINISH)
+        InputSet moveDownStart = map:GetCameraMoveDownKey()
+        InputSet moveDownStop = map:GetCameraMoveDownKey()
+        moveDownStop:SetInputTrigger(moveDownStop:FINISH)
+        
+        CameraVerticalDirectionBehavior moveUpStartBehavior = behaviors:GetCameraStartMovingUpBehavior()
+        CameraVerticalDirectionBehavior moveDownStartBehavior = behaviors:GetCameraStartMovingDownBehavior()
+        CameraVerticalDirectionBehavior moveVerticalStopBehavior = behaviors:GetCameraStopMovingVerticallyBehavior()
+
+        table:Add(moveUpStart, moveUpStartBehavior)
+        table:Add(moveUpStop, moveVerticalStopBehavior)
+        table:Add(moveDownStart, moveDownStartBehavior)
+        table:Add(moveDownStop, moveVerticalStopBehavior)
+
+        InputSet itemsInView = map:GetCameraItemsInViewKey()
+        CameraItemsInViewBehavior itemsInViewBehavior = behaviors:GetCameraItemsInViewBehavior()
+        table:Add(itemsInView, itemsInViewBehavior)
+
+        InputSet createNewItemPreview = map:GetNewItemCreatePreviewKey()
+        NewItemCreatePreviewBehavior createNewItemPreviewBehavior
+        table:Add(createNewItemPreview, createNewItemPreviewBehavior)
+
+        InputSet reportLocation = map:GetReportLocationKey()
+        InputSet reportCameraDirection = map:GetReportCameraDirectionKey()
+        InputSet reportItemsInView = map:GetReportItemsInViewKey()
+
+        ReportLocationBehavior reportLocationBehavior = behaviors:GetReportLocationBehavior()
+        ReportCameraDirectionBehavior reportCameraDirectionBehavior = behaviors:GetReportCameraDirectionBehavior()
+        ReportItemsInViewBehavior reportItemsInViewBehavior = behaviors:GetReportItemsInViewBehavior()
+
+        table:Add(reportLocation, reportLocationBehavior)
+        table:Add(reportCameraDirection, reportCameraDirectionBehavior)
+        table:Add(reportItemsInView, reportItemsInViewBehavior)
+
+        AddInputTable(table)
+
+        InputTable selectionTable
+        selectionTable:SetIdentifier("SelectionHighlight")
+        
+        selectionTable:Add(reportLocation, reportLocationBehavior)
+
+        InputSet selectionMoveLeftStart = map:GetSelectionMoveLeftKey()
+        InputSet selectionMoveLeftStop = map:GetSelectionMoveLeftKey()
+        selectionMoveLeftStop:SetInputTrigger(selectionMoveLeftStop:FINISH)
+        InputSet selectionMoveRightStart = map:GetSelectionMoveRightKey()
+        InputSet selectionMoveRightStop = map:GetSelectionMoveRightKey()
+        selectionMoveRightStop:SetInputTrigger(selectionMoveRightStop:FINISH)
+
+        SelectionXDirectionBehavior selectionMoveLeftStartBehavior = behaviors:GetSelectionStartMovingLeftBehavior()
+        SelectionXDirectionBehavior selectionMoveRightStartBehavior = behaviors:GetSelectionStartMovingRightBehavior()
+        SelectionXDirectionBehavior selectionMoveXStopBehavior = behaviors:GetSelectionStopMovingXBehavior()
+
+        selectionTable:Add(selectionMoveLeftStart, selectionMoveLeftStartBehavior)
+        selectionTable:Add(selectionMoveLeftStop, selectionMoveXStopBehavior)
+        selectionTable:Add(selectionMoveRightStart, selectionMoveRightStartBehavior)
+        selectionTable:Add(selectionMoveRightStop, selectionMoveXStopBehavior)
+
+        InputSet selectionMoveUpStart = map:GetSelectionMoveUpKey()
+        InputSet selectionMoveUpStop = map:GetSelectionMoveUpKey()
+        selectionMoveUpStop:SetInputTrigger(selectionMoveUpStop:FINISH)
+        InputSet selectionMoveDownStart = map:GetSelectionMoveDownKey()
+        InputSet selectionMoveDownStop = map:GetSelectionMoveDownKey()
+        selectionMoveDownStop:SetInputTrigger(selectionMoveDownStop:FINISH)
+
+        SelectionYDirectionBehavior selectionMoveUpStartBehavior = behaviors:GetSelectionStartMovingUpBehavior()
+        SelectionYDirectionBehavior selectionMoveDownStartBehavior = behaviors:GetSelectionStartMovingDownBehavior()
+        SelectionYDirectionBehavior selectionMoveYStopBehavior = behaviors:GetSelectionStopMovingYBehavior()
+
+        selectionTable:Add(selectionMoveUpStart, selectionMoveUpStartBehavior)
+        selectionTable:Add(selectionMoveUpStop, selectionMoveYStopBehavior)
+        selectionTable:Add(selectionMoveDownStart, selectionMoveDownStartBehavior)
+        selectionTable:Add(selectionMoveDownStop, selectionMoveYStopBehavior)
+
+        InputSet selectionMoveForwardStart = map:GetSelectionMoveForwardKey()
+        InputSet selectionMoveForwardStop = map:GetSelectionMoveForwardKey()
+        selectionMoveForwardStop:SetInputTrigger(selectionMoveForwardStop:FINISH)
+        InputSet selectionMoveBackwardStart = map:GetSelectionMoveBackwardKey()
+        InputSet selectionMoveBackwardStop = map:GetSelectionMoveBackwardKey()
+        selectionMoveBackwardStop:SetInputTrigger(selectionMoveBackwardStop:FINISH)
+
+        SelectionZDirectionBehavior selectionMoveForwardStartBehavior = behaviors:GetSelectionStartMovingForwardBehavior()
+        SelectionZDirectionBehavior selectionMoveBackwardStartBehavior = behaviors:GetSelectionStartMovingBackwardBehavior()
+        SelectionZDirectionBehavior selectionMoveZStopBehavior = behaviors:GetSelectionStopMovingZBehavior()
+
+        selectionTable:Add(selectionMoveForwardStart, selectionMoveForwardStartBehavior)
+        selectionTable:Add(selectionMoveForwardStop, selectionMoveZStopBehavior)
+        selectionTable:Add(selectionMoveBackwardStart, selectionMoveBackwardStartBehavior)
+        selectionTable:Add(selectionMoveBackwardStop, selectionMoveZStopBehavior)
+
+        InputSet selectionScaleUpSet = map:GetSelectionScaleUpKey()
+        InputSet selectionScaleDownSet = map:GetSelectionScaleDownKey()
+
+        SelectionScaleBehavior selectionScaleUpBehavior = behaviors:GetSelectionScaleUpBehavior()
+        SelectionScaleBehavior selectionScaleDownBehavior = behaviors:GetSelectionScaleDownBehavior()
+
+        selectionTable:Add(selectionScaleUpSet, selectionScaleUpBehavior)
+        selectionTable:Add(selectionScaleDownSet, selectionScaleDownBehavior)
+
+        InputSet selectionScaleXUpSet = map:GetSelectionScaleXUpKey()
+        InputSet selectionScaleXDownSet = map:GetSelectionScaleXDownKey()
+
+        SelectionScaleBehavior selectionScaleXUpBehavior = behaviors:GetSelectionScaleXUpBehavior()
+        SelectionScaleBehavior selectionScaleXDownBehavior = behaviors:GetSelectionScaleXDownBehavior()
+
+        selectionTable:Add(selectionScaleXUpSet, selectionScaleXUpBehavior)
+        selectionTable:Add(selectionScaleXDownSet, selectionScaleXDownBehavior)
+
+        InputSet selectionScaleYUpSet = map:GetSelectionScaleYUpKey()
+        InputSet selectionScaleYDownSet = map:GetSelectionScaleYDownKey()
+
+        SelectionScaleBehavior selectionScaleYUpBehavior = behaviors:GetSelectionScaleYUpBehavior()
+        SelectionScaleBehavior selectionScaleYDownBehavior = behaviors:GetSelectionScaleYDownBehavior()
+
+        selectionTable:Add(selectionScaleYUpSet, selectionScaleYUpBehavior)
+        selectionTable:Add(selectionScaleYDownSet, selectionScaleYDownBehavior)
+
+        InputSet selectionScaleZUpSet = map:GetSelectionScaleZUpKey()
+        InputSet selectionScaleZDownSet = map:GetSelectionScaleZDownKey()
+
+        SelectionScaleBehavior selectionScaleZUpBehavior = behaviors:GetSelectionScaleZUpBehavior()
+        SelectionScaleBehavior selectionScaleZDownBehavior = behaviors:GetSelectionScaleZDownBehavior()
+
+        selectionTable:Add(selectionScaleZUpSet, selectionScaleZUpBehavior)
+        selectionTable:Add(selectionScaleZDownSet, selectionScaleZDownBehavior)
+
+        InputSet selectionDeleteSet = map:GetSelectionDeleteKey()
+        InputSet selectionCancelSet = map:GetSelectionCancelKey()
+
+        SelectionDeleteBehavior selectionDeleteBehavior = behaviors:GetSelectionDeleteBehavior()
+        SelectionCancelBehavior selectionCancelBehavior = behaviors:GetSelectionCancelBehavior()
+
+        selectionTable:Add(selectionDeleteSet, selectionDeleteBehavior)
+        selectionTable:Add(selectionCancelSet, selectionCancelBehavior)
+
+        AddInputTable(selectionTable)
+
+        InputTable itemPreviewTable
+        itemPreviewTable:SetIdentifier("NewItemPreview")
+
+        itemPreviewTable:Add(reportLocation, reportLocationBehavior)
+
+        // The NewItemPreview shares the same movement/scaling behavior as SelectionHighlights.
+        itemPreviewTable:Add(selectionMoveLeftStart, selectionMoveLeftStartBehavior)
+        itemPreviewTable:Add(selectionMoveLeftStop, selectionMoveXStopBehavior)
+        itemPreviewTable:Add(selectionMoveRightStart, selectionMoveRightStartBehavior)
+        itemPreviewTable:Add(selectionMoveRightStop, selectionMoveXStopBehavior)
+        itemPreviewTable:Add(selectionMoveUpStart, selectionMoveUpStartBehavior)
+        itemPreviewTable:Add(selectionMoveUpStop, selectionMoveYStopBehavior)
+        itemPreviewTable:Add(selectionMoveDownStart, selectionMoveDownStartBehavior)
+        itemPreviewTable:Add(selectionMoveDownStop, selectionMoveYStopBehavior)
+        itemPreviewTable:Add(selectionMoveForwardStart, selectionMoveForwardStartBehavior)
+        itemPreviewTable:Add(selectionMoveForwardStop, selectionMoveZStopBehavior)
+        itemPreviewTable:Add(selectionMoveBackwardStart, selectionMoveBackwardStartBehavior)
+        itemPreviewTable:Add(selectionMoveBackwardStop, selectionMoveZStopBehavior)
+
+        itemPreviewTable:Add(selectionScaleUpSet, selectionScaleUpBehavior)
+        itemPreviewTable:Add(selectionScaleDownSet, selectionScaleDownBehavior)
+        itemPreviewTable:Add(selectionScaleXUpSet, selectionScaleXUpBehavior)
+        itemPreviewTable:Add(selectionScaleXDownSet, selectionScaleXDownBehavior)
+        itemPreviewTable:Add(selectionScaleYUpSet, selectionScaleYUpBehavior)
+        itemPreviewTable:Add(selectionScaleYDownSet, selectionScaleYDownBehavior)
+        itemPreviewTable:Add(selectionScaleZUpSet, selectionScaleZUpBehavior)
+        itemPreviewTable:Add(selectionScaleZDownSet, selectionScaleZDownBehavior)
+
+        InputSet newItemCycleModel = map:GetNewItemCycleModelKey()
+        InputSet newItemCycleColor = map:GetNewItemCycleColorKey()
+
+        NewItemCycleModelBehavior newItemCycleModelBehavior = behaviors:GetNewItemCycleModelBehavior()
+        NewItemCycleColorBehavior newItemCycleColorBehavior = behaviors:GetNewItemCycleColorBehavior()
+
+        itemPreviewTable:Add(newItemCycleModel, newItemCycleModelBehavior)
+        itemPreviewTable:Add(newItemCycleColor, newItemCycleColorBehavior)
+
+        InputSet newItemCancel = map:GetNewItemCancelKey()
+        InputSet newItemConfirm = map:GetNewItemConfirmKey()
+
+        NewItemCancelBehavior newItemCancelBehavior = behaviors:GetNewItemCancelBehavior()
+        NewItemConfirmBehavior newItemConfirmBehavior = behaviors:GetNewItemConfirmBehavior()
+
+        itemPreviewTable:Add(newItemCancel, newItemCancelBehavior)
+        itemPreviewTable:Add(newItemConfirm, newItemConfirmBehavior)
+
+        AddInputTable(itemPreviewTable)
+    end
+
     action SetupFocus
     /*
         The order the items are added to the focusList and the value
@@ -434,6 +710,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         codeCompletionTable:Add(releaseUpArrow, emptyBehavior)
 
         AddInputTable(codeCompletionTable)
+        SetupVisualEditorInput()
     end
 
     action Load
@@ -599,6 +876,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     action IsSupportedFile(File file) returns boolean
         text extension = file:GetFileExtension()
         if extension = "quorum"
+            return true
+        elseif extension = "qs"
             return true
         else
             //other supported extensions would be here

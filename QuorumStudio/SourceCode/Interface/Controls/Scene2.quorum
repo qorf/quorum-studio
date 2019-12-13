@@ -1,0 +1,298 @@
+package Libraries.Game.Scenes
+
+use Libraries.Game.Game
+use Libraries.Game.GameStateManager
+use Libraries.Game.Layer3D
+use Libraries.System.File
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Containers.Iterator
+use Libraries.Containers.Array
+use Libraries.Containers.Integer32BitArray
+use Libraries.Containers.Number32BitArray
+use Libraries.Game.Graphics.Model
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Layer
+use Libraries.Interface.Item3D
+use Libraries.Compute.Vector3
+use Libraries.Game.Scenes.PhysicsSceneProperty
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditorResources
+use Libraries.Game.Graphics.Camera
+use Libraries.Game.Graphics.DirectionalLight
+use Libraries.Game.Graphics.AmbientLight
+use Libraries.Game.Graphics.PointLight
+use Libraries.Game.Graphics.Skybox
+
+class Scene2 
+    constant text MODELS = "Models"
+    constant text PHYSICS_3D = "Physics3D"
+    constant text CAMERA = "Camera"
+    constant text LIGHTS = "Lights"
+    constant text SKYBOX = "Skybox"
+
+    constant VisualEditorResources resources
+
+    ModelSceneProperty modelProperty = undefined
+    PhysicsSceneProperty physicsProperty = undefined
+    LightSceneProperty lightsProperty = undefined
+    SkyboxSceneProperty skyboxProperty = undefined
+
+    action GetPhysicsSceneProperty returns PhysicsSceneProperty
+        return physicsProperty
+    end
+
+    action GetModelSceneProperty returns ModelSceneProperty
+        return modelProperty
+    end
+
+    action GetLightSceneProperty returns LightSceneProperty
+        return lightsProperty
+    end
+
+    action GetSkyboxSceneProperty returns SkyboxSceneProperty
+        return skyboxProperty
+    end
+
+    action SetSkyboxSceneProperty(SkyboxSceneProperty property)
+        skyboxProperty = property
+    end
+
+    action Load(File file)
+        JavaScriptObjectNotation notation
+        notation:Read(file)
+        Array<text> keys = notation:GetKeys()
+        i = 0
+        repeat while i < keys:GetSize()
+            text key = keys:Get(i)
+            ProcessKey(key, notation)
+            i = i + 1
+        end
+    end
+
+    private action ProcessKey(text key, JavaScriptObjectNotation notation)
+        if key = CAMERA
+
+        elseif key = MODELS
+           JavaScriptObjectNotation models = notation:GetObject(MODELS)
+           if modelProperty = undefined
+                ModelSceneProperty prop
+                modelProperty = prop
+            end
+            modelProperty:LoadModels(models)
+        elseif key = LIGHTS
+            JavaScriptObjectNotation lights = notation:GetObject(LIGHTS)
+            if lightsProperty = undefined
+                LightSceneProperty prop
+                lightsProperty = prop
+            end
+            lightsProperty:LoadLights(lights)
+        elseif key = PHYSICS_3D
+            JavaScriptObjectNotation physics = notation:GetObject(PHYSICS_3D)
+            if physicsProperty = undefined
+                PhysicsSceneProperty prop
+                physicsProperty = prop
+            end
+            physicsProperty:LoadPhysics3D(physics)
+        elseif key = SKYBOX
+            JavaScriptObjectNotation skybox = notation:GetObject(SKYBOX)
+            if skyboxProperty = undefined
+                SkyboxSceneProperty prop
+                skyboxProperty = prop
+            end
+            skyboxProperty:Load(skybox)
+        end
+    end
+
+    action Save(text path, Game game)
+        Iterator<Layer> layers = game:GetLayerIterator()
+        repeat while layers:HasNext()
+            Layer layer = layers:Next()
+            if layer is Layer3D
+                SaveLayer3D(cast(Layer3D, layer))
+            end
+        end
+    end
+
+    action SaveLayer3D(Layer3D layer) returns JavaScriptObjectNotation
+        JavaScriptObjectNotation notation
+
+        Camera camera = layer:GetCamera()
+        Vector3 position = camera:GetPosition()
+        Vector3 direction = camera:GetDirection()
+        Vector3 up = camera:GetUp()
+
+        JavaScriptObjectNotation cameraJson
+        cameraJson:SetKey(CAMERA)
+
+        JavaScriptObjectNotation cameraLocation
+        cameraLocation:SetKey("Location")
+        cameraLocation:SetArray()
+        cameraLocation:Add(position:GetX())
+        cameraLocation:Add(position:GetY())
+        cameraLocation:Add(position:GetZ())
+        cameraJson:Add(cameraLocation)
+
+        JavaScriptObjectNotation cameraDirection
+        cameraDirection:SetKey("Direction")
+        cameraDirection:SetArray()
+        cameraDirection:Add(direction:GetX())
+        cameraDirection:Add(direction:GetY())
+        cameraDirection:Add(direction:GetZ())
+        cameraJson:Add(cameraDirection)
+
+        JavaScriptObjectNotation cameraUp
+        cameraUp:SetKey("Up")
+        cameraUp:SetArray()
+        cameraUp:Add(up:GetX())
+        cameraUp:Add(up:GetY())
+        cameraUp:Add(up:GetZ())
+        cameraJson:Add(cameraUp)
+
+        notation:Add(cameraJson)
+
+        JavaScriptObjectNotation physicsJson
+        physicsJson:SetKey(PHYSICS_3D)
+        physicsJson:Add("Enabled", layer:PhysicsEnabled())
+
+        Vector3 gravity = layer:GetGravity()
+
+        JavaScriptObjectNotation physicsGravity
+        physicsGravity:SetKey("Gravity")
+        physicsGravity:SetArray()
+        physicsGravity:Add(gravity:GetX())
+        physicsGravity:Add(gravity:GetY())
+        physicsGravity:Add(gravity:GetZ())
+        physicsJson:Add(physicsGravity)
+        
+        notation:Add(physicsJson)
+
+        if modelProperty = undefined
+            ModelSceneProperty property
+            modelProperty = property
+        end
+
+        JavaScriptObjectNotation modelsJson
+        modelsJson:SetKey(MODELS)
+
+        Iterator<Item3D> items = layer:GetIterator()
+        i = 1
+        repeat while items:HasNext()
+            Item3D item = items:Next()
+            if item:HasProperty(resources:EDITOR_TAG) = false and item is Model
+                JavaScriptObjectNotation value = modelProperty:ConvertItem3D(item)
+                value:SetKey("" + i)
+                modelsJson:Add(value)
+            end
+            i = i + 1
+        end
+
+        notation:Add(modelsJson)
+
+        JavaScriptObjectNotation lightsJson
+        lightsJson:SetKey(LIGHTS)
+        i = 1
+
+        AmbientLight ambience = layer:GetAmbientLight()
+        if ambience not= undefined
+            JavaScriptObjectNotation ambientJson
+            ambientJson:SetKey("1")
+            ambientJson:Add("Type", "Ambient")
+            
+            JavaScriptObjectNotation colorArray
+            Color color = ambience:GetColor()
+            colorArray:SetKey("Color")
+            colorArray:SetArray()
+            colorArray:Add(color:GetRed())
+            colorArray:Add(color:GetGreen())
+            colorArray:Add(color:GetBlue())
+            colorArray:Add(color:GetAlpha())
+
+            ambientJson:Add(colorArray)
+            lightsJson:Add(ambientJson)
+
+            i = i + 1
+        end
+
+        Iterator<DirectionalLight> directionalLights = layer:GetDirectionalLights()
+        
+        repeat while directionalLights:HasNext()
+            DirectionalLight light = directionalLights:Next()
+            JavaScriptObjectNotation value
+            value:SetKey("" + i)
+            value:Add("Type", "Directional")
+            
+            JavaScriptObjectNotation directionArray
+            Vector3 vector = light:GetDirection()
+            directionArray:SetKey("Direction")
+            directionArray:SetArray()
+            directionArray:Add(vector:GetX())
+            directionArray:Add(vector:GetY())
+            directionArray:Add(vector:GetZ())
+            value:Add(directionArray)
+
+            JavaScriptObjectNotation colorArray
+            Color color = light:GetColor()
+            colorArray:SetKey("Color")
+            colorArray:SetArray()
+            colorArray:Add(color:GetRed())
+            colorArray:Add(color:GetGreen())
+            colorArray:Add(color:GetBlue())
+            colorArray:Add(color:GetAlpha())
+            value:Add(colorArray)
+            
+            lightsJson:Add(value)
+            i = i + 1
+        end
+
+        Iterator<PointLight> pointLights = layer:GetPointLights()
+        
+        repeat while pointLights:HasNext()
+            PointLight light = pointLights:Next()
+            JavaScriptObjectNotation value
+            value:SetKey("" + i)
+            value:Add("Type", "Point")
+            
+            JavaScriptObjectNotation locationArray
+            Vector3 vector = light:GetPosition()
+            locationArray:SetKey("Location")
+            locationArray:SetArray()
+            locationArray:Add(vector:GetX())
+            locationArray:Add(vector:GetY())
+            locationArray:Add(vector:GetZ())
+            value:Add(locationArray)
+
+            JavaScriptObjectNotation colorArray
+            Color color = light:GetColor()
+            colorArray:SetKey("Color")
+            colorArray:SetArray()
+            colorArray:Add(color:GetRed())
+            colorArray:Add(color:GetGreen())
+            colorArray:Add(color:GetBlue())
+            colorArray:Add(color:GetAlpha())
+            value:Add(colorArray)
+
+            value:Add("Intensity", light:GetIntensity())
+            value:Add("Name", light:GetName())
+            value:Add("Description", light:GetDescription())
+
+            lightsJson:Add(value)
+            i = i + 1
+        end
+        notation:Add(lightsJson)
+
+        if skyboxProperty not= undefined
+            JavaScriptObjectNotation skyboxJson
+            skyboxJson:SetKey(SKYBOX)
+
+            skyboxJson:Add(skyboxProperty:BACK, skyboxProperty:GetBackPath())
+            skyboxJson:Add(skyboxProperty:FRONT, skyboxProperty:GetFrontPath())
+            skyboxJson:Add(skyboxProperty:TOP, skyboxProperty:GetTopPath())
+            skyboxJson:Add(skyboxProperty:BOTTOM, skyboxProperty:GetBottomPath())
+            skyboxJson:Add(skyboxProperty:LEFT, skyboxProperty:GetLeftPath())
+            skyboxJson:Add(skyboxProperty:RIGHT, skyboxProperty:GetRightPath())
+            notation:Add(skyboxJson)
+        end
+        
+
+        return notation
+    end
+end

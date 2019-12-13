@@ -23,6 +23,7 @@ use Libraries.Interface.Controls.Cell
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.System.File
 use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Interface.Controls.Tab
 
 class JumpToErrorBehavior is QuorumStudioBehavior
 
@@ -50,7 +51,11 @@ class JumpToErrorBehavior is QuorumStudioBehavior
         CodeEditorTabPane editors = studio:GetTabPane()
         File file
         file:SetAbsolutePath(fileText)
-        EditorTab tab = editors:OpenNewTab(file)
+        Tab tab1 = editors:OpenNewTab(file)
+        if not (tab1 is EditorTab)
+            return now
+        end
+        EditorTab tab = cast(EditorTab, tab1)
         TextBox box = tab:GetTextBox()
 
         if line > 0

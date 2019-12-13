@@ -199,6 +199,97 @@ class Behaviors
 
     constant text OPEN_TAB_BEHAVIOR = "Open Tab Behavior"
     OpenTabBehavior openTabBehavior
+
+
+    // Visual Editor
+    constant text CAMERA_START_ROTATING_LEFT = "Camera Start Rotating Left"
+    constant text CAMERA_START_ROTATING_RIGHT = "Camera Start Rotating Right"
+    constant text CAMERA_STOP_ROTATING_YAW = "Camera Stop Rotating Yaw"
+    constant text CAMERA_START_ROTATING_UP = "Camera Start Rotating Up"
+    constant text CAMERA_START_ROTATING_DOWN = "Camera Start Rotating Down"
+    constant text CAMERA_STOP_ROTATING_PITCH = "Camera Stop Rotating Pitch"
+    constant text CAMERA_START_MOVING_FORWARD = "Camera Start Moving Forward"
+    constant text CAMERA_START_MOVING_BACKWARD = "Camera Start Moving Backward"
+    constant text CAMERA_STOP_MOVING_DIRECTION = "Camera Stop Moving Direction"
+    constant text CAMERA_START_STRAFING_LEFT = "Camera Start Strafing Left"
+    constant text CAMERA_START_STRAFING_RIGHT = "Camera Start Strafing Right"
+    constant text CAMERA_STOP_STRAFING = "Camera Stop Strafing"
+    constant text CAMERA_START_MOVING_UP = "Camera Start Moving Up"
+    constant text CAMERA_START_MOVING_DOWN = "Camera Start Moving Down"
+    constant text CAMERA_STOP_MOVING_VERTICALLY = "Camera Stop Moving Vertically"
+    constant text CAMERA_ITEMS_IN_VIEW = "Camera Items In View"
+    constant text SELECTION_START_MOVING_LEFT = "Selection Start Moving Left"
+    constant text SELECTION_START_MOVING_RIGHT = "Selection Start Moving Right"
+    constant text SELECTION_STOP_MOVING_X = "Selection Stop Moving X"
+    constant text SELECTION_START_MOVING_UP = "Selection Start Moving Up"
+    constant text SELECTION_START_MOVING_DOWN = "Selection Start Moving Down"
+    constant text SELECTION_STOP_MOVING_Y = "Selection Stop Moving Y"
+    constant text SELECTION_START_MOVING_FORWARD = "Selection Start Moving Forward"
+    constant text SELECTION_START_MOVING_BACKWARD = "Selection Start Moving Backward"
+    constant text SELECTION_STOP_MOVING_Z = "Selection Stop Moving Z"
+    constant text SELECTION_SCALE_UP = "Selection Scale Up"
+    constant text SELECTION_SCALE_DOWN = "Selection Scale Down"
+    constant text SELECTION_SCALE_X_UP = "Selection Scale X Up"
+    constant text SELECTION_SCALE_X_DOWN = "Selection Scale X Down"
+    constant text SELECTION_SCALE_Y_UP = "Selection Scale Y Up"
+    constant text SELECTION_SCALE_Y_DOWN = "Selection Scale Y Down"
+    constant text SELECTION_SCALE_Z_UP = "Selection Scale Z Up"
+    constant text SELECTION_SCALE_Z_DOWN = "Selection Scale Z Down"
+    constant text SELECTION_DELETE = "Selection Delete"
+    constant text SELECTION_CANCEL = "Selection Cancel"
+    constant text NEW_ITEM_CYCLE_MODEL = "New Item Cycle Model"
+    constant text NEW_ITEM_CYCLE_COLOR = "New Item Cycle Color"
+    constant text NEW_ITEM_CREATE_PREVIEW = "New Item Create Preview"
+    constant text NEW_ITEM_CANCEL = "New Item Cancel"
+    constant text NEW_ITEM_CONFIRM = "New Item Confirm"
+    constant text REPORT_LOCATION_BEHAVIOR = "Report Location Behavior"
+    constant text REPORT_CAMERA_DIRECTION_BEHAVIOR = "Report Camera Direction Behavior"
+    constant text REPORT_ITEMS_IN_VIEW_BEHAVIOR = "Report Items In View Behavior"
+
+    CameraYawRotationBehavior cameraStartRotateLeftBehavior
+    CameraYawRotationBehavior cameraStartRotateRightBehavior
+    CameraYawRotationBehavior cameraStopYawRotationBehavior
+    CameraPitchRotationBehavior cameraStartRotateUpBehavior
+    CameraPitchRotationBehavior cameraStartRotateDownBehavior
+    CameraPitchRotationBehavior cameraStopPitchRotationBehavior
+    CameraMoveDirectionBehavior cameraStartMoveForwardBehavior
+    CameraMoveDirectionBehavior cameraStartMoveBackwardBehavior
+    CameraMoveDirectionBehavior cameraStopMoveDirectionBehavior
+    CameraStrafeDirectionBehavior cameraStartStrafeLeftBehavior
+    CameraStrafeDirectionBehavior cameraStartStrafeRightBehavior
+    CameraStrafeDirectionBehavior cameraStopStrafeDirectionBehavior
+    CameraVerticalDirectionBehavior cameraStartMoveUpBehavior
+    CameraVerticalDirectionBehavior cameraStartMoveDownBehavior
+    CameraVerticalDirectionBehavior cameraStopVerticalDirectionBehavior
+    CameraItemsInViewBehavior cameraItemsInViewBehavior
+    SelectionXDirectionBehavior selectionStartMovingLeftBehavior
+    SelectionXDirectionBehavior selectionStartMovingRightBehavior
+    SelectionXDirectionBehavior selectionStopMovingXBehavior
+    SelectionYDirectionBehavior selectionStartMovingUpBehavior
+    SelectionYDirectionBehavior selectionStartMovingDownBehavior
+    SelectionYDirectionBehavior selectionStopMovingYBehavior
+    SelectionZDirectionBehavior selectionStartMovingForwardBehavior
+    SelectionZDirectionBehavior selectionStartMovingBackwardBehavior
+    SelectionZDirectionBehavior selectionStopMovingZBehavior
+    SelectionScaleBehavior selectionScaleUpBehavior
+    SelectionScaleBehavior selectionScaleDownBehavior
+    SelectionScaleBehavior selectionScaleXUpBehavior
+    SelectionScaleBehavior selectionScaleXDownBehavior
+    SelectionScaleBehavior selectionScaleYUpBehavior
+    SelectionScaleBehavior selectionScaleYDownBehavior
+    SelectionScaleBehavior selectionScaleZUpBehavior
+    SelectionScaleBehavior selectionScaleZDownBehavior
+    SelectionDeleteBehavior selectionDeleteBehavior
+    SelectionCancelBehavior selectionCancelBehavior
+    NewItemCycleModelBehavior newItemCycleModelBehavior
+    NewItemCycleColorBehavior newItemCycleColorBehavior
+    NewItemCreatePreviewBehavior newItemCreatePreviewBehavior
+    NewItemCancelBehavior newItemCancelBehavior
+    NewItemConfirmBehavior newItemConfirmBehavior
+    ReportLocationBehavior reportLocationBehavior
+    ReportCameraDirectionBehavior reportCameraDirectionBehavior
+    ReportItemsInViewBehavior reportItemsInViewBehavior
+
     on create
         behaviors:Add(DEFAULT_MENU_OPEN, defaultMenuOpenBehavior)
         behaviors:Add(OPEN_PROJECT, openProjectBehavior)
@@ -335,6 +426,85 @@ class Behaviors
         behaviors:Add(PASTE, pasteBehavior)
         behaviors:Add(DELETE, deleteBehavior)
         behaviors:Add(SELECT_ALL, selectAllBehavior)
+
+        //Visual Editor
+        // Set the direction of the visual editor camera and selection behaviors.
+        cameraStartRotateLeftBehavior:SetDirection(-1)
+        cameraStartRotateRightBehavior:SetDirection(1)
+        cameraStopYawRotationBehavior:SetDirection(0)
+        cameraStartRotateUpBehavior:SetDirection(1)
+        cameraStartRotateDownBehavior:SetDirection(-1)
+        cameraStopPitchRotationBehavior:SetDirection(0)
+        cameraStartMoveForwardBehavior:SetDirection(1)
+        cameraStartMoveBackwardBehavior:SetDirection(-1)
+        cameraStopMoveDirectionBehavior:SetDirection(0)
+        cameraStartStrafeLeftBehavior:SetDirection(1)
+        cameraStartStrafeRightBehavior:SetDirection(-1)
+        cameraStopStrafeDirectionBehavior:SetDirection(0)
+        cameraStartMoveUpBehavior:SetDirection(1)
+        cameraStartMoveDownBehavior:SetDirection(-1)
+        cameraStopVerticalDirectionBehavior:SetDirection(0)
+        selectionStartMovingLeftBehavior:SetDirection(-1)
+        selectionStartMovingRightBehavior:SetDirection(1)
+        selectionStopMovingXBehavior:SetDirection(0)
+        selectionStartMovingUpBehavior:SetDirection(1)
+        selectionStartMovingDownBehavior:SetDirection(-1)
+        selectionStopMovingYBehavior:SetDirection(0)
+        selectionStartMovingForwardBehavior:SetDirection(1)
+        selectionStartMovingBackwardBehavior:SetDirection(-1)
+        selectionStopMovingZBehavior:SetDirection(0)
+        selectionScaleUpBehavior:SetScale(1.1, 1.1, 1.1)
+        selectionScaleDownBehavior:SetScale(1.0/1.1, 1.0/1.1, 1.0/1.1)
+        selectionScaleXUpBehavior:SetScale(1.1, 1, 1)
+        selectionScaleXDownBehavior:SetScale(1.0/1.1, 1, 1)
+        selectionScaleYUpBehavior:SetScale(1, 1.1, 1)
+        selectionScaleYDownBehavior:SetScale(1, 1.0/1.1, 1)
+        selectionScaleZUpBehavior:SetScale(1, 1, 1.1)
+        selectionScaleZDownBehavior:SetScale(1, 1, 1.0/1.1)
+
+        behaviors:Add(CAMERA_START_ROTATING_LEFT, cameraStartRotateLeftBehavior)
+        behaviors:Add(CAMERA_START_ROTATING_RIGHT, cameraStartRotateRightBehavior)
+        behaviors:Add(CAMERA_STOP_ROTATING_YAW, cameraStopYawRotationBehavior)
+        behaviors:Add(CAMERA_START_ROTATING_UP, cameraStartRotateUpBehavior)
+        behaviors:Add(CAMERA_START_ROTATING_DOWN, cameraStartRotateDownBehavior)
+        behaviors:Add(CAMERA_STOP_ROTATING_PITCH, cameraStopPitchRotationBehavior)
+        behaviors:Add(CAMERA_START_MOVING_FORWARD, cameraStartMoveForwardBehavior)
+        behaviors:Add(CAMERA_START_MOVING_BACKWARD, cameraStartMoveBackwardBehavior)
+        behaviors:Add(CAMERA_STOP_MOVING_DIRECTION, cameraStopMoveDirectionBehavior)
+        behaviors:Add(CAMERA_START_STRAFING_LEFT, cameraStartStrafeLeftBehavior)
+        behaviors:Add(CAMERA_START_STRAFING_RIGHT, cameraStartStrafeRightBehavior)
+        behaviors:Add(CAMERA_STOP_STRAFING, cameraStopStrafeDirectionBehavior)
+        behaviors:Add(CAMERA_START_MOVING_UP, cameraStartMoveUpBehavior)
+        behaviors:Add(CAMERA_START_MOVING_DOWN, cameraStartMoveDownBehavior)
+        behaviors:Add(CAMERA_STOP_MOVING_VERTICALLY, cameraStopVerticalDirectionBehavior)
+        behaviors:Add(CAMERA_ITEMS_IN_VIEW, cameraItemsInViewBehavior)
+        behaviors:Add(SELECTION_START_MOVING_LEFT, selectionStartMovingLeftBehavior)
+        behaviors:Add(SELECTION_START_MOVING_RIGHT, selectionStartMovingRightBehavior)
+        behaviors:Add(SELECTION_STOP_MOVING_X, selectionStopMovingXBehavior)
+        behaviors:Add(SELECTION_START_MOVING_UP, selectionStartMovingUpBehavior)
+        behaviors:Add(SELECTION_START_MOVING_DOWN, selectionStartMovingDownBehavior)
+        behaviors:Add(SELECTION_STOP_MOVING_Y, selectionStopMovingYBehavior)
+        behaviors:Add(SELECTION_START_MOVING_FORWARD, selectionStartMovingForwardBehavior)
+        behaviors:Add(SELECTION_START_MOVING_BACKWARD, selectionStartMovingBackwardBehavior)
+        behaviors:Add(SELECTION_STOP_MOVING_Z, selectionStopMovingZBehavior)
+        behaviors:Add(SELECTION_SCALE_UP, selectionScaleUpBehavior)
+        behaviors:Add(SELECTION_SCALE_DOWN, selectionScaleDownBehavior)
+        behaviors:Add(SELECTION_SCALE_X_UP, selectionScaleXUpBehavior)
+        behaviors:Add(SELECTION_SCALE_X_DOWN, selectionScaleXDownBehavior)
+        behaviors:Add(SELECTION_SCALE_Y_UP, selectionScaleYUpBehavior)
+        behaviors:Add(SELECTION_SCALE_Y_DOWN, selectionScaleYDownBehavior)
+        behaviors:Add(SELECTION_SCALE_Z_UP, selectionScaleZUpBehavior)
+        behaviors:Add(SELECTION_SCALE_Z_DOWN, selectionScaleZDownBehavior)
+        behaviors:Add(SELECTION_DELETE, selectionDeleteBehavior)
+        behaviors:Add(SELECTION_CANCEL, selectionCancelBehavior)
+        behaviors:Add(NEW_ITEM_CYCLE_MODEL, newItemCycleModelBehavior)
+        behaviors:Add(NEW_ITEM_CYCLE_COLOR, newItemCycleColorBehavior)
+        behaviors:Add(NEW_ITEM_CREATE_PREVIEW, newItemCreatePreviewBehavior)
+        behaviors:Add(NEW_ITEM_CANCEL, newItemCancelBehavior)
+        behaviors:Add(NEW_ITEM_CONFIRM, newItemConfirmBehavior)
+        behaviors:Add(REPORT_LOCATION_BEHAVIOR, reportLocationBehavior)
+        behaviors:Add(REPORT_CAMERA_DIRECTION_BEHAVIOR, reportCameraDirectionBehavior)
+        behaviors:Add(REPORT_ITEMS_IN_VIEW_BEHAVIOR, reportItemsInViewBehavior)
     end
     
     action GetOpenTabBehavior returns OpenTabBehavior
@@ -679,6 +849,179 @@ class Behaviors
 
     action GetPreviousBehavior returns PreviousBehavior
         return previousBehavior
+    end
+
+    //Visual Editor Actions
+    action GetCameraStartRotatingLeftBehavior returns CameraYawRotationBehavior
+        return cameraStartRotateLeftBehavior
+    end
+
+    action GetCameraStartRotatingRightBehavior returns CameraYawRotationBehavior
+        return cameraStartRotateRightBehavior
+    end
+
+    action GetCameraStopRotatingYawBehavior returns CameraYawRotationBehavior
+        return cameraStopYawRotationBehavior
+    end
+
+    action GetCameraStartRotatingUpBehavior returns CameraPitchRotationBehavior
+        return cameraStartRotateUpBehavior
+    end
+
+    action GetCameraStartRotatingDownBehavior returns CameraPitchRotationBehavior
+        return cameraStartRotateDownBehavior
+    end
+
+    action GetCameraStopRotatingPitchBehavior returns CameraPitchRotationBehavior
+        return cameraStopPitchRotationBehavior
+    end
+
+    action GetCameraStartMovingForwardBehavior returns CameraMoveDirectionBehavior
+        return cameraStartMoveForwardBehavior
+    end
+
+    action GetCameraStartMovingBackwardBehavior returns CameraMoveDirectionBehavior
+        return cameraStartMoveBackwardBehavior
+    end
+
+    action GetCameraStopMovingDirectionBehavior returns CameraMoveDirectionBehavior
+        return cameraStopMoveDirectionBehavior
+    end
+
+    action GetCameraStartStrafingLeftBehavior returns CameraStrafeDirectionBehavior
+        return cameraStartStrafeLeftBehavior
+    end
+
+    action GetCameraStartStrafingRightBehavior returns CameraStrafeDirectionBehavior
+        return cameraStartStrafeRightBehavior
+    end
+
+    action GetCameraStopStrafingBehavior returns CameraStrafeDirectionBehavior
+        return cameraStopStrafeDirectionBehavior
+    end
+
+    action GetCameraStartMovingUpBehavior returns CameraVerticalDirectionBehavior
+        return cameraStartMoveUpBehavior
+    end
+
+    action GetCameraStartMovingDownBehavior returns CameraVerticalDirectionBehavior
+        return cameraStartMoveDownBehavior
+    end
+
+    action GetCameraStopMovingVerticallyBehavior returns CameraVerticalDirectionBehavior
+        return cameraStopVerticalDirectionBehavior
+    end
+
+    action GetCameraItemsInViewBehavior returns CameraItemsInViewBehavior
+        return cameraItemsInViewBehavior
+    end
+
+    action GetSelectionStartMovingLeftBehavior returns SelectionXDirectionBehavior
+        return selectionStartMovingLeftBehavior
+    end
+
+    action GetSelectionStartMovingRightBehavior returns SelectionXDirectionBehavior
+        return selectionStartMovingRightBehavior
+    end
+
+    action GetSelectionStopMovingXBehavior returns SelectionXDirectionBehavior
+        return selectionStopMovingXBehavior
+    end
+
+    action GetSelectionStartMovingUpBehavior returns SelectionYDirectionBehavior
+        return selectionStartMovingUpBehavior
+    end
+
+    action GetSelectionStartMovingDownBehavior returns SelectionYDirectionBehavior
+        return selectionStartMovingDownBehavior
+    end
+
+    action GetSelectionStopMovingYBehavior returns SelectionYDirectionBehavior
+        return selectionStopMovingYBehavior
+    end
+
+    action GetSelectionStartMovingForwardBehavior returns SelectionZDirectionBehavior
+        return selectionStartMovingForwardBehavior
+    end
+
+    action GetSelectionStartMovingBackwardBehavior returns SelectionZDirectionBehavior
+        return selectionStartMovingBackwardBehavior
+    end
+
+    action GetSelectionStopMovingZBehavior returns SelectionZDirectionBehavior
+        return selectionStopMovingZBehavior
+    end
+
+    action GetSelectionScaleUpBehavior returns SelectionScaleBehavior
+        return selectionScaleUpBehavior
+    end
+
+    action GetSelectionScaleDownBehavior returns SelectionScaleBehavior
+        return selectionScaleDownBehavior
+    end
+
+    action GetSelectionScaleXUpBehavior returns SelectionScaleBehavior
+        return selectionScaleXUpBehavior
+    end
+
+    action GetSelectionScaleXDownBehavior returns SelectionScaleBehavior
+        return selectionScaleXDownBehavior
+    end
+
+    action GetSelectionScaleYUpBehavior returns SelectionScaleBehavior
+        return selectionScaleYUpBehavior
+    end
+
+    action GetSelectionScaleYDownBehavior returns SelectionScaleBehavior
+        return selectionScaleYDownBehavior
+    end
+
+    action GetSelectionScaleZUpBehavior returns SelectionScaleBehavior
+        return selectionScaleZUpBehavior
+    end
+
+    action GetSelectionScaleZDownBehavior returns SelectionScaleBehavior
+        return selectionScaleZDownBehavior
+    end
+
+    action GetSelectionDeleteBehavior returns SelectionDeleteBehavior
+        return selectionDeleteBehavior
+    end
+
+    action GetSelectionCancelBehavior returns SelectionCancelBehavior
+        return selectionCancelBehavior
+    end
+
+    action GetNewItemCycleColorBehavior returns NewItemCycleColorBehavior
+        return newItemCycleColorBehavior
+    end
+
+    action GetNewItemCycleModelBehavior returns NewItemCycleModelBehavior
+        return newItemCycleModelBehavior
+    end
+
+    action GetNewItemCreatePreviewBehavior returns NewItemCreatePreviewBehavior
+        return newItemCreatePreviewBehavior
+    end
+
+    action GetNewItemCancelBehavior returns NewItemCancelBehavior
+        return newItemCancelBehavior
+    end
+
+    action GetNewItemConfirmBehavior returns NewItemConfirmBehavior
+        return newItemConfirmBehavior
+    end
+
+    action GetReportLocationBehavior returns ReportLocationBehavior
+        return reportLocationBehavior
+    end
+
+    action GetReportCameraDirectionBehavior returns ReportCameraDirectionBehavior
+        return reportCameraDirectionBehavior
+    end
+
+    action GetReportItemsInViewBehavior returns ReportItemsInViewBehavior
+        return reportItemsInViewBehavior
     end
 
     action SetMainApplication(QuorumStudio studio)

@@ -1,0 +1,68 @@
+package Libraries.Game.Scenes
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Containers.Array
+
+class SkyboxSceneProperty 
+    public constant text BACK = "Back"
+    public constant text FRONT = "Front"
+    public constant text TOP = "Top"
+    public constant text BOTTOM = "Bottom"
+    public constant text LEFT = "Left"
+    public constant text RIGHT = "Right"
+
+    text backPath = ""
+    text frontPath = ""
+    text topPath = ""
+    text bottomPath = ""
+    text leftPath = ""
+    text rightPath = ""
+    action Load(JavaScriptObjectNotation json)
+        Array<text> keys = json:GetKeys()
+        i = 0
+        repeat while i < keys:GetSize()
+            text key = keys:Get(i)
+            ProcessKey(key, json)
+            i = i + 1
+        end
+    end
+
+    private action ProcessKey(text key, JavaScriptObjectNotation notation)
+        if key = BACK
+            backPath = notation:GetValue(key)
+        elseif key = FRONT
+            frontPath = notation:GetValue(key)
+        elseif key = TOP
+            topPath = notation:GetValue(key)
+        elseif key = BOTTOM
+            bottomPath = notation:GetValue(key)
+        elseif key = LEFT
+            leftPath = notation:GetValue(key)
+        elseif key = RIGHT
+            rightPath = notation:GetValue(key)
+        end
+    end
+
+    action GetBackPath returns text
+        return backPath
+    end
+
+    action GetFrontPath returns text
+        return frontPath
+    end
+
+    action GetTopPath returns text
+        return topPath
+    end
+
+    action GetBottomPath returns text
+        return bottomPath
+    end
+
+    action GetLeftPath returns text
+        return leftPath
+    end
+
+    action GetRightPath returns text
+        return rightPath
+    end
+end

@@ -353,6 +353,20 @@ class QuorumProject is Project
         return GetBooleanPropertyFirstValue(property)
     end
 
+    /* 
+        This action looks at the path of the scene file and determines
+        whether it is in a sub-folder to the current project. If it is, it returns 
+        true and if not, false. It does not require that the scene file be in a special
+        folder. 
+    */
+    action IsScene(File file) returns boolean
+        File location = GetLocation()
+        text projectPath = location:GetAbsolutePath()
+        text filePath = file:GetAbsolutePath()
+
+        return filePath:StartsWith(projectPath)
+    end
+
     /* This action returns the build path for image sheets. */
     action GetImageSheetBuildPath returns text
         ProjectProperty property = GetProperty(IMAGE_SHEET_BUILD_PATH)

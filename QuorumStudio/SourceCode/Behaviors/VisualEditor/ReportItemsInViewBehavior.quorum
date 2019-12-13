@@ -1,0 +1,43 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+use Libraries.Game.Layer3D
+use Libraries.Game.Graphics.Camera
+use Libraries.Compute.Frustum
+use Libraries.Containers.Iterator
+use Libraries.Containers.Array
+use Libraries.Interface.Item3D
+use Libraries.Game.Graphics.Model
+
+class ReportItemsInViewBehavior is QuorumStudioBehavior
+
+    action Run(BehaviorEvent event)
+        if event:GetItem() is VisualSceneController
+            VisualSceneController controller = cast(VisualSceneController, event:GetItem())
+            text editorTag = controller:GetEditorTag()
+
+            Layer3D layer = controller:GetEditorLayer()
+            Camera camera = layer:GetCamera()
+            Frustum frustum = camera:GetFrustum()
+
+            // Most likely we need to filter this somehow. We only want to consider items in the scene itself,
+            // and not any items the editor has added (e.g. selection highlighting).
+            Iterator<Item3D> iterator = layer:GetIterator()
+
+            integer total = 0
+
+            repeat while iterator:HasNext()
+                Item3D item = iterator:Next()
+                if item:HasProperty(editorTag) = false
+                    if frustum:PointInFrustum(item:GetGlobalPosition())
+                        total = total + 1
+                    end
+                end
+            end
+
+            controller:NotifyAccessibility(controller, total + " items in view.")
+        end
+    end
+
+end
