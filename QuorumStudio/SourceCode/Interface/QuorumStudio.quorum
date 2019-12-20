@@ -193,19 +193,24 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     action GainedFocus(FocusEvent event)
         currentFocus = event:GetNewFocus()
         previousFocus = event:GetLastFocus()
-        
+
         //Bubble up the parents until you find which window you're in
         //then set the window focus cycle to move there
-        Item2D newFocus = cast(Item2D, currentFocus)
-        if newFocus not= undefined and newFocus:GetParent() not= undefined
-            boolean notFound = true
-            repeat while notFound and newFocus:GetParent() not= undefined
-                if windowsList:HasKey(newFocus:GetParent():GetName())
-                    focus = windowsList:GetValue(newFocus:GetParent():GetName())
-                    notFound = false
+        if currentFocus is Item2D
+            Item2D newFocus = cast(Item2D, currentFocus)
+            if newFocus:GetParent() not= undefined
+                boolean notFound = true
+                repeat while notFound and newFocus:GetParent() not= undefined
+                    if windowsList:HasKey(newFocus:GetParent():GetName())
+                        focus = windowsList:GetValue(newFocus:GetParent():GetName())
+                        notFound = false
+                    end
+                    newFocus = newFocus:GetParent()
                 end
-                newFocus = newFocus:GetParent()
             end
+        else
+            // If the focus wasn't an Item2D, it must be from the 3D scene editor.
+            focus = windowsList:GetValue(codeTabs:GetName())
         end
     end
 
