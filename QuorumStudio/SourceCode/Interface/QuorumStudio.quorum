@@ -79,6 +79,7 @@ use Libraries.Development.Environment.Studio.Behaviors.SelectionCancelBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ReportLocationBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ReportItemsInViewBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ReportCameraDirectionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ToggleGridBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     public constant number VERSION = 1.0
@@ -457,6 +458,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         table:Add(reportCameraDirection, reportCameraDirectionBehavior)
         table:Add(reportItemsInView, reportItemsInViewBehavior)
 
+        InputSet toggleGridInput = map:GetToggleGridKey()
+        ToggleGridBehavior toggleGridBehavior = behaviors:GetToggleGridBehavior()
+        table:Add(toggleGridInput, toggleGridBehavior)
+
         AddInputTable(table)
 
         InputTable selectionTable
@@ -557,6 +562,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         selectionTable:Add(selectionDeleteSet, selectionDeleteBehavior)
         selectionTable:Add(selectionCancelSet, selectionCancelBehavior)
 
+        selectionTable:Add(toggleGridInput, toggleGridBehavior)
+
         AddInputTable(selectionTable)
 
         InputTable itemPreviewTable
@@ -604,6 +611,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
         itemPreviewTable:Add(newItemCancel, newItemCancelBehavior)
         itemPreviewTable:Add(newItemConfirm, newItemConfirmBehavior)
+
+        itemPreviewTable:Add(toggleGridInput, toggleGridBehavior)
 
         AddInputTable(itemPreviewTable)
     end

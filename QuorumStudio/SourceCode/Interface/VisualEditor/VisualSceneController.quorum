@@ -76,6 +76,14 @@ class VisualSceneController is Control
     integer sphereCounter = 1
     integer cylinderCounter = 1
 
+    // Values used for the grid lock functionality.
+    GridPlane grid
+    boolean gridSnapEnabled = true
+
+    // Used for when a movement key is held and the grid lock is enabled.
+    number gridMoveTimer = 0
+    number gridMoveTimerMax = 0.5
+
     on create
         FlowLayout layout
         SetLayout(layout)
@@ -91,6 +99,7 @@ class VisualSceneController is Control
         SetAccessibilityCode(parent:Item:CUSTOM)
 
         accessibility = manager:GetAccessibilityManager()
+        layer:Add(grid)
     end
 
     action GetColorPreview returns Color
@@ -184,26 +193,63 @@ class VisualSceneController is Control
             workVector:Set(0, 0, 0)
             InteractableItem focus = cast(InteractableItem, manager:GetFocus())
 
-            if selectionXDirection not= 0
-                workVector:SetX(selectionXDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
-                moved = true
-            end
+            if gridSnapEnabled = false
+                if selectionXDirection not= 0
+                    workVector:SetX(selectionXDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
+                    moved = true
+                end
 
-            if selectionYDirection not= 0
-                workVector:SetY(selectionYDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
-                moved = true
-            end
+                if selectionYDirection not= 0
+                    workVector:SetY(selectionYDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
+                    moved = true
+                end
 
-            if selectionZDirection not= 0
-                workVector:SetZ(selectionZDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
-                moved = true
-            end
+                if selectionZDirection not= 0
+                    workVector:SetZ(selectionZDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
+                    moved = true
+                end
 
-            if moved
-                focus:Move(workVector)
+                if moved
+                    focus:Move(workVector)
 
-                // Need to update highlight description here, and report the movement to accessibility
+                    // Need to update highlight description here, and report the movement to accessibility
+                end
+            else
+                if selectionXDirection not= 0 or selectionYDirection not= 0 or selectionZDirection not= 0
+                    if gridMoveTimer <= 0
+                        gridMoveTimer = gridMoveTimerMax
+
+                        number x = focus:GetGlobalX()
+                        number y = focus:GetGlobalY()
+                        number z = focus:GetGlobalZ()
+
+                        if selectionXDirection < 0
+                            x = grid:GetPreviousGridCoordinate(x)
+                        elseif selectionXDirection > 0
+                            x = grid:GetNextGridCoordinate(x)
+                        end
+
+                        if selectionYDirection < 0
+                            y = grid:GetPreviousGridCoordinate(y)
+                        elseif selectionYDirection > 0
+                            y = grid:GetNextGridCoordinate(y)
+                        end
+
+                        if selectionZDirection < 0
+                            z = grid:GetPreviousGridCoordinate(z)
+                        elseif selectionZDirection > 0
+                            z = grid:GetNextGridCoordinate(z)
+                        end
+
+                        focus:Move(x - focus:GetGlobalX(), y - focus:GetGlobalY(), z - focus:GetGlobalZ())
+                    else
+                        gridMoveTimer = gridMoveTimer - seconds
+                    end
+                else
+                    gridMoveTimer = 0
+                end
             end
+            
         end
     end
 
@@ -317,7 +363,7 @@ class VisualSceneController is Control
         preview:Dispose()
         Focus()
 
-        accessibility:Notify(me, "Cancelled placement")
+        NotifyAccessibility(me, "Cancelled placement")
     end
 
     Matrix4 previewTransform = undefined
@@ -353,7 +399,7 @@ class VisualSceneController is Control
         //preview:Dispose()
         //Focus()
 
-        accessibility:Notify(preview, "Placed " + model:GetName())
+        NotifyAccessibility(preview, "Placed " + model:GetName())
     end
 
     action SetEditorLayer(Layer3D layer)
@@ -368,7 +414,7 @@ class VisualSceneController is Control
         yawDirection = direction
 
         if direction = 0
-            accessibility:Notify(me, "Yaw " + math:Round(yaw, 1))
+            NotifyAccessibility(me, "Yaw " + math:Round(yaw, 1))
         end
     end
 
@@ -380,7 +426,7 @@ class VisualSceneController is Control
         pitchDirection = direction
 
         if direction = 0
-            accessibility:Notify(me, "Pitch " + math:Round(pitch, 1))
+            NotifyAccessibility(me, "Pitch " + math:Round(pitch, 1))
         end
     end
 
@@ -408,7 +454,7 @@ class VisualSceneController is Control
             number x = math:Round(temp:GetX(), 2)
             number y = math:Round(temp:GetY(), 2)
             number z = math:Round(temp:GetZ(), 2)
-            accessibility:Notify(me, "Camera " + x + ", " + y + ", " + z)
+            NotifyAccessibility(me, "Camera " + x + ", " + y + ", " + z)
         end
     end
 
@@ -424,7 +470,7 @@ class VisualSceneController is Control
             number x = math:Round(temp:GetX(), 2)
             number y = math:Round(temp:GetY(), 2)
             number z = math:Round(temp:GetZ(), 2)
-            accessibility:Notify(me, "Camera " + x + ", " + y + ", " + z)
+            NotifyAccessibility(me, "Camera " + x + ", " + y + ", " + z)
         end
     end
 
@@ -440,7 +486,7 @@ class VisualSceneController is Control
             number x = math:Round(temp:GetX(), 2)
             number y = math:Round(temp:GetY(), 2)
             number z = math:Round(temp:GetZ(), 2)
-            accessibility:Notify(me, "Camera " + x + ", " + y + ", " + z)
+            NotifyAccessibility(me, "Camera " + x + ", " + y + ", " + z)
         end
     end
 
@@ -459,7 +505,7 @@ class VisualSceneController is Control
             if manager:GetFocus() is InteractableItem
                 InteractableItem focus = cast(InteractableItem, manager:GetFocus())
                 number x = math:Round(focus:GetGlobalX(), 2)
-                accessibility:Notify(focus, "x " + x)
+                NotifyAccessibility(focus, "x " + x)
             end
         end
     end
@@ -475,7 +521,7 @@ class VisualSceneController is Control
             if manager:GetFocus() is InteractableItem
                 InteractableItem focus = cast(InteractableItem, manager:GetFocus())
                 number y = math:Round(focus:GetGlobalY(), 2)
-                accessibility:Notify(focus, "y " + y)
+                NotifyAccessibility(focus, "y " + y)
             end
         end
     end
@@ -491,7 +537,7 @@ class VisualSceneController is Control
             if manager:GetFocus() is InteractableItem
                 InteractableItem focus = cast(InteractableItem, manager:GetFocus())
                 number z = math:Round(focus:GetGlobalZ(), 2)
-                accessibility:Notify(focus, "z " + z)
+                NotifyAccessibility(focus, "z " + z)
             end
         end
     end
@@ -505,6 +551,28 @@ class VisualSceneController is Control
     end
 
     action NotifyAccessibility(Item item, text message)
-        accessibility:Notify(item, message)
+        if accessibility not= undefined
+            NotifyAccessibility(item, message)
+        end
+    end
+
+    action SetGridSnapping(boolean enabled)
+        if gridSnapEnabled = enabled
+            return now
+        end
+
+        if enabled
+            grid:Show()
+            NotifyAccessibility(me, "Grid snapping enabled")
+        else
+            grid:Hide()
+            NotifyAccessibility(me, "Grid snapping disabled")
+        end
+
+        gridSnapEnabled = enabled
+    end
+
+    action IsGridSnapping returns boolean
+        return gridSnapEnabled
     end
 end

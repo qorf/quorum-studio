@@ -7,20 +7,24 @@ use Libraries.Interface.Controls.Tab
 use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Controls.TextBox
+use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
 
 class FocusEditorBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
         QuorumStudio studio = GetMainApplication()
         CodeEditorTabPane value = studio:GetTabPane()
         TabPaneSelection selection = value:GetSelection()
-        EditorTab tab = cast(EditorTab, selection:GetTab())
-        if tab = undefined
-            return now
+
+        if selection:GetTab() is EditorTab
+            EditorTab tab = cast(EditorTab, selection:GetTab())
+            TextBox box = tab:GetTextBox()
+            if box = undefined
+                return now
+            end
+            box:Focus()
+        elseif selection:GetTab() is VisualEditorTab
+            VisualEditorTab tab = cast(VisualEditorTab, selection:GetTab())
+            tab:GetSceneController():Focus()
         end
-        TextBox box = tab:GetTextBox()
-        if box = undefined
-            return now
-        end
-        box:Focus()
     end
 end
