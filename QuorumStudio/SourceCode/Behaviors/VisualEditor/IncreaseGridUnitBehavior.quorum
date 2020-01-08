@@ -1,0 +1,27 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+
+class IncreaseGridUnitBehavior is QuorumStudioBehavior
+    
+    action Run(BehaviorEvent event)
+        VisualSceneController controller = undefined
+
+        if event:GetItem() is VisualSceneController
+            controller = cast(VisualSceneController, event:GetItem())
+        elseif event:GetItem() is InteractableItem
+            InteractableItem item = cast(InteractableItem, event:GetItem())
+            controller = item:GetController()
+        end
+
+        if controller = undefined
+            return now
+        end
+
+        controller:SetGridUnitSize(2.0 * controller:GetGridUnitSize())
+    end
+
+end

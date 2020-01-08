@@ -242,6 +242,9 @@ class VisualSceneController is Control
                         end
 
                         focus:Move(x - focus:GetGlobalX(), y - focus:GetGlobalY(), z - focus:GetGlobalZ())
+                        grid:SetPosition(grid:GetNearestGridCoordinate(focus:GetGlobalX()),
+                            0,
+                            grid:GetNearestGridCoordinate(focus:GetGlobalZ()))
                     else
                         gridMoveTimer = gridMoveTimer - seconds
                     end
@@ -570,6 +573,20 @@ class VisualSceneController is Control
         end
 
         gridSnapEnabled = enabled
+    end
+
+    action SetGridUnitSize(number units)
+        grid:SetGridUnitSize(units)
+        
+        NotifyAccessibility(me, "Grid size " + units)
+
+        grid:SetPosition(grid:GetNearestGridCoordinate(grid:GetGlobalX()),
+            grid:GetNearestGridCoordinate(grid:GetGlobalY()),
+            grid:GetNearestGridCoordinate(grid:GetGlobalZ()))
+    end
+
+    action GetGridUnitSize returns number
+        return grid:GetGridUnitSize()
     end
 
     action IsGridSnapping returns boolean

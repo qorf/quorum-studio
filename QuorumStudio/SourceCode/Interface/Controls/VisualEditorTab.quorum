@@ -19,6 +19,7 @@ use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Game.Scenes.SkyboxSceneProperty
 use Libraries.Game.Graphics.Skybox
 use Libraries.System.Properties
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.PropertiesDialog
 
 class VisualEditorTab is Tab
 
@@ -26,6 +27,8 @@ class VisualEditorTab is Tab
     File projectLocation = undefined
     GameStateManager manager
     SkyboxSceneProperty skyboxProperty = undefined
+
+    PropertiesDialog propertiesDialog
 
     action GetFile returns File
         return file
@@ -136,6 +139,8 @@ class VisualEditorTab is Tab
             end
         end
         // The Layer itself is added to the game when the tab is toggled on.
+
+        propertiesDialog:Initialize(controller)
     end
 
     action Save
@@ -161,12 +166,16 @@ class VisualEditorTab is Tab
         Layer3D layer = GetSceneController():GetEditorLayer()
         Game game = manager:GetGame()
         game:RemoveLayer(layer)
+
+        propertiesDialog:Hide()
     end
 
     action ShowLayer
         Layer3D layer = GetSceneController():GetEditorLayer()
         Game game = manager:GetGame()
         game:AddLayer(layer)
+
+        propertiesDialog:Show()
     end
 
     action OnClose

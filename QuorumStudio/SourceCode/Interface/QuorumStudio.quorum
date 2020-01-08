@@ -80,6 +80,8 @@ use Libraries.Development.Environment.Studio.Behaviors.ReportLocationBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ReportItemsInViewBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ReportCameraDirectionBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ToggleGridBehavior
+use Libraries.Development.Environment.Studio.Behaviors.IncreaseGridUnitBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DecreaseGridUnitBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     public constant number VERSION = 1.0
@@ -462,6 +464,13 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         ToggleGridBehavior toggleGridBehavior = behaviors:GetToggleGridBehavior()
         table:Add(toggleGridInput, toggleGridBehavior)
 
+        InputSet increaseGridUnitInput = map:GetIncreaseGridUnitKey()
+        InputSet decreaseGridUnitInput = map:GetDecreaseGridUnitKey()
+        IncreaseGridUnitBehavior increaseGridUnitBehavior = behaviors:GetIncreaseGridUnitBehavior()
+        DecreaseGridUnitBehavior decreaseGridUnitBehavior = behaviors:GetDecreaseGridUnitBehavior()
+        table:Add(increaseGridUnitInput, increaseGridUnitBehavior)
+        table:Add(decreaseGridUnitInput, decreaseGridUnitBehavior)
+
         AddInputTable(table)
 
         InputTable selectionTable
@@ -563,6 +572,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         selectionTable:Add(selectionCancelSet, selectionCancelBehavior)
 
         selectionTable:Add(toggleGridInput, toggleGridBehavior)
+        selectionTable:Add(increaseGridUnitInput, increaseGridUnitBehavior)
+        selectionTable:Add(decreaseGridUnitInput, decreaseGridUnitBehavior)
 
         AddInputTable(selectionTable)
 
@@ -613,6 +624,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         itemPreviewTable:Add(newItemConfirm, newItemConfirmBehavior)
 
         itemPreviewTable:Add(toggleGridInput, toggleGridBehavior)
+        itemPreviewTable:Add(increaseGridUnitInput, increaseGridUnitBehavior)
+        itemPreviewTable:Add(decreaseGridUnitInput, decreaseGridUnitBehavior)
 
         AddInputTable(itemPreviewTable)
     end

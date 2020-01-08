@@ -1,0 +1,95 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Events.SelectionListener
+use Libraries.Interface.Events.TextChangeListener
+use Libraries.Interface.Controls.TextField
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.LayoutProperties
+
+class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
+    
+    boolean initialized = false
+
+    VisualSceneController controller = undefined
+    InteractableItem currentItem = undefined
+
+    // Controls used on the dialog itself
+    Label nameLabel = undefined
+    TextField nameField = undefined
+
+    action Initialize(VisualSceneController controller)
+        if initialized
+            return now
+        end
+
+        initialized = true
+
+        me:controller = controller
+
+        Label label
+        nameLabel = label
+        
+        TextField field
+        nameField = field
+
+        SetName("Object Properties")
+
+        SetPixelWidth(300)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL - view:TOP)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        
+        Control panel
+        FlowLayout propertiesLayout
+        panel:SetLayout(propertiesLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+        panel:SetView2D(view)
+
+        FlowLayout nameLayout
+        Control nameContainer
+        nameContainer:SetLayout(nameLayout)
+        nameContainer:SetPercentageWidth(1.0)
+        nameContainer:SetVerticalLayoutMode(nameContainer:FIT_CONTENTS)
+        nameContainer:SetLeftPadding(20)
+        nameContainer:SetTopPadding(20)
+        nameContainer:SetRightPadding(30)
+        nameContainer:SetBottomPadding(20)
+
+        nameLabel:SetText("Name:")
+        nameLabel:SetRightPadding(10)
+        nameContainer:Add(nameLabel)
+        
+        nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
+        nameField:SetName("Find")
+        nameField:SetText("")
+        nameField:SetFocusable(true)
+        nameContainer:Add(nameField)
+        panel:Add(nameContainer)
+
+        Add(panel)
+    end
+
+    action Show
+        if controller not= undefined
+            LayoutProperties properties = GetDefaultLayoutProperties()
+            properties:SetPercentageX(0)
+            properties:SetPercentageY(0)
+            properties:SetPercentageOriginX(1)
+            properties:SetPercentageOriginY(1)
+            properties:SetPixelX(controller:GetGlobalX() + controller:GetWidth() - 20)
+            properties:SetPixelY(controller:GetGlobalY() + controller:GetHeight() - 39)
+        end
+        parent:Dialog:Show()
+    end
+end

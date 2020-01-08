@@ -10,6 +10,7 @@ use Libraries.Game.Graphics.TextureAttribute
 use Libraries.Game.Graphics.Material
 use Libraries.Game.Graphics.Texture
 use Libraries.Game.Graphics.TextureWrap
+use Libraries.Game.Graphics.NumberAttribute
 
 class GridPlane is Model
     
@@ -30,9 +31,15 @@ class GridPlane is Model
     // The texture attribute lets us define how the texture is applied over the model.
     TextureAttribute textureAttribute = undefined
 
+    // The alpha test attribute allows the shader to discard fragments that are
+    // below a provided alpha (transparency) threshold.
+    NumberAttribute alphaTestAttribute
+
+    constant number alphaThreshold = 0.05
+
     // How much the grid has been scaled up in terms of 3D space. In other words,
     // the grid is a plane which is scaleFactor units long by scaleFactor units wide.
-    number scaleFactor = 50
+    number scaleFactor = 64
 
     // The distance between grid coordinates, in 3D world space.
     number gridUnits = 1
@@ -42,7 +49,7 @@ class GridPlane is Model
         SetFocusable(false)
         SetAccessibilityCode(parent:Item:NOT_ACCESSIBLE)
 
-        LoadPlane(1, 1, resources:GRID_TEXTURE)
+        LoadPlane(1, 1, resources:GRID_TEXTURE, true)
         Scale(scaleFactor, 1, scaleFactor)
 
         Array<Material> value = GetMaterials()
@@ -72,6 +79,9 @@ class GridPlane is Model
         diffuseTexture:scaleU = scaleFactor / gridUnits
         diffuseTexture:scaleV = scaleFactor / gridUnits
         textureAttribute = diffuseTexture
+
+        alphaTestAttribute:SetAttribute(alphaTestAttribute:GetAlphaTestValue(), alphaThreshold)
+        material:Add(alphaTestAttribute)
     end
 
     /*
