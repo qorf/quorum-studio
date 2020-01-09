@@ -9,13 +9,14 @@ use Libraries.Interface.Views.LabelBoxView
 use Libraries.Game.Graphics.Color
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Events.TextChangeEvent
 
 class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
     
     boolean initialized = false
 
     VisualSceneController controller = undefined
-    InteractableItem currentItem = undefined
 
     // Controls used on the dialog itself
     Label nameLabel = undefined
@@ -26,9 +27,13 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
             return now
         end
 
+        SetInputGroup("PropertiesDialog")
+
         initialized = true
 
         me:controller = controller
+        controller:SetPropertiesDialog(me)
+        controller:AddSelectionListener(me)
 
         Label label
         nameLabel = label
@@ -71,9 +76,10 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         nameContainer:Add(nameLabel)
         
         nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
-        nameField:SetName("Find")
+        nameField:SetName("Name")
         nameField:SetText("")
         nameField:SetFocusable(true)
+        nameField:AddTextChangeListener(me)
         nameContainer:Add(nameField)
         panel:Add(nameContainer)
 
@@ -91,5 +97,42 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
             properties:SetPixelY(controller:GetGlobalY() + controller:GetHeight() - 39)
         end
         parent:Dialog:Show()
+    end
+
+    action SelectionChanged(SelectionEvent event)
+        output "SelectionChanged"
+        if event:GetSelection() is VisualEditorSelection
+            VisualEditorSelection selection = cast(VisualEditorSelection, event:GetSelection())
+            if selection:IsEmpty()
+                if IsShowing()
+                    Hide()
+                end
+            else
+                nameField:SetText(selection:GetSelection():GetName())
+                if not IsShowing()
+                    Show()
+                end
+            end
+        end
+    end
+
+    action TextChanged(TextChangeEvent event)
+        InteractableItem currentItem = controller:GetSelection()
+        if currentItem not= undefined and nameField:GetText() not= currentItem:GetName()
+            currentItem:SetName(nameField:GetText())
+        end
+    end
+
+    /*
+    Moves the focus to one of the fields in the properties dialog. By default
+    this is the name field (the first field in the panel), but it could also be
+    changed to a different field, possibly context sensitive.
+    */
+    action FocusField
+        nameField:Focus()
+    end
+
+    action GetSceneController returns VisualSceneController
+        return controller
     end
 end

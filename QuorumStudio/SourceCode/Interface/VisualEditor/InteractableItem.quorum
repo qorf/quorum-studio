@@ -6,6 +6,7 @@ use Libraries.Containers.Array
 use Libraries.Game.Graphics.Material
 use Libraries.Game.Graphics.ColorAttribute
 use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Interface.Events.FocusEvent
 
 class InteractableItem is Model
     
@@ -32,6 +33,20 @@ class InteractableItem is Model
 
     action GetAccessibleParent returns Item
         return GetController()
+    end
+
+    action GainedFocus(FocusEvent event)
+        if controller not= undefined
+            controller:SetSelection(me)
+        end
+    end
+
+    action GainedSelection
+        // Do nothing. Classes inheriting from this may do something, though.
+    end
+
+    action LostSelection
+        // Do nothing. Classes inheriting from this may do something, though.
     end
 
     action NotifyAccessibility(text message)

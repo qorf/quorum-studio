@@ -1,0 +1,49 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Interface.Selections.Selection
+use Libraries.Interface.Item
+
+class VisualEditorSelection is Selection
+    
+    InteractableItem selectedItem = undefined
+
+    action Initialize(VisualSceneController controller)
+        Initialize(controller, controller:GetName())
+    end
+
+    action SetSelection(InteractableItem item)
+        selectedItem = item
+        if item = undefined
+            VisualSceneController scene = GetSceneController()
+            if scene not= undefined
+                SetDisplayName(scene:GetName())
+            else
+                SetDisplayName("")
+            end
+        else
+            SetDisplayName(item:GetName())
+        end
+    end
+
+    action GetSelection returns InteractableItem
+        return selectedItem
+    end
+
+    action IsEmpty returns boolean
+        return selectedItem = undefined
+    end
+
+    action Empty
+        SetSelection(undefined)
+    end
+
+    action GetSceneController returns VisualSceneController
+        Item item = GetItem()
+        if item is VisualSceneController
+            return cast(VisualSceneController, item)
+        else
+            return undefined
+        end
+    end
+
+end

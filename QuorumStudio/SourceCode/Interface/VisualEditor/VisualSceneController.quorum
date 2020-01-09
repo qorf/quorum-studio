@@ -15,6 +15,8 @@ use Libraries.Compute.Math
 use Libraries.Game.GameStateManager
 use Libraries.Compute.Matrix4
 use Libraries.Interface.AccessibilityManager
+use Libraries.Interface.Events.FocusListener
+use Libraries.Interface.Events.FocusEvent
 
 /*
 A class used to represent the 2D space within a Visual Editor tab.
@@ -24,6 +26,7 @@ class VisualSceneController is Control
 
     Layer3D layer
     VisualEditorResources visualResources
+    VisualEditorSelection selection
 
     // The rotational speed, measured in degrees per second,
     // and the directional speed, measured in 3D world units per second.
@@ -84,6 +87,9 @@ class VisualSceneController is Control
     number gridMoveTimer = 0
     number gridMoveTimerMax = 0.5
 
+    // A reference to the property dialog for this controller. Provided from the tab.
+    PropertiesDialog propertiesDialog = undefined
+
     on create
         FlowLayout layout
         SetLayout(layout)
@@ -100,6 +106,8 @@ class VisualSceneController is Control
 
         accessibility = manager:GetAccessibilityManager()
         layer:Add(grid)
+
+        selection:Initialize(me)
     end
 
     action GetColorPreview returns Color
@@ -136,6 +144,14 @@ class VisualSceneController is Control
 
     action GetEditorTag returns text
         return visualResources:EDITOR_TAG
+    end
+
+    action SetPropertiesDialog(PropertiesDialog dialog)
+        propertiesDialog = dialog
+    end
+
+    action GetPropertiesDialog returns PropertiesDialog
+        return propertiesDialog
     end
 
     action Update(number seconds)
@@ -591,5 +607,30 @@ class VisualSceneController is Control
 
     action IsGridSnapping returns boolean
         return gridSnapEnabled
+    end
+
+    action SetSelection(InteractableItem item)
+        if item not= undefined
+            output "Setting selection to " + item:GetName()
+        else
+            output "Setting selection to UNDEFINED"
+        end
+        if selection:IsEmpty() = false
+            selection:GetSelection():LostSelection()
+        end
+
+        selection:SetSelection(item)
+
+        if item not= undefined
+            item:GainedSelection()
+        end
+    end
+
+    action GetSelection returns InteractableItem
+        return selection:GetSelection()
+    end
+
+    action GainedFocus(FocusEvent event)
+        SetSelection(undefined)
     end
 end
