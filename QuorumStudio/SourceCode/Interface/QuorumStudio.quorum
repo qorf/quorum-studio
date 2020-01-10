@@ -1,4 +1,5 @@
 package Libraries.Development.Environment.Studio
+
 use Libraries.Game.Game
 use Libraries.Interface.Controls.ScrollPane
 use Libraries.Development.Environment.Projects.ProjectTree
@@ -84,6 +85,7 @@ use Libraries.Development.Environment.Studio.Behaviors.IncreaseGridUnitBehavior
 use Libraries.Development.Environment.Studio.Behaviors.DecreaseGridUnitBehavior
 use Libraries.Development.Environment.Studio.Behaviors.UnfocusPropertiesBehavior
 use Libraries.Development.Environment.Studio.Behaviors.FocusPropertiesBehavior
+use Libraries.Development.Environment.Studio.Behaviors.OpenVisualEditorFindDialogBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     public constant number VERSION = 1.0
@@ -473,6 +475,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         table:Add(increaseGridUnitInput, increaseGridUnitBehavior)
         table:Add(decreaseGridUnitInput, decreaseGridUnitBehavior)
 
+        InputSet openEditorFindDialogInput = map:GetOpenVisualEditorFindDialogKey()
+        OpenVisualEditorFindDialogBehavior openEditorFindDialogBehavior = behaviors:GetOpenVisualEditorFindDialogBehavior()
+        table:Add(openEditorFindDialogInput, openEditorFindDialogBehavior)
+
         AddInputTable(table)
 
         InputTable selectionTable
@@ -581,6 +587,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         FocusPropertiesBehavior focusPropertiesBehavior = behaviors:GetFocusPropertiesBehavior()
         selectionTable:Add(focusPropertiesSet, focusPropertiesBehavior)
 
+        selectionTable:Add(openEditorFindDialogInput, openEditorFindDialogBehavior)
+
         AddInputTable(selectionTable)
 
         InputTable itemPreviewTable
@@ -635,6 +643,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
         itemPreviewTable:Add(focusPropertiesSet, focusPropertiesBehavior)
 
+        itemPreviewTable:Add(openEditorFindDialogInput, openEditorFindDialogBehavior)
+
         AddInputTable(itemPreviewTable)
 
         InputTable propertiesDialogTable
@@ -646,6 +656,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         
         propertiesDialogTable:Add(unfocusPropertiesSet1, unfocusPropertiesBehavior)
         propertiesDialogTable:Add(unfocusPropertiesSet2, unfocusPropertiesBehavior)
+
+        propertiesDialogTable:Add(openEditorFindDialogInput, openEditorFindDialogBehavior)
 
         AddInputTable(propertiesDialogTable)
     end

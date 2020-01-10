@@ -90,6 +90,9 @@ class VisualSceneController is Control
     // A reference to the property dialog for this controller. Provided from the tab.
     PropertiesDialog propertiesDialog = undefined
 
+    // A reference to the find dialog for this controller.
+    VisualEditorFindDialog findDialog
+
     on create
         FlowLayout layout
         SetLayout(layout)
@@ -108,6 +111,7 @@ class VisualSceneController is Control
         layer:Add(grid)
 
         selection:Initialize(me)
+        findDialog:Initialize(me)
     end
 
     action GetColorPreview returns Color
@@ -152,6 +156,10 @@ class VisualSceneController is Control
 
     action GetPropertiesDialog returns PropertiesDialog
         return propertiesDialog
+    end
+
+    action GetFindDialog returns VisualEditorFindDialog
+        return findDialog
     end
 
     action Update(number seconds)
@@ -272,7 +280,7 @@ class VisualSceneController is Control
         end
     end
 
-    action SetFilteredItems(Array<Item3D> items)
+    action SetFilteredItems(Array<Item3D> items, boolean moveFocus)
         filteredItems = items
 
         // Remove previous highlights.
@@ -295,10 +303,18 @@ class VisualSceneController is Control
 
         SetFilterHighlightData()
 
-        if filterHighlights:IsEmpty()
-            Focus()
+        if moveFocus
+            if filterHighlights:IsEmpty()
+                Focus()
+            else
+                filterHighlights:Get(0):Focus()
+            end
         else
-            filterHighlights:Get(0):Focus()
+            if filterHighlights:IsEmpty()
+                SetSelection(undefined)
+            else
+                SetSelection(filterHighlights:Get(0))
+            end
         end
     end
 
@@ -394,6 +410,18 @@ class VisualSceneController is Control
         previewTransform = transform
     end
 
+    action GetDefaultItemName(integer type) returns text
+        if type = 0
+            return "Box " + cubeCounter
+        elseif type = 1
+            return "Sphere " + sphereCounter
+        elseif type = 2
+            return "Cylinder " + cylinderCounter
+        end
+
+        return "Item"
+    end
+
     action ConfirmNewItemPreview(NewItemPreview preview)
         Model model = preview:ConvertToModel()
         previewTransform = preview:GetTransform()
@@ -402,15 +430,19 @@ class VisualSceneController is Control
 
         integer type = preview:GetModelPresetCode()
 
-        if type = 0
-            model:SetName("Box " + cubeCounter)
-            cubeCounter = cubeCounter + 1
-        elseif type = 1
-            model:SetName("Sphere " + sphereCounter)
-            sphereCounter = sphereCounter + 1
-        elseif type = 2
-            model:SetName("Cylinder " + cylinderCounter)
-            cylinderCounter = cylinderCounter + 1
+        boolean usingDefaultName = (GetDefaultItemName(type) = model:GetName())
+
+        if usingDefaultName
+            if type = 0
+                cubeCounter = cubeCounter + 1
+            elseif type = 1
+                sphereCounter = sphereCounter + 1
+            elseif type = 2
+                cylinderCounter = cylinderCounter + 1
+            end
+
+            preview:SetName(GetDefaultItemName(type))
+            SetSelection(preview)
         end
 
         // This Dispose call currently does nothing, but if there are any
@@ -610,11 +642,6 @@ class VisualSceneController is Control
     end
 
     action SetSelection(InteractableItem item)
-        if item not= undefined
-            output "Setting selection to " + item:GetName()
-        else
-            output "Setting selection to UNDEFINED"
-        end
         if selection:IsEmpty() = false
             selection:GetSelection():LostSelection()
         end

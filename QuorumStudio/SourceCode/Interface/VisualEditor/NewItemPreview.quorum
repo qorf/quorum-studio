@@ -5,7 +5,8 @@ use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Compute.Matrix4
 
 class NewItemPreview is InteractableItem
-    
+
+    VisualSceneController controller = undefined
     Color color = undefined
 
     /*
@@ -26,11 +27,11 @@ class NewItemPreview is InteractableItem
     integer colorPreset = 0
 
     on create
-        SetName("New Item")
         SetInputGroup("NewItemPreview")
     end
 
     action Load(VisualSceneController controller)
+        me:controller = controller
         Color colorPreview = controller:GetColorPreview()
 
         if colorPreview not= undefined
@@ -42,6 +43,8 @@ class NewItemPreview is InteractableItem
         end
         modelPreset = controller:GetModelPresetPreview()
         colorPreset = controller:GetColorPresetPreview()
+
+        SetName(controller:GetDefaultItemName(modelPreset))
 
         if modelPreset = 0
             LoadBox(1, 1, 1, color)
@@ -77,10 +80,16 @@ class NewItemPreview is InteractableItem
     end
 
     action CyclePresetModel
+        boolean usingDefaultName = (controller:GetDefaultItemName(modelPreset) = GetName())
+
         modelPreset = (modelPreset + 1) mod 3
 
         GetNodes():Empty()
         GetMaterials():Empty()
+
+        if usingDefaultName
+            SetName(controller:GetDefaultItemName(modelPreset))
+        end
 
         if modelPreset = 0
             LoadBox(1, 1, 1, color)
@@ -127,6 +136,7 @@ class NewItemPreview is InteractableItem
 
     action ConvertToModel returns Model
         Model model
+        model:SetName(GetName())
 
         Color modelColor
         modelColor:SetColor(color:GetRed(), color:GetGreen(), color:GetBlue(), 1)
