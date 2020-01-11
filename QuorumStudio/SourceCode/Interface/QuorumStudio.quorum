@@ -86,6 +86,7 @@ use Libraries.Development.Environment.Studio.Behaviors.DecreaseGridUnitBehavior
 use Libraries.Development.Environment.Studio.Behaviors.UnfocusPropertiesBehavior
 use Libraries.Development.Environment.Studio.Behaviors.FocusPropertiesBehavior
 use Libraries.Development.Environment.Studio.Behaviors.OpenVisualEditorFindDialogBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CloseVisualEditorFindDialogBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     public constant number VERSION = 1.0
@@ -660,6 +661,18 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         propertiesDialogTable:Add(openEditorFindDialogInput, openEditorFindDialogBehavior)
 
         AddInputTable(propertiesDialogTable)
+
+        InputTable findTable
+        findTable:SetIdentifier("VisualEditorFindDialog")
+
+        InputSet closeVisualEditorFindDialogSet1 = map:GetCloseVisualEditorFindDialogKey1()
+        InputSet closeVisualEditorFindDialogSet2 = map:GetCloseVisualEditorFindDialogKey2()
+        CloseVisualEditorFindDialogBehavior closeFindBehavior = behaviors:GetCloseVisualEditorFindDialogBehavior()
+
+        findTable:Add(closeVisualEditorFindDialogSet1, closeFindBehavior)
+        findTable:Add(closeVisualEditorFindDialogSet2, closeFindBehavior)
+
+        AddInputTable(findTable)
     end
 
     action SetupFocus

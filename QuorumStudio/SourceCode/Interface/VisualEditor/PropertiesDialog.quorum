@@ -94,7 +94,7 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
             properties:SetPercentageOriginX(1)
             properties:SetPercentageOriginY(1)
             properties:SetPixelX(controller:GetGlobalX() + controller:GetWidth() - 20)
-            properties:SetPixelY(controller:GetGlobalY() + controller:GetHeight() - 39)
+            properties:SetPixelY(controller:GetGlobalY() + controller:GetHeight() - 20)
         end
         parent:Dialog:Show()
     end
@@ -129,9 +129,16 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
     */
     action FocusField
         nameField:Focus()
+        nameField:Select(0, nameField:GetSize(), true)
     end
 
     action GetSceneController returns VisualSceneController
         return controller
+    end
+
+    action SetNameField(text name)
+        nameField:RemoveTextChangeListener(me)
+        nameField:SetText(name)
+        nameField:AddTextChangeListener(me)
     end
 end

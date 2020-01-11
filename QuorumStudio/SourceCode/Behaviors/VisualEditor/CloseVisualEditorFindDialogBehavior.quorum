@@ -1,0 +1,26 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditorFindDialog
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
+
+class CloseVisualEditorFindDialogBehavior is QuorumStudioBehavior
+    action Run(BehaviorEvent event)
+        if event:GetItem() is VisualEditorFindDialog
+            VisualEditorFindDialog dialog = cast(VisualEditorFindDialog, event:GetItem())
+            VisualSceneController controller = dialog:GetController()
+            
+            InteractableItem item = controller:GetSelection()
+            if item not= undefined
+                item:Focus()
+            else
+                controller:Focus()
+            end
+
+            if dialog:IsShowing()
+                dialog:Hide()
+            end
+        end
+    end
+end

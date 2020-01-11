@@ -3,6 +3,7 @@ package Libraries.Development.Environment.Studio.Behaviors
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditorFindDialog
 
 class OpenVisualEditorFindDialogBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
@@ -19,6 +20,10 @@ class OpenVisualEditorFindDialogBehavior is QuorumStudioBehavior
             return now
         end
 
-        controller:GetFindDialog():Show()
+        VisualEditorFindDialog dialog = controller:GetFindDialog()
+        if dialog:IsShowing() = false
+            dialog:Show()
+        end
+        dialog:FocusField()
     end
 end
