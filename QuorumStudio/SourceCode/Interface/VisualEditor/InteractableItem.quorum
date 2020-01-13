@@ -7,11 +7,16 @@ use Libraries.Game.Graphics.Material
 use Libraries.Game.Graphics.ColorAttribute
 use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Interface.Events.FocusEvent
+use Libraries.Compute.Vector3
 
 class InteractableItem is Model
     
     VisualEditorResources resources
     VisualSceneController controller = undefined
+
+    number scaleX = 1
+    number scaleY = 1
+    number scaleZ = 1
 
     on create
         SetProperty(resources:EDITOR_TAG, undefined)
@@ -74,5 +79,18 @@ class InteractableItem is Model
         colorJson:Add(color:GetBlue())
         colorJson:Add(color:GetAlpha())
         SetProperty("Color", colorJson)
+    end
+
+    action Scale(Vector3 vector)
+        scaleX = scaleX * vector:GetX()
+        scaleY = scaleY * vector:GetY()
+        scaleZ = scaleZ * vector:GetZ()
+        parent:Model:Scale(vector)
+    end
+
+    action ResetScale
+        Vector3 vector
+        vector:Set(1.0 / scaleX, 1.0 / scaleY, 1.0 / scaleZ)
+        Scale(vector)
     end
 end
