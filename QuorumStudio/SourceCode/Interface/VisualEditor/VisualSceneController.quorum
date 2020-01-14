@@ -93,6 +93,8 @@ class VisualSceneController is Control
     // A reference to the find dialog for this controller.
     VisualEditorFindDialog findDialog
 
+    Vector3 previewScale
+
     on create
         FlowLayout layout
         SetLayout(layout)
@@ -112,6 +114,8 @@ class VisualSceneController is Control
 
         selection:Initialize(me)
         findDialog:Initialize(me)
+
+        previewScale:Set(1, 1, 1)
     end
 
     action GetColorPreview returns Color
@@ -393,6 +397,8 @@ class VisualSceneController is Control
     action CancelNewItemPreview(NewItemPreview preview)
         layer:Remove(preview)
 
+        previewScale = preview:GetScale()
+
         // This Dispose call currently does nothing, but if there are any
         // resources that need to be cleaned up, it should be done here.
         preview:Dispose()
@@ -444,6 +450,8 @@ class VisualSceneController is Control
             preview:SetName(GetDefaultItemName(type))
             SetSelection(preview)
         end
+
+        previewScale = preview:GetScale()
 
         // This Dispose call currently does nothing, but if there are any
         // resources that need to be cleaned up, it should be done here.
@@ -659,5 +667,9 @@ class VisualSceneController is Control
 
     action GainedFocus(FocusEvent event)
         SetSelection(undefined)
+    end
+
+    action GetPreviewScale returns Vector3
+        return previewScale
     end
 end
