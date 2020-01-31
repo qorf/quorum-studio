@@ -1,45 +1,42 @@
 {
-    "Camera" : {
-        "Name" : "Main Camera",
-        "Description" : "This is the primary camera used in the game",
-        "Location" : [0,0,0],
-        "Direction" : [0,0,1],
-        "Up" : [0,1,0]
-    },
-    "Physics3D" : {
-        "Enabled" : true,
-        "Gravity" : [0.0, -9.8, 0.0]
-    },
+    "Camera": {
+        "Location": [0.0, 3.0, -5.0], 
+        "Direction": [0.0812242971082316, -0.14067494196243807, 0.9867183865030279], 
+        "Up": [0.011540988753081457, 0.9900558371646848, 0.14020073064979569]
+    }, 
+    "Physics3D": {
+        "Enabled": false, 
+        "Gravity": [0.0, 0.0, 0.0]
+    }, 
     "Models": {
-        "1" : {
-            "Type" : "Cube",
-            "Location" : [-3,0,5],
-            "Size" : [2,2,2],
-            "Color" : [1.0, 0, 0, 1],
-            "Name" : "Cubey McCubeFace",
-            "Description" : "This is the major cube of cubeyness",
-            "Physics" : true,
-            "Responsiveness" : "Responsive"
-        },
-        
-        "2" : {
-            "Type" : "Sphere",
-            "Location" : [3,0,5],
-            "Size" : [3,3,3],
-            "Color" : [0, 1.0, 0, 1],
-            "Name" : "The Sphere",
-            "Description" : "My sphere"
+        "2": {
+            "Name": "The Cube", 
+            "Description": "A red box", 
+            "Location": [-3.0, 0.0, 5.0], 
+            "Size": [2.0, 2.0, 2.0], 
+            "Transform": [1.0, 0.0, 0.0, -3.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 0.0, 0.0, 0.0, 1.0], 
+            "Type": "Cube", 
+            "Color": [1.0, 0, 0, 1]
+        }, 
+        "3": {
+            "Name": "The Sphere", 
+            "Description": "A green sphere", 
+            "Location": [3.0, 0.0, 5.0], 
+            "Size": [2.9881720542907715, 3.0, 2.994080066680908], 
+            "Transform": [1.0, 0.0, 0.0, 3.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 0.0, 0.0, 0.0, 1.0], 
+            "Type": "Sphere", 
+            "Color": [0, 1.0, 0, 1]
         }
-    },
-    "Lights" : {
-        "1" : {
-            "Type" : "Ambient",
-            "Color" : [0.2, 0.2, 0.2, 1]
-        },
-        "2" : {
-            "Type" : "Directional",
-            "Direction" : [1,-4,2],
-            "Color" : [1, 1, 1, 1]
+    }, 
+    "Lights": {
+        "1": {
+            "Type": "Ambient", 
+            "Color": [0.0, 0.0, 0.0, 0.0]
+        }, 
+        "2": {
+            "Type": "Directional", 
+            "Direction": [1.0, -4.0, 2.0], 
+            "Color": [1.0, 1.0, 1.0, 1.0]
         }
     }
 }

@@ -9,6 +9,7 @@ use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Item2D
 use Libraries.Interface.Controls.TextBox
 use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
 
 class SaveBehavior is QuorumStudioBehavior
 
@@ -21,9 +22,12 @@ class SaveBehavior is QuorumStudioBehavior
         TabPaneSelection selection = pane:GetSelection()
         if selection not= undefined
             Tab tab = selection:GetTab()
-            if tab not= undefined and tab is EditorTab
+            if tab is EditorTab
                 EditorTab et = cast(EditorTab, tab)
                 et:Save()
+            elseif tab is VisualEditorTab
+                VisualEditorTab visualTab = cast(VisualEditorTab, tab)
+                visualTab:Save()
             end
         end
     end
