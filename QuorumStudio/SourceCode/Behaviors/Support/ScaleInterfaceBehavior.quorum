@@ -5,6 +5,7 @@ use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.AccessibilityManager
 
 class ScaleInterfaceBehavior is QuorumStudioBehavior
     
@@ -38,6 +39,11 @@ class ScaleInterfaceBehavior is QuorumStudioBehavior
 
         if scale >= 0.1
             studio:SetInterfaceScale(scale)
+
+            AccessibilityManager manager = studio:GetAccessibilityManager()
+            if manager not= undefined
+                manager:Notify(studio:GetFocus(), cast(integer, scale * 100) + "% zoom")
+            end
         end
     end
 
