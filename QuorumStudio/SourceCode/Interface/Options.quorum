@@ -34,6 +34,7 @@ class Options is ProjectListener
     constant text TREE_SELECT = "Tree Select"
     constant text OVERRIDE_STANDARD_LIBRARY_PATH = "Override Standard Library"
     constant text LIBRARY = "Library"
+    constant text MAXIMIZE_WINDOW = "Maximize Window"
 
     File optionsLocation
     File keymapLocation
@@ -269,6 +270,9 @@ class Options is ProjectListener
         notation:Add(WINDOW_HEIGHT, height)
         notation:Add(OVERRIDE_STANDARD_LIBRARY_PATH, overrideLibraryLocation)
         notation:Add(LIBRARY, libraryOverridePath)
+
+        GameStateManager gameStateManager
+        notation:Add(MAXIMIZE_WINDOW, gameStateManager:GetGame():IsWindowMaximized())
         
         //if Quorum Studio instance is not null, write any other behavior 
         //we are interested in storing
@@ -464,6 +468,12 @@ class Options is ProjectListener
         elseif key = LIBRARY
             if object:IsText()
                 libraryOverridePath = object:GetText()
+            end
+        elseif key = MAXIMIZE_WINDOW
+            if object:IsBoolean()
+                boolean maximizeWindow = object:GetBoolean()
+                GameStateManager manager
+                manager:GetGame():SetWindowMaximized(maximizeWindow)
             end
         end
     end
