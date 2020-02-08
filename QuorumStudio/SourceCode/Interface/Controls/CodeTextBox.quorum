@@ -406,16 +406,30 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         end
     end
 
+    action RemoveIndentation
+        if GetSelection():IsEmpty()
+            parent:TextBox:RemoveIndentation()
+        else
+            //if there is a selection it wont replace the selection
+            //instead it will indent the selected lines 
+            GetTextBoxEditManager():SetSpecialAction(true)
+            RemoveMultipleIndentation()
+            GetTextBoxEditManager():SetSpecialAction(false)
+        end
+    end
+
     private action AddMultipleIndentation
         //Get information from the selection to form a new one after
         integer index = GetSelection():GetFirstLine()
+        integer caretLine = GetCaretLine()
         integer stop = GetSelection():GetLastLine()
+        boolean caretAtEnd = GetSelection():IsCaretAtEnd()
         integer newSelectStart = GetSelection():GetStartIndex()
         integer newSelectEnd = GetSelection():GetEndIndex() + GetIndentationStrategy():GetSize() * (stop - index + 1)
         integer newCaretPos = GetCaretPosition()
 
         if newCaretPos not= GetIndexOfLine(GetCaretLine())
-            newCaretPos = newCaretPos + GetIndentationStrategy():GetSize()
+            newCaretPos = newCaretPos + GetIndentationStrategy():GetSize() * (caretLine - index + 1)
             newSelectStart = newSelectStart + GetIndentationStrategy():GetSize()
         end
 
@@ -428,7 +442,52 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         
         //update the caret and update to new selection
         SetCaretPosition(newCaretPos)
-        Select(newSelectStart , newSelectEnd, false)
+        Select(newSelectStart , newSelectEnd, caretAtEnd)
+    end
+
+    private action RemoveMultipleIndentation
+        //Get information from the selection to form a new one after
+        integer startIndex = GetSelection():GetFirstLine()
+        integer stop = GetSelection():GetLastLine()
+        boolean caretAtEnd = GetSelection():IsCaretAtEnd()
+        integer startLineLength = GetLine(startIndex):GetSize()
+        integer startSize = GetSize()
+
+        integer selectionStart = GetSelection():GetStartIndex()
+        integer selectionEnd = GetSelection():GetEndIndex()
+
+        //empty the selection so the inserts can happen properly
+        EmptySelectionEvent(false)
+        integer index = startIndex
+        repeat while index <= stop
+            parent:TextBox:RemoveIndentation(GetIndexOfLine(index) + CountLeadingWhitespaces(index))
+            index = index + 1
+        end
+
+        selectionStart = selectionStart - (startLineLength - GetLine(startIndex):GetSize())
+        selectionEnd = selectionEnd - (startSize - GetSize())
+
+        if caretAtEnd
+            SetCaretPosition(selectionEnd)
+        else
+            SetCaretPosition(selectionStart)
+        end
+        
+        Select(selectionStart, selectionEnd, caretAtEnd)
+    end
+
+    private action CountLeadingWhitespaces(integer line) returns integer
+        text lineText = GetLine(line)
+        integer i = 0
+        repeat while i < lineText:GetSize()
+            if lineText:GetCharacter(i) = " "
+                i = i + 1
+            else
+                return i
+            end
+        end
+
+        return i
     end
 
     action SmartNavigateUp

@@ -17,7 +17,7 @@ import java.util.concurrent.Future;
  */
 public class ThreadRunner {
     public java.lang.Object me_ = null;
-    ExecutorService executor = Executors.newSingleThreadExecutor();
+    ExecutorService executor = new ErrorReportingExecutor(1); //Executors.newSingleThreadExecutor();
     LinkedList<Future<?>> futures = new LinkedList<>();
     public void Add(quorum.Libraries.Interface.Behaviors.Behavior_ action) {
         RunnableBehavior act = new RunnableBehavior(action);
