@@ -11,14 +11,22 @@ use Libraries.Language.Compile.CompilerErrorManager
 use Libraries.Containers.Iterator
 use Libraries.Language.Compile.CompilerError
 use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Interface.AccessibilityManager
+use Libraries.Game.GameStateManager
 
 class SetErrorsBehavior is Behavior
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
     ErrorTab errorTab = undefined
     OutputEditorTabPane outputTabs = undefined
     CompilerErrorManager errors = undefined
     OutputTab out = undefined
     text message = ""
     boolean finished = false
+    GameStateManager manager
 
     action SetMessage(text bm)
         message = bm
@@ -62,21 +70,33 @@ class SetErrorsBehavior is Behavior
 
     action Update(number seconds)
         if not finished
+
+            AccessibilityManager accessibility = manager:GetAccessibilityManager()
+
             if errors:IsCompilationErrorFree()
                 out:Append(message)
                 errorTab:Empty()
                 errorTab:Resize()
-                outputTabs:Select(out)
+                outputTabs:Select(out, false)
+
+                if accessibility not= undefined
+                    accessibility:Notify(manager:GetFocus(), message)
+                end
             else
                 errorTab:Empty()
-                out:Append("I found " + errors:GetErrorAmount() + " errors and have listed them in the errors tab.")
+                text errorMessage = "I found " + errors:GetErrorAmount() + " errors and have listed them in the errors tab."
+                out:Append(errorMessage)
                 Iterator<CompilerError> iterator = errors:GetIterator()
                 repeat while iterator:HasNext()
                     CompilerError error = iterator:Next()
                     errorTab:AddError(error)
                 end
                 errorTab:Resize()
-                outputTabs:Select(errorTab)
+                outputTabs:Select(errorTab, false)
+
+                if accessibility not= undefined
+                    accessibility:Notify(manager:GetFocus(), errorMessage)
+                end
             end
             finished = true
         end

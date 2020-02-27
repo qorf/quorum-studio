@@ -75,6 +75,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
     action OnShow()  
         showing = true
         findField:Focus()
+        
         wholeWord:SetToggleState(textBox:GetIsWholeWord())
         matchCase:SetToggleState(textBox:GetIsMatchCase())
         if (textBox:HasSelection())
@@ -102,6 +103,9 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         previousSet:SetKeyboardInput(keys:F3)
         previousSet:AddModifier(previousSet:SHIFT)
         dialogInputs:Add(previousSet, previousBehavior)
+
+        // Highlight the existing text so the user can easily replace it.
+        findField:Select(0, findField:GetSize())
     end
 
     action Initialize
@@ -343,6 +347,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
 
     action ResetFindFocus
         findField:Focus()
+        findField:Select(0, findField:GetSize())
     end
 
     //Updates the matches label on the Dialog to reflect how many instances of 

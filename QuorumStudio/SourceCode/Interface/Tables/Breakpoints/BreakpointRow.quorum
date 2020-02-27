@@ -2,6 +2,7 @@ package Libraries.Language.Debug
 
 use Libraries.Interface.Controls.TreeTableRow
 use Libraries.System.File
+use Libraries.Containers.Array
 
 class BreakpointRow is TreeTableRow
     text file = ""
@@ -26,7 +27,33 @@ class BreakpointRow is TreeTableRow
     end
 
     action SetFile(text file)
-        me:file = file
+        me:file = Prune(file)
+    end
+
+    private action Prune(text file) returns text
+        text source = "SourceCode"
+        Array<text> value = file:Split(source)
+        if value not= undefined and value:GetSize() > 1
+            text newValue = ""
+            i = 1
+            repeat while i < value:GetSize()
+                newValue = newValue + value:Get(i)
+                i = i + 1
+            end
+
+            text previous = value:Get(0)
+            j = previous:GetSize() - 2
+            repeat while j > 0
+                if previous:GetCharacter(j) = "/" or previous:GetCharacter(j) = "\"
+                    newValue = previous:GetSubtext(j) + source + newValue
+                    return newValue
+                end
+                j = j - 1
+            end
+            return newValue
+        end
+
+        return file
     end
 
     action GetLine returns text

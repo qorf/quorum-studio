@@ -67,8 +67,10 @@ use Libraries.Development.Environment.Studio.Toolbar
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Studio.Behaviors.ButtonPulseBehavior
 use Libraries.Development.Environment.Configuration.Options
+use Libraries.Development.Environment.Projects.ProjectListener
+use Libraries.System.SystemHelper
 
-class BuildManager is DebuggerListener, ProcessListener
+class BuildManager is DebuggerListener, ProcessListener, ProjectListener
     Library library
     constant text DEFAULT_LIBRARY_PATH = "Library/Standard"
     constant text DEFAULT_LIBRARY_OUTPUT_PATH = "Library/Compiled"
@@ -150,6 +152,27 @@ class BuildManager is DebuggerListener, ProcessListener
 
     action SetProjectManager(ProjectManager manager)
         projectManager = manager
+        projectManager:Add(me)
+    end
+
+    action OpenedProject(QuorumProject project)
+        
+    end
+
+    action ClosedProject(QuorumProject project)
+        File location = project:GetLocation()
+        if location not= undefined
+            text value = location:GetAbsolutePath()
+            if goodCompilerResults:HasKey(value)
+                goodCompilerResults:RemoveKey(value)
+            end
+
+            if recentCompilerResults:HasKey(value)
+                recentCompilerResults:RemoveKey(value)
+            end
+        end
+        SystemHelper helper
+        helper:RequestGarbageCollection()
     end
 
     action GetCodeEditorTabPane returns CodeEditorTabPane
@@ -868,6 +891,7 @@ class BuildManager is DebuggerListener, ProcessListener
         constant text quorumJarName = "Quorum.jar"
         constant text quorumStandardLibraryJarName = "QuorumStandardLibrary.jar"
         constant text quorumStandardPluginsJarName = "QuorumStandardPlugins.jar"
+        constant text quorumStandardLibraryJavascriptName = "QuorumStandardLibrary.js"
 
         //first copy in the compiler and the standard library
 
@@ -883,6 +907,10 @@ class BuildManager is DebuggerListener, ProcessListener
         compiledStandardPluginsJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
         compiledStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
 
+        File compiledStandardLibraryJavaScript
+        compiledStandardLibraryJavaScript:SetWorkingDirectory(copyFolder:GetAbsolutePath())
+        compiledStandardLibraryJavaScript:SetPath(quorumStandardLibraryJavascriptName)
+
         File sodbeansQuorumJar
         sodbeansQuorumJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
         sodbeansQuorumJar:SetPath(quorumJarName)
@@ -895,10 +923,15 @@ class BuildManager is DebuggerListener, ProcessListener
         sodbeansStandardPluginsJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
         sodbeansStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
 
+        File sodbeansStandardLibraryJavaScript
+        sodbeansStandardLibraryJavaScript:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
+        sodbeansStandardLibraryJavaScript:SetPath(quorumStandardLibraryJavascriptName)
+
         //copy the jar files
         compiledQuorumJar:Copy(sodbeansQuorumJar)
         compiledStandardLibraryJar:Copy(sodbeansStandardLibraryJar)
         compiledStandardPluginsJar:Copy(sodbeansStandardPluginsJar)
+        compiledStandardLibraryJavaScript:Copy(sodbeansStandardLibraryJavaScript)
 
         //delete library folders if they exist
         if sodbeansLibraryFolder:Exists()
@@ -936,11 +969,16 @@ class BuildManager is DebuggerListener, ProcessListener
         File deploymentStandardPluginsJar
         deploymentStandardPluginsJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
         deploymentStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
+
+        File deploymentStandardLibraryJavaScript
+        deploymentStandardLibraryJavaScript:SetWorkingDirectory(deployFolder:GetAbsolutePath())
+        deploymentStandardLibraryJavaScript:SetPath(quorumStandardLibraryJavascriptName)
         
         //copy into the deploy folder
         compiledQuorumJar:Copy(deploymentQuorumJar)
         compiledStandardLibraryJar:Copy(deploymentStandardLibraryJar)
         compiledStandardPluginsJar:Copy(deploymentStandardPluginsJar)
+        compiledStandardLibraryJavaScript:Copy(deploymentStandardLibraryJavaScript)
 
         if copyFolder:Exists()
             copyFolder:Delete(true)
@@ -1065,6 +1103,7 @@ class BuildManager is DebuggerListener, ProcessListener
         if project:IsBytecodeType()
             request:SetOutputType(request:JAVA_BYTECODE)
         elseif project:IsJavascriptType()
+            request:writeJavaScriptToDisk = true
             request:SetOutputType(request:JAVASCRIPT)
         elseif project:IsServerType()
             request:SetWebRequest(true)

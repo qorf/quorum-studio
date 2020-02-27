@@ -22,6 +22,7 @@ use Libraries.Interface.Events.TreeChangeEvent
 use Libraries.Game.InputTable
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Game.InputSet
+use Libraries.Interface.AccessibilityManager
 
 class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListener
     ProjectManager manager = undefined
@@ -33,7 +34,13 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
         AddTreeChangeListener(me)
     end
 
-    action OnFocus
+    action GainedFocus(FocusEvent event)
+        if IsEmpty() and studio not= undefined
+            AccessibilityManager accessibility = studio:GetAccessibilityManager()
+            if accessibility not= undefined
+                accessibility:Notify(me, "No projects open")
+            end
+        end
     end
 
     action SetMainApplication(QuorumStudio studio)
