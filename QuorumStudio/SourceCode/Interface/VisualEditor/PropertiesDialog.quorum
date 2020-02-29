@@ -21,6 +21,9 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
     // Controls used on the dialog itself
     Label nameLabel = undefined
     TextField nameField = undefined
+    TextField positionXField = undefined
+    TextField positionYField = undefined
+    TextField positionZField = undefined
 
     action Initialize(VisualSceneController controller)
         if initialized
@@ -83,6 +86,67 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         nameContainer:Add(nameField)
         panel:Add(nameContainer)
 
+        Label positionLabel
+        
+        TextField positionXField
+        me:positionXField = positionXField
+
+        TextField positionYField
+        me:positionYField = positionYField
+
+        TextField positionZField
+        me:positionZField = positionZField
+
+        FlowLayout positionLayout
+        Control positionContainer
+        positionContainer:SetLayout(positionLayout)
+        positionContainer:SetPercentageWidth(1.0)
+        positionContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        positionContainer:SetLeftPadding(20)
+        positionContainer:SetTopPadding(20)
+        positionContainer:SetRightPadding(30)
+        positionContainer:SetBottomPadding(20)
+
+        positionLabel:SetText("Position:")
+        positionLabel:SetRightPadding(10)
+        positionContainer:Add(positionLabel)
+        
+        FlowLayout positionFieldLayout
+        Control positionFieldContainer
+        positionFieldContainer:SetLayout(positionFieldLayout)
+
+        positionFieldContainer:SetHorizontalLayoutMode(positionFieldContainer:FILL)
+        positionFieldContainer:SetName("Position Fields")
+        positionXField:SetName("X")
+        positionXField:SetText("")
+        positionXField:SetFocusable(true)
+        positionXField:AddTextChangeListener(me)
+        positionXField:SetRightPadding(8)
+        positionXField:SetPercentageWidth(0.33)
+        positionXField:SetPixelWidth(-8)
+        positionFieldContainer:Add(positionXField)
+
+        positionYField:SetName("Y")
+        positionYField:SetText("")
+        positionYField:SetFocusable(true)
+        positionYField:AddTextChangeListener(me)
+        positionYField:SetRightPadding(8)
+        positionYField:SetPercentageWidth(0.33)
+        positionYField:SetPixelWidth(-8)
+        positionFieldContainer:Add(positionYField)
+
+        positionZField:SetName("Z")
+        positionZField:SetText("")
+        positionZField:SetFocusable(true)
+        positionZField:AddTextChangeListener(me)
+        positionZField:SetRightPadding(8)
+        positionZField:SetPercentageWidth(0.33)
+        positionZField:SetPixelWidth(-8)
+        positionFieldContainer:Add(positionZField)
+
+        positionContainer:Add(positionFieldContainer)
+        panel:Add(positionContainer)
+
         Add(panel)
     end
 
@@ -107,7 +171,7 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
                     Hide()
                 end
             else
-                nameField:SetText(selection:GetSelection():GetName())
+                SetFields(selection:GetSelection())
                 if not IsShowing()
                     Show()
                 end
@@ -115,10 +179,52 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         end
     end
 
+    action SetFields(InteractableItem item)
+        nameField:SetText(item:GetName())
+        positionXField:SetText("" + item:GetX())
+        positionYField:SetText("" + item:GetY())
+        positionZField:SetText("" + item:GetZ())
+    end
+
     action TextChanged(TextChangeEvent event)
         InteractableItem currentItem = controller:GetSelection()
-        if currentItem not= undefined and nameField:GetText() not= currentItem:GetName()
-            currentItem:SetName(nameField:GetText())
+        Control control = event:GetControl()
+
+        if currentItem = undefined
+            return now
+        end
+
+        if control:Equals(nameField)
+            if nameField:GetText() not= currentItem:GetName()
+                currentItem:SetName(nameField:GetText())
+            end
+        elseif control:Equals(positionXField)
+            check
+                number value = positionXField:GetText():ParseNumber()
+                if value not= currentItem:GetX()
+                    currentItem:SetX(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(positionYField)
+            check
+                number value = positionYField:GetText():ParseNumber()
+                if value not= currentItem:GetY()
+                    currentItem:SetY(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(positionZField)
+            check
+                number value = positionZField:GetText():ParseNumber()
+                if value not= currentItem:GetZ()
+                    currentItem:SetZ(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
         end
     end
 
