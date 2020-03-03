@@ -1,5 +1,6 @@
 package Libraries.Development.Environment.Studio.Interface.VisualEditor
 
+use Libraries.Containers.Array
 use Libraries.Interface.Controls.Dialog
 use Libraries.Interface.Events.SelectionListener
 use Libraries.Interface.Events.TextChangeListener
@@ -24,6 +25,9 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
     TextField positionXField = undefined
     TextField positionYField = undefined
     TextField positionZField = undefined
+    TextField scaleXField = undefined
+    TextField scaleYField = undefined
+    TextField scaleZField = undefined
 
     action Initialize(VisualSceneController controller)
         if initialized
@@ -33,6 +37,9 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         SetInputGroup("PropertiesDialog")
 
         initialized = true
+
+        // Used to set focus order at the end of this action.
+        Array<Control> focusArray
 
         me:controller = controller
         controller:SetPropertiesDialog(me)
@@ -84,6 +91,7 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         nameField:SetFocusable(true)
         nameField:AddTextChangeListener(me)
         nameContainer:Add(nameField)
+        focusArray:Add(nameField)
         panel:Add(nameContainer)
 
         Label positionLabel
@@ -144,10 +152,91 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         positionZField:SetPixelWidth(-8)
         positionFieldContainer:Add(positionZField)
 
+        focusArray:Add(positionXField)
+        focusArray:Add(positionYField)
+        focusArray:Add(positionZField)
+
         positionContainer:Add(positionFieldContainer)
         panel:Add(positionContainer)
 
+        Label scaleLabel
+        
+        TextField scaleXField
+        me:scaleXField = scaleXField
+
+        TextField scaleYField
+        me:scaleYField = scaleYField
+
+        TextField scaleZField
+        me:scaleZField = scaleZField
+
+        FlowLayout scaleLayout
+        Control scaleContainer
+        scaleContainer:SetLayout(scaleLayout)
+        scaleContainer:SetPercentageWidth(1.0)
+        scaleContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        scaleContainer:SetLeftPadding(20)
+        scaleContainer:SetTopPadding(20)
+        scaleContainer:SetRightPadding(30)
+        scaleContainer:SetBottomPadding(20)
+
+        scaleLabel:SetText("Scale:")
+        scaleLabel:SetRightPadding(10)
+        scaleContainer:Add(scaleLabel)
+        
+        FlowLayout scaleFieldLayout
+        Control scaleFieldContainer
+        scaleFieldContainer:SetLayout(scaleFieldLayout)
+
+        scaleFieldContainer:SetHorizontalLayoutMode(scaleFieldContainer:FILL)
+        scaleFieldContainer:SetName("Scale Fields")
+        scaleXField:SetName("X Scale")
+        scaleXField:SetText("")
+        scaleXField:SetFocusable(true)
+        scaleXField:AddTextChangeListener(me)
+        scaleXField:SetRightPadding(8)
+        scaleXField:SetPercentageWidth(0.33)
+        scaleXField:SetPixelWidth(-8)
+        scaleFieldContainer:Add(scaleXField)
+
+        scaleYField:SetName("Y Scale")
+        scaleYField:SetText("")
+        scaleYField:SetFocusable(true)
+        scaleYField:AddTextChangeListener(me)
+        scaleYField:SetRightPadding(8)
+        scaleYField:SetPercentageWidth(0.33)
+        scaleYField:SetPixelWidth(-8)
+        scaleFieldContainer:Add(scaleYField)
+
+        scaleZField:SetName("Z Scale")
+        scaleZField:SetText("")
+        scaleZField:SetFocusable(true)
+        scaleZField:AddTextChangeListener(me)
+        scaleZField:SetRightPadding(8)
+        scaleZField:SetPercentageWidth(0.33)
+        scaleZField:SetPixelWidth(-8)
+        scaleFieldContainer:Add(scaleZField)
+
+        focusArray:Add(scaleXField)
+        focusArray:Add(scaleYField)
+        focusArray:Add(scaleZField)
+
+        scaleContainer:Add(scaleFieldContainer)
+        panel:Add(scaleContainer)
+
         Add(panel)
+
+        // Set up focus targets.
+        focusArray:Get(0):SetPreviousFocus(focusArray:Get(focusArray:GetSize() - 1))
+        focusArray:Get(0):SetNextFocus(focusArray:Get(1))
+
+        integer i = 1
+        repeat while i < focusArray:GetSize()
+            Control control = focusArray:Get(i)
+            control:SetPreviousFocus(focusArray:Get(i - 1))
+            control:SetNextFocus(focusArray:Get((i + 1) mod focusArray:GetSize()))
+            i = i + 1
+        end
     end
 
     action Show
@@ -184,6 +273,9 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         positionXField:SetText("" + item:GetX())
         positionYField:SetText("" + item:GetY())
         positionZField:SetText("" + item:GetZ())
+        scaleXField:SetText("" + item:GetScaleX())
+        scaleYField:SetText("" + item:GetScaleY())
+        scaleZField:SetText("" + item:GetScaleZ())
     end
 
     action TextChanged(TextChangeEvent event)
@@ -221,6 +313,45 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
                 number value = positionZField:GetText():ParseNumber()
                 if value not= currentItem:GetZ()
                     currentItem:SetZ(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(scaleXField)
+            check
+                number value = scaleXField:GetText():ParseNumber()
+                if value = 0
+                    return now
+                end
+
+                if value not= currentItem:GetScaleX()
+                    currentItem:SetScaleX(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(scaleYField)
+            check
+                number value = scaleYField:GetText():ParseNumber()
+                if value = 0
+                    return now
+                end
+
+                if value not= currentItem:GetScaleY()
+                    currentItem:SetScaleY(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(scaleZField)
+            check
+                number value = scaleZField:GetText():ParseNumber()
+                if value = 0
+                    return now
+                end
+
+                if value not= currentItem:GetScaleZ()
+                    currentItem:SetScaleZ(value)
                 end
             detect e is Error
                 // Do nothing.
