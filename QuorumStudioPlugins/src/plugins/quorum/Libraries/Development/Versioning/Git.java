@@ -8,8 +8,6 @@ package plugins.quorum.Libraries.Development.Versioning;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.Edit;
@@ -29,7 +27,7 @@ import org.eclipse.jgit.treewalk.FileTreeIterator;
 import quorum.Libraries.Development.Versioning.DiffRequest;
 import quorum.Libraries.Development.Versioning.DiffResult;
 import quorum.Libraries.Development.Versioning.StatusResult;
-import quorum.Libraries.System.File;
+import quorum.Libraries.Development.Versioning.StatusResult_;
 
 /**
  *
@@ -42,26 +40,31 @@ public class Git {
         return null;
     }
     
-    public StatusResult GetStatus(File file) {
+    public StatusResult_ GetStatus(quorum.Libraries.System.File_ file) {
         StatusResult result = new StatusResult();
         //"/Users/stefika/Repositories/quorum-language/.git"
         Repository repo = GetRepositoryNative(file.GetAbsolutePath());
-        List<DiffEntry> status = GetStatusEntries(repo);
+        DiffFormatter formatter = new DiffFormatter( System.out );
+        formatter.setRepository(repo);
+        
+        List<DiffEntry> status = GetStatusEntries(repo, formatter);
         
         for( DiffEntry entry : status ) {
                 String newPath = entry.getNewPath();
                 quorum.Libraries.Development.Versioning.DiffEntry qEntry = new quorum.Libraries.Development.Versioning.DiffEntry();
                 qEntry.SetLocation(newPath);
                 
-                FileHeader fileHeader = GetFileHeader(repo, entry);
-                EditList edits = fileHeader.toEditList();
-                Iterator<Edit> iterator = edits.iterator();
-                while(iterator.hasNext()) {
-                    Edit edit = iterator.next();
-                    quorum.Libraries.Development.Versioning.DiffResult res = new quorum.Libraries.Development.Versioning.DiffResult();
-                    res.startLine = edit.getBeginA();
-                    res.endLine = edit.getEndA();
-                    qEntry.results.Add(res);
+                FileHeader fileHeader = GetFileHeader(formatter, entry);
+                if(fileHeader != null) {
+                    EditList edits = fileHeader.toEditList();
+                    Iterator<Edit> iterator = edits.iterator();
+                    while(iterator.hasNext()) {
+                        Edit edit = iterator.next();
+                        quorum.Libraries.Development.Versioning.DiffResult res = new quorum.Libraries.Development.Versioning.DiffResult();
+                        res.startLine = edit.getBeginA();
+                        res.endLine = edit.getEndA();
+                        qEntry.results.Add(res);
+                    }
                 }
             }
         
@@ -69,10 +72,8 @@ public class Git {
         return result;
     }
     
-    public FileHeader GetFileHeader(Repository repository, DiffEntry entry) {
+    public FileHeader GetFileHeader(DiffFormatter formatter, DiffEntry entry) {
         try {
-            DiffFormatter formatter = new DiffFormatter( System.out );
-            formatter.setRepository(repository);
             FileHeader fileHeader = formatter.toFileHeader(entry);
             return fileHeader;
         } catch (IOException ex) {
@@ -92,11 +93,8 @@ public class Git {
         return null;
     }
     
-    public List<DiffEntry> GetStatusEntries(Repository repository) {
+    public List<DiffEntry> GetStatusEntries(Repository repository, DiffFormatter formatter) {
         try {
-            DiffFormatter formatter = new DiffFormatter( System.out );
-            formatter.setRepository(repository);
-            
             ObjectId lastCommitId = repository.resolve(Constants.HEAD);
             AbstractTreeIterator commitTreeIterator = prepareTreeParser( repository,  lastCommitId );
             FileTreeIterator workTreeIterator = new FileTreeIterator(repository);
