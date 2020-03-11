@@ -5,6 +5,7 @@
  */
 package plugins.quorum.Libraries.Development.Versioning;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
@@ -25,9 +26,13 @@ import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
 import quorum.Libraries.Development.Versioning.DiffRequest;
+import quorum.Libraries.Development.Versioning.DiffRequest_;
 import quorum.Libraries.Development.Versioning.DiffResult;
+import quorum.Libraries.Development.Versioning.DiffResult_;
+import quorum.Libraries.Development.Versioning.Repository_;
 import quorum.Libraries.Development.Versioning.StatusResult;
 import quorum.Libraries.Development.Versioning.StatusResult_;
+import quorum.Libraries.System.File_;
 
 /**
  *
@@ -36,7 +41,93 @@ import quorum.Libraries.Development.Versioning.StatusResult_;
 public class Git {
     public java.lang.Object me_ = null;
     
-    public DiffResult RequestDiffNative(DiffRequest request) {
+    public DiffResult_ RequestDiff(Repository_ repository, DiffRequest_ request) {
+        
+        quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) repository;
+        org.eclipse.jgit.lib.Repository plugin = repo.plugin_.getRepository();
+        File directory = plugin.getDirectory();
+        
+        DiffFormatter formatter = new DiffFormatter( System.out );
+        formatter.setRepository(plugin);
+        List<DiffEntry> status = GetStatusEntries(plugin, formatter);
+        for( DiffEntry entry : status ) {
+                String newPath = directory.getParentFile().getAbsolutePath() + File.separatorChar + entry.getNewPath();
+                
+                //System.out.println(newPath);
+                if(newPath != null && newPath.compareTo(request.GetFile().GetAbsolutePath()) == 0) {
+                    quorum.Libraries.Development.Versioning.DiffResult resultForFile = new quorum.Libraries.Development.Versioning.DiffResult();
+                    //qEntry.SetLocation(newPath);
+                    
+                    FileHeader fileHeader = GetFileHeader(formatter, entry);
+                    if(fileHeader != null) {
+                        EditList edits = fileHeader.toEditList();
+                        Iterator<Edit> iterator = edits.iterator();
+                        while(iterator.hasNext()) {
+                            Edit edit = iterator.next();
+                            quorum.Libraries.Development.Versioning.DiffEdit res = new quorum.Libraries.Development.Versioning.DiffEdit();
+                            DiffEntry.ChangeType change = entry.getChangeType();
+                            if(null != change) switch (change) {
+                                case ADD:
+                                    break;
+                                case MODIFY:
+                                    break;
+                                case DELETE:
+                                    break;
+                                default:
+                                    break;
+                            }
+                            
+                            res.startLine = edit.getBeginA();
+                            res.endLine = edit.getEndB();
+                            resultForFile.GetEdits().Add(res);
+                        }
+                        return resultForFile;
+                    }
+                }
+                
+            }
+        
+        return null;
+    }
+    
+    
+    
+    public Repository_ OpenRepository(File_ file) {
+        try {
+            FileRepositoryBuilder repositoryBuilder = new FileRepositoryBuilder();
+            repositoryBuilder.setMustExist( true );
+            String value = file.GetAbsolutePath();
+            repositoryBuilder.setGitDir(new java.io.File(value));
+            Repository repository = repositoryBuilder.build();
+            
+            quorum.Libraries.Development.Versioning.Repository repo = new quorum.Libraries.Development.Versioning.Repository();
+            repo.plugin_.setRepository(repository);
+            
+            return repo;
+        } catch (IOException ex) {
+        }
+        return null;
+    }
+    
+    public Repository_ FindRepository(File_ file) {
+        try {
+            FileRepositoryBuilder repositoryBuilder = new FileRepositoryBuilder();
+            repositoryBuilder.setMustExist( true );
+            String value = file.GetAbsolutePath();
+            FileRepositoryBuilder findGitDir = repositoryBuilder.findGitDir(new java.io.File(value));
+            findGitDir.setMustExist( true );
+            File gitDir = findGitDir.getGitDir();
+            if(gitDir == null) {
+                return null;
+            }
+            Repository repository = findGitDir.build();
+            
+            quorum.Libraries.Development.Versioning.Repository repo = new quorum.Libraries.Development.Versioning.Repository();
+            repo.plugin_.setRepository(repository);
+            
+            return repo;
+        } catch (IOException ex) {
+        }
         return null;
     }
     
@@ -60,10 +151,10 @@ public class Git {
                     Iterator<Edit> iterator = edits.iterator();
                     while(iterator.hasNext()) {
                         Edit edit = iterator.next();
-                        quorum.Libraries.Development.Versioning.DiffResult res = new quorum.Libraries.Development.Versioning.DiffResult();
-                        res.startLine = edit.getBeginA();
-                        res.endLine = edit.getEndA();
-                        qEntry.results.Add(res);
+                       // quorum.Libraries.Development.Versioning.DiffResult res = new quorum.Libraries.Development.Versioning.DiffResult();
+                       // res.startLine = edit.getBeginA();
+                       // res.endLine = edit.getEndA();
+                       // qEntry.results.Add(res);
                     }
                 }
             }
