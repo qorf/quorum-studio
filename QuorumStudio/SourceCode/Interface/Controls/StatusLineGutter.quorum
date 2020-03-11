@@ -1,0 +1,115 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Containers.Array
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.Gutter
+use Libraries.Interface.Controls.TextBox
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.Glyph
+use Libraries.Development.Versioning.Git
+use Libraries.System.File
+use Libraries.Development.Versioning.StatusResult
+use Libraries.Development.Versioning.DiffResult
+use Libraries.Containers.HashTable
+use Libraries.Development.Versioning.DiffEdit
+
+class StatusLineGutter is Gutter
+    Color color
+    on create
+        LayoutProperties properties = GetDefaultLayoutProperties()
+        properties:SetLeftPadding(12)
+        properties:SetRightPadding(8)
+
+        properties:SetBackgroundColor(color:CustomColor(255.0/255.0, 255.0/255.0, 255.0/255.0, 0.0))
+        properties:SetBorderColor(color:CustomColor(142.0/255.0, 142.0/255.0, 142.0/255.0, 0.0))
+        properties:SetBorderThickness(1)
+        properties:SetBorderStyle(properties:RIGHT)
+    end
+
+    Array<Drawable> drawables
+    
+    Color hintColor = color:CustomColor(246/255.0, 217/255.0, 87/255.0,1)
+    Color gitModifiedColor = color:CustomColor(160/255.0, 200/255.0, 255/255.0,1)
+    Color gitAddedColor = color:CustomColor(150/255.0, 255/255.0, 150/255.0,1)
+    Color gitRemovedColor = color:CustomColor(255/255.0, 160/255.0, 180/255.0,1)
+
+    DiffResult result = undefined
+    action UpdateVisuals(integer startLine, integer totalLines, number lineHeight)
+        Empty()
+
+        
+        TextBox textBox = GetTextBox()
+        integer fontSize = textBox:GetFontSize()
+        Font font = textBox:GetFont()
+        LayoutProperties properties = GetCurrentLayoutProperties()
+        if properties = undefined
+            properties = GetDefaultLayoutProperties()
+        end
+
+        text linesInText = "" + textBox:GetLineCount()
+        integer glyphsRequired = 2
+        /*
+        We assume the space required for the "0" glyph is a good predictor of
+        the space used for each glyph in the font. For monospaced fonts this
+        will be accurate and the choice of glyph is arbitrary. For other fonts,
+        this is only an approximation, which may require some extra space via
+        padding in order to look correct.
+        */
+        Drawable firstLabel = GetDrawable(0)
+        number rightPadding = properties:GetRightPadding()
+        number leftPadding = properties:GetLeftPadding()
+        Glyph glyph = font:GetGlyph("0")
+        number width = glyph:horizontalAdvance * 1.5 + properties:GetLeftPadding() + rightPadding
+        integer descent = font:GetMaximumDescent()
+        
+        integer counter = 0
+        number y = textBox:GetHeight()
+        repeat while counter < totalLines and y > -lineHeight
+            Drawable drawable = GetDrawable(counter)
+            integer myWidth = cast(integer, width - rightPadding - leftPadding)
+            integer myHeight = cast(integer, lineHeight - 2)
+            drawable:SetSize(myWidth, myHeight)
+            drawable:SetColor(gitAddedColor)
+            drawable:SetPosition(width - drawable:GetWidth() - rightPadding, y + descent + 1)
+
+            if result not= undefined
+                HashTable<integer, DiffEdit> edits = result:GetHashedEdits()
+                if edits:HasKey(counter + startLine)
+                    Add(drawable)
+                end
+            end
+            //if counter = 1 or counter = 15 or counter = 2 or counter = 3
+                
+            //end
+            y = y - lineHeight
+            counter = counter + 1
+        end
+
+        SetSize(width, textBox:GetHeight() + lineHeight)
+    end
+ 
+    private action GetDrawable(integer index) returns Drawable
+        if drawables:GetSize() <= index or drawables:Get(index) = undefined
+            Drawable drawable
+            
+            color = color:White()
+            drawable:LoadFilledRectangle(1,1, color)
+            drawables:Add(index, drawable)
+            return drawable
+        else
+            return drawables:Get(index)
+        end
+    end
+    action GetDiffResult returns DiffResult
+        return result
+    end
+
+    action SetDiffResult(DiffResult result)
+        me:result = result
+        result:HashEdits()
+    end
+
+end

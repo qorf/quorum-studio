@@ -69,6 +69,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     Array<Token> lexer = undefined
     Lexer categories
     LineNumberGutter gutter
+    StatusLineGutter statusGutter
     EditorTab tab = undefined
 
     Array<text> findReplaceNames
@@ -92,7 +93,9 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         caretColor:SetColor(233.0/255.0, 239.0/255.0, 248.0/255.0, 1.0)
         breakpointColor:SetColor(252.0/255.0, 157.0/255.0, 159.0/255.0, 1.0)
         Add(gutter)
+        Add(statusGutter)
         gutter:AddGutterListener(me)
+        statusGutter:AddGutterListener(me)
         SetPopupMenu(GeneratePopupMenu())
         SetMoveFocusOnTab(false)
     end
@@ -1410,4 +1413,8 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
 
         parent:TextBox:Dispose()
     end
+    action GetStatusGutter returns StatusLineGutter
+        return statusGutter
+    end
+
 end

@@ -1,22 +1,39 @@
 package Libraries.Development.Versioning
+use Libraries.Containers.Array
+use Libraries.Containers.HashTable
 
 class DiffResult
-    integer startLine = -1
-    integer endLine = -1
-    action GetStartLine returns integer
-        return startLine
+    Array<DiffEdit> edits
+    HashTable<integer, DiffEdit> hashedEdits = undefined
+
+    action GetEdits returns Array<DiffEdit>
+        return edits
     end
 
-    action SetStartLine(integer startLine)
-        me:startLine = startLine
+    action SetEdits(Array<DiffEdit> edits)
+        me:edits = edits
     end
 
-    action GetEndLine returns integer
-        return endLine
+    action HashEdits
+        HashTable<integer, DiffEdit> hashedEdits2
+        hashedEdits = hashedEdits2
+        i = 0
+        repeat while i < edits:GetSize()
+            DiffEdit edit = edits:Get(i)
+            integer counter = edit:GetStartLine()
+            repeat while counter < edit:GetEndLine()
+                hashedEdits:Add(counter, edit)
+                counter = counter + 1
+            end
+            
+            i = i + 1
+        end
+
+        
     end
 
-    action SetEndLine(integer endLine)
-        me:endLine = endLine
+    action GetHashedEdits returns HashTable<integer, DiffEdit>
+        return hashedEdits
     end
 
 end

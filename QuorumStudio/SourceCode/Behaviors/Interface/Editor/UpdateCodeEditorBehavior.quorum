@@ -28,6 +28,8 @@ use Libraries.Language.Compile.Symbol.Variable
 use Libraries.Language.Compile.Location
 use Libraries.System.DateTime
 use Libraries.Language.Compile.Hints.UseHint
+use Libraries.Development.Versioning.DiffResult
+use Libraries.Development.Environment.Studio.Interface.StatusLineGutter
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
     //CompilerResult compilerResult = undefined
@@ -45,6 +47,8 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     text projectKey = ""
     text helpPathComparison = undefined
     CodeTextBox box = undefined
+    DiffResult diffResult = undefined
+
     /*
         
     */
@@ -91,6 +95,8 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         Library library = manager:GetLibrary()
         CompilerResult compilerResult = manager:GetRecentCompilerResult(projectKey)
         Lexer lexer = compilerResult:lexers:GetValue(path:GetAbsolutePath())
+        StatusLineGutter statusGutter = box:GetStatusGutter()
+        statusGutter:SetDiffResult(diffResult)
 
         if lexer = undefined
             return now
@@ -405,4 +411,12 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     action SetProjectKey(text projectKey)
         me:projectKey = projectKey
     end
+    action GetDiffResult returns DiffResult
+        return diffResult
+    end
+
+    action SetDiffResult(DiffResult diffResult)
+        me:diffResult = diffResult
+    end
+
 end
