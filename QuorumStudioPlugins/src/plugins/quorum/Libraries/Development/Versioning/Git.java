@@ -65,21 +65,20 @@ public class Git {
                         while(iterator.hasNext()) {
                             Edit edit = iterator.next();
                             quorum.Libraries.Development.Versioning.DiffEdit res = new quorum.Libraries.Development.Versioning.DiffEdit();
-                            DiffEntry.ChangeType change = entry.getChangeType();
+                            Edit.Type change = edit.getType();
+                            
                             if(null != change) switch (change) {
-                                case ADD:
+                                case INSERT:
                                     res.SetEditType(0);
                                     break;
-                                case MODIFY:
+                                case REPLACE:
                                     res.SetEditType(1);
                                     break;
                                 case DELETE:
                                     res.SetEditType(2);
                                     break;
-                                case COPY:
+                                case EMPTY:
                                     res.SetEditType(3);
-                                case RENAME:
-                                    res.SetEditType(4);
                                 default:
                                     break;
                             }
