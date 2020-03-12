@@ -68,11 +68,18 @@ public class Git {
                             DiffEntry.ChangeType change = entry.getChangeType();
                             if(null != change) switch (change) {
                                 case ADD:
+                                    res.SetEditType(0);
                                     break;
                                 case MODIFY:
+                                    res.SetEditType(1);
                                     break;
                                 case DELETE:
+                                    res.SetEditType(2);
                                     break;
+                                case COPY:
+                                    res.SetEditType(3);
+                                case RENAME:
+                                    res.SetEditType(4);
                                 default:
                                     break;
                             }
