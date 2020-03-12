@@ -15,6 +15,7 @@ use Libraries.Development.Versioning.StatusResult
 use Libraries.Development.Versioning.DiffResult
 use Libraries.Containers.HashTable
 use Libraries.Development.Versioning.DiffEdit
+use Libraries.Development.Versioning.GitConstants
 
 class StatusLineGutter is Gutter
     Color color
@@ -36,6 +37,7 @@ class StatusLineGutter is Gutter
     Color gitAddedColor = color:CustomColor(150/255.0, 255/255.0, 150/255.0,1)
     Color gitRemovedColor = color:CustomColor(255/255.0, 160/255.0, 180/255.0,1)
 
+    GitConstants gitConstants
     DiffResult result = undefined
     action UpdateVisuals(integer startLine, integer totalLines, number lineHeight)
         Empty()
@@ -72,12 +74,24 @@ class StatusLineGutter is Gutter
             integer myWidth = cast(integer, width - rightPadding - leftPadding)
             integer myHeight = cast(integer, lineHeight - 2)
             drawable:SetSize(myWidth, myHeight)
-            drawable:SetColor(gitAddedColor)
+            
             drawable:SetPosition(width - drawable:GetWidth() - rightPadding, y + descent + 1)
 
             if result not= undefined
                 HashTable<integer, DiffEdit> edits = result:GetHashedEdits()
                 if edits:HasKey(counter + startLine)
+
+                    DiffEdit edit = edits:GetValue(counter + startLine)
+                    integer type = edit:GetEditType()
+                    if type = gitConstants:EDIT_INSERT
+                        drawable:SetColor(gitAddedColor)
+                    elseif type = gitConstants:EDIT_REPLACE
+                        drawable:SetColor(gitModifiedColor)
+                    elseif type = gitConstants:EDIT_DELETE
+                        drawable:SetColor(gitRemovedColor)
+                    elseif type = gitConstants:EDIT_EMPTY
+                        drawable:SetColor(gitModifiedColor)
+                    end
                     Add(drawable)
                 end
             end
