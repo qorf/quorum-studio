@@ -78,22 +78,43 @@ class StatusLineGutter is Gutter
             drawable:SetPosition(width - drawable:GetWidth() - rightPadding, y + descent + 1)
 
             if result not= undefined
-                HashTable<integer, DiffEdit> edits = result:GetHashedEdits()
-                if edits:HasKey(counter + startLine)
-
-                    DiffEdit edit = edits:GetValue(counter + startLine)
+                a = 5
+                Array<DiffEdit> edits = result:GetEdits()
+                if edits:GetSize() > counter + startLine
+                    DiffEdit edit = edits:Get(counter + startLine)
                     integer type = edit:GetEditType()
                     if type = gitConstants:EDIT_INSERT
                         drawable:SetColor(gitAddedColor)
-                    elseif type = gitConstants:EDIT_REPLACE
+                        Add(drawable)
+                    elseif type = gitConstants:EDIT_CHANGE
                         drawable:SetColor(gitModifiedColor)
+                        Add(drawable)
                     elseif type = gitConstants:EDIT_DELETE
                         drawable:SetColor(gitRemovedColor)
-                    elseif type = gitConstants:EDIT_EMPTY
-                        drawable:SetColor(gitModifiedColor)
+                        Add(drawable)
+                    elseif type = gitConstants:EDIT_EQUAL
+                        //drawable:SetColor(gitModifiedColor)
                     end
-                    Add(drawable)
+                    
                 end
+
+
+//                HashTable<integer, DiffEdit> edits = result:GetHashedEdits()
+//                if edits:HasKey(counter + startLine)
+//
+//                    DiffEdit edit = edits:GetValue(counter + startLine)
+//                    integer type = edit:GetEditType()
+//                    if type = gitConstants:EDIT_INSERT
+//                        drawable:SetColor(gitAddedColor)
+//                    elseif type = gitConstants:EDIT_CHANGE
+//                        drawable:SetColor(gitModifiedColor)
+//                    elseif type = gitConstants:EDIT_DELETE
+//                        drawable:SetColor(gitRemovedColor)
+//                    elseif type = gitConstants:EDIT_EQUAL
+//                        drawable:SetColor(gitModifiedColor)
+//                    end
+//                    Add(drawable)
+//                end
             end
             //if counter = 1 or counter = 15 or counter = 2 or counter = 3
                 
@@ -123,7 +144,7 @@ class StatusLineGutter is Gutter
 
     action SetDiffResult(DiffResult result)
         me:result = result
-        result:HashEdits()
+        //result:HashEdits()
     end
 
 end
