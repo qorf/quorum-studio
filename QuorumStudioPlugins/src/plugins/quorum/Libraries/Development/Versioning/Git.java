@@ -82,7 +82,8 @@ public class Git {
                     treeWalk.setRecursive(true);
                     treeWalk.setFilter(PathFilter.create(relativePath));
                     if (!treeWalk.next()) {
-                        throw new IllegalStateException("Did not find expected file "+relativePath+"");
+                        revWalk.dispose();
+                        return null;
                     }
 
                     ObjectId objectId = treeWalk.getObjectId(0);
