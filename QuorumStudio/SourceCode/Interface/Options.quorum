@@ -16,11 +16,18 @@ use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Game.GameStateManager
 use Libraries.Game.DesktopApplication
 use Libraries.Game.DesktopConfiguration
+use Libraries.Security.Cryptography
+use Libraries.Development.Environment.Projects.Credentials
 
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
     constant text KEYMAP_FILE = "Configuration/KeyMap.json"
+    constant text PASSWORDS_FILE = "Configuration/passwords.encrypt"
     constant text PROJECTS_LOCATION = "Projects Folder"
+    constant text PASSWORDS_PROJECTS = "Projects"
+    constant text PASSWORDS_USERNAME = "username"
+    constant text PASSWORDS_PASSWORD = "password"
+
     constant text OPEN_PROJECTS = "Open Projects"
     constant text OPEN_FILES = "Open Files"
     constant text BREAKPOINTS = "Breakpoints"
@@ -35,14 +42,18 @@ class Options is ProjectListener
     constant text OVERRIDE_STANDARD_LIBRARY_PATH = "Override Standard Library"
     constant text LIBRARY = "Library"
     constant text MAXIMIZE_WINDOW = "Maximize Window"
+    constant text LOCAL_PASSWORD_ENCRYPTION_KEY = "KbPdSgVkYp3s6v9y$B&E)H@McQfThWmZ"
 
     File optionsLocation
     File keymapLocation
+    File passwordsLocation
     File projectsLocation
     boolean placeConfigInAppDataOnWindows = true
     boolean placeConfigInApplicationSupportOnMac = true
     boolean overrideLibraryLocation = false
     text libraryOverridePath = ""
+
+    HashTable<text, Credentials> passwords
 
     action IsOverridingStandardLibrary returns boolean
         return overrideLibraryLocation
@@ -81,6 +92,11 @@ class Options is ProjectListener
             newKeyMapFile:SetPath("KeyMap.json")
             keymapLocation = newKeyMapFile
 
+            File newPasswordsFile
+            newPasswordsFile:SetWorkingDirectory(file:GetAbsolutePath())
+            newPasswordsFile:SetPath("passwords.encrypt")
+            passwordsLocation = newPasswordsFile
+
             projLocation = prop:GetEnvironmentVariable("USERPROFILE") + "\Documents"
         elseif prop:IsMac() and placeConfigInApplicationSupportOnMac
             text home = prop:GetProperty("user.home")
@@ -101,6 +117,11 @@ class Options is ProjectListener
             newKeyMapFile:SetPath("KeyMap.json")
             keymapLocation = newKeyMapFile
 
+            File newPasswordsFile
+            newPasswordsFile:SetWorkingDirectory(file:GetAbsolutePath())
+            newPasswordsFile:SetPath("passwords.encrypt")
+            passwordsLocation = newPasswordsFile
+
             projLocation = prop:GetEnvironmentVariable("HOME")
         else
             File file
@@ -113,6 +134,7 @@ class Options is ProjectListener
 
             optionsLocation:SetPath(OPTIONS_FILE)
             keymapLocation:SetPath(KEYMAP_FILE)
+            passwordsLocation:SetPath(PASSWORDS_FILE)
         end
         projectsLocation:SetWorkingDirectory(projLocation)
         projectsLocation:SetPath("Quorum Studio")
@@ -199,6 +221,10 @@ class Options is ProjectListener
         return optionsLocation
     end
 
+    action GetPasswordsFile returns File
+        return passwordsLocation
+    end
+
     action GetProjectsFolder returns File
         return projectsLocation
     end
@@ -235,7 +261,82 @@ class Options is ProjectListener
             ProcessKey(obj)
             i = i + 1
         end
+        ReadPasswords()
     end
+
+    private action ReadPasswords
+        File encryptedPasswords = GetPasswordsFile()
+
+        //if the user doesn't have a passwords file, no biggy
+        if not encryptedPasswords:Exists()
+            return now
+        end
+
+        Cryptography crypto
+        text passwordsJSON = crypto:Decrypt(LOCAL_PASSWORD_ENCRYPTION_KEY, encryptedPasswords)
+        output passwordsJSON
+        JavaScriptObjectNotation notation
+        notation:Read(passwordsJSON)
+
+        i = 0
+        repeat while i < notation:GetSize()
+            JavaScriptObjectNotation obj = notation:Get(i)
+            ProcessPasswordsKey(obj)
+            i = i + 1
+        end
+    end
+
+    private action ProcessPasswordsKey(JavaScriptObjectNotation object)
+        text key = object:GetKey()
+        text textMessage = "Could not load property " + key + ", as its value was not of type text."
+        text booleanMessage = "Could not load property " + key + ", as its value was not of type boolean."
+        if key = PASSWORDS_PROJECTS
+            if object:IsEmpty()
+                return now
+            end
+
+            i = 0
+            repeat while i < object:GetSize()
+                JavaScriptObjectNotation value = object:Get(i)
+                text projectKey = value:GetKey()
+                text username = value:GetValue(PASSWORDS_USERNAME)
+                text password = value:GetValue(PASSWORDS_PASSWORD)
+                Credentials credentials
+                credentials:SetUsername(username)
+                credentials:SetPassword(password)
+                me:passwords:Add(projectKey, credentials)
+                i = i + 1
+            end
+        end
+    end
+
+    private action WritePasswords
+        if passwords:IsEmpty()
+            return now
+        end
+
+        File file = GetPasswordsFile()
+        JavaScriptObjectNotation notation
+        JavaScriptObjectNotation projects
+        notation:SetPrettyPrint(true)
+        
+        notation:Add(PASSWORDS_PROJECTS, projects)
+
+        Iterator<text> iterator = passwords:GetKeyIterator()
+        repeat while iterator:HasNext()
+            text next = iterator:Next()
+            Credentials credentials = passwords:GetValue(next)
+            JavaScriptObjectNotation item
+            item:SetKey(next)
+            item:Add(PASSWORDS_USERNAME, credentials:GetUsername())
+            item:Add(PASSWORDS_PASSWORD, credentials:GetPassword())
+            projects:Add(item)
+        end
+
+        Cryptography crypto
+        crypto:Encrypt(LOCAL_PASSWORD_ENCRYPTION_KEY, notation:ToText(), file)
+    end
+
 
     private action JSONValueProcessor(text value) returns text
         text result = value
@@ -326,6 +427,7 @@ class Options is ProjectListener
         //sanitize the input first
         value = value:Replace("\", "\\")
         file:Write(value)
+        WritePasswords()
     end
 
     private action ProcessKey(JavaScriptObjectNotation object)
