@@ -69,6 +69,10 @@ use Libraries.Development.Environment.Studio.Behaviors.ButtonPulseBehavior
 use Libraries.Development.Environment.Configuration.Options
 use Libraries.Development.Environment.Projects.ProjectListener
 use Libraries.System.SystemHelper
+use Libraries.Development.Versioning.Repository
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.DiffRequest
+use Libraries.Development.Versioning.DiffResult
 
 class BuildManager is DebuggerListener, ProcessListener, ProjectListener
     Library library
@@ -768,6 +772,8 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
             goodCompilerResults:Add(value, result)
         end
 
+        
+
         recentCompilerResults:Add(value, result)
         CodeTextBox box = info:box
         if box not= undefined
@@ -776,7 +782,19 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
             //updater:SetBuildInformation(info)
             updater:SetBuildManager(me)
             updater:SetProjectKey(value)
-            //updater:SetCompilerResult(result)
+            
+            boolean hasGit = project:HasGitSupport()
+            if hasGit //if it has Git support, do a diff on the file and update accordingly
+                Repository repository = project:GetGitRepository()
+                Git git = project:GetGit()
+                DiffRequest req
+                req:SetFile(theFileCompiled)
+                text currentText = box:GetText()
+                req:SetCurrentText(currentText)
+                DiffResult res = git:RequestDiff(repository, req)
+                updater:SetDiffResult(res)
+                a = 5
+            end
             updater:SetPath(info:recompile)
             box:AddBehavior(updater)
         end
