@@ -27,7 +27,6 @@ public class Cryptography {
     public java.lang.Object me_ = null;
     private static final String ALGORITHM = "AES";
     private static final String TRANSFORMATION = "AES";
-    private static String theKey = "KbPdSgVkYp3s6v9y$B&E)H@McQfThWmZ";
     
     public String Decrypt(String key, File_ quorumInputFile) {
         if(key == null || quorumInputFile == null) {
