@@ -7,15 +7,17 @@ package plugins.quorum.Libraries.Development.Versioning;
 
 import com.github.difflib.algorithm.DiffException;
 import com.github.difflib.text.DiffRow;
-import com.github.difflib.text.DiffRow.Tag;
 import com.github.difflib.text.DiffRowGenerator;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.eclipse.jgit.api.PullCommand;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.Edit;
@@ -26,32 +28,116 @@ import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.ObjectReader;
+import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.patch.FileHeader;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.transport.CredentialsProvider;
+import org.eclipse.jgit.transport.FetchResult;
+import org.eclipse.jgit.transport.TrackingRefUpdate;
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
-import quorum.Libraries.Development.Versioning.DiffRequest;
+import quorum.Libraries.Containers.Array_;
 import quorum.Libraries.Development.Versioning.DiffRequest_;
-import quorum.Libraries.Development.Versioning.DiffResult;
 import quorum.Libraries.Development.Versioning.DiffResult_;
+import quorum.Libraries.Development.Versioning.PullRequest_;
+import quorum.Libraries.Development.Versioning.PullResult;
+import quorum.Libraries.Development.Versioning.PullResult_;
+import quorum.Libraries.Development.Versioning.ReferenceUpdate;
+import quorum.Libraries.Development.Versioning.ReferenceUpdate_;
 import quorum.Libraries.Development.Versioning.Repository_;
 import quorum.Libraries.Development.Versioning.StatusResult;
 import quorum.Libraries.Development.Versioning.StatusResult_;
 import quorum.Libraries.System.File_;
-
 /**
  *
  * @author stefika
  */
 public class Git {
     public java.lang.Object me_ = null;
+    
+    public PullResult_ Pull(Repository_ quorumRepository, PullRequest_ request) {
+        PullResult_ result = new PullResult();
+        Array_ referenceUpdates = result.Get_Libraries_Development_Versioning_PullResult__updates_();
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+
+            if(request.HasCredentials()) {
+                CredentialsProvider provider = new UsernamePasswordCredentialsProvider(request.GetUsername(), request.GetPassword());
+                PullCommand pull = git.pull();
+                pull.setCredentialsProvider(provider);
+
+                org.eclipse.jgit.api.PullResult call = pull.call();
+                FetchResult fetchResult = call.getFetchResult();
+                String messages = fetchResult.getMessages();
+                boolean successful = call.isSuccessful();
+                result.SetSuccess(successful);
+                Collection<TrackingRefUpdate> updates = fetchResult.getTrackingRefUpdates();
+                Iterator<TrackingRefUpdate> iterator = updates.iterator();
+                while(iterator != null && iterator.hasNext()) {
+                    TrackingRefUpdate next = iterator.next();
+                    String local = next.getLocalName();
+                    String remote = next.getRemoteName();
+                    ReferenceUpdate_ update = new ReferenceUpdate();
+                    referenceUpdates.Add(update);
+                    update.SetLocalName(local);
+                    update.SetRemoteName(remote);
+                    if(null != next.getResult()) switch (next.getResult()) {
+                        case FAST_FORWARD:
+                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(0);
+                            break;
+                        case FORCED:
+                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(1);
+                            break;
+                        case IO_FAILURE:
+                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(2);
+                            break;
+                        case LOCK_FAILURE:
+                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(3);
+                            break;
+                        case NEW:
+                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(4);
+                            break;
+                        case NOT_ATTEMPTED:
+                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(5);
+                            break;
+                        case NO_CHANGE:
+                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(6);
+                            break;
+                        case REJECTED:
+                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(7);
+                            break;
+                        case REJECTED_CURRENT_BRANCH:
+                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(8);
+                            break;
+                        case REJECTED_MISSING_OBJECT:
+                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(9);
+                            break;
+                        case RENAMED:
+                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(10);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                String fetchedFrom = call.getFetchedFrom();
+                result.SetFetchedFrom(fetchedFrom);
+                result.SetMessage(messages);
+            }
+        } catch (GitAPIException ex) {
+            Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return result;
+    }
     
     /* This assumes the directory is valid. */
     public String GetPathRelativeToDirectory(String directory, String path) {
