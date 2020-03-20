@@ -1,0 +1,69 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Controls.TextBox
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Studio.Build.BuildInformation
+use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Interface.Item
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.Repository
+use Libraries.Development.Versioning.PullRequest
+use Libraries.Development.Versioning.PullResult
+use Libraries.Development.Versioning.ReferenceUpdate
+use Libraries.Development.Environment.Configuration.Options
+
+class PullRequestBehavior  is QuorumStudioBehavior
+
+    action Run(BehaviorEvent event)
+        QuorumStudio studio = GetMainApplication()
+        StudioFocusManager manager = studio:GetStudioFocusManager()
+        Project project = manager:GetProjectFocus()
+        Options options = studio:GetOptions()
+
+        // If the project is undefined, it fails this check.
+        if project is QuorumProject
+            QuorumProject quorumProject = cast(QuorumProject, project)
+    
+            if quorumProject:HasGitSupport()
+                
+                output "A pull is being attempted"
+                Git git
+                Repository repo = quorumProject:GetGitRepository()
+                
+
+                PullRequest request
+                PullResult result = git:Pull(repo, request)
+                if result not= undefined
+                    output "Pull Made it"
+                    output "Success: " + result:GetSuccess()
+                    output "Message: " + result:GetMessage()
+                    output "Fetched from: " + result:GetFetchedFrom()
+                    Array<ReferenceUpdate> updates = result:GetUpdates()
+                    output "Updates, with size: " + updates:GetSize()
+                    i = 0
+                    repeat while i < updates:GetSize()
+                        ReferenceUpdate ref = updates:Get(i)
+                        output "Local name: " + ref:GetLocalName()
+                        output "Remote name: " + ref:GetRemoteName()
+                        i = i + 1
+                    end
+                end
+            end  
+        end
+    end
+end
