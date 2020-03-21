@@ -27,6 +27,7 @@ class Menu is MenuBar, SelectionListener
     MenuItem editMenu
     MenuItem viewMenu
     MenuItem navigateMenu
+    MenuItem teamMenu
     MenuItem runMenu
     MenuItem windowsMenu
     MenuItem helpMenu
@@ -89,6 +90,7 @@ class Menu is MenuBar, SelectionListener
         SetupEditMenu()
         SetupViewMenu()
         SetupNavigateMenu()
+        SetupTeamMenu()
         SetupRunMenu()
         SetupWindowsMenu()
         SetupHelpMenu()
@@ -98,6 +100,7 @@ class Menu is MenuBar, SelectionListener
         menuItems:Add(editMenu)
         menuItems:Add(viewMenu)
         menuItems:Add(navigateMenu)
+        menuItems:Add(teamMenu)
         menuItems:Add(runMenu)
         menuItems:Add(windowsMenu)
         menuItems:Add(helpMenu)
@@ -267,11 +270,6 @@ class Menu is MenuBar, SelectionListener
     private action SetupNavigateMenu
         Array<MenuItem> navigateItems
 
-//table:Add(keyMap:GetSmartNavigateUpKey(), behaviors:GetEditorSmartNavigationUp())
-            //table:Add(keyMap:GetSmartNavigateDownKey(), behaviors:GetEditorSmartNavigationDown())
-            //table:Add(keyMap:GetSmartNavigateLeftKey(), behaviors:GetEditorSmartNavigationLeft())
-            //table:Add(keyMap:GetSmartNavigateRightKey(), behaviors:GetEditorSmartNavigationRight())
-
         MenuItem goToLine
         goToLine:SetName("Go to Line")
         goToLine:SetShortcut(keyMap:GetGotoLineKey())
@@ -310,6 +308,19 @@ class Menu is MenuBar, SelectionListener
 
         navigateMenu:SetName("Navigate")
         navigateMenu:Add(navigateItems)
+    end
+
+    private action SetupTeamMenu
+        Array<MenuItem> teamItems
+
+        MenuItem pullMenuItem
+        pullMenuItem:SetName("Pull")
+        pullMenuItem:SetShortcut(keyMap:GetPullRequestKey())
+        pullMenuItem:SetBehavior(behaviors:GetPullRequestBehavior())
+        teamItems:Add(pullMenuItem)
+
+        teamMenu:SetName("Team")
+        teamMenu:Add(teamItems)
     end
 
     private action SetupRunMenu
