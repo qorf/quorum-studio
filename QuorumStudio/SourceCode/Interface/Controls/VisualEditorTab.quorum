@@ -10,23 +10,25 @@ use Libraries.Game.Game
 use Libraries.Game.Scenes.Scene
 use Libraries.Game.Scenes.ModelSceneProperty
 use Libraries.Game.Scenes.LightSceneProperty
-use Libraries.Game.Scenes.Scene2
 use Libraries.Game.Graphics.AmbientLight
 use Libraries.Game.Graphics.DirectionalLight
 use Libraries.Game.Graphics.PointLight
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
 use Libraries.Data.Formats.JavaScriptObjectNotation
-use Libraries.Game.Scenes.SkyboxSceneProperty
 use Libraries.Game.Graphics.Skybox
 use Libraries.System.Properties
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.PropertiesDialog
+use Libraries.Game.Scenes.DefaultSceneManager
+use Libraries.Game.Layer
+use Libraries.Game.Scenes.SceneProperties
+use Libraries.Game.Layer2D
 
-class VisualEditorTab is Tab
+class VisualEditorTab is Tab, DefaultSceneManager
 
     File file = undefined
     File projectLocation = undefined
+    VisualSceneController controller = undefined
     GameStateManager manager
-    SkyboxSceneProperty skyboxProperty = undefined
 
     PropertiesDialog propertiesDialog
 
@@ -47,109 +49,65 @@ class VisualEditorTab is Tab
     end
 
     action Load
-        Scene2 scene
+        Scene scene
         scene:Load(file)
 
-        Game game = manager:GetGame()
-
         VisualSceneController controller
+        me:controller = controller
         controller:SetName(file:GetPath())
         SetRelatedItem(controller)
         SetFocusTarget(controller)
-        Layer3D layer = controller:GetEditorLayer()
-        // This should instead be set to the camera's position as described in
-        // the scene, and then euler angles derived from the original angle to
-        // be set in the controller.
-        layer:GetCamera():SetYawPitchRoll(0, 0, 0)
-        
-        integer x = cast(integer, GetX())
-        integer y = cast(integer, GetY())
-        integer width = cast(integer, GetWidth())
-        integer height = cast(integer, GetHeight())
-        
-        ModelSceneProperty modelProperties = scene:GetModelSceneProperty()
-        if modelProperties not= undefined
-            Array<Model> models = modelProperties:GetModels()
-            i = 0
-            repeat while i < models:GetSize()
-                Model model = models:Get(i)
-                layer:Add(model)
-                i = i + 1
-            end
-        end
 
-        skyboxProperty = scene:GetSkyboxSceneProperty()
-        //this has to be loaded as part of a project and the files are 
-        //relative to the project root
-        if skyboxProperty not= undefined and projectLocation not= undefined
-            Skybox skybox
-            text path = projectLocation:GetAbsolutePath()
-            Properties prop
-            text os = prop:GetOperatingSystemName()
-            if os = "Windows"
-                path = path + "\"
-            else
-                path = path + "/"
-            end
-
-            File working
-            working:SetWorkingDirectory(path)
-            working:SetPath(skyboxProperty:GetBackPath())
-            skybox:LoadBack(working)
-
-            working:SetPath(skyboxProperty:GetFrontPath())
-            skybox:LoadFront(working)
-
-            working:SetPath(skyboxProperty:GetTopPath())
-            skybox:LoadTop(working)
-
-            working:SetPath(skyboxProperty:GetBottomPath())
-            skybox:LoadBottom(working)
-
-            working:SetPath(skyboxProperty:GetLeftPath())
-            skybox:LoadLeft(working)
-
-            working:SetPath(skyboxProperty:GetRightPath())
-            skybox:LoadRight(working)
-            layer:SetSkybox(skybox)
-        end
-
-        LightSceneProperty lightProperties = scene:GetLightSceneProperty()
-        if lightProperties not= undefined
-            Array<AmbientLight> ambients = lightProperties:GetAmbientLights()
-            Array<DirectionalLight> directionals = lightProperties:GetDirectionalLights()
-            Array<PointLight> points = lightProperties:GetPointLights()
-
-            i = 0
-            repeat while ambients not= undefined and i < ambients:GetSize()
-                layer:SetAmbientLight(ambients:Get(i))
-                i = i + 1
-            end
-
-            i = 0
-            repeat while directionals not= undefined and i < directionals:GetSize()
-                layer:Add(directionals:Get(i))
-                i = i + 1
-            end
-
-            i = 0
-            repeat while points not= undefined and i < points:GetSize()
-                layer:Add(points:Get(i))
-                i = i + 1
-            end
-        end
-        // The Layer itself is added to the game when the tab is toggled on.
+        Load(scene)
+        // The default Layer itself is added to the game when the tab is toggled on.
 
         propertiesDialog:Initialize(controller)
     end
 
+    /* 
+    Overrides the action in DefaultSceneManager. Used to determine which layers
+    should be used to match the layers described in the Scene.
+
+    We always make new layers which are stored as part of the VisualSceneController.
+    */
+    private action SelectLayer(JavaScriptObjectNotation layerJson) returns Layer
+        SceneProperties properties
+
+        text name = layerJson:GetValue(properties:NAME)
+        text classValue = layerJson:GetValue(properties:CLASS)
+        Layer current = undefined
+
+        /*
+        Currently we only accept the first 3D layer found. This will change
+        when the VisualSceneController changes to work with the tree.
+        */
+        if classValue = "Layer3D"
+            // This layer might need to become something else in the future.
+            // It might be a custom class or have the editor tag in its name.
+            Layer3D layer
+
+            if controller:GetEditorLayer() = undefined
+                controller:SetEditorLayer(layer)
+            end
+
+            current = layer
+        elseif classValue = "Layer2D"
+            Layer2D layer
+            current = layer
+        end
+
+        current:SetName(name)
+
+        return current
+    end
+
     action Save
-        Layer3D layer = GetSceneController():GetEditorLayer()
-        Scene2 scene
-        scene:SetSkyboxSceneProperty(skyboxProperty)
-        JavaScriptObjectNotation json = scene:SaveLayer3D(layer)
-        json:SetPrettyPrint(true)
-        file:Write(json:ToText())
+//        Layer3D layer = GetSceneController():GetEditorLayer()
+//        Scene2 scene
+//        scene:SetSkyboxSceneProperty(skyboxProperty)
+//        JavaScriptObjectNotation json = scene:SaveLayer3D(layer)
+//        json:SetPrettyPrint(true)
+//        file:Write(json:ToText())
     end
 
     action OnToggleOn

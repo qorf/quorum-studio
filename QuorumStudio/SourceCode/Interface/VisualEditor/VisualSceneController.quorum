@@ -24,7 +24,7 @@ The space this object takes up will be filled with the visual editor tab's Layer
 */
 class VisualSceneController is Control
 
-    Layer3D layer
+    Layer3D layer = undefined
     VisualEditorResources visualResources
     VisualEditorSelection selection
 
@@ -110,7 +110,6 @@ class VisualSceneController is Control
         SetAccessibilityCode(parent:Item:CUSTOM)
 
         accessibility = manager:GetAccessibilityManager()
-        layer:Add(grid)
 
         selection:Initialize(me)
         findDialog:Initialize(me)
@@ -171,6 +170,10 @@ class VisualSceneController is Control
     end
 
     action Update(number seconds)
+        if layer = undefined
+            return now
+        end
+
         Camera camera = layer:GetCamera()
         boolean moved = false
 
@@ -467,6 +470,7 @@ class VisualSceneController is Control
 
     action SetEditorLayer(Layer3D layer)
         me:layer = layer
+        layer:Add(grid)
     end
 
     action GetEditorLayer returns Layer3D
