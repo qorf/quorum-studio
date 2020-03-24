@@ -7,6 +7,7 @@ use Libraries.Interface.Events.FocusEvent
 use Libraries.Game.Graphics.Color
 use Libraries.Compute.Vector3
 use Libraries.Game.BoundingBox
+use Libraries.Data.Formats.JavaScriptObjectNotation
 
 class SelectionHighlight is InteractableItem
     
@@ -68,6 +69,7 @@ class SelectionHighlight is InteractableItem
         parent:Model:Scale(vector)
         if item not= undefined
             item:Scale(vector)
+            UpdateScaleProperty()
         end
     end
 
@@ -75,6 +77,7 @@ class SelectionHighlight is InteractableItem
         parent:Model:Scale(x, y, z)
         if item not= undefined
             item:Scale(x, y, z)
+            UpdateScaleProperty()
         end
     end
 
@@ -83,6 +86,7 @@ class SelectionHighlight is InteractableItem
         parent:InteractableItem:SetScaleX(scale)
         if item not= undefined
             item:Scale(modify, 1, 1)
+            UpdateScaleProperty()
         end
     end
 
@@ -91,6 +95,7 @@ class SelectionHighlight is InteractableItem
         parent:InteractableItem:SetScaleY(scale)
         if item not= undefined
             item:Scale(1, modify, 1)
+            UpdateScaleProperty()
         end
     end
 
@@ -99,7 +104,31 @@ class SelectionHighlight is InteractableItem
         parent:InteractableItem:SetScaleZ(scale)
         if item not= undefined
             item:Scale(1, 1, modify)
+            UpdateScaleProperty()
         end
+    end
+
+    private action UpdateScaleProperty
+        SceneProperties properties
+        JavaScriptObjectNotation json = undefined
+        if item:HasProperty(properties:SCALE)
+            json = item:GetProperty(properties:SCALE)
+        else
+            JavaScriptObjectNotation newJson
+            json = newJson
+            json:SetArray()
+            json:Add(1.0)
+            json:Add(1.0)
+            json:Add(1.0)
+            item:SetProperty(properties:SCALE, json)
+        end
+
+        JavaScriptObjectNotation temp = json:Get(0)
+        temp:SetNumber(GetScaleX())
+        temp = json:Get(1)
+        temp:SetNumber(GetScaleY())
+        temp = json:Get(2)
+        temp:SetNumber(GetScaleZ())
     end
 
     action MoveX(number x)
