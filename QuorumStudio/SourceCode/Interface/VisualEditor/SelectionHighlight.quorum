@@ -65,6 +65,21 @@ class SelectionHighlight is InteractableItem
             LoadBox(item:GetWidth() * scaleX + padding, item:GetHeight() * scaleY + padding, item:GetDepth() * scaleZ + padding, color)
         end
 
+        if item:HasProperty(properties:ROTATION)
+            JavaScriptObjectNotation json = item:GetProperty(properties:ROTATION)
+            number yaw = json:Get(0):GetNumber()
+            number pitch = json:Get(1):GetNumber()
+            number roll = json:Get(2):GetNumber()
+
+            Rotate(0, 1, 0, yaw)
+            Rotate(1, 0, 0, pitch)
+            Rotate(0, 0, 1, roll)
+
+            parent:InteractableItem:yaw = yaw
+            parent:InteractableItem:pitch = pitch
+            parent:InteractableItem:roll = roll
+        end
+
         SetPosition(item:GetGlobalPosition())
 
         me:item = item
@@ -147,6 +162,58 @@ class SelectionHighlight is InteractableItem
         temp:SetNumber(GetScaleY())
         temp = json:Get(2)
         temp:SetNumber(GetScaleZ())
+    end
+
+    action SetRotation(number newYaw, number newPitch, number newRoll)
+        output "Setting SH rotation: " + newYaw + ", " + newPitch + ", " + newRoll
+        number yaw = parent:InteractableItem:yaw
+        number pitch = parent:InteractableItem:pitch
+        number roll = parent:InteractableItem:roll
+
+        if item not= undefined
+            if roll not= 0
+                item:Rotate(0, 0, 1, -roll)
+            end
+            if pitch not= 0
+                item:Rotate(1, 0, 0, -pitch)
+            end
+            if yaw not= 0
+                item:Rotate(0, 1, 0, -yaw)
+            end
+    
+            if newYaw not= 0
+                item:Rotate(0, 1, 0, newYaw)
+            end
+            if newPitch not= 0
+                item:Rotate(1, 0, 0, newPitch)
+            end
+            if newRoll not= 0
+                item:Rotate(0, 0, 1, newRoll)
+            end
+
+            SceneProperties properties
+            JavaScriptObjectNotation json = undefined
+            if item:HasProperty(properties:ROTATION)
+                json = item:GetProperty(properties:ROTATION)
+            else
+                JavaScriptObjectNotation newJson
+                json = newJson
+                json:SetArray()
+                json:Add(0.0)
+                json:Add(0.0)
+                json:Add(0.0)
+                item:SetProperty(properties:ROTATION, json)
+            end
+    
+            JavaScriptObjectNotation temp = json:Get(0)
+            temp:SetNumber(newYaw)
+            temp = json:Get(1)
+            temp:SetNumber(newPitch)
+            temp = json:Get(2)
+            temp:SetNumber(newRoll)
+        end
+
+        parent:InteractableItem:SetRotation(newYaw, newPitch, newRoll)
     end
 
     action MoveX(number x)

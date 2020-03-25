@@ -17,6 +17,9 @@ class InteractableItem is Model
     number scaleX = 1
     number scaleY = 1
     number scaleZ = 1
+    number yaw = 0
+    number pitch = 0
+    number roll = 0
 
     on create
         SetProperty(resources:EDITOR_TAG, undefined)
@@ -104,6 +107,44 @@ class InteractableItem is Model
         number modify = (1.0 /  scaleZ) * scale
         scaleZ = scale
         parent:Model:Scale(1, 1, modify)
+    end
+
+    action SetRotation(number newYaw, number newPitch, number newRoll)
+        if roll not= 0
+            Rotate(0, 0, 1, -roll)
+        end
+        if pitch not= 0
+            Rotate(1, 0, 0, -pitch)
+        end
+        if yaw not= 0
+            Rotate(0, 1, 0, -yaw)
+        end
+
+        yaw = newYaw
+        pitch = newPitch
+        roll = newRoll
+
+        if yaw not= 0
+            Rotate(0, 1, 0, yaw)
+        end
+        if pitch not= 0
+            Rotate(1, 0, 0, pitch)
+        end
+        if roll not= 0
+            Rotate(0, 0, 1, roll)
+        end
+    end
+
+    action GetYaw returns number
+        return yaw
+    end
+
+    action GetPitch returns number
+        return pitch
+    end
+
+    action GetRoll returns number
+        return roll
     end
 
     action ResetScale

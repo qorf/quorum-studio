@@ -439,13 +439,15 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         integer i = 0
         repeat while i < size
             Tab tab = tabPane:Get(i)
-            EditorTab t = cast(EditorTab, tab)
-            TextBox textBox = t:GetTextBox()
-            if textBox not= undefined
-                CodeTextBox c = cast(CodeTextBox, textBox)
-                c:SetFindWord(findField:GetText())
-                c:SetIsDialogOpen(false)
-                c:DialogClosed()
+            if tab is EditorTab
+                EditorTab t = cast(EditorTab, tab)
+                TextBox textBox = t:GetTextBox()
+                if textBox not= undefined
+                    CodeTextBox c = cast(CodeTextBox, textBox)
+                    c:SetFindWord(findField:GetText())
+                    c:SetIsDialogOpen(false)
+                    c:DialogClosed()
+                end
             end
             i = i + 1
         end
