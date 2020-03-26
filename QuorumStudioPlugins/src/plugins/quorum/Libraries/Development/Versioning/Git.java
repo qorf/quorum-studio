@@ -123,8 +123,10 @@ public class Git {
                                     break;
                                 case MODIFY:
                                     entry.entryType = 1;
+                                    break;
                                 case RENAME:
                                     entry.entryType = 4;
+                                    break;
                                 default:
                                     break;
                             }
@@ -188,13 +190,13 @@ public class Git {
                 result.SetMessage(messages);
             }
         } catch (GitAPIException ex) {
-            Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
+            result.SetMessage(ex.getMessage());
         } catch (IncorrectObjectTypeException ex) {
-            Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
+            result.SetMessage(ex.getMessage());
         } catch (RevisionSyntaxException ex) {
-            Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
+            result.SetMessage(ex.getMessage());
         } catch (IOException ex) {
-            Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
+            result.SetMessage(ex.getMessage());
         }
         return result;
     }
