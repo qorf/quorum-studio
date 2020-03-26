@@ -37,6 +37,7 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.FetchResult;
+import org.eclipse.jgit.transport.ReceiveCommand;
 import org.eclipse.jgit.transport.TrackingRefUpdate;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
@@ -62,6 +63,21 @@ import quorum.Libraries.System.File_;
  */
 public class Git {
     public java.lang.Object me_ = null;
+    private static final String HEAD = "HEAD^{tree}";
+    
+    private List<DiffEntry> GetDifferenceBetweenIDs(org.eclipse.jgit.api.Git git, org.eclipse.jgit.lib.Repository repository,
+        ObjectId id1, ObjectId id2) throws IOException, GitAPIException {
+        ObjectReader reader = repository.newObjectReader();
+        CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
+        oldTreeIter.reset(reader, id1);
+        CanonicalTreeParser newTreeIter = new CanonicalTreeParser();
+        newTreeIter.reset(reader, id2);
+        List<DiffEntry> diffs= git.diff()
+            .setNewTree(newTreeIter)
+            .setOldTree(oldTreeIter)
+            .call();
+        return diffs;
+    }
     
     public PullResult_ Pull(Repository_ quorumRepository, PullRequest_ request) {
         PullResult_ result = new PullResult();
@@ -71,6 +87,7 @@ public class Git {
             org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
             org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
 
+            ObjectId oldHead = repository.resolve(HEAD);
             if(request.HasCredentials()) {
                 CredentialsProvider provider = new UsernamePasswordCredentialsProvider(request.GetUsername(), request.GetPassword());
                 PullCommand pull = git.pull();
@@ -80,6 +97,41 @@ public class Git {
                 FetchResult fetchResult = call.getFetchResult();
                 String messages = fetchResult.getMessages();
                 boolean successful = call.isSuccessful();
+                
+                if(successful) {
+                    ObjectId head = repository.resolve(HEAD);
+                    List<DiffEntry> diffs = GetDifferenceBetweenIDs(git, repository, oldHead, head);
+                    if(diffs != null) {
+                        Iterator<DiffEntry> iterator = diffs.iterator();
+                        while(iterator.hasNext()) {
+                            DiffEntry next = iterator.next();
+                            DiffEntry.ChangeType type = next.getChangeType();
+                            String newPath = next.getNewPath();
+                            
+                            quorum.Libraries.Development.Versioning.DiffEntry entry = new quorum.Libraries.Development.Versioning.DiffEntry();
+                            entry.Set_Libraries_Development_Versioning_DiffEntry__location_(newPath);
+                            result.Get_Libraries_Development_Versioning_PullResult__diff_().Add(entry);
+                            if(null != type) switch (type) {
+                                case ADD:
+                                    entry.entryType = 0;
+                                    break;
+                                case COPY:
+                                    entry.entryType = 2;
+                                    break;
+                                case DELETE:
+                                    entry.entryType = 3;
+                                    break;
+                                case MODIFY:
+                                    entry.entryType = 1;
+                                case RENAME:
+                                    entry.entryType = 4;
+                                default:
+                                    break;
+                            }
+                        }
+                    }
+                }
+                
                 result.SetSuccess(successful);
                 Collection<TrackingRefUpdate> updates = fetchResult.getTrackingRefUpdates();
                 Iterator<TrackingRefUpdate> iterator = updates.iterator();
@@ -91,6 +143,8 @@ public class Git {
                     referenceUpdates.Add(update);
                     update.SetLocalName(local);
                     update.SetRemoteName(remote);
+                    
+                    ReceiveCommand receive = next.asReceiveCommand();
                     if(null != next.getResult()) switch (next.getResult()) {
                         case FAST_FORWARD:
                             update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(0);
@@ -134,6 +188,12 @@ public class Git {
                 result.SetMessage(messages);
             }
         } catch (GitAPIException ex) {
+            Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IncorrectObjectTypeException ex) {
+            Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (RevisionSyntaxException ex) {
+            Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
             Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
         }
         return result;
