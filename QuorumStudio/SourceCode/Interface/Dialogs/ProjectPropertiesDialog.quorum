@@ -111,6 +111,11 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     TextField keyPasswordField
     TextField jdkField
     TabPane tabPane
+
+    //variables for the Teams tab
+    TextField usernameTeams
+    TextField passwordTeams
+
     // Behaviors used by the OK and Cancel buttons.
     ProjectPropertiesOkBehavior okBehavior
     DialogCancelBehavior cancelBehavior
@@ -160,6 +165,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         tabPane:Add(CreateProjectInfoTab())
         tabPane:Add(CreateGamesTab())
         tabPane:Add(CreateMobileTab())
+        tabPane:Add(CreateTeamsTab())
         Add(tabPane)
 
         mobileResourcesField:Empty()
@@ -1391,6 +1397,134 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         cancelButton:SetNextFocus(okayButton)
         cancelButton:SetPreviousFocus(jdkField)
         okayButton:SetNextFocus(mobileResourcesField)
+        okayButton:SetPreviousFocus(cancelButton)
+
+        return tab
+    end
+
+    private action CreateTeamsTab returns Tab
+        Tab tab
+        tab:SetFocusTarget(usernameTeams)
+        tab:SetName("Teams")
+        tab:DisplayCloseButton(false)
+
+        Control panel
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+
+        LabelBoxView panelView
+        Color color
+
+        panelView:Initialize(color:CustomColor(0.95, 0.95, 0.95, 1), color:Black())
+        panel:SetView2D(panelView)
+
+        FlowLayout layout
+        panel:SetLayout(layout)
+        tab:SetRelatedItem(panel)
+
+        
+
+        FlowLayout resourcesLayout
+        Control resourcesContainer
+        resourcesContainer:SetLayout(resourcesLayout)
+        resourcesContainer:SetPercentageWidth(1.0)
+        resourcesContainer:SetPixelWidth(-10)
+        resourcesContainer:SetVerticalLayoutMode(resourcesContainer:FIT_CONTENTS)
+        resourcesContainer:SetLeftPadding(10)
+        resourcesContainer:SetTopPadding(10)
+
+        
+
+        Label versionControlLabel
+        versionControlLabel:SetPercentageWidth(1.0)
+        versionControlLabel:SetSize(20)
+        versionControlLabel:SetText("Version Control Information (Git)")
+        versionControlLabel:SetLeftPadding(10)
+        versionControlLabel:SetTopPadding(20)
+        panel:Add(versionControlLabel)
+        panel:Add(resourcesContainer)
+
+
+        Label usernameLabel
+        usernameLabel:SetText("Username")
+        usernameLabel:SetPercentageWidth(1.0)
+        usernameLabel:SetLeftPadding(10)
+        usernameLabel:SetTopPadding(10)
+        resourcesContainer:Add(usernameLabel)
+
+        emptyTextFieldBehavior:SetTextField(usernameTeams)
+
+        usernameTeams:SetName("Username Textfield")
+        usernameTeams:SetPercentageWidth(1.0)
+        usernameTeams:SetPixelWidth(-10)
+        usernameTeams:SetLeftPadding(10)
+        usernameTeams:SetTopPadding(10)
+        resourcesContainer:Add(usernameTeams)
+
+        Label androidLabel
+        androidLabel:SetText("Password")
+        androidLabel:SetLeftPadding(10)
+        androidLabel:SetTopPadding(10)
+        resourcesContainer:Add(androidLabel)
+
+        passwordTeams:SetName("Password Textfield")
+        passwordTeams:SetPercentageWidth(1.0)
+        passwordTeams:SetPixelWidth(-10)
+        passwordTeams:SetLeftPadding(10)
+        passwordTeams:SetTopPadding(10)
+        resourcesContainer:Add(passwordTeams)
+
+        Control newLine
+        newLine:SetHorizontalLayoutMode(newLine:FILL)
+        panel:Add(newLine)
+
+        Control confirmArea
+        FlowLayout confirmLayout
+        confirmArea:SetLayout(confirmLayout)
+        confirmArea:SetPercentageWidth(1.0)
+        confirmArea:SetTopPadding(20)
+        confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
+
+        Control confirmPadding
+        confirmPadding:SetPercentageWidth(0.56)
+        confirmPadding:SetPixelHeight(1)
+        confirmArea:Add(confirmPadding)
+
+        Button cancelButton
+        cancelButton:SetName("Cancel")
+        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancelButton:SetPercentageWidth(0.2)
+        cancelButton:SetLeftPadding(0)
+        cancelButton:SetTopPadding(40)
+        cancelButton:SetBottomPadding(20)
+        cancelButton:SetBehavior(cancelBehavior)
+        confirmArea:Add(cancelButton)
+
+        Gradient okayGradient
+        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
+        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
+        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
+
+        Button okayButton
+        okayButton:SetName("OK")
+        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        okayButton:SetBackgroundColor(okayGradient)
+        okayButton:SetPercentageWidth(0.2)
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(40)
+        okayButton:SetBottomPadding(20)
+        okayButton:SetBehavior(okBehavior)
+        confirmArea:Add(okayButton)
+
+        panel:Add(confirmArea)
+
+        usernameTeams:SetNextFocus(passwordTeams)
+        usernameTeams:SetPreviousFocus(okayButton)
+        passwordTeams:SetNextFocus(cancelButton)
+        passwordTeams:SetPreviousFocus(usernameTeams)
+        cancelButton:SetNextFocus(okayButton)
+        cancelButton:SetPreviousFocus(jdkField)
+        okayButton:SetNextFocus(usernameTeams)
         okayButton:SetPreviousFocus(cancelButton)
 
         return tab
