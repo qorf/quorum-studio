@@ -116,11 +116,14 @@ class PullRequestBehavior  is QuorumStudioBehavior
                             if tab not= undefined and tab is EditorTab
                                 EditorTab et = cast(EditorTab, tab)
                                 CodeTextBox code = et:GetTextBox()
+                                
                                 check
                                     text newText = file:Read()
-                                    code:SetText(newText)
-                                    et:SetIsDirty(false)
-                                    et:SetIsParseDirty(true)
+                                    UpdateCodeTextBoxBehavior behave
+                                    behave:SetTab(et)
+                                    behave:SetBox(code)
+                                    behave:SetValue(newText)
+                                    code:AddBehavior(behave)
                                 detect e
                                 end
                             end

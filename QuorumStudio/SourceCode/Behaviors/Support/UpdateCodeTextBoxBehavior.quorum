@@ -1,0 +1,50 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+
+class UpdateCodeTextBoxBehavior is Behavior
+    CodeTextBox box = undefined
+    EditorTab tab = undefined
+    text value = ""
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action Run(BehaviorEvent event)
+        box:SetText(value)
+        tab:SetIsDirty(false)
+        tab:SetIsParseDirty(true)
+    end
+
+    action Update(number seconds)
+        
+    end
+
+    action GetBox returns CodeTextBox
+        return box
+    end
+
+    action SetBox(CodeTextBox box)
+        me:box = box
+    end
+    action GetValue returns text
+        return value
+    end
+
+    action SetValue(text value)
+        me:value = value
+    end
+
+    action GetTab returns EditorTab
+        return tab
+    end
+
+    action SetTab(EditorTab tab)
+        me:tab = tab
+    end
+
+end

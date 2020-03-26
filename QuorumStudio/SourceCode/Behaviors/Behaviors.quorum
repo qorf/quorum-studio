@@ -167,8 +167,10 @@ class Behaviors
     constant text TEXT_EDITOR_COMMENT_LINES = "Text Editor Comment Lines"
 
     //Team Menu
+    ThreadRunner gitRunner
     constant text PULL_REQUEST_BEHAVIOR = "PULL_REQUEST_BEHAVIOR"
     PullRequestBehavior pullRequestBehavior
+    ThreadedBehavior threadedPullRequestBehavior
 
     //Code Completion
     CodeCompletionBehavior codeCompletionBehavior
@@ -322,6 +324,8 @@ class Behaviors
 
         //team menu
         behaviors:Add(PULL_REQUEST_BEHAVIOR, pullRequestBehavior)
+        threadedPullRequestBehavior:SetNestedBehavior(pullRequestBehavior)
+        threadedPullRequestBehavior:SetThreadRunner(gitRunner)
 
         //Build Actions
         buildProjectBehavior:SetBuildManager(builder)
@@ -845,6 +849,10 @@ class Behaviors
     //team menu
     action GetPullRequestBehavior returns PullRequestBehavior
         return pullRequestBehavior
+    end
+
+    action GetThreadedPullRequestBehavior returns ThreadedBehavior
+        return threadedPullRequestBehavior
     end
 
     //navigation
