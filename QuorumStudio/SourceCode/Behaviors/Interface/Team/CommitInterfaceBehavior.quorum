@@ -1,0 +1,58 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Development.Environment.Configuration.Options
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.Repository
+use Libraries.Development.Environment.Projects.Credentials
+use Libraries.Development.Versioning.CommitRequest
+use Libraries.Development.Versioning.CommitResult
+use Libraries.Development.Environment.Studio.Interface.CommitDialog
+use Libraries.Concurrency.ThreadRunner
+
+class CommitInterfaceBehavior is QuorumStudioBehavior
+    ThreadRunner gitRunner = undefined
+    ThreadedBehavior threadedCommitRequestBehavior = undefined
+    CommitRequestBehavior commitRequestBehavior = undefined
+
+    action Run(BehaviorEvent event)
+        CommitDialog dialog
+        dialog:Setup()
+        dialog:SetGitRunner(gitRunner)
+        dialog:SetThreadedCommitRequestBehavior(threadedCommitRequestBehavior)
+        dialog:SetCommitRequestBehavior(commitRequestBehavior)
+        dialog:Show()
+    end
+    action GetGitRunner returns ThreadRunner
+        return gitRunner
+    end
+
+    action SetGitRunner(ThreadRunner gitRunner)
+        me:gitRunner = gitRunner
+    end
+
+    action GetThreadedCommitRequestBehavior returns ThreadedBehavior
+        return threadedCommitRequestBehavior
+    end
+
+    action SetThreadedCommitRequestBehavior(ThreadedBehavior threadedCommitRequestBehavior)
+        me:threadedCommitRequestBehavior = threadedCommitRequestBehavior
+    end
+
+    action GetCommitRequestBehavior returns CommitRequestBehavior
+        return commitRequestBehavior
+    end
+
+    action SetCommitRequestBehavior(CommitRequestBehavior commitRequestBehavior)
+        me:commitRequestBehavior = commitRequestBehavior
+    end
+
+end

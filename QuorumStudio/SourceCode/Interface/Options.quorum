@@ -27,6 +27,8 @@ class Options is ProjectListener
     constant text PASSWORDS_PROJECTS = "Projects"
     constant text PASSWORDS_USERNAME = "username"
     constant text PASSWORDS_PASSWORD = "password"
+    constant text PASSWORDS_NAME = "name"
+    constant text PASSWORDS_EMAIL = "email"
 
     constant text OPEN_PROJECTS = "Open Projects"
     constant text OPEN_FILES = "Open Files"
@@ -306,11 +308,34 @@ class Options is ProjectListener
             repeat while i < object:GetSize()
                 JavaScriptObjectNotation value = object:Get(i)
                 text projectKey = value:GetKey()
+
+                boolean hasUsername = value:HasValue(PASSWORDS_USERNAME)
+                boolean hasPassword = value:HasValue(PASSWORDS_PASSWORD)
+                boolean hasName = value:HasValue(PASSWORDS_NAME)
+                boolean hasEmail = value:HasValue(PASSWORDS_EMAIL)
+
+
                 text username = value:GetValue(PASSWORDS_USERNAME)
                 text password = value:GetValue(PASSWORDS_PASSWORD)
+                text name = value:GetValue(PASSWORDS_NAME)
+                text email = value:GetValue(PASSWORDS_EMAIL)
                 Credentials credentials
-                credentials:SetUsername(username)
-                credentials:SetPassword(password)
+                if hasUsername
+                    credentials:SetUsername(username)
+                end
+
+                if hasPassword
+                    credentials:SetPassword(password)
+                end
+
+                if hasName
+                    credentials:SetName(name)
+                end 
+        
+                if hasEmail               
+                    credentials:SetEmail(email)
+                end
+
                 me:passwords:Add(projectKey, credentials)
                 i = i + 1
             end
@@ -337,6 +362,8 @@ class Options is ProjectListener
             item:SetKey(next)
             item:Add(PASSWORDS_USERNAME, credentials:GetUsername())
             item:Add(PASSWORDS_PASSWORD, credentials:GetPassword())
+            item:Add(PASSWORDS_NAME, credentials:GetName())
+            item:Add(PASSWORDS_EMAIL, credentials:GetEmail())
             projects:Add(item)
         end
 

@@ -1,0 +1,155 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Game.Graphics.Label
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Game.Graphics.Drawable
+use Libraries.Interface.Controls.Icon
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Button
+use Libraries.Development.Environment.Studio.Behaviors.GoToLineOkButtonBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Interface.Events.TextChangeListener
+use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Game.InputSet
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Game.InputTable
+use Libraries.Development.Environment.Studio.Behaviors.CommitRequestBehavior
+use Libraries.Concurrency.ThreadRunner
+use Libraries.Development.Environment.Studio.Behaviors.ThreadedBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CommitDialogOkButtonBehavior
+
+class CommitDialog is Dialog
+    ThreadRunner gitRunner = undefined
+    ThreadedBehavior threadedCommitRequestBehavior = undefined
+    CommitRequestBehavior commitRequestBehavior = undefined
+    boolean initialized = false
+    Button ok
+    Button cancel
+    TextField lineTextField
+    Label lineLabel
+
+    CommitDialogOkButtonBehavior okBehavior
+    DialogCancelBehavior cancelBehavior
+    on create
+        SetModal(true)
+        parent:Item:visible = false
+    end
+
+    action Setup
+        if initialized
+            lineTextField:SetText("")
+            return now
+        end
+        initialized = true
+
+        SetName("Commit Dialog")
+        SetPixelWidth(400)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        okBehavior:SetDialog(me)
+        cancelBehavior:SetDialog(me)
+        SetBehavior(okBehavior)
+
+        SetNextFocus(lineLabel)
+        SetPreviousFocus(ok)
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+
+        lineLabel:SetText("Message: ")
+        lineLabel:SetNextFocus(lineTextField)
+        lineLabel:SetPreviousFocus(ok)
+
+        //setup the ok button
+        ok:SetName("Commit")
+        ok:SetFontSize(14)
+        ok:SetLeftPadding(10)
+        ok:SetRightPadding(10)
+        ok:SetBottomPadding(10)
+        ok:SetTopPadding(15)
+        ok:SetHorizontalLayoutMode(ok:parent:Libraries.Interface.Controls.Control:STANDARD)
+        ok:SetPercentageWidth(0.3)
+        ok:SetFocusable(true)
+        ok:SetNextFocus(lineTextField)
+        ok:SetBehavior(okBehavior)
+        ok:SetPreviousFocus(cancel)
+
+        cancel:SetName("Cancel")
+        cancel:SetFontSize(14)
+        cancel:SetLeftPadding(200)
+        cancel:SetBottomPadding(10)
+        cancel:SetTopPadding(15)
+        cancel:SetHorizontalLayoutMode(ok:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancel:SetPercentageWidth(0.3)
+        cancel:SetFocusable(true)
+        cancel:SetNextFocus(ok)
+        cancel:SetBehavior(cancelBehavior)
+        cancel:SetPreviousFocus(lineTextField)
+
+        lineTextField:SetName("Commit Message")
+        lineTextField:SetHorizontalLayoutMode(lineTextField:parent:Libraries.Interface.Controls.Control:FILL)
+        lineTextField:SetFocusable(true)
+        lineTextField:SetNextFocus(cancel)
+        lineTextField:SetPreviousFocus(ok)
+
+        LayoutProperties properties
+        Control panel
+        FlowLayout findLayout
+        panel:SetLayout(findLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetPixelHeight(50)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+
+        panel:Add(lineLabel)
+        panel:Add(lineTextField)
+        panel:Add(cancel)
+        panel:Add(ok)
+        panel:SetView2D(view)
+        Add(panel)
+    end
+
+    action GetMessage returns text
+        return lineTextField:GetText()
+    end
+
+    action OnShow
+        lineTextField:Focus()
+        parent:Item:visible = true
+    end
+    
+    action OnHide
+        parent:Item:visible = false
+    end
+    action GetGitRunner returns ThreadRunner
+        return gitRunner
+    end
+
+    action SetGitRunner(ThreadRunner gitRunner)
+        me:gitRunner = gitRunner
+    end
+
+    action GetThreadedCommitRequestBehavior returns ThreadedBehavior
+        return threadedCommitRequestBehavior
+    end
+
+    action SetThreadedCommitRequestBehavior(ThreadedBehavior threadedCommitRequestBehavior)
+        me:threadedCommitRequestBehavior = threadedCommitRequestBehavior
+    end
+
+    action GetCommitRequestBehavior returns CommitRequestBehavior
+        return commitRequestBehavior
+    end
+
+    action SetCommitRequestBehavior(CommitRequestBehavior commitRequestBehavior)
+        me:commitRequestBehavior = commitRequestBehavior
+    end
+end

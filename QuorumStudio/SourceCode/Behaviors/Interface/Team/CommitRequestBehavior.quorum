@@ -15,8 +15,10 @@ use Libraries.Development.Versioning.Repository
 use Libraries.Development.Environment.Projects.Credentials
 use Libraries.Development.Versioning.CommitRequest
 use Libraries.Development.Versioning.CommitResult
+use Libraries.Development.Environment.Studio.Interface.CommitDialog
 
 class CommitRequestBehavior is QuorumStudioBehavior
+    text message = ""
 
     action Run(BehaviorEvent event)
         QuorumStudio studio = GetMainApplication()
@@ -46,12 +48,20 @@ class CommitRequestBehavior is QuorumStudioBehavior
                     request:SetCredentials(credentials)
                 end
                 
-                request:SetCommiter("Andreas Stefik")
-                request:SetEmail("stefika@gmail.com")
-                request:SetMessage("Test Message from inside Quorum Studio.")
+                request:SetCommiter(credentials:GetName())
+                request:SetEmail(credentials:GetEmail())
+                request:SetMessage(message)
                 CommitResult result = git:Commit(repo, request)
                 out:Append("Done")
             end
         end
     end
+    action GetMessage returns text
+        return message
+    end
+
+    action SetMessage(text message)
+        me:message = message
+    end
+
 end

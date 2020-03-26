@@ -120,6 +120,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     //variables for the Teams tab
     TextField usernameTeams
     TextField passwordTeams
+    TextField nameTeams
+    TextField emailTeams
 
     // Behaviors used by the OK and Cancel buttons.
     ProjectPropertiesOkBehavior okBehavior
@@ -356,8 +358,10 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         if project:HasGitSupport() 
             Credentials credentials = options:GetPassword(project:GetLocation():GetAbsolutePath())
             if credentials not= undefined
-                usernameTeams:SetText(credentials:GetUsername())
+                me:usernameTeams:SetText(credentials:GetUsername())
                 me:passwordTeams:SetText(credentials:GetPassword())
+                me:nameTeams:SetText(credentials:GetName())
+                me:emailTeams:SetText(credentials:GetEmail())
             end
         end
     end
@@ -553,9 +557,13 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         if project:HasGitSupport() 
             text user = me:usernameTeams:GetText()
             text pass = me:passwordTeams:GetText()
+            text name = me:nameTeams:GetText()
+            text email = me:emailTeams:GetText()
             Credentials credentials
             credentials:SetUsername(user)
             credentials:SetPassword(pass)
+            credentials:SetName(name)
+            credentials:SetEmail(email)
             options:AddPassword(project:GetLocation():GetAbsolutePath(), credentials)
         end
     end
@@ -1504,6 +1512,32 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         passwordTeams:SetLeftPadding(10)
         passwordTeams:SetTopPadding(10)
         resourcesContainer:Add(passwordTeams)
+
+        Label nameLabel
+        nameLabel:SetText("Name")
+        nameLabel:SetLeftPadding(10)
+        nameLabel:SetTopPadding(10)
+        resourcesContainer:Add(nameLabel)
+
+        nameTeams:SetName("Name Textfield")
+        nameTeams:SetPercentageWidth(1.0)
+        nameTeams:SetPixelWidth(-10)
+        nameTeams:SetLeftPadding(10)
+        nameTeams:SetTopPadding(10)
+        resourcesContainer:Add(nameTeams)
+
+        Label emailLabel
+        emailLabel:SetText("Email")
+        emailLabel:SetLeftPadding(10)
+        emailLabel:SetTopPadding(10)
+        resourcesContainer:Add(emailLabel)
+
+        emailTeams:SetName("Email Textfield")
+        emailTeams:SetPercentageWidth(1.0)
+        emailTeams:SetPixelWidth(-10)
+        emailTeams:SetLeftPadding(10)
+        emailTeams:SetTopPadding(10)
+        resourcesContainer:Add(emailTeams)
 
         Control newLine
         newLine:SetHorizontalLayoutMode(newLine:FILL)
