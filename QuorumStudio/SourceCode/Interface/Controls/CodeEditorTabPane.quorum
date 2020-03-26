@@ -90,6 +90,14 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         return false
     end
 
+    action GetOpenTab(File file) returns Tab
+        if openTabs:HasKey(file:GetAbsolutePath())
+            Tab tab = openTabs:GetValue(file:GetAbsolutePath())
+            return tab
+        end
+        return undefined
+    end
+
     action CloseFile(File file)
         if IsOpen(file)
             Tab tab = openTabs:GetValue(file:GetAbsolutePath())

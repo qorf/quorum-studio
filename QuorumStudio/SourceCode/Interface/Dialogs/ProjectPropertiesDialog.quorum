@@ -45,6 +45,10 @@ use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesMobileRe
 use Libraries.Development.Environment.Studio.Behaviors.EmptyTextFieldBehavior
 use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Configuration.Options
+use Libraries.Development.Environment.Projects.Credentials
 
 
 class ProjectPropertiesDialog is Dialog, MouseWheelListener
@@ -57,6 +61,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     File sourceLocation = undefined
 
     // Variables for the Project Information tab.
+    Label projectLocation
     TextField programNameField
     RadioButton standardProjectButton
     RadioButton legoProjectButton
@@ -119,6 +124,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     // Behaviors used by the OK and Cancel buttons.
     ProjectPropertiesOkBehavior okBehavior
     DialogCancelBehavior cancelBehavior
+    Options options = undefined
 
     action OnShow
         tabPane:Focus()
@@ -143,6 +149,14 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         okBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
         SetBehavior(okBehavior)
+
+        keyStorePasswordField:SetPasswordField(true)
+        keyPasswordField:SetPasswordField(true)
+        passwordTeams:SetPasswordField(true)
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        options = studio:GetOptions()
     end
 
     action Initialize
@@ -184,6 +198,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         SetName(project:GetName() + " Properties")
 
+        projectLocation:SetText("Project Location: " + project:GetLocation():GetAbsolutePath())
         text executableName = project:GetProperty(project:EXECUTABLE_NAME):GetFirstValue()
 
         if executableName not= undefined
@@ -337,6 +352,14 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             jdkField:Empty()
         end
         jdkField:HideCaret()
+
+        if project:HasGitSupport() 
+            Credentials credentials = options:GetPassword(project:GetLocation():GetAbsolutePath())
+            if credentials not= undefined
+                usernameTeams:SetText(credentials:GetUsername())
+                me:passwordTeams:SetText(credentials:GetPassword())
+            end
+        end
     end
     
     /* Called by the ProjectPropertiesImageSheetListBehavior, when the image sheet 
@@ -526,6 +549,15 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         end
 
         project:Save()
+
+        if project:HasGitSupport() 
+            text user = me:usernameTeams:GetText()
+            text pass = me:passwordTeams:GetText()
+            Credentials credentials
+            credentials:SetUsername(user)
+            credentials:SetPassword(pass)
+            options:AddPassword(project:GetLocation():GetAbsolutePath(), credentials)
+        end
     end
 
     action IsInitialized returns boolean
@@ -563,8 +595,13 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         labelsArea:SetPercentageWidth(0.2)
         labelsArea:SetVerticalLayoutMode(labelsArea:FIT_CONTENTS)       
 
+        projectLocation:SetText("Project location: ")
+        projectLocation:SetPercentageWidth(1.0)
+        labelsArea:Add(projectLocation)
+
         Label programName
         programName:SetText("Program Name: ")
+        programName:SetTopPadding(20)
         programName:SetPercentageWidth(1.0)
         labelsArea:Add(programName)
 
@@ -585,9 +622,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         controlsArea:SetTopPadding(20)
         controlsArea:SetBottomPadding(20)
         controlsArea:SetVerticalLayoutMode(controlsArea:FIT_CONTENTS) 
-        //controlsArea:SetHorizontalLayoutMode(controlsArea:STANDARD)
 
         programNameField:SetHorizontalLayoutMode(programNameField:parent:Libraries.Interface.Controls.Control:FILL)
+        programNameField:SetTopPadding(projectLocation:GetHeight() + 40)
         programNameField:SetPercentageWidth(1.0)
         programNameField:SetName("Program Name")
         controlsArea:Add(programNameField)
@@ -607,21 +644,17 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         legoProjectButton:SetName("Lego")
         legoProjectButton:SetFontSize(14)
-//        legoProjectButton:SetTopPadding(20)
-//        legoProjectButton:SetPercentageWidth(1.0)
         projectRadios:Add(legoProjectButton)
 
         webServerProjectButton:SetName("Web Server")
         webServerProjectButton:SetFontSize(14)
         webServerProjectButton:SetRightPadding(50)
         webServerProjectButton:SetTopPadding(20)
-//        webServerProjectButton:SetPercentageWidth(1.0)
         projectRadios:Add(webServerProjectButton)
 
         webBrowserProjectButton:SetName("Web Browser")
         webBrowserProjectButton:SetFontSize(14)
         webBrowserProjectButton:SetTopPadding(20)
-//        webBrowserProjectButton:SetRightPadding(10)
         webBrowserProjectButton:SetPercentageWidth(0.2)
         projectRadios:Add(webBrowserProjectButton)
 
@@ -1060,8 +1093,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         imagesList:SetHorizontalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
         imagesList:SetVerticalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
         imagesList:SetPercentageWidth(1.0)
-        //imagesList:SetPixelHeight(600)
-        //imagesArea:Add(imagesList)       
         scrollPane:Add(imagesList)
         imagesArea:Add(scrollPane)
 
