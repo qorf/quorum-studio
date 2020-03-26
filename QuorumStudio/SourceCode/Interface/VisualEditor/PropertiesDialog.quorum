@@ -12,6 +12,7 @@ use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Events.SelectionEvent
 use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Interface.Controls.Checkbox
 
 class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
     
@@ -28,6 +29,9 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
     TextField scaleXField = undefined
     TextField scaleYField = undefined
     TextField scaleZField = undefined
+    TextField rotationYawField = undefined
+    TextField rotationPitchField = undefined
+    TextField rotationRollField = undefined
 
     action Initialize(VisualSceneController controller)
         if initialized
@@ -70,6 +74,12 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         panel:SetBorderColor(color:Black())
         panel:SetBorderThickness(1)
         panel:SetView2D(view)
+
+        Label basicPropertiesLabel
+        basicPropertiesLabel:SetSize(18)
+        basicPropertiesLabel:SetText("Basic Properties")
+        basicPropertiesLabel:SetLeftPadding(20)
+        panel:Add(basicPropertiesLabel)
 
         FlowLayout nameLayout
         Control nameContainer
@@ -224,6 +234,92 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         scaleContainer:Add(scaleFieldContainer)
         panel:Add(scaleContainer)
 
+        Label rotationLabel
+        
+        TextField rotationYawField
+        me:rotationYawField = rotationYawField
+
+        TextField rotationPitchField
+        me:rotationPitchField = rotationPitchField
+
+        TextField rotationRollField
+        me:rotationRollField = rotationRollField
+
+        FlowLayout rotationLayout
+        Control rotationContainer
+        rotationContainer:SetLayout(rotationLayout)
+        rotationContainer:SetPercentageWidth(1.0)
+        rotationContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        rotationContainer:SetLeftPadding(20)
+        rotationContainer:SetTopPadding(20)
+        rotationContainer:SetRightPadding(30)
+        rotationContainer:SetBottomPadding(20)
+
+        rotationLabel:SetText("Rotation:")
+        rotationLabel:SetRightPadding(10)
+        rotationContainer:Add(rotationLabel)
+        
+        FlowLayout rotationFieldLayout
+        Control rotationFieldContainer
+        rotationFieldContainer:SetLayout(rotationFieldLayout)
+
+        rotationFieldContainer:SetHorizontalLayoutMode(rotationFieldContainer:FILL)
+        rotationFieldContainer:SetName("Scale Fields")
+        rotationYawField:SetName("Yaw")
+        rotationYawField:SetText("")
+        rotationYawField:SetFocusable(true)
+        rotationYawField:AddTextChangeListener(me)
+        rotationYawField:SetRightPadding(8)
+        rotationYawField:SetPercentageWidth(0.33)
+        rotationYawField:SetPixelWidth(-8)
+        rotationFieldContainer:Add(rotationYawField)
+
+        rotationPitchField:SetName("Pitch")
+        rotationPitchField:SetText("")
+        rotationPitchField:SetFocusable(true)
+        rotationPitchField:AddTextChangeListener(me)
+        rotationPitchField:SetRightPadding(8)
+        rotationPitchField:SetPercentageWidth(0.33)
+        rotationPitchField:SetPixelWidth(-8)
+        rotationFieldContainer:Add(rotationPitchField)
+
+        rotationRollField:SetName("Roll")
+        rotationRollField:SetText("")
+        rotationRollField:SetFocusable(true)
+        rotationRollField:AddTextChangeListener(me)
+        rotationRollField:SetRightPadding(8)
+        rotationRollField:SetPercentageWidth(0.33)
+        rotationRollField:SetPixelWidth(-8)
+        rotationFieldContainer:Add(rotationRollField)
+
+        focusArray:Add(rotationYawField)
+        focusArray:Add(rotationPitchField)
+        focusArray:Add(rotationRollField)
+
+        rotationContainer:Add(rotationFieldContainer)
+        panel:Add(rotationContainer)
+
+        Label physicsLabel
+        physicsLabel:SetSize(18)
+        physicsLabel:SetText("Physics")
+        physicsLabel:SetLeftPadding(20)
+        panel:Add(physicsLabel)
+
+        FlowLayout physicsEnabledLayout
+        Control physicsEnabledContainer
+        physicsEnabledContainer:SetLayout(physicsEnabledLayout)
+        physicsEnabledContainer:SetPercentageWidth(1.0)
+        physicsEnabledContainer:SetVerticalLayoutMode(physicsEnabledContainer:FIT_CONTENTS)
+        physicsEnabledContainer:SetLeftPadding(20)
+        physicsEnabledContainer:SetTopPadding(20)
+        physicsEnabledContainer:SetRightPadding(30)
+        physicsEnabledContainer:SetBottomPadding(20)
+
+        Checkbox physicsEnabledCheckbox
+        physicsEnabledCheckbox:SetName("Physics Enabled")
+        physicsEnabledContainer:Add(physicsEnabledCheckbox)
+        panel:Add(physicsEnabledContainer)
+
         Add(panel)
 
         // Set up focus targets.
@@ -245,9 +341,10 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
             properties:SetPercentageX(0)
             properties:SetPercentageY(0)
             properties:SetPercentageOriginX(1)
-            properties:SetPercentageOriginY(1)
-            properties:SetPixelX(controller:GetGlobalX() + controller:GetWidth() - 20)
-            properties:SetPixelY(controller:GetGlobalY() + controller:GetHeight() - 20)
+            //properties:SetPercentageOriginY(1)
+            properties:SetPixelX(controller:GetGlobalX() + controller:GetWidth() - 5)
+//            properties:SetPixelY(controller:GetGlobalY() + controller:GetHeight())
+            properties:SetPixelY(controller:GetGlobalY())
         end
         parent:Dialog:Show()
     end
@@ -276,6 +373,9 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         scaleXField:SetText("" + item:GetScaleX())
         scaleYField:SetText("" + item:GetScaleY())
         scaleZField:SetText("" + item:GetScaleZ())
+        rotationYawField:SetText("" + item:GetYaw())
+        rotationPitchField:SetText("" + item:GetPitch())
+        rotationRollField:SetText("" + item:GetRoll())
     end
 
     action TextChanged(TextChangeEvent event)
@@ -352,6 +452,36 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
 
                 if value not= currentItem:GetScaleZ()
                     currentItem:SetScaleZ(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(rotationYawField)
+            check
+                number value = rotationYawField:GetText():ParseNumber()
+
+                if value not= currentItem:GetYaw()
+                    currentItem:SetRotation(value, currentItem:GetPitch(), currentItem:GetRoll())
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(rotationPitchField)
+            check
+                number value = rotationPitchField:GetText():ParseNumber()
+
+                if value not= currentItem:GetPitch()
+                    currentItem:SetRotation(currentItem:GetYaw(), value, currentItem:GetRoll())
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(rotationRollField)
+            check
+                number value = rotationRollField:GetText():ParseNumber()
+
+                if value not= currentItem:GetRoll()
+                    currentItem:SetRotation(currentItem:GetYaw(), currentItem:GetPitch(), value)
                 end
             detect e is Error
                 // Do nothing.

@@ -22,6 +22,8 @@ use Libraries.Game.Scenes.DefaultSceneManager
 use Libraries.Game.Layer
 use Libraries.Game.Scenes.SceneProperties
 use Libraries.Game.Layer2D
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditorResources
+use Libraries.Interface.Item3D
 
 class VisualEditorTab is Tab, DefaultSceneManager
 
@@ -102,12 +104,33 @@ class VisualEditorTab is Tab, DefaultSceneManager
     end
 
     action Save
-//        Layer3D layer = GetSceneController():GetEditorLayer()
-//        Scene2 scene
-//        scene:SetSkyboxSceneProperty(skyboxProperty)
-//        JavaScriptObjectNotation json = scene:SaveLayer3D(layer)
-//        json:SetPrettyPrint(true)
-//        file:Write(json:ToText())
+        Array<Layer> layers
+        Layer3D layer = GetSceneController():GetEditorLayer()
+        layers:Add(layer)
+        Scene scene = Save(layers)
+        scene:GetData():SetPrettyPrint(true)
+        file:Write(scene:GetData():ToText())
+    end
+
+    // We override the particular save item calls to ignore items with the editor tag.
+    private action SaveItem3D(Item3D item) returns JavaScriptObjectNotation
+        VisualEditorResources resources
+
+        if item:HasProperty(resources:EDITOR_TAG)
+            return undefined
+        end
+
+        return parent:DefaultSceneManager:SaveItem3D(item)
+    end
+
+    private action SaveItem2D(Item2D item) returns JavaScriptObjectNotation
+        VisualEditorResources resources
+
+        if item:HasProperty(resources:EDITOR_TAG)
+            return undefined
+        end
+
+        return parent:DefaultSceneManager:SaveItem2D(item)
     end
 
     action OnToggleOn
