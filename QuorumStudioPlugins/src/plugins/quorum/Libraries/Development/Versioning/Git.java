@@ -16,12 +16,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.eclipse.jgit.api.AddCommand;
+import org.eclipse.jgit.api.CommitCommand;
 import org.eclipse.jgit.api.PullCommand;
+import org.eclipse.jgit.api.PushCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.Edit;
 import org.eclipse.jgit.diff.EditList;
+import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.RevisionSyntaxException;
 import org.eclipse.jgit.lib.Constants;
@@ -38,6 +42,7 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.ReceiveCommand;
+import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.TrackingRefUpdate;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
@@ -46,16 +51,29 @@ import org.eclipse.jgit.treewalk.FileTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
 import quorum.Libraries.Containers.Array_;
+import quorum.Libraries.Development.Versioning.CommitRequest_;
+import quorum.Libraries.Development.Versioning.CommitResult;
+import quorum.Libraries.Development.Versioning.CommitResult_;
 import quorum.Libraries.Development.Versioning.DiffRequest_;
 import quorum.Libraries.Development.Versioning.DiffResult_;
 import quorum.Libraries.Development.Versioning.PullRequest_;
 import quorum.Libraries.Development.Versioning.PullResult;
 import quorum.Libraries.Development.Versioning.PullResult_;
+import quorum.Libraries.Development.Versioning.PushResult;
+import quorum.Libraries.Development.Versioning.PushResult_;
+import quorum.Libraries.Development.Versioning.PushRequest;
+import quorum.Libraries.Development.Versioning.PushRequest_;
+import quorum.Libraries.Development.Versioning.AddResult;
+import quorum.Libraries.Development.Versioning.AddResult_;
+import quorum.Libraries.Development.Versioning.AddRequest;
+import quorum.Libraries.Development.Versioning.AddRequest_;
 import quorum.Libraries.Development.Versioning.ReferenceUpdate;
 import quorum.Libraries.Development.Versioning.ReferenceUpdate_;
 import quorum.Libraries.Development.Versioning.Repository_;
 import quorum.Libraries.Development.Versioning.StatusResult;
 import quorum.Libraries.Development.Versioning.StatusResult_;
+import quorum.Libraries.Development.Versioning.RemoteReferenceUpdate_;
+import quorum.Libraries.Development.Versioning.RemoteReferenceUpdate;
 import quorum.Libraries.System.File_;
 /**
  *
@@ -77,6 +95,112 @@ public class Git {
             .setOldTree(oldTreeIter)
             .call();
         return diffs;
+    }
+    
+    public AddResult_ Add(Repository_ quorumRepository,  AddRequest_ request) {
+        AddResult_ result = new AddResult();
+        try {
+            
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+            AddCommand add = git.add();
+            
+            DirCache call = add.call();
+            
+            //add.addFilepattern("");
+            return result;
+        } catch (GitAPIException ex) {
+            Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return result;
+    }
+    
+    public CommitResult_ Commit(Repository_ quorumRepository,  CommitRequest_ request) {
+        CommitResult_ result = new CommitResult();
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+            
+            if(request.HasCredentials()) {
+                CredentialsProvider provider = new UsernamePasswordCredentialsProvider(request.GetUsername(), request.GetPassword());
+                CommitCommand commit = git.commit();
+                commit.setCredentialsProvider(provider);
+                commit.setCommitter(request.GetCommiter(), request.GetEmail());
+                commit.setMessage(request.GetMessage());
+                RevCommit call = commit.call();
+                String message = call.getFullMessage();
+                result.SetMessage(message);
+            }
+        } catch (GitAPIException ex) {
+            result.SetMessage(ex.getMessage());
+        }
+        return result;
+    }
+    
+    public PushResult_ Push(Repository_ quorumRepository,  PushRequest_ request) {
+        PushResult_ result = new PushResult();
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+            
+            if(request.HasCredentials()) {
+                CredentialsProvider provider = new UsernamePasswordCredentialsProvider(request.GetUsername(), request.GetPassword());
+                PushCommand push = git.push();
+                push.setCredentialsProvider(provider);
+                Array_ updates = result.GetUpdates();
+                Iterator<org.eclipse.jgit.transport.PushResult> iterator = push.call().iterator();
+                while(iterator.hasNext()) {
+                    org.eclipse.jgit.transport.PushResult gitPushResult = iterator.next();
+                    Collection<RemoteRefUpdate> remoteUpdates = gitPushResult.getRemoteUpdates();
+                    Iterator<RemoteRefUpdate> remoteIterator = remoteUpdates.iterator();
+                    while(remoteIterator.hasNext()) {
+                        RemoteRefUpdate next = remoteIterator.next();
+                        RemoteReferenceUpdate_ quorumUpdate = new RemoteReferenceUpdate();
+                        updates.Add(quorumUpdate);
+                        quorumUpdate.SetName(next.getRemoteName());
+                        quorumUpdate.SetMessage(next.getMessage());
+                        RemoteRefUpdate.Status status = next.getStatus();
+                        if(null != status) switch (status) {
+                            case AWAITING_REPORT:
+                                quorumUpdate.SetStatus(0);
+                                break;
+                            case NON_EXISTING:
+                                 quorumUpdate.SetStatus(1);
+                                break;
+                            case NOT_ATTEMPTED:
+                                 quorumUpdate.SetStatus(2);
+                                break;
+                            case OK:
+                                 quorumUpdate.SetStatus(3);
+                                break;
+                            case REJECTED_NODELETE:
+                                 quorumUpdate.SetStatus(4);
+                                break;
+                            case REJECTED_NONFASTFORWARD:
+                                 quorumUpdate.SetStatus(5);
+                                break;
+                            case REJECTED_OTHER_REASON:
+                                 quorumUpdate.SetStatus(6);
+                                break;
+                            case REJECTED_REMOTE_CHANGED:
+                                 quorumUpdate.SetStatus(7);
+                                break;
+                            case UP_TO_DATE:
+                                 quorumUpdate.SetStatus(8);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                }
+            }
+        } catch (GitAPIException ex) {
+            result.SetMessage(ex.getMessage());
+        }
+        return result;
     }
     
     public PullResult_ Pull(Repository_ quorumRepository, PullRequest_ request) {
