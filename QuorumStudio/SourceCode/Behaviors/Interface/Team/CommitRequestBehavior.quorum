@@ -16,6 +16,10 @@ use Libraries.Development.Environment.Projects.Credentials
 use Libraries.Development.Versioning.CommitRequest
 use Libraries.Development.Versioning.CommitResult
 use Libraries.Development.Environment.Studio.Interface.CommitDialog
+use Libraries.Containers.Iterator
+use Libraries.Interface.Controls.Tab
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 
 class CommitRequestBehavior is QuorumStudioBehavior
     text message = ""
@@ -52,6 +56,15 @@ class CommitRequestBehavior is QuorumStudioBehavior
                 request:SetEmail(credentials:GetEmail())
                 request:SetMessage(message)
                 CommitResult result = git:Commit(repo, request)
+
+                Iterator<Tab> iterator = editor:GetOpenTabIterator()
+                repeat while iterator:HasNext()
+                    Tab tab = iterator:Next()
+                    if tab is EditorTab
+                        EditorTab et = cast(EditorTab, tab)
+                        et:SetIsParseDirty(true)
+                    end
+                end
                 out:Append("Done")
             end
         end
