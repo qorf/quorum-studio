@@ -30,6 +30,7 @@ use Libraries.System.DateTime
 use Libraries.Language.Compile.Hints.UseHint
 use Libraries.Development.Versioning.DiffResult
 use Libraries.Development.Environment.Studio.Interface.StatusLineGutter
+use Libraries.Containers.HashTable
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
     //CompilerResult compilerResult = undefined
@@ -221,6 +222,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                 end
             end
 
+            HashTable<integer, Hint> hintLocations
             if errors:HasHints()
                 Iterator<Hint> hinterator = errors:GetHintIterator()
                 i = 0
@@ -242,10 +244,12 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                         else
                             style:SetSize(1)
                         end
+                        hintLocations:Add(hint:GetLineNumber(), hint)
                         box:AddTextStyle("Hints" + i, style)
                     end
                     i = i + 1
                 end
+                statusGutter:SetHintLocations(hintLocations)
             end
         end
 

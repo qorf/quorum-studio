@@ -16,6 +16,7 @@ use Libraries.Development.Versioning.DiffResult
 use Libraries.Containers.HashTable
 use Libraries.Development.Versioning.DiffEdit
 use Libraries.Development.Versioning.GitConstants
+use Libraries.Language.Compile.Hints.Hint
 
 class StatusLineGutter is Gutter
     Color color
@@ -36,9 +37,11 @@ class StatusLineGutter is Gutter
     Color gitModifiedColor = color:CustomColor(160/255.0, 200/255.0, 255/255.0,1)
     Color gitAddedColor = color:CustomColor(150/255.0, 255/255.0, 150/255.0,1)
     Color gitRemovedColor = color:CustomColor(255/255.0, 160/255.0, 180/255.0,1)
+    Color yellow = color:Yellow()
 
     GitConstants gitConstants
     DiffResult result = undefined
+    HashTable<integer, Hint> hintLocations = undefined
     action UpdateVisuals(integer startLine, integer totalLines, number lineHeight)
         Empty()
 
@@ -77,6 +80,7 @@ class StatusLineGutter is Gutter
             
             drawable:SetPosition(width - drawable:GetWidth() - rightPadding, y + descent + 1)
 
+            boolean hasDiffSpot = false
             if result not= undefined
                 Array<DiffEdit> edits = result:GetEdits()
                 if edits:GetSize() > counter + startLine
@@ -85,16 +89,27 @@ class StatusLineGutter is Gutter
                     if type = gitConstants:EDIT_INSERT
                         drawable:SetColor(gitAddedColor)
                         Add(drawable)
+                        hasDiffSpot = true
                     elseif type = gitConstants:EDIT_CHANGE
                         drawable:SetColor(gitModifiedColor)
                         Add(drawable)
+                        hasDiffSpot = true
                     elseif type = gitConstants:EDIT_DELETE
                         drawable:SetColor(gitRemovedColor)
                         Add(drawable)
+                        hasDiffSpot = true
                     elseif type = gitConstants:EDIT_EQUAL
                         //drawable:SetColor(gitModifiedColor)
                     end
                     
+                end
+            end
+
+            if not hasDiffSpot and hintLocations not= undefined //if there's no diff spot, add a hint normally
+                Hint hint = hintLocations:GetValue(counter + startLine + 1)
+                if hint not= undefined
+                    drawable:SetColor(yellow)
+                    Add(drawable)
                 end
             end
             y = y - lineHeight
@@ -123,4 +138,12 @@ class StatusLineGutter is Gutter
     action SetDiffResult(DiffResult result)
         me:result = result
     end
+    action GetHintLocations returns HashTable<integer, Hint>
+        return hintLocations
+    end
+
+    action SetHintLocations(HashTable<integer, Hint> hintLocations)
+        me:hintLocations = hintLocations
+    end
+
 end
