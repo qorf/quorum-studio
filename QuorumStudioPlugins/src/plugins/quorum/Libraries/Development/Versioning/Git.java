@@ -74,6 +74,7 @@ import quorum.Libraries.Development.Versioning.StatusResult;
 import quorum.Libraries.Development.Versioning.StatusResult_;
 import quorum.Libraries.Development.Versioning.RemoteReferenceUpdate_;
 import quorum.Libraries.Development.Versioning.RemoteReferenceUpdate;
+import quorum.Libraries.Language.Object_;
 import quorum.Libraries.System.File_;
 /**
  *
@@ -97,6 +98,20 @@ public class Git {
         return diffs;
     }
     
+    private String[] ConvertQuorumFilesToPath(Array_ quorumFiles, org.eclipse.jgit.lib.Repository repository) {
+        String[] values = new String[quorumFiles.GetSize()];
+        String repoPath = repository.getDirectory().getParentFile().getAbsolutePath();
+        for(int i = 0; i < quorumFiles.GetSize(); i++) {
+            File_ file = (File_) quorumFiles.Get(i);
+            String filePath = file.GetAbsolutePath();
+            if(filePath.startsWith(repoPath)) { //otherwise it's not in the folder and can't possibly be in this repo
+                String newPath = filePath.substring(repoPath.length() + 1);
+                values[i] = newPath;
+            }
+        }
+        return values;
+    }
+    
     public AddResult_ Add(Repository_ quorumRepository,  AddRequest_ request) {
         AddResult_ result = new AddResult();
         try {
@@ -106,9 +121,13 @@ public class Git {
             org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
             AddCommand add = git.add();
             
-            DirCache call = add.call();
+            Array_ quorumFiles = request.GetFilesToAdd();
+            String[] paths = ConvertQuorumFilesToPath(quorumFiles, repository);
+            for(int i = 0; i < paths.length; i++) {
+                add.addFilepattern(paths[i]);
+            }
             
-            //add.addFilepattern("");
+            DirCache call = add.call(); //do we need this information?
             return result;
         } catch (GitAPIException ex) {
             Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
