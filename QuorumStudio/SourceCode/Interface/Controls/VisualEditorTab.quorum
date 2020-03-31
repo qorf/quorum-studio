@@ -133,6 +133,48 @@ class VisualEditorTab is Tab, DefaultSceneManager
         return parent:DefaultSceneManager:SaveItem2D(item)
     end
 
+    private action CustomLoadProperty3D(Item3D item, text key, JavaScriptObjectNotation json) returns boolean
+        SceneProperties properties
+        if key = properties:PHYSICS_ENABLED
+            JavaScriptObjectNotation newJson
+            boolean value = json:GetBoolean(key)
+            newJson:SetBoolean(value)
+            item:SetProperty(properties:PHYSICS_ENABLED, newJson)
+            return true
+        elseif key = properties:RESPONSIVENESS
+            check
+                integer value = json:GetInteger(key)
+                JavaScriptObjectNotation newJson
+                newJson:SetInteger(value)
+                item:SetProperty(properties:RESPONSIVENESS, newJson)
+                return true
+            detect e is Error
+                // An error occurs if there was no RESPONSIVENESS value to get. In that case we return silently.
+                return false
+            end
+        end
+
+        return false
+    end
+
+    private action CustomSaveProperty3D(Item3D item, text key, JavaScriptObjectNotation json) returns boolean
+        SceneProperties properties
+        if key = properties:PHYSICS_ENABLED
+            if item:HasProperty(key)
+                boolean value = item:GetProperty(key):GetBoolean()
+                json:Add(key, value)
+                return true
+            end
+        elseif key = properties:RESPONSIVENESS
+            if item:HasProperty(key)
+                integer value = item:GetProperty(key):GetInteger()
+                json:Add(key, value)
+                return true
+            end
+        end
+        return false
+    end
+
     action OnToggleOn
         parent:Tab:OnToggleOn()
         ShowLayer()

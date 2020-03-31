@@ -13,6 +13,10 @@ use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Events.SelectionEvent
 use Libraries.Interface.Events.TextChangeEvent
 use Libraries.Interface.Controls.Checkbox
+use Libraries.Development.Environment.Studio.Behaviors.PropertiesEnablePhysicsBehavior
+use Libraries.Interface.Selections.ButtonGroupSelection
+use Libraries.Interface.Controls.ButtonGroup
+use Libraries.Interface.Controls.RadioButton
 
 class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
     
@@ -32,6 +36,11 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
     TextField rotationYawField = undefined
     TextField rotationPitchField = undefined
     TextField rotationRollField = undefined
+    Checkbox physicsEnabledCheckbox = undefined
+    ButtonGroup responsivenessGroup = undefined
+    TextField massField = undefined
+    TextField frictionField = undefined
+    TextField restitutionField = undefined
 
     action Initialize(VisualSceneController controller)
         if initialized
@@ -87,9 +96,9 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         nameContainer:SetPercentageWidth(1.0)
         nameContainer:SetVerticalLayoutMode(nameContainer:FIT_CONTENTS)
         nameContainer:SetLeftPadding(20)
-        nameContainer:SetTopPadding(20)
+        nameContainer:SetTopPadding(10)
         nameContainer:SetRightPadding(30)
-        nameContainer:SetBottomPadding(20)
+        nameContainer:SetBottomPadding(10)
 
         nameLabel:SetText("Name:")
         nameLabel:SetRightPadding(10)
@@ -121,9 +130,9 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         positionContainer:SetPercentageWidth(1.0)
         positionContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
         positionContainer:SetLeftPadding(20)
-        positionContainer:SetTopPadding(20)
+        positionContainer:SetTopPadding(10)
         positionContainer:SetRightPadding(30)
-        positionContainer:SetBottomPadding(20)
+        positionContainer:SetBottomPadding(10)
 
         positionLabel:SetText("Position:")
         positionLabel:SetRightPadding(10)
@@ -186,9 +195,9 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         scaleContainer:SetPercentageWidth(1.0)
         scaleContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
         scaleContainer:SetLeftPadding(20)
-        scaleContainer:SetTopPadding(20)
+        scaleContainer:SetTopPadding(10)
         scaleContainer:SetRightPadding(30)
-        scaleContainer:SetBottomPadding(20)
+        scaleContainer:SetBottomPadding(10)
 
         scaleLabel:SetText("Scale:")
         scaleLabel:SetRightPadding(10)
@@ -250,10 +259,10 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         rotationContainer:SetLayout(rotationLayout)
         rotationContainer:SetPercentageWidth(1.0)
         rotationContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
-        rotationContainer:SetLeftPadding(20)
-        rotationContainer:SetTopPadding(20)
+        rotationContainer:SetLeftPadding(10)
+        rotationContainer:SetTopPadding(10)
         rotationContainer:SetRightPadding(30)
-        rotationContainer:SetBottomPadding(20)
+        rotationContainer:SetBottomPadding(10)
 
         rotationLabel:SetText("Rotation:")
         rotationLabel:SetRightPadding(10)
@@ -311,14 +320,152 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         physicsEnabledContainer:SetPercentageWidth(1.0)
         physicsEnabledContainer:SetVerticalLayoutMode(physicsEnabledContainer:FIT_CONTENTS)
         physicsEnabledContainer:SetLeftPadding(20)
-        physicsEnabledContainer:SetTopPadding(20)
+        physicsEnabledContainer:SetTopPadding(10)
         physicsEnabledContainer:SetRightPadding(30)
-        physicsEnabledContainer:SetBottomPadding(20)
+        physicsEnabledContainer:SetBottomPadding(10)
 
         Checkbox physicsEnabledCheckbox
+        me:physicsEnabledCheckbox = physicsEnabledCheckbox
+        
         physicsEnabledCheckbox:SetName("Physics Enabled")
         physicsEnabledContainer:Add(physicsEnabledCheckbox)
+        physicsEnabledContainer:SetTopPadding(10)
+        physicsEnabledContainer:SetBottomPadding(10)
         panel:Add(physicsEnabledContainer)
+
+        PropertiesEnablePhysicsBehavior propertiesEnablePhysicsBehavior
+        propertiesEnablePhysicsBehavior:SetDialog(me)
+        physicsEnabledCheckbox:SetBehavior(propertiesEnablePhysicsBehavior)
+
+        focusArray:Add(physicsEnabledCheckbox)
+
+        Control responsiveLabelControl
+        responsiveLabelControl:SetPercentageWidth(1.0)
+        responsiveLabelControl:SetVerticalLayoutMode(responsiveLabelControl:FIT_CONTENTS)
+        responsiveLabelControl:SetLeftPadding(20)
+        responsiveLabelControl:SetTopPadding(10)
+        panel:Add(responsiveLabelControl)
+
+        Label responsivenessLabel
+        responsivenessLabel:SetSize(16)
+        responsivenessLabel:SetText("Responsiveness")
+        responsiveLabelControl:Add(responsivenessLabel)
+
+        Control responsivenessPanel
+        responsivenessPanel:SetPercentageWidth(1.0)
+        responsivenessPanel:SetVerticalLayoutMode(responsivenessPanel:FIT_CONTENTS)
+        FlowLayout responsivenessPanelLayout
+        responsivenessPanel:SetLayout(responsivenessPanelLayout)
+        responsivenessPanel:SetLeftPadding(20)
+        responsivenessPanel:SetRightPadding(30)
+        responsivenessPanel:SetBottomPadding(10)
+
+        ButtonGroup responsivenessGroup
+        responsivenessGroup:SetName("Responsiveness")
+        me:responsivenessGroup = responsivenessGroup
+        responsivenessGroup:SetHorizontalLayoutMode(responsivenessPanel:FILL)
+        responsivenessGroup:SetVerticalLayoutMode(responsivenessPanel:FIT_CONTENTS)
+
+        RadioButton responsiveButton
+        responsiveButton:SetName("Responsive")
+        responsiveButton:SetHorizontalLayoutMode(physicsEnabledContainer:FILL)
+        responsivenessGroup:Add(responsiveButton)
+        RadioButton nonResponsiveButton
+        nonResponsiveButton:SetName("Nonresponsive")
+        nonResponsiveButton:SetHorizontalLayoutMode(physicsEnabledContainer:FILL)
+        responsivenessGroup:Add(nonResponsiveButton)
+        RadioButton unmovableButton
+        unmovableButton:SetName("Unmovable")
+        unmovableButton:SetHorizontalLayoutMode(physicsEnabledContainer:FILL)
+        responsivenessGroup:Add(unmovableButton)
+        
+        responsivenessPanel:Add(responsivenessGroup)
+        panel:Add(responsivenessPanel)
+        focusArray:Add(responsivenessGroup)
+
+        FlowLayout massLayout
+        Control massContainer
+        massContainer:SetLayout(massLayout)
+        massContainer:SetPercentageWidth(1.0)
+        massContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        massContainer:SetLeftPadding(20)
+        massContainer:SetTopPadding(10)
+        massContainer:SetRightPadding(30)
+        massContainer:SetBottomPadding(10)
+
+        Label massLabel
+        massLabel:SetText("Mass:")
+        massLabel:SetRightPadding(10)
+        massContainer:Add(massLabel)
+
+        TextField massField
+        me:massField = massField
+        massField:SetName("Mass")
+        massField:SetText("")
+        massField:SetFocusable(true)
+        massField:AddTextChangeListener(me)
+        massField:SetRightPadding(8)
+        massField:SetHorizontalLayoutMode(massContainer:FILL)
+        massContainer:Add(massField)
+
+        focusArray:Add(massField)
+        panel:Add(massContainer)
+
+        FlowLayout frictionLayout
+        Control frictionContainer
+        frictionContainer:SetLayout(frictionLayout)
+        frictionContainer:SetPercentageWidth(1.0)
+        frictionContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        frictionContainer:SetLeftPadding(20)
+        frictionContainer:SetTopPadding(10)
+        frictionContainer:SetRightPadding(30)
+        frictionContainer:SetBottomPadding(10)
+
+        Label frictionLabel
+        frictionLabel:SetText("Friction:")
+        frictionLabel:SetRightPadding(10)
+        frictionContainer:Add(frictionLabel)
+
+        TextField frictionField
+        me:frictionField = frictionField
+        frictionField:SetName("Friction")
+        frictionField:SetText("")
+        frictionField:SetFocusable(true)
+        frictionField:AddTextChangeListener(me)
+        frictionField:SetRightPadding(8)
+        frictionField:SetHorizontalLayoutMode(frictionContainer:FILL)
+        frictionContainer:Add(frictionField)
+
+        focusArray:Add(frictionField)
+        panel:Add(frictionContainer)
+
+        FlowLayout restitutionLayout
+        Control restitutionContainer
+        restitutionContainer:SetLayout(restitutionLayout)
+        restitutionContainer:SetPercentageWidth(1.0)
+        restitutionContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        restitutionContainer:SetLeftPadding(20)
+        restitutionContainer:SetTopPadding(10)
+        restitutionContainer:SetRightPadding(30)
+        restitutionContainer:SetBottomPadding(10)
+
+        Label restitutionLabel
+        restitutionLabel:SetText("Restitution:")
+        restitutionLabel:SetRightPadding(10)
+        restitutionContainer:Add(restitutionLabel)
+
+        TextField restitutionField
+        me:restitutionField = restitutionField
+        restitutionField:SetName("Friction")
+        restitutionField:SetText("")
+        restitutionField:SetFocusable(true)
+        restitutionField:AddTextChangeListener(me)
+        restitutionField:SetRightPadding(8)
+        restitutionField:SetHorizontalLayoutMode(frictionContainer:FILL)
+        restitutionContainer:Add(restitutionField)
+
+        focusArray:Add(restitutionField)
+        panel:Add(restitutionContainer)
 
         Add(panel)
 
@@ -362,6 +509,9 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
                     Show()
                 end
             end
+        elseif event:GetSelection() is ButtonGroupSelection
+            Item item = event:GetItem()
+            
         end
     end
 
@@ -376,6 +526,7 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         rotationYawField:SetText("" + item:GetYaw())
         rotationPitchField:SetText("" + item:GetPitch())
         rotationRollField:SetText("" + item:GetRoll())
+        physicsEnabledCheckbox:SetToggleState(item:IsEditorPhysicsEnabled())
     end
 
     action TextChanged(TextChangeEvent event)
@@ -486,6 +637,13 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
             detect e is Error
                 // Do nothing.
             end
+        end
+    end
+
+    action SetPhysicsEnabled(boolean enabled)
+        InteractableItem item = controller:GetSelection()
+        if item not= undefined and item:IsEditorPhysicsEnabled() not= enabled
+            item:SetEditorPhysicsEnabled(enabled)
         end
     end
 
