@@ -346,7 +346,12 @@ public class Git {
     
     /* This assumes the directory is valid. */
     public String GetPathRelativeToDirectory(String directory, String path) {
-        return path.substring(directory.length() + 1);
+        String substring = path.substring(directory.length() + 1);
+        String os = System.getProperty("os.name");
+        if(os.contains("Windows")) {
+            substring = substring.replace("\\", "/");
+        }
+        return substring;
     }
     
     public DiffResult_ RequestDiff(Repository_ quorumRepository, DiffRequest_ request) {
@@ -354,7 +359,6 @@ public class Git {
             quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
             org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
             File directory = repository.getDirectory();
-            
             String filePath = request.GetFile().GetAbsolutePath();
             String read = request.GetFile().Read();
             String relativePath = GetPathRelativeToDirectory(directory.getParent(), filePath);
@@ -365,7 +369,6 @@ public class Git {
                 // and using commit's tree find the path
                 RevTree tree = commit.getTree();
                 File_ file = request.GetFile();
-                
                 String result = null;
                 // now try to find a specific file
                 try (TreeWalk treeWalk = new TreeWalk(repository)) {
@@ -395,7 +398,6 @@ public class Git {
                     .newTag(f -> "**")     //introduce markdown style for bold
                     .build();
             
-                    
                     List<String> resultList = Arrays.asList(StringDiff.ConvertToList(result)); 
                     List<String> readList = Arrays.asList(StringDiff.ConvertToList(read));
                     
@@ -445,60 +447,7 @@ public class Git {
         } catch (IOException ex) {
             Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
         }
-            return null;
-            //Kill this on a future commit, although I'm not ready to integrate that yet.
-//        quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) repository;
-//        org.eclipse.jgit.lib.Repository plugin = repo.plugin_.getRepository();
-//        File directory = plugin.getDirectory();
-//        
-//        DiffFormatter formatter = new DiffFormatter( System.out );
-//        formatter.setRepository(plugin);
-//        List<DiffEntry> status = GetStatusEntries(plugin, formatter);
-//        for( DiffEntry entry : status ) {
-//                String newPath = directory.getParentFile().getAbsolutePath() + File.separatorChar + entry.getNewPath();
-//                
-//                //System.out.println(newPath);
-//                if(newPath != null && newPath.compareTo(request.GetFile().GetAbsolutePath()) == 0) {
-//                    quorum.Libraries.Development.Versioning.DiffResult resultForFile = new quorum.Libraries.Development.Versioning.DiffResult();
-//                    //qEntry.SetLocation(newPath);
-//                    
-//                    FileHeader fileHeader = GetFileHeader(formatter, entry);
-//                    if(fileHeader != null) {
-//                        EditList edits = fileHeader.toEditList();
-//                        Iterator<Edit> iterator = edits.iterator();
-//                        while(iterator.hasNext()) {
-//                            Edit edit = iterator.next();
-//                            quorum.Libraries.Development.Versioning.DiffEdit res = new quorum.Libraries.Development.Versioning.DiffEdit();
-//                            Edit.Type change = edit.getType();
-//                            
-//                            if(null != change) switch (change) {
-//                                case INSERT:
-//                                    res.SetEditType(0);
-//                                    break;
-//                                case REPLACE:
-//                                    res.SetEditType(1);
-//                                    break;
-//                                case DELETE:
-//                                    res.SetEditType(2);
-//                                    break;
-//                                case EMPTY:
-//                                    res.SetEditType(3);
-//                                default:
-//                                    break;
-//                            }
-//                            
-//                            res.startLine = edit.getBeginA();
-//                            res.endLine = edit.getEndB();
-//                            resultForFile.GetEdits().Add(res);
-//                        }
-//                        return resultForFile;
-//                    }
-//                }
-//                
-//            }
-//        
-//        return null;
-        
+        return null;
     }
     
     
