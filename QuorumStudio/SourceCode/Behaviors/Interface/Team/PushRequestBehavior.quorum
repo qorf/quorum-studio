@@ -65,6 +65,8 @@ class PushRequestBehavior  is QuorumStudioBehavior
                 Credentials credentials = options:GetPassword(quorumProject:GetLocation():GetAbsolutePath())
                 if credentials not= undefined
                     request:SetCredentials(credentials)
+                else 
+                    out:Append("Username and password not set, please use the Team tab in the project properties dialog.")
                 end
 
                 PushResult result = git:Push(repo, request)
@@ -108,6 +110,8 @@ class PushRequestBehavior  is QuorumStudioBehavior
                         i = i + 1
                     end
                     out:Append("Push request complete.")
+                else
+                    out:Append("Server did not respond.")
                 end
             end  
         end
