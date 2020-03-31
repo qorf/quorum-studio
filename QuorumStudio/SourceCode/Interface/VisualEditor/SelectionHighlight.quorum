@@ -257,4 +257,24 @@ class SelectionHighlight is InteractableItem
         end
         parent:InteractableItem:SetName(name)
     end
+
+    action IsEditorPhysicsEnabled returns boolean
+        SceneProperties properties
+        if item:HasProperty(properties:PHYSICS_ENABLED)
+            return item:GetProperty(properties:PHYSICS_ENABLED):GetBoolean()
+        end
+        return false
+    end
+
+    action SetEditorPhysicsEnabled(boolean enable)
+        SceneProperties properties
+        if item:HasProperty(properties:PHYSICS_ENABLED)
+            JavaScriptObjectNotation json = item:GetProperty(properties:PHYSICS_ENABLED)
+            json:SetBoolean(enable)
+        else
+            JavaScriptObjectNotation json
+            json:SetBoolean(enable)
+            item:SetProperty(properties:PHYSICS_ENABLED, json)
+        end
+    end
 end

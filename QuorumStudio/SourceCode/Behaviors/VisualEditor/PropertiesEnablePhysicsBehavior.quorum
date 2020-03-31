@@ -1,0 +1,31 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.PropertiesDialog
+use Libraries.Interface.Item
+use Libraries.Interface.Controls.ToggleButton
+use Libraries.Interface.Behaviors.Behavior
+
+class PropertiesEnablePhysicsBehavior is Behavior
+
+    PropertiesDialog dialog = undefined
+
+    action SetDialog(PropertiesDialog properties)
+        dialog = properties
+    end
+
+    action GetDialog returns PropertiesDialog
+        return dialog
+    end
+
+    action Run(BehaviorEvent event)
+        if dialog not= undefined
+            Item item = event:GetItem()
+            if item is ToggleButton
+                ToggleButton button = cast(ToggleButton, item)
+                dialog:SetPhysicsEnabled(button:GetToggleState())
+            end
+        end
+    end
+
+end
