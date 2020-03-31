@@ -146,7 +146,7 @@ public class Git {
                 CredentialsProvider provider = new UsernamePasswordCredentialsProvider(request.GetUsername(), request.GetPassword());
                 CommitCommand commit = git.commit();
                 commit.setCredentialsProvider(provider);
-                commit.setCommitter(request.GetCommiter(), request.GetEmail());
+                commit.setCommitter(request.GetName(), request.GetEmail());
                 commit.setMessage(request.GetMessage());
                 RevCommit call = commit.call();
                 String message = call.getFullMessage();
