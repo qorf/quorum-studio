@@ -124,7 +124,7 @@ public class Git {
             Array_ quorumFiles = request.GetFilesToAdd();
             String[] paths = ConvertQuorumFilesToPath(quorumFiles, repository);
             for(int i = 0; i < paths.length; i++) {
-                add.addFilepattern(paths[i]);
+                add.addFilepattern(HandleFilePathOS(paths[i]));
             }
             
             DirCache call = add.call(); //do we need this information?
@@ -347,11 +347,19 @@ public class Git {
     /* This assumes the directory is valid. */
     public String GetPathRelativeToDirectory(String directory, String path) {
         String substring = path.substring(directory.length() + 1);
+        substring = HandleFilePathOS(substring);
+        
+        return substring;
+    }
+    
+    
+    public String HandleFilePathOS(String path) {
+        String result = path;
         String os = System.getProperty("os.name");
         if(os.contains("Windows")) {
-            substring = substring.replace("\\", "/");
+            result = result.replace("\\", "/");
         }
-        return substring;
+        return result;
     }
     
     public DiffResult_ RequestDiff(Repository_ quorumRepository, DiffRequest_ request) {
@@ -360,15 +368,16 @@ public class Git {
             org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
             File directory = repository.getDirectory();
             String filePath = request.GetFile().GetAbsolutePath();
-            String read = request.GetFile().Read();
+            String read = request.GetCurrentText();//request.GetFile().Read();
+            if(read == null) {
+                read = request.GetFile().Read();
+            }
             String relativePath = GetPathRelativeToDirectory(directory.getParent(), filePath);
             ObjectId headCommit = repository.resolve(Constants.HEAD);
-            
             try (RevWalk revWalk = new RevWalk(repository)) {
                 RevCommit commit = revWalk.parseCommit(headCommit);
                 // and using commit's tree find the path
                 RevTree tree = commit.getTree();
-                File_ file = request.GetFile();
                 String result = null;
                 // now try to find a specific file
                 try (TreeWalk treeWalk = new TreeWalk(repository)) {
@@ -383,8 +392,7 @@ public class Git {
                     ObjectId objectId = treeWalk.getObjectId(0);
                     ObjectLoader loader = repository.open(objectId);
 
-                    // and then one can the loader to read the file
-                    //loader.copyTo(System.out);
+                    
                     result = new String(loader.getBytes());
                 }
 
