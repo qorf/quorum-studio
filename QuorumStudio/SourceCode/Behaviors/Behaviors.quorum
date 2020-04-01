@@ -173,16 +173,21 @@ class Behaviors
     constant text ADD_REQUEST_BEHAVIOR = "ADD_REQUEST_BEHAVIOR"
     constant text COMMIT_REQUEST_BEHAVIOR = "COMMIT_REQUEST_BEHAVIOR"
     constant text COMMIT_INTERFACE_BEHAVIOR = "COMMIT_INTERFACE_BEHAVIOR"
+    constant text CLONE_INTERFACE_BEHAVIOR = "CLONE_INTERFACE_BEHAVIOR"
+
     PullRequestBehavior pullRequestBehavior
     PushRequestBehavior pushRequestBehavior
     AddRequestBehavior addRequestBehavior
     CommitRequestBehavior commitRequestBehavior
     CommitInterfaceBehavior commitInterfaceBehavior
-    
+    CloneInterfaceBehavior cloneInterfaceBehavior
+    CloneRequestBehavior cloneRequestBehavior
+
     ThreadedBehavior threadedPullRequestBehavior
     ThreadedBehavior threadedPushRequestBehavior
     ThreadedBehavior threadedAddRequestBehavior
     ThreadedBehavior threadedCommitRequestBehavior
+    ThreadedBehavior threadedCloneRequestBehavior
 
     //Code Completion
     CodeCompletionBehavior codeCompletionBehavior
@@ -354,6 +359,11 @@ class Behaviors
         commitInterfaceBehavior:SetGitRunner(gitRunner)
         commitInterfaceBehavior:SetCommitRequestBehavior(commitRequestBehavior)
         commitInterfaceBehavior:SetThreadedCommitRequestBehavior(threadedCommitRequestBehavior)
+
+        behaviors:Add(CLONE_INTERFACE_BEHAVIOR, cloneInterfaceBehavior)
+        cloneInterfaceBehavior:SetGitRunner(gitRunner)
+        cloneInterfaceBehavior:SetCloneRequestBehavior(cloneRequestBehavior)
+        cloneInterfaceBehavior:SetThreadedCloneRequestBehavior(threadedCloneRequestBehavior)
 
         //Build Actions
         buildProjectBehavior:SetBuildManager(builder)
@@ -907,12 +917,24 @@ class Behaviors
         return commitInterfaceBehavior
     end
 
+    action GetCloneInterfaceBehavior returns CloneInterfaceBehavior
+        return cloneInterfaceBehavior
+    end
+
     action GetCommitRequestBehavior returns CommitRequestBehavior
         return commitRequestBehavior
     end
 
     action GetThreadedCommitRequestBehavior returns ThreadedBehavior
         return threadedCommitRequestBehavior
+    end
+
+    action GetCloneRequestBehavior returns CloneRequestBehavior
+        return cloneRequestBehavior
+    end
+
+    action GetThreadedCloneRequestBehavior returns ThreadedBehavior
+        return threadedCloneRequestBehavior
     end
 
     //navigation

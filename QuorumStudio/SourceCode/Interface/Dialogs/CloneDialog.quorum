@@ -1,0 +1,227 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Game.Graphics.Label
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Game.Graphics.Drawable
+use Libraries.Interface.Controls.Icon
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Button
+use Libraries.Development.Environment.Studio.Behaviors.GoToLineOkButtonBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Interface.Events.TextChangeListener
+use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Game.InputSet
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Game.InputTable
+use Libraries.Development.Environment.Studio.Behaviors.CommitRequestBehavior
+use Libraries.Concurrency.ThreadRunner
+use Libraries.Development.Environment.Studio.Behaviors.ThreadedBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CommitDialogOkButtonBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CloneRequestBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CloneDialogOkButtonBehavior
+
+class CloneDialog is Dialog
+    ThreadRunner gitRunner = undefined
+    ThreadedBehavior threadedCloneRequestBehavior = undefined
+    CloneRequestBehavior cloneRequestBehavior = undefined
+    boolean initialized = false
+    Button ok
+    Button cancel
+    TextField urlTextField
+    TextField browseTextField
+    TextField usernameTextField
+    TextField passwordTextField
+    Label urlLabel
+    Label browseLabel
+    Label usernameLabel
+    Label passwordLabel
+
+    CloneDialogOkButtonBehavior okBehavior
+    DialogCancelBehavior cancelBehavior
+    on create
+        SetModal(true)
+        parent:Item:visible = false
+    end
+
+    action Setup
+        if initialized
+            urlTextField:SetText("")
+            browseTextField:SetText("")
+            usernameTextField:SetText("")
+            passwordTextField:SetText("")
+            return now
+        end
+        initialized = true
+        passwordTextField:SetPasswordField(true)
+
+        SetName("Clone Dialog")
+        SetPixelWidth(400)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        SetRightPadding(20)
+        okBehavior:SetDialog(me)
+        cancelBehavior:SetDialog(me)
+        SetBehavior(okBehavior)
+
+        SetNextFocus(urlLabel)
+        SetPreviousFocus(ok)
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+
+        number leftPadding = 20
+
+        //setup the ok button
+        ok:SetName("Clone")
+        ok:SetFontSize(14)
+        ok:SetLeftPadding(10)
+        ok:SetRightPadding(10)
+        ok:SetBottomPadding(10)
+        ok:SetTopPadding(15)
+        ok:SetHorizontalLayoutMode(ok:parent:Libraries.Interface.Controls.Control:STANDARD)
+        ok:SetPercentageWidth(0.3)
+        ok:SetFocusable(true)
+        ok:SetNextFocus(urlTextField)
+        ok:SetBehavior(okBehavior)
+        ok:SetPreviousFocus(cancel)
+
+        cancel:SetName("Cancel")
+        cancel:SetFontSize(14)
+        cancel:SetLeftPadding(200)
+        cancel:SetBottomPadding(10)
+        cancel:SetTopPadding(15)
+        cancel:SetHorizontalLayoutMode(ok:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancel:SetPercentageWidth(0.3)
+        cancel:SetFocusable(true)
+        cancel:SetNextFocus(ok)
+        cancel:SetBehavior(cancelBehavior)
+        cancel:SetPreviousFocus(passwordTextField)
+
+        urlLabel:SetText("Clone")
+        urlLabel:SetTopPadding(20)
+        urlLabel:SetRightPadding(30)
+        urlLabel:SetLeftPadding(leftPadding)
+        urlLabel:SetPercentageWidth(0.35)
+        urlLabel:SetNextFocus(urlTextField)
+        urlLabel:SetPreviousFocus(ok)
+
+        urlTextField:SetName("Clone Textfield")
+        urlTextField:SetTopPadding(20)
+        urlTextField:SetRightPadding(20)
+        urlTextField:SetHorizontalLayoutMode(urlTextField:parent:Libraries.Interface.Controls.Control:FILL)
+        urlTextField:SetFocusable(true)
+        urlTextField:SetNextFocus(browseTextField)
+        urlTextField:SetPreviousFocus(ok)
+
+        browseLabel:SetText("Location")
+        browseLabel:SetLeftPadding(leftPadding)
+        browseLabel:SetTopPadding(20)
+        browseLabel:SetRightPadding(30)
+        browseLabel:SetNextFocus(browseTextField)
+        browseLabel:SetPreviousFocus(urlTextField)
+
+        browseTextField:SetName("Location Textfield")
+        browseTextField:SetTopPadding(20)
+        browseTextField:SetRightPadding(20)
+        browseTextField:SetHorizontalLayoutMode(urlTextField:parent:Libraries.Interface.Controls.Control:FILL)
+        browseTextField:SetFocusable(true)
+        browseTextField:SetNextFocus(usernameTextField)
+        browseTextField:SetPreviousFocus(urlTextField)
+
+        usernameLabel:SetText("Username")
+        usernameLabel:SetTopPadding(20)
+        usernameLabel:SetLeftPadding(leftPadding)
+        usernameLabel:SetRightPadding(20)
+        usernameLabel:SetNextFocus(usernameTextField)
+        usernameLabel:SetPreviousFocus(browseTextField)
+
+        usernameTextField:SetName("Username Textfield")
+        usernameTextField:SetTopPadding(20)
+        passwordTextField:SetRightPadding(20)
+        usernameTextField:SetHorizontalLayoutMode(urlTextField:parent:Libraries.Interface.Controls.Control:FILL)
+        usernameTextField:SetFocusable(true)
+        usernameTextField:SetNextFocus(passwordTextField)
+        usernameTextField:SetPreviousFocus(browseTextField)
+
+        passwordLabel:SetText("Password")
+        passwordLabel:SetTopPadding(20)
+        passwordLabel:SetLeftPadding(leftPadding)
+        passwordLabel:SetRightPadding(20)
+        passwordLabel:SetNextFocus(passwordTextField)
+        passwordLabel:SetPreviousFocus(browseTextField)
+
+        passwordTextField:SetName("Password Textfield")
+        passwordTextField:SetTopPadding(20)
+        passwordTextField:SetRightPadding(20)
+        passwordTextField:SetHorizontalLayoutMode(urlTextField:parent:Libraries.Interface.Controls.Control:FILL)
+        passwordTextField:SetFocusable(true)
+        passwordTextField:SetNextFocus(cancel)
+        passwordTextField:SetPreviousFocus(browseTextField)
+
+        LayoutProperties properties
+        Control panel
+        FlowLayout findLayout
+        panel:SetLayout(findLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetPixelHeight(150)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(2)
+
+        panel:Add(urlLabel)
+        panel:Add(urlTextField)
+
+        panel:Add(browseLabel)
+        panel:Add(browseTextField)
+
+        panel:Add(usernameLabel)
+        panel:Add(usernameTextField)
+
+        panel:Add(passwordLabel)
+        panel:Add(passwordTextField)
+
+        panel:Add(cancel)
+        panel:Add(ok)
+        panel:SetView2D(view)
+        Add(panel)
+    end
+
+    action OnShow
+        //lineTextField:Focus()
+        parent:Item:visible = true
+    end
+    
+    action OnHide
+        parent:Item:visible = false
+    end
+    action GetGitRunner returns ThreadRunner
+        return gitRunner
+    end
+
+    action SetGitRunner(ThreadRunner gitRunner)
+        me:gitRunner = gitRunner
+    end
+
+    action GetThreadedCloneRequestBehavior returns ThreadedBehavior
+        return threadedCloneRequestBehavior
+    end
+
+    action SetThreadedCloneRequestBehavior(ThreadedBehavior threadedCloneRequestBehavior)
+        me:threadedCloneRequestBehavior = threadedCloneRequestBehavior
+    end
+
+    action GetCloneRequestBehavior returns CloneRequestBehavior
+        return cloneRequestBehavior
+    end
+
+    action SetCloneRequestBehavior(CloneRequestBehavior cloneRequestBehavior)
+        me:cloneRequestBehavior = cloneRequestBehavior
+    end
+end
