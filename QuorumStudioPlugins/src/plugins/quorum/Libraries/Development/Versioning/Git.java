@@ -10,6 +10,10 @@ import com.github.difflib.text.DiffRow;
 import com.github.difflib.text.DiffRowGenerator;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -17,6 +21,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.eclipse.jgit.api.AddCommand;
+import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.CommitCommand;
 import org.eclipse.jgit.api.PullCommand;
 import org.eclipse.jgit.api.PushCommand;
@@ -34,6 +39,7 @@ import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.eclipse.jgit.patch.FileHeader;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
@@ -67,6 +73,10 @@ import quorum.Libraries.Development.Versioning.AddResult;
 import quorum.Libraries.Development.Versioning.AddResult_;
 import quorum.Libraries.Development.Versioning.AddRequest;
 import quorum.Libraries.Development.Versioning.AddRequest_;
+import quorum.Libraries.Development.Versioning.CloneResult;
+import quorum.Libraries.Development.Versioning.CloneResult_;
+import quorum.Libraries.Development.Versioning.CloneRequest;
+import quorum.Libraries.Development.Versioning.CloneRequest_;
 import quorum.Libraries.Development.Versioning.ReferenceUpdate;
 import quorum.Libraries.Development.Versioning.ReferenceUpdate_;
 import quorum.Libraries.Development.Versioning.Repository_;
@@ -110,6 +120,41 @@ public class Git {
             }
         }
         return values;
+    }
+    
+    public CloneResult_ Clone(CloneRequest_ request) {
+        CloneResult_ result = new CloneResult();
+        try {
+            
+            String repo = request.GetRemoteRepositoryLocation();
+            String local = request.GetSaveLocation();
+            
+            Path path = Paths.get(repo). getFileName();
+            
+            String name = path.toString();
+            String[] split = name.split("\\.");
+            if(split == null || split.length == 0) {
+                return result;
+            }
+            name = split[0];
+            File file = new File(local + File.separatorChar + name);
+            CloneCommand clone = org.eclipse.jgit.api.Git.cloneRepository();
+            clone.setURI( repo );
+            clone.setProgressMonitor(new TextProgressMonitor(new PrintWriter(System.out)));
+            clone.setDirectory(file);
+            clone.setCloneAllBranches( true );
+            if(request.GetUsername() != null && request.GetPassword() != null) {
+                CredentialsProvider provider = new UsernamePasswordCredentialsProvider(request.GetUsername(), request.GetPassword());
+                clone.setCredentialsProvider(provider);
+            }
+            org.eclipse.jgit.api.Git git = clone.call();
+            git.close();
+            return result;
+        } catch (GitAPIException ex) {
+            String message = ex.getMessage();
+            result.SetMessage(message);
+        }
+        return result;
     }
     
     public AddResult_ Add(Repository_ quorumRepository,  AddRequest_ request) {
