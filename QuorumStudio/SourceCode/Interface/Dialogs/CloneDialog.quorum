@@ -25,6 +25,8 @@ use Libraries.Development.Environment.Studio.Behaviors.ThreadedBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CommitDialogOkButtonBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CloneRequestBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CloneDialogOkButtonBehavior
+use Libraries.Development.Environment.Studio.Behaviors.OpenBrowseFoldersBehavior
+use Libraries.Development.Environment.Studio.Behaviors.BrowseForCloneLocationBehavior
 
 class CloneDialog is Dialog
     ThreadRunner gitRunner = undefined
@@ -33,6 +35,7 @@ class CloneDialog is Dialog
     boolean initialized = false
     Button ok
     Button cancel
+    Button browseButton
     TextField urlTextField
     TextField browseTextField
     TextField usernameTextField
@@ -44,6 +47,8 @@ class CloneDialog is Dialog
 
     CloneDialogOkButtonBehavior okBehavior
     DialogCancelBehavior cancelBehavior
+    BrowseForCloneLocationBehavior browseBehavior
+
     on create
         SetModal(true)
         parent:Item:visible = false
@@ -60,6 +65,7 @@ class CloneDialog is Dialog
         initialized = true
         passwordTextField:SetPasswordField(true)
 
+        browseBehavior:SetDialog(me)
         SetName("Clone Dialog")
         SetPixelWidth(400)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
@@ -105,6 +111,18 @@ class CloneDialog is Dialog
         cancel:SetBehavior(cancelBehavior)
         cancel:SetPreviousFocus(passwordTextField)
 
+        browseButton:SetName("Browse...")
+        //locationBrowseButton:SetHorizontalLayoutMode(locationBrowseButton:parent:Libraries.Interface.Controls.Control:FILL)
+        browseButton:SetHorizontalLayoutMode(browseButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        browseButton:SetPercentageWidth(0.2)
+        browseButton:SetLeftPadding(6)
+        browseButton:SetBottomPadding(6)
+        browseButton:SetFocusable(true)
+        //browseButton:SetNextFocus(cancelButton)
+        //browseButton:SetPreviousFocus(locationNameField)
+        browseButton:SetBehavior(browseBehavior)
+        
+
         urlLabel:SetText("Clone")
         urlLabel:SetTopPadding(20)
         urlLabel:SetRightPadding(30)
@@ -131,7 +149,8 @@ class CloneDialog is Dialog
         browseTextField:SetName("Location Textfield")
         browseTextField:SetTopPadding(20)
         browseTextField:SetRightPadding(20)
-        browseTextField:SetHorizontalLayoutMode(urlTextField:parent:Libraries.Interface.Controls.Control:FILL)
+        browseTextField:SetPercentageWidth(0.60)
+        browseTextField:SetHorizontalLayoutMode(urlTextField:parent:Libraries.Interface.Controls.Control:STANDARD)
         browseTextField:SetFocusable(true)
         browseTextField:SetNextFocus(usernameTextField)
         browseTextField:SetPreviousFocus(urlTextField)
@@ -180,6 +199,7 @@ class CloneDialog is Dialog
 
         panel:Add(browseLabel)
         panel:Add(browseTextField)
+        panel:Add(browseButton)
 
         panel:Add(usernameLabel)
         panel:Add(usernameTextField)
@@ -191,6 +211,10 @@ class CloneDialog is Dialog
         panel:Add(ok)
         panel:SetView2D(view)
         Add(panel)
+    end
+
+    action UpdateFolderName(text name)
+        browseTextField:SetText(name)
     end
 
     action OnShow

@@ -1,0 +1,42 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Controls.FileChooser
+use Libraries.Interface.Controls.FileFilter
+use Libraries.System.File
+use Libraries.Development.Environment.Projects.ProjectView
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.Interface.CloneDialog
+use Libraries.Game.Game
+use Libraries.Development.Environment.Configuration.Options
+
+class BrowseForCloneLocationBehavior is QuorumStudioBehavior 
+    GameStateManager manager 
+    text os = manager:GetOperatingSystem()
+    CloneDialog dialog = undefined
+    text folderName = undefined
+
+    action SetDialog(CloneDialog dialog)
+        me:dialog = dialog
+    end
+
+    action GetDialog returns CloneDialog
+        return dialog
+    end
+
+    action Run(BehaviorEvent event)
+        FileChooser chooser
+
+        GameStateManager manager
+        Game game = manager:GetGame()
+        QuorumStudio studio = cast(QuorumStudio, game)
+        Options options = studio:GetOptions()
+        File location = options:GetProjectsFolder()
+ 
+        File folder = chooser:ChooseFolderDialog(location)
+        if folder not= undefined
+            dialog:UpdateFolderName(folder:GetAbsolutePath())
+        end
+    end
+end
