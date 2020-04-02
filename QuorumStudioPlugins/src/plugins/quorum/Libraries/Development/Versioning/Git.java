@@ -84,6 +84,7 @@ import quorum.Libraries.Development.Versioning.StatusResult;
 import quorum.Libraries.Development.Versioning.StatusResult_;
 import quorum.Libraries.Development.Versioning.RemoteReferenceUpdate_;
 import quorum.Libraries.Development.Versioning.RemoteReferenceUpdate;
+import quorum.Libraries.Development.Versioning.VersionProgressMonitor_;
 import quorum.Libraries.Language.Object_;
 import quorum.Libraries.System.File_;
 /**
@@ -136,11 +137,18 @@ public class Git {
             if(split == null || split.length == 0) {
                 return result;
             }
+            
+            VersionProgressMonitor_ monitor = request.GetProgressMonitor();
             name = split[0];
             File file = new File(local + File.separatorChar + name);
             CloneCommand clone = org.eclipse.jgit.api.Git.cloneRepository();
             clone.setURI( repo );
-            clone.setProgressMonitor(new TextProgressMonitor(new PrintWriter(System.out)));
+            
+            if(monitor != null) {
+                QuorumProgressMonitor qpm = new QuorumProgressMonitor();
+                qpm.setMonitor(monitor);
+                clone.setProgressMonitor(qpm);
+            }
             clone.setDirectory(file);
             clone.setCloneAllBranches( true );
             if(request.GetUsername() != null && request.GetPassword() != null) {

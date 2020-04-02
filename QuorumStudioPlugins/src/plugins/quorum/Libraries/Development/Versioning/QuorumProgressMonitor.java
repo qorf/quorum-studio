@@ -5,27 +5,53 @@
  */
 package plugins.quorum.Libraries.Development.Versioning;
 
+import org.eclipse.jgit.lib.ProgressMonitor;
 import org.eclipse.jgit.lib.TextProgressMonitor;
+import quorum.Libraries.Development.Versioning.VersionProgressMonitor_;
 
 /**
  *
  * @author stefika
  */
-public class QuorumProgressMonitor extends TextProgressMonitor{
-     @Override
-     protected  void 	onEndTask(String taskName, int workCurr) {
-         
-     }
-     @Override
-    protected  void 	onEndTask(String taskName, int cmp, int totalWork, int pcnt) {
-        
+public class QuorumProgressMonitor implements ProgressMonitor{
+    private VersionProgressMonitor_ monitor = null;
+    
+    @Override
+    public void start(int i) {
+        monitor.Start(i);
     }
-     @Override
-    protected  void 	onUpdate(String taskName, int workCurr) {
-        
+
+    @Override
+    public void beginTask(String string, int i) {
+        monitor.BeginTask(string, i);
     }
-     @Override
-    protected  void 	onUpdate(String taskName, int cmp, int totalWork, int pcnt) {
-        
+
+    @Override
+    public void update(int i) {
+        monitor.Update(i);
+    }
+
+    @Override
+    public void endTask() {
+        monitor.EndTask();
+    }
+
+    @Override
+    public boolean isCancelled() {
+        return monitor.IsCancelled();
+    }
+
+    /**
+     * @return the monitor
+     */
+    public VersionProgressMonitor_ getMonitor() {
+        return monitor;
+    }
+
+    /**
+     * @param monitor the monitor to set
+     */
+    public void setMonitor(VersionProgressMonitor_ monitor) {
+        this.monitor = monitor;
     }
 }
