@@ -8,8 +8,6 @@ use Libraries.Game.Layer3D
 use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Game.Scenes.Scene
-use Libraries.Game.Scenes.ModelSceneProperty
-use Libraries.Game.Scenes.LightSceneProperty
 use Libraries.Game.Graphics.AmbientLight
 use Libraries.Game.Graphics.DirectionalLight
 use Libraries.Game.Graphics.PointLight
@@ -152,6 +150,17 @@ class VisualEditorTab is Tab, DefaultSceneManager
                 // An error occurs if there was no RESPONSIVENESS value to get. In that case we return silently.
                 return false
             end
+        elseif key = properties:MASS or key = properties:FRICTION or key = properties:RESTITUTION
+            check
+                number value = json:GetNumber(key)
+                JavaScriptObjectNotation newJson
+                newJson:SetNumber(value)
+                item:SetProperty(key, newJson)
+                return true
+            detect e is Error
+                // An error occurs if there was no value to get. In that case we return silently.
+                return false
+            end
         end
 
         return false
@@ -168,6 +177,12 @@ class VisualEditorTab is Tab, DefaultSceneManager
         elseif key = properties:RESPONSIVENESS
             if item:HasProperty(key)
                 integer value = item:GetProperty(key):GetInteger()
+                json:Add(key, value)
+                return true
+            end
+        elseif key = properties:MASS or key = properties:FRICTION or key = properties:RESTITUTION
+            if item:HasProperty(key)
+                number value = item:GetProperty(key):GetNumber()
                 json:Add(key, value)
                 return true
             end

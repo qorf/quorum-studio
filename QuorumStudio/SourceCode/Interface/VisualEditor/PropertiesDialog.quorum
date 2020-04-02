@@ -369,16 +369,19 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         RadioButton responsiveButton
         responsiveButton:SetName("Responsive")
         responsiveButton:SetHorizontalLayoutMode(physicsEnabledContainer:FILL)
-        responsivenessGroup:Add(responsiveButton)
+        
         RadioButton nonResponsiveButton
         nonResponsiveButton:SetName("Nonresponsive")
         nonResponsiveButton:SetHorizontalLayoutMode(physicsEnabledContainer:FILL)
-        responsivenessGroup:Add(nonResponsiveButton)
         RadioButton unmovableButton
         unmovableButton:SetName("Unmovable")
         unmovableButton:SetHorizontalLayoutMode(physicsEnabledContainer:FILL)
-        responsivenessGroup:Add(unmovableButton)
         
+        responsivenessGroup:Add(unmovableButton)
+        responsivenessGroup:Add(nonResponsiveButton)
+        responsivenessGroup:Add(responsiveButton)
+        responsivenessGroup:AddSelectionListener(me)
+
         responsivenessPanel:Add(responsivenessGroup)
         panel:Add(responsivenessPanel)
         focusArray:Add(responsivenessGroup)
@@ -510,8 +513,11 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
                 end
             end
         elseif event:GetSelection() is ButtonGroupSelection
-            Item item = event:GetItem()
-            
+            ButtonGroupSelection selection = cast(ButtonGroupSelection, event:GetSelection())
+            InteractableItem item = controller:GetSelection()
+            if item not= undefined
+                item:SetEditorResponsiveness(selection:GetIndex())
+            end
         end
     end
 
@@ -527,6 +533,13 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
         rotationPitchField:SetText("" + item:GetPitch())
         rotationRollField:SetText("" + item:GetRoll())
         physicsEnabledCheckbox:SetToggleState(item:IsEditorPhysicsEnabled())
+        
+        integer responsive = item:GetEditorResponsiveness()
+        responsivenessGroup:GetButtonAt(responsive):SetToggleState(true)
+
+        massField:SetText("" + item:GetEditorMass())
+        frictionField:SetText("" + item:GetEditorFriction())
+        restitutionField:SetText("" + item:GetEditorRestitution())
     end
 
     action TextChanged(TextChangeEvent event)
@@ -633,6 +646,36 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
 
                 if value not= currentItem:GetRoll()
                     currentItem:SetRotation(currentItem:GetYaw(), currentItem:GetPitch(), value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(massField)
+            check
+                number value = massField:GetText():ParseNumber()
+
+                if value not= currentItem:GetEditorMass()
+                    currentItem:SetEditorMass(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(frictionField)
+            check
+                number value = frictionField:GetText():ParseNumber()
+
+                if value not= currentItem:GetEditorFriction()
+                    currentItem:SetEditorFriction(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(restitutionField)
+            check
+                number value = restitutionField:GetText():ParseNumber()
+
+                if value not= currentItem:GetEditorRestitution()
+                    currentItem:SetEditorRestitution(value)
                 end
             detect e is Error
                 // Do nothing.
