@@ -1,0 +1,96 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Controls.TextBox
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Studio.Build.BuildInformation
+use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Interface.Item
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.Repository
+use Libraries.Development.Versioning.PullRequest
+use Libraries.Development.Versioning.PullResult
+use Libraries.Development.Versioning.ReferenceUpdate
+use Libraries.Development.Environment.Configuration.Options
+use Libraries.Development.Environment.Projects.Credentials
+use Libraries.Development.Versioning.DiffEntry
+use Libraries.Development.Versioning.GitConstants
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.System.File
+use Libraries.Interface.Controls.Tab
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Versioning.PushRequest
+use Libraries.Development.Versioning.PushResult
+use Libraries.Development.Versioning.RemoteReferenceUpdate
+use Libraries.Development.Versioning.StatusResult
+
+class StatusRequestBehavior  is QuorumStudioBehavior
+    action Run(BehaviorEvent event)
+        QuorumStudio studio = GetMainApplication()
+        StudioFocusManager manager = studio:GetStudioFocusManager()
+        Project project = manager:GetProjectFocus()
+        Options options = studio:GetOptions()
+        
+
+        // If the project is undefined, it fails this check.
+        if project is QuorumProject
+            QuorumProject quorumProject = cast(QuorumProject, project)
+            File projectLocation = quorumProject:GetLocation()
+            if quorumProject:HasGitSupport()
+                OutputEditorTabPane outPane = studio:GetOutputPane()
+                CodeEditorTabPane editor = studio:GetTabPane()
+
+                OutputTab out = outPane:GetOutputTab()
+                out:Empty()
+                out:Append("Checking Status of Project")
+                Git git
+                Repository repo = quorumProject:GetGitRepository()
+                StatusResult result = git:GetStatus(repo)
+
+                if result:IsClean()
+                    out:Append("No changes")  
+                    return now
+                end
+
+                OutputToConsole("Added", result:GetAdded(), out)
+                OutputToConsole("Changed", result:GetChanged(), out)
+                OutputToConsole("Conflicting", result:GetConflicting(), out)
+                OutputToConsole("Ignored Not In Index", result:GetIgnoredNotInIndex(), out)
+                OutputToConsole("Missing", result:GetMissing(), out)
+                OutputToConsole("Modified", result:GetModified(), out)
+                OutputToConsole("Removed", result:GetRemoved(), out)
+                OutputToConsole("Uncommitted Changes", result:GetUncommittedChanges(), out)
+                OutputToConsole("Untracked", result:GetUntracked(), out)
+                OutputToConsole("Untracked Folders", result:GetUntrackedFolders(), out)
+            end  
+        end
+    end
+
+
+    action OutputToConsole(text message, Array<text> values, OutputTab out)
+        if values:IsEmpty()
+            return now
+        end
+        out:Append(message)
+        i = 0
+        repeat while i < values:GetSize()
+            out:Append((i + 1) + ": " + values:Get(i))
+            i = i + 1
+        end
+        out:Append("")
+    end
+end
