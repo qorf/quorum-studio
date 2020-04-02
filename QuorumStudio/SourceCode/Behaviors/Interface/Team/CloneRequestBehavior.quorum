@@ -24,14 +24,30 @@ use Libraries.Development.Versioning.CloneRequest
 use Libraries.Development.Versioning.CloneResult
 use Libraries.Development.Versioning.VersionProgressMonitor
 use Libraries.Containers.Array
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Interface.Controls.TextBox
 
 class CloneRequestBehavior is QuorumStudioBehavior, VersionProgressMonitor
     text remoteRepositoryLocation = ""
     text saveLocation = ""
     text username = ""
     text password = ""
+    text currentTask = ""
+    number maxItems = 0
+    number currentItem = 0
+    integer task = 0
+    QuorumStudio studio = undefined
+    OutputTab out = undefined
 
     action Run(BehaviorEvent event)
+        GameStateManager manager
+        Game game = manager:GetGame()
+        studio = cast(QuorumStudio, game)
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+        out = outPane:GetOutputTab()
+        out:Empty()
+
         CloneRequest request
         request:SetUsername(GetUsername())
         request:SetPassword(GetPassword())
@@ -40,26 +56,42 @@ class CloneRequestBehavior is QuorumStudioBehavior, VersionProgressMonitor
         request:SetProgressMonitor(me)
 
         Git git
-        output "Contacting server at: " + GetRemoteRepositoryLocation() + " ... "
-        output "Cloning can take time. Please wait."
+        out:Append("Contacting server at: " + GetRemoteRepositoryLocation() + " ... ")
+        out:Append("Cloning can take time. Please wait.")
+        out:Append("")
+
         CloneResult result = git:Clone(request)
-        output "Clone completed."
+        out:Append("Clone completed.")
     end
 
     action Start(integer i) 
-        output "Start " + i
+        maxItems = i
+        out:Append("Getting files from remote server. There are " + i + " tasks to perform.")
     end
 
     action BeginTask(text value, integer i) 
-        output "StartTask " + value + ", " + i
+        currentTask = value
+        maxItems = i
+        currentItem = 0
+        out:Append(value)
     end
 
     action Update(integer i)
-        output "Update " + i
+        currentItem = currentItem + i
+        TextBox box = out:GetTextBox()
+        integer lineNumber = box:GetLineCount()
+        text line = box:GetLine(lineNumber - 1)
+
+        number percent = currentItem / maxItems
+        text percentLabel = "" + percent
+        percentLabel = percentLabel:GetSubtext(0, 3)
+        
+        //box:SetLine(lineNumber - 1, "Progress: " + percentLabel + "%")
     end
 
     action EndTask
-        output "End Task"
+        task = task + 1
+        currentItem = 0
     end
 
     action IsCancelled returns boolean
