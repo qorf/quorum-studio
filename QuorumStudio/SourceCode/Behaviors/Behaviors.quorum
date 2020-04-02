@@ -171,6 +171,7 @@ class Behaviors
     constant text PULL_REQUEST_BEHAVIOR = "PULL_REQUEST_BEHAVIOR"
     constant text PUSH_REQUEST_BEHAVIOR = "PUSH_REQUEST_BEHAVIOR"
     constant text ADD_REQUEST_BEHAVIOR = "ADD_REQUEST_BEHAVIOR"
+    constant text ADD_PROJECT_REQUEST_BEHAVIOR = "ADD_PROJECT_REQUEST_BEHAVIOR"
     constant text STATUS_REQUEST_BEHAVIOR = "STATUS_REQUEST_BEHAVIOR"
     constant text COMMIT_REQUEST_BEHAVIOR = "COMMIT_REQUEST_BEHAVIOR"
     constant text COMMIT_INTERFACE_BEHAVIOR = "COMMIT_INTERFACE_BEHAVIOR"
@@ -179,6 +180,7 @@ class Behaviors
     PullRequestBehavior pullRequestBehavior
     PushRequestBehavior pushRequestBehavior
     AddRequestBehavior addRequestBehavior
+    AddProjectRequestBehavior addProjectRequestBehavior
     CommitRequestBehavior commitRequestBehavior
     CommitInterfaceBehavior commitInterfaceBehavior
     CloneInterfaceBehavior cloneInterfaceBehavior
@@ -188,6 +190,7 @@ class Behaviors
     ThreadedBehavior threadedPullRequestBehavior
     ThreadedBehavior threadedPushRequestBehavior
     ThreadedBehavior threadedAddRequestBehavior
+    ThreadedBehavior threadedAddProjectRequestBehavior
     ThreadedBehavior threadedCommitRequestBehavior
     ThreadedBehavior threadedCloneRequestBehavior
     ThreadedBehavior threadedStatusRequestBehavior
@@ -354,6 +357,10 @@ class Behaviors
         behaviors:Add(ADD_REQUEST_BEHAVIOR, addRequestBehavior)
         threadedAddRequestBehavior:SetNestedBehavior(addRequestBehavior)
         threadedAddRequestBehavior:SetThreadRunner(gitRunner)
+
+        behaviors:Add(ADD_PROJECT_REQUEST_BEHAVIOR, addProjectRequestBehavior)
+        threadedAddProjectRequestBehavior:SetNestedBehavior(addProjectRequestBehavior)
+        threadedAddProjectRequestBehavior:SetThreadRunner(gitRunner)
 
         behaviors:Add(STATUS_REQUEST_BEHAVIOR, statusRequestBehavior)
         threadedStatusRequestBehavior:SetNestedBehavior(statusRequestBehavior)
@@ -920,6 +927,14 @@ class Behaviors
 
     action GetThreadedAddRequestBehavior returns ThreadedBehavior
         return threadedAddRequestBehavior
+    end
+
+    action GetAddProjectRequestBehavior returns AddProjectRequestBehavior
+        return addProjectRequestBehavior
+    end
+
+    action GetThreadedAddProjectRequestBehavior returns ThreadedBehavior
+        return threadedAddProjectRequestBehavior
     end
 
     action GetCommitInterfaceBehavior returns CommitInterfaceBehavior
