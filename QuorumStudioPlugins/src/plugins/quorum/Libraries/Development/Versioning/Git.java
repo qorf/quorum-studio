@@ -141,6 +141,12 @@ public class Git {
             VersionProgressMonitor_ monitor = request.GetProgressMonitor();
             name = split[0];
             File file = new File(local + File.separatorChar + name);
+            if(file.exists()) {
+                result.SetIsSuccessful(false);
+                result.SetMessage("The location you are attempting to clone to is not empty. Please delete the folder and try again.");
+                return result;
+            }
+                
             CloneCommand clone = org.eclipse.jgit.api.Git.cloneRepository();
             clone.setURI( repo );
             
