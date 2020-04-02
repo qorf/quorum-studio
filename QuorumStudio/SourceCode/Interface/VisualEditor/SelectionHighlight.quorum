@@ -277,4 +277,96 @@ class SelectionHighlight is InteractableItem
             item:SetProperty(properties:PHYSICS_ENABLED, json)
         end
     end
+
+    action GetEditorResponsiveness returns integer
+        SceneProperties properties
+        if item:HasProperty(properties:RESPONSIVENESS)
+            return item:GetProperty(properties:RESPONSIVENESS):GetInteger()
+        end
+
+        // The default value is UNMOVABLE, or 0.
+        return 0
+    end
+
+    action SetEditorResponsiveness(integer responsive)
+        SceneProperties properties
+        if item:HasProperty(properties:RESPONSIVENESS)
+            JavaScriptObjectNotation json = item:GetProperty(properties:RESPONSIVENESS)
+            json:SetInteger(responsive)
+        else
+            JavaScriptObjectNotation json
+            json:SetInteger(responsive)
+            item:SetProperty(properties:RESPONSIVENESS, json)
+        end
+    end
+
+    action GetEditorMass returns number
+        SceneProperties properties
+        if item:HasProperty(properties:MASS)
+            return item:GetProperty(properties:MASS):GetNumber()
+        end
+
+        // The default value is 1 for responsive objects, 0 otherwise.
+        if GetEditorResponsiveness() = 2
+            return 1
+        else
+            return 0
+        end
+    end
+
+    action SetEditorMass(number mass)
+        SceneProperties properties
+        if item:HasProperty(properties:MASS)
+            JavaScriptObjectNotation json = item:GetProperty(properties:MASS)
+            json:SetNumber(mass)
+        else
+            JavaScriptObjectNotation json
+            json:SetNumber(mass)
+            item:SetProperty(properties:MASS, json)
+        end
+    end
+
+    action GetEditorFriction returns number
+        SceneProperties properties
+        if item:HasProperty(properties:FRICTION)
+            return item:GetProperty(properties:FRICTION):GetNumber()
+        end
+
+        // The default value is 0.
+        return 0
+    end
+
+    action SetEditorFriction(number friction)
+        SceneProperties properties
+        if item:HasProperty(properties:FRICTION)
+            JavaScriptObjectNotation json = item:GetProperty(properties:FRICTION)
+            json:SetNumber(friction)
+        else
+            JavaScriptObjectNotation json
+            json:SetNumber(friction)
+            item:SetProperty(properties:FRICTION, json)
+        end
+    end
+
+    action GetEditorRestitution returns number
+        SceneProperties properties
+        if item:HasProperty(properties:RESTITUTION)
+            return item:GetProperty(properties:RESTITUTION):GetNumber()
+        end
+
+        // The default value is 0.
+        return 0
+    end
+
+    action SetEditorRestitution(number restitution)
+        SceneProperties properties
+        if item:HasProperty(properties:RESTITUTION)
+            JavaScriptObjectNotation json = item:GetProperty(properties:RESTITUTION)
+            json:SetNumber(restitution)
+        else
+            JavaScriptObjectNotation json
+            json:SetNumber(restitution)
+            item:SetProperty(properties:RESTITUTION, json)
+        end
+    end
 end
