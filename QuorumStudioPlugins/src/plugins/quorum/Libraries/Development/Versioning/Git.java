@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.eclipse.jgit.api.AddCommand;
@@ -25,6 +26,8 @@ import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.CommitCommand;
 import org.eclipse.jgit.api.PullCommand;
 import org.eclipse.jgit.api.PushCommand;
+import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
@@ -32,6 +35,7 @@ import org.eclipse.jgit.diff.Edit;
 import org.eclipse.jgit.diff.EditList;
 import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
+import org.eclipse.jgit.errors.NoWorkTreeException;
 import org.eclipse.jgit.errors.RevisionSyntaxException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
@@ -558,35 +562,42 @@ public class Git {
         return null;
     }
     
-    public StatusResult_ GetStatus(quorum.Libraries.System.File_ file) {
+    private void ConvertSetToQuorumArray(Set<String> items, Array_ array) {
+        if(items == null || array == null) {
+            return;
+        }
+        Iterator<String> iterator = items.iterator();
+        while(iterator.hasNext()) {
+            String next = iterator.next();
+            quorum.Libraries.Language.Types.Text text = new quorum.Libraries.Language.Types.Text();
+            text.SetValue(next);
+            array.Add(text);
+        }
+    }
+    
+    public StatusResult_ GetStatus(Repository_ quorumRepository) {
         StatusResult result = new StatusResult();
-        //"/Users/stefika/Repositories/quorum-language/.git"
-        Repository repo = GetRepositoryNative(file.GetAbsolutePath());
-        DiffFormatter formatter = new DiffFormatter( System.out );
-        formatter.setRepository(repo);
-        
-        List<DiffEntry> status = GetStatusEntries(repo, formatter);
-        
-        for( DiffEntry entry : status ) {
-                String newPath = entry.getNewPath();
-                quorum.Libraries.Development.Versioning.DiffEntry qEntry = new quorum.Libraries.Development.Versioning.DiffEntry();
-                qEntry.SetLocation(newPath);
-                
-                FileHeader fileHeader = GetFileHeader(formatter, entry);
-                if(fileHeader != null) {
-                    EditList edits = fileHeader.toEditList();
-                    Iterator<Edit> iterator = edits.iterator();
-                    while(iterator.hasNext()) {
-                        Edit edit = iterator.next();
-                       // quorum.Libraries.Development.Versioning.DiffResult res = new quorum.Libraries.Development.Versioning.DiffResult();
-                       // res.startLine = edit.getBeginA();
-                       // res.endLine = edit.getEndA();
-                       // qEntry.results.Add(res);
-                    }
-                }
-            }
-        
-        
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+            StatusCommand status = git.status();
+            Status call = status.call();
+            ConvertSetToQuorumArray(call.getAdded(), result.added);
+            ConvertSetToQuorumArray(call.getChanged(), result.changed);
+            ConvertSetToQuorumArray(call.getConflicting(), result.conflicting);
+            ConvertSetToQuorumArray(call.getIgnoredNotInIndex(), result.ignoredNotInIndex);
+            ConvertSetToQuorumArray(call.getMissing(), result.missing);
+            ConvertSetToQuorumArray(call.getModified(), result.modified);
+            ConvertSetToQuorumArray(call.getRemoved(), result.removed);
+            ConvertSetToQuorumArray(call.getUncommittedChanges(), result.uncommittedChanges);
+            ConvertSetToQuorumArray(call.getUntracked(), result.untracked);
+            ConvertSetToQuorumArray(call.getUntrackedFolders(), result.untrackedFolders);
+            result.isClean = call.isClean();
+            result.hasUncommittedChanges = call.hasUncommittedChanges();            
+        } catch(GitAPIException | NoWorkTreeException ex) {
+        }
         return result;
     }
     
