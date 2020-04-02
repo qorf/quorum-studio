@@ -27,6 +27,7 @@ use Libraries.Containers.Array
 use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Behaviors.Controls.ChangeEditorLineBehavior
 
 class CloneRequestBehavior is QuorumStudioBehavior, VersionProgressMonitor
     text remoteRepositoryLocation = ""
@@ -37,8 +38,10 @@ class CloneRequestBehavior is QuorumStudioBehavior, VersionProgressMonitor
     number maxItems = 0
     number currentItem = 0
     integer task = 0
+    integer currentLineCount = 0
     QuorumStudio studio = undefined
     OutputTab out = undefined
+    ChangeEditorLineBehavior changeLine
 
     action Run(BehaviorEvent event)
         GameStateManager manager
@@ -58,10 +61,6 @@ class CloneRequestBehavior is QuorumStudioBehavior, VersionProgressMonitor
         text value = GetSaveLocation()
         File file
         file:SetAbsolutePath(value)
-        //if file:Exists()
-        //    out:Append("The folder at " + value + " is not empty. If you would like to clone to this folder, it needs to be deleted first.")
-        //    return now
-        //end
 
         Git git
         out:Append("Contacting server at: " + GetRemoteRepositoryLocation() + " ... ")
@@ -69,7 +68,11 @@ class CloneRequestBehavior is QuorumStudioBehavior, VersionProgressMonitor
         out:Append("")
 
         CloneResult result = git:Clone(request)
-        out:Append("Clone completed.")
+        if result:IsSuccessful()
+            out:Append("Clone completed")
+        else
+            out:Append("Clone failed: " + result:GetMessage())
+        end
     end
 
     action Start(integer i) 
@@ -82,22 +85,31 @@ class CloneRequestBehavior is QuorumStudioBehavior, VersionProgressMonitor
         maxItems = i
         currentItem = 0
         out:Append(value)
+
+        TextBox box = out:GetTextBox()
+        currentLineCount = box:GetLineCount() - 1
     end
 
     action Update(integer i)
         currentItem = currentItem + i
         TextBox box = out:GetTextBox()
-        integer lineNumber = box:GetLineCount()
-        text line = box:GetLine(lineNumber - 1)
 
         number percent = currentItem / maxItems
         text percentLabel = "" + percent
         percentLabel = percentLabel:GetSubtext(0, 3)
         
-        //box:SetLine(lineNumber - 1, "Progress: " + percentLabel + "%")
+        changeLine:SetLine(currentLineCount)
+        changeLine:SetMessage(currentTask + ": " + percentLabel + "%")
+        changeLine:SetTextbox(box)
+        //box:AddBehavior(changeLine)
     end
 
     action EndTask
+        TextBox box = out:GetTextBox()
+        changeLine:SetLine(currentLineCount)
+        changeLine:SetMessage(currentTask + ": 100%")
+        changeLine:SetTextbox(box)
+        //box:AddBehavior(changeLine)
         task = task + 1
         currentItem = 0
     end

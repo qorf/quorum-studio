@@ -1,0 +1,49 @@
+package Libraries.Interface.Behaviors.Controls
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Events.BehaviorEvent
+
+class ChangeEditorLineBehavior is Behavior
+    TextBox textbox = undefined
+    text message = ""
+    integer line = 0
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action Run(BehaviorEvent event)
+        if textbox = undefined
+            return now
+        end
+
+        textbox:SetLine(line, message)
+    end
+
+    action GetTextbox returns TextBox
+        return textbox
+    end
+
+    action SetTextbox(TextBox textbox)
+        me:textbox = textbox
+    end
+
+    action GetMessage returns text
+        return message
+    end
+
+    action SetMessage(text message)
+        me:message = message
+    end
+
+    action GetLine returns integer
+        return line
+    end
+
+    action SetLine(integer line)
+        me:line = line
+    end
+
+    action IsFinished returns boolean
+        return true
+    end
+end
