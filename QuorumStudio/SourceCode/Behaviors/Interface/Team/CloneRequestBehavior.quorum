@@ -22,8 +22,10 @@ use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Development.Versioning.CloneRequest
 use Libraries.Development.Versioning.CloneResult
+use Libraries.Development.Versioning.VersionProgressMonitor
+use Libraries.Containers.Array
 
-class CloneRequestBehavior is QuorumStudioBehavior
+class CloneRequestBehavior is QuorumStudioBehavior, VersionProgressMonitor
     text remoteRepositoryLocation = ""
     text saveLocation = ""
     text username = ""
@@ -35,12 +37,33 @@ class CloneRequestBehavior is QuorumStudioBehavior
         request:SetPassword(GetPassword())
         request:SetRemoteRepositoryLocation(GetRemoteRepositoryLocation())
         request:SetSaveLocation(GetSaveLocation())
+        request:SetProgressMonitor(me)
 
         Git git
         output "Contacting server at: " + GetRemoteRepositoryLocation() + " ... "
         output "Cloning can take time. Please wait."
         CloneResult result = git:Clone(request)
         output "Clone completed."
+    end
+
+    action Start(integer i) 
+        output "Start " + i
+    end
+
+    action BeginTask(text value, integer i) 
+        output "StartTask " + value + ", " + i
+    end
+
+    action Update(integer i)
+        output "Update " + i
+    end
+
+    action EndTask
+        output "End Task"
+    end
+
+    action IsCancelled returns boolean
+        return false
     end
 
     action GetRemoteRepositoryLocation returns text
