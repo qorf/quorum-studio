@@ -8,6 +8,15 @@ use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.Repository
+use Libraries.Development.Versioning.DeleteRequest
+use Libraries.Containers.Array
 
 class DeleteFileIfOkBehavior is Behavior
 
@@ -53,13 +62,45 @@ class DeleteFileIfOkBehavior is Behavior
             end
         end
 
+        //check to see if this is a file or folder inside of a git repository
+        //if it is, then kill the file from Git as a git remove, not just as a
+        //file deletion.
+        StudioFocusManager focus = qs:GetStudioFocusManager()
+        OutputEditorTabPane outPane = qs:GetOutputPane()
+        OutputTab out = outPane:GetOutputTab()
+        Project project = focus:GetProjectFocus()
+        if project is QuorumProject and file not= undefined
+            QuorumProject quorumProject = cast(QuorumProject, project)
+            
+            File projectLocation = quorumProject:GetLocation()
+            if quorumProject:HasGitSupport()
+                boolean isSourceFile = quorumProject:IsSource(file)
+                if isSourceFile
+                    Git git
+                    Repository repo = quorumProject:GetGitRepository()
+                    DeleteRequest request
+                    Array<File> files = request:GetFiles()
+                    files:Add(file)
+    
+                    text path = file:GetPath()
+                    git:Delete(repo, request)
+                    out:Append("")
+                    out:Append("Deleting " + path + " from your computer.")
+                    out:Append("Please commit and then push to make this change for the team.")
+                    qs:GetTabPane():CloseFile(file)
+                    dialog:Hide()
+                    return now
+                end
+            end
+        end
+
         if file not= undefined
             if file:IsDirectory()
                 file:Delete(true)
             else
                 file:Delete()
             end
-        qs:GetTabPane():CloseFile(file)
+            qs:GetTabPane():CloseFile(file)
         end
         dialog:Hide()
     end
