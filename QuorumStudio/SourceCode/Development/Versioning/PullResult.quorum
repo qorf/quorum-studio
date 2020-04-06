@@ -4,11 +4,13 @@ use Libraries.Containers.HashTable
 
 class PullResult
     boolean success = false
+    boolean hasMergeConflicts = false
     text message = ""
     text fetchedFrom = ""
     integer result = -1
     Array<ReferenceUpdate> updates
     Array<DiffEntry> diff
+    Array<text> conflicts
     action GetSuccess returns boolean
         return success
     end
@@ -47,5 +49,13 @@ class PullResult
 
     action GetDiff returns Array<DiffEntry>
         return diff
+    end
+
+    action GetConflicts returns Array<text>
+        return conflicts
+    end
+
+    action HasMergeConflicts returns boolean
+        return hasMergeConflicts
     end
 end

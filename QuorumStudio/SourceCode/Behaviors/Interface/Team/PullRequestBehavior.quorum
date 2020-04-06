@@ -67,9 +67,13 @@ class PullRequestBehavior  is QuorumStudioBehavior
                 PullResult result = git:Pull(repo, request)
                 if result not= undefined
                     text successMessage = "Pulled from: " + result:GetFetchedFrom()
-                    
+                    boolean hadConflicts = result:HasMergeConflicts()
                     if result:GetSuccess()
-                        successMessage = successMessage + ": Success!"
+                        if hadConflicts
+                            successMessage = successMessage + ": Pulled successfully, but had merge conflicts"
+                        else
+                            successMessage = successMessage + ": Success!"
+                        end
                     else
                         successMessage = successMessage + ": Failed"
                     end
@@ -82,13 +86,46 @@ class PullRequestBehavior  is QuorumStudioBehavior
                         i = i + 1
                     end
 
+                    Array<text> conflicts = result:GetConflicts()
+                    if hadConflicts
+                        out:Append("")
+                        out:Append(conflicts:GetSize() + " conflicting files")
+                        i = 0
+                        repeat while i < conflicts:GetSize() 
+                            text value = conflicts:Get(i)
+                            out:Append((i + 1) + ". " + value)
+
+
+                            File file
+                            file:SetAbsolutePath(projectLocation:GetParentDirectory():GetAbsolutePath() + "/" + value)
+                            if editor:IsOpen(file)
+                                Tab tab = editor:GetOpenTab(file)
+                                if tab not= undefined and tab is EditorTab
+                                    EditorTab et = cast(EditorTab, tab)
+                                    CodeTextBox code = et:GetTextBox()
+                                    
+                                    check
+                                        text newText = file:Read()
+                                        UpdateCodeTextBoxBehavior behave
+                                        behave:SetTab(et)
+                                        behave:SetBox(code)
+                                        behave:SetValue(newText)
+                                        code:AddBehavior(behave)
+                                    detect e
+                                    end
+                                end
+                            end
+                            i = i + 1
+                        end
+                    end
                     
                     GitConstants constants
                     Array<DiffEntry> diffs = result:GetDiff()
+                    out:Append("")
                     if diffs:GetSize() = 1
-                        out:Append(diffs:GetSize() + " File Changed")
+                        out:Append(diffs:GetSize() + " file changed without conflicts")
                     else
-                        out:Append(diffs:GetSize() + " Files Changed")
+                        out:Append(diffs:GetSize() + " files changed without conflicts")
                     end
 
                     i = 0
