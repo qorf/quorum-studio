@@ -26,6 +26,7 @@ import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.CommitCommand;
 import org.eclipse.jgit.api.PullCommand;
 import org.eclipse.jgit.api.PushCommand;
+import org.eclipse.jgit.api.RmCommand;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -81,6 +82,9 @@ import quorum.Libraries.Development.Versioning.CloneResult;
 import quorum.Libraries.Development.Versioning.CloneResult_;
 import quorum.Libraries.Development.Versioning.CloneRequest;
 import quorum.Libraries.Development.Versioning.CloneRequest_;
+import quorum.Libraries.Development.Versioning.DeleteRequest_;
+import quorum.Libraries.Development.Versioning.DeleteResult;
+import quorum.Libraries.Development.Versioning.DeleteResult_;
 import quorum.Libraries.Development.Versioning.ReferenceUpdate;
 import quorum.Libraries.Development.Versioning.ReferenceUpdate_;
 import quorum.Libraries.Development.Versioning.Repository_;
@@ -171,6 +175,29 @@ public class Git {
         } catch (GitAPIException ex) {
             String message = ex.getMessage();
             result.SetMessage(message);
+        }
+        return result;
+    }
+    
+    public DeleteResult_ Delete(Repository_ quorumRepository, DeleteRequest_ request) {
+        DeleteResult_ result = new DeleteResult();
+        try {
+            
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+            RmCommand rm = git.rm();
+            
+            Array_ quorumFiles = request.GetFiles();
+            String[] paths = ConvertQuorumFilesToPath(quorumFiles, repository);
+            for(int i = 0; i < paths.length; i++) {
+                rm.addFilepattern(HandleFilePathOS(paths[i]));
+            }
+            
+            DirCache call = rm.call(); //do we need this information?
+            return result;
+        } catch (GitAPIException ex) {
+            Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
         }
         return result;
     }
