@@ -18,12 +18,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.eclipse.jgit.api.AddCommand;
 import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.CommitCommand;
+import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.api.PullCommand;
 import org.eclipse.jgit.api.PushCommand;
 import org.eclipse.jgit.api.RmCommand;
@@ -312,6 +314,16 @@ public class Git {
         return result;
     }
     
+    private void TransferConflictsToTextArray(Array_ quorumFiles, Map<String, int[][]> conflicts) {
+        Iterator<String> iterator = conflicts.keySet().iterator();
+        while(iterator.hasNext()) {
+            String next = iterator.next();
+            quorum.Libraries.Language.Types.Text_ text = new quorum.Libraries.Language.Types.Text();
+            text.SetValue(next);
+            quorumFiles.Add(text);
+        }
+    }
+    
     public PullResult_ Pull(Repository_ quorumRepository, PullRequest_ request) {
         PullResult_ result = new PullResult();
         Array_ referenceUpdates = result.Get_Libraries_Development_Versioning_PullResult__updates_();
@@ -368,6 +380,13 @@ public class Git {
                 }
                 
                 result.SetSuccess(successful);
+                MergeResult mergeResult = call.getMergeResult();
+                Map<String, int[][]> conflicts = mergeResult.getConflicts();
+                if(conflicts != null && !conflicts.isEmpty()) { //this is technically successful
+                    result.Set_Libraries_Development_Versioning_PullResult__hasMergeConflicts_(true);
+                    TransferConflictsToTextArray(result.GetConflicts(), conflicts);
+                }
+                
                 Collection<TrackingRefUpdate> updates = fetchResult.getTrackingRefUpdates();
                 Iterator<TrackingRefUpdate> iterator = updates.iterator();
                 while(iterator != null && iterator.hasNext()) {
