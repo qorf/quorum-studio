@@ -2,10 +2,15 @@ package Libraries.Development.Environment.Studio.Interface.VisualEditor
 
 use Libraries.Interface.Selections.Selection
 use Libraries.Interface.Item
+use Libraries.Game.Layer
 
 class VisualEditorSelection is Selection
     
     InteractableItem selectedItem = undefined
+    Layer selectedLayer = undefined
+
+    boolean itemChanged = false
+    boolean layerChanged = false
 
     action Initialize(VisualSceneController controller)
         Initialize(controller, controller:GetName())
@@ -13,7 +18,26 @@ class VisualEditorSelection is Selection
 
     action SetSelection(InteractableItem item)
         selectedItem = item
-        if item = undefined
+        itemChanged = true
+        UpdateDisplayName()
+    end
+
+    action SetSelection(Layer layer)
+        selectedLayer = layer
+        layerChanged = true
+        UpdateDisplayName()
+    end
+
+    action SetSelection(Layer layer, InteractableItem item)
+        selectedLayer = layer
+        selectedItem = item
+        layerChanged = true
+        itemChanged = true
+        UpdateDisplayName()
+    end
+
+    private action UpdateDisplayName
+        if selectedLayer = undefined or selectedItem = undefined
             VisualSceneController scene = GetSceneController()
             if scene not= undefined
                 SetDisplayName(scene:GetName())
@@ -21,20 +45,53 @@ class VisualEditorSelection is Selection
                 SetDisplayName("")
             end
         else
-            SetDisplayName(item:GetName())
+            SetDisplayName(selectedItem:GetName() + " - " + selectedLayer:GetName())
         end
+
+        itemChanged = false
+        layerChanged = false
     end
 
-    action GetSelection returns InteractableItem
+    action GetSelectedItem returns InteractableItem
         return selectedItem
     end
 
+    action GetSelectedLayer returns Layer
+        return selectedLayer
+    end
+
+    /*
+    Returns true only when a SelectionEvent is being processed where
+    the item changed. After the event has been processed, this returns
+    false.
+    */
+    action ItemChanged returns boolean
+        return itemChanged
+    end
+
+    /*
+    Returns true only when a SelectionEvent is being processed where
+    the layer changed. After the event has been processed, this returns
+    false.
+    */
+    action LayerChanged returns boolean
+        return layerChanged
+    end
+
+    action IsItemSelected returns boolean
+        return selectedItem not= undefined
+    end
+
+    action IsLayerSelected returns boolean
+        return selectedLayer not= undefined
+    end
+
     action IsEmpty returns boolean
-        return selectedItem = undefined
+        return selectedLayer = undefined
     end
 
     action Empty
-        SetSelection(undefined)
+        SetSelection(undefined, undefined)
     end
 
     action GetSceneController returns VisualSceneController

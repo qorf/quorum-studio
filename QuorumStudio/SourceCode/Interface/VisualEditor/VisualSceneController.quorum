@@ -17,6 +17,7 @@ use Libraries.Compute.Matrix4
 use Libraries.Interface.AccessibilityManager
 use Libraries.Interface.Events.FocusListener
 use Libraries.Interface.Events.FocusEvent
+use Libraries.Game.Layer
 
 /*
 A class used to represent the 2D space within a Visual Editor tab.
@@ -24,7 +25,7 @@ The space this object takes up will be filled with the visual editor tab's Layer
 */
 class VisualSceneController is Control
 
-    Layer3D layer = undefined
+    Array<Layer> layers
     VisualEditorResources visualResources
     VisualEditorSelection selection
 
@@ -144,8 +145,11 @@ class VisualSceneController is Control
     action Resize
         parent:Control:Resize()
 
-        if layer not= undefined    
+        integer counter = 0
+        repeat while counter < layers:GetSize()
+            Layer layer = layers:Get(counter)
             layer:SetViewport(cast(integer, GetGlobalX()), cast(integer, GetGlobalY()), cast(integer, GetWidth()), cast(integer, GetHeight()))
+            counter = counter + 1
         end
     end
 
@@ -170,11 +174,11 @@ class VisualSceneController is Control
     end
 
     action Update(number seconds)
-        if layer = undefined
+        if layers:IsEmpty() or GetSelectedLayer() = undefined
             return now
         end
 
-        Camera camera = layer:GetCamera()
+        Camera camera = GetSelectedLayer():GetCamera()
         boolean moved = false
 
         if (yawDirection not= 0 or pitchDirection not= 0)
@@ -297,11 +301,12 @@ class VisualSceneController is Control
         // Remove previous highlights.
         repeat while filterHighlights:IsEmpty() = false
             SelectionHighlight highlight = filterHighlights:RemoveFromEnd()
-            layer:Remove(highlight)
+            highlight:GetLayer():Remove(highlight)
         end
 
         // Display selection highlighting around the items.
         integer counter = 0
+        Layer3D layer = cast(Layer3D, GetSelectedLayer())
         repeat while counter < filteredItems:GetSize()
             Item3D item = filteredItems:Get(counter)
             SelectionHighlight highlight
@@ -322,9 +327,9 @@ class VisualSceneController is Control
             end
         else
             if filterHighlights:IsEmpty()
-                SetSelection(undefined)
+                SetSelectedItem(undefined)
             else
-                SetSelection(filterHighlights:Get(0))
+                SetSelectedItem(filterHighlights:Get(0))
             end
         end
     end
@@ -378,6 +383,7 @@ class VisualSceneController is Control
             end
         end
 
+        Layer3D layer = highlight:GetLayer()
         layer:Remove(highlight)
         layer:Remove(highlight:GetItem())
 
@@ -395,13 +401,19 @@ class VisualSceneController is Control
     end
 
     action CreateNewItemPreview
-        NewItemPreview preview
-        preview:Load(me)
-        layer:Add(preview)
-        preview:Focus()
+        if GetSelectedLayer() is Layer3D
+            NewItemPreview preview
+            preview:Load(me)
+            Layer3D layer = cast(Layer3D, GetSelectedLayer())
+            layer:Add(preview)
+            preview:Focus()
+        else
+            // Do something for 2D here
+        end
     end
 
     action CancelNewItemPreview(NewItemPreview preview)
+        Layer3D layer = cast(Layer3D, GetSelectedLayer())
         layer:Remove(preview)
 
         previewScale = preview:GetScale()
@@ -438,7 +450,7 @@ class VisualSceneController is Control
     action ConfirmNewItemPreview(NewItemPreview preview)
         Model model = preview:ConvertToModel()
         previewTransform = preview:GetTransform()
-        //layer:Remove(preview)
+        Layer3D layer = cast(Layer3D, GetSelectedLayer())
         layer:Add(model)
 
         integer type = preview:GetModelPresetCode()
@@ -455,7 +467,7 @@ class VisualSceneController is Control
             end
 
             preview:SetName(GetDefaultItemName(type))
-            SetSelection(preview)
+            SetSelectedItem(preview)
         end
 
         previewScale = preview:GetScale()
@@ -468,13 +480,18 @@ class VisualSceneController is Control
         NotifyAccessibility(preview, "Placed " + model:GetName())
     end
 
-    action SetEditorLayer(Layer3D layer)
-        me:layer = layer
-        layer:Add(grid)
-    end
+    action AddLayer(Layer layer)
+        if layers:IsEmpty()
+            selection:SetSelection(layer)
+            if layer is Layer3D
+                Layer3D layer3D = cast(Layer3D, layer)
+                // TO-DO: Improve this.
+                // The grid needs to be managed across arbitrary Layer3Ds, not just one.
+                layer3D:Add(grid)
+            end
+        end
 
-    action GetEditorLayer returns Layer3D
-        return layer
+        layers:Add(layer)
     end
 
     action SetYawDirection(integer direction)
@@ -517,7 +534,7 @@ class VisualSceneController is Control
         forwardDirection = direction
 
         if IsCameraMoving() = false
-            Vector3 temp = layer:GetCamera():GetPosition()
+            Vector3 temp = GetSelectedLayer():GetCamera():GetPosition()
             number x = math:Round(temp:GetX(), 2)
             number y = math:Round(temp:GetY(), 2)
             number z = math:Round(temp:GetZ(), 2)
@@ -533,7 +550,7 @@ class VisualSceneController is Control
         strafeDirection = direction
 
         if IsCameraMoving() = false
-            Vector3 temp = layer:GetCamera():GetPosition()
+            Vector3 temp = GetSelectedLayer():GetCamera():GetPosition()
             number x = math:Round(temp:GetX(), 2)
             number y = math:Round(temp:GetY(), 2)
             number z = math:Round(temp:GetZ(), 2)
@@ -549,7 +566,7 @@ class VisualSceneController is Control
         verticalDirection = direction
 
         if IsCameraMoving() = false
-            Vector3 temp = layer:GetCamera():GetPosition()
+            Vector3 temp = GetSelectedLayer():GetCamera():GetPosition()
             number x = math:Round(temp:GetX(), 2)
             number y = math:Round(temp:GetY(), 2)
             number z = math:Round(temp:GetZ(), 2)
@@ -657,9 +674,9 @@ class VisualSceneController is Control
         return gridSnapEnabled
     end
 
-    action SetSelection(InteractableItem item)
-        if selection:IsEmpty() = false
-            selection:GetSelection():LostSelection()
+    action SetSelectedItem(InteractableItem item)
+        if selection:IsItemSelected()
+            selection:GetSelectedItem():LostSelection()
         end
 
         selection:SetSelection(item)
@@ -669,12 +686,20 @@ class VisualSceneController is Control
         end
     end
 
-    action GetSelection returns InteractableItem
-        return selection:GetSelection()
+    action GetSelectedItem returns InteractableItem
+        return selection:GetSelectedItem()
+    end
+
+    action GetSelectedLayer returns Layer
+        return selection:GetSelectedLayer()
+    end
+
+    action GetSceneLayers returns Array<Layer>
+        return layers
     end
 
     action GainedFocus(FocusEvent event)
-        SetSelection(undefined)
+        SetSelectedItem(undefined)
     end
 
     action GetPreviewScale returns Vector3

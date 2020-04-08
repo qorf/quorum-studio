@@ -107,19 +107,24 @@ class VisualEditorFindDialog is Dialog, TextChangeListener
     action TextChanged(TextChangeEvent event)
         text searchText = findField:GetText()
         text editorTag = controller:GetEditorTag()
-        Layer3D layer = controller:GetEditorLayer()
-        Iterator<Item3D> iterator = layer:GetIterator()
 
-        Array<Item3D> itemsInView
-
-        repeat while iterator:HasNext()
-            Item3D item = iterator:Next()
-            if item:HasProperty(editorTag) = false and item:GetName():Contains(searchText)
-                itemsInView:Add(item)
+        if controller:GetSelectedLayer() is Layer3D
+            Layer3D layer = cast(Layer3D, controller:GetSelectedLayer())
+            Iterator<Item3D> iterator = layer:GetIterator()
+    
+            Array<Item3D> itemsInView
+    
+            repeat while iterator:HasNext()
+                Item3D item = iterator:Next()
+                if item:HasProperty(editorTag) = false and item:GetName():Contains(searchText)
+                    itemsInView:Add(item)
+                end
             end
+    
+            controller:SetFilteredItems(itemsInView, false)
+        else
+            // Do something to filter the 2D layer instead
         end
-
-        controller:SetFilteredItems(itemsInView, false)
     end
 
     action GetController returns VisualSceneController

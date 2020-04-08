@@ -1,0 +1,106 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Interface.Controls.Tree
+use Libraries.Containers.Array
+use Libraries.Game.Layer
+use Libraries.Game.Layer2D
+use Libraries.Game.Layer3D
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Containers.Iterator
+use Libraries.Interface.Item3D
+
+class SceneTree is Tree
+
+    VisualEditorResources resources
+    VisualSceneController controller = undefined
+    
+    // A single Item indicating that no scene is loaded.
+    TreeItem defaultItem = undefined
+    
+    action SetSceneController(VisualSceneController sceneController)
+        if controller not= undefined
+            // Do any necessary clean-up here
+        end
+
+        controller = sceneController
+
+        Empty()
+        if controller = undefined
+            if defaultItem = undefined
+                TreeItem item
+                item:SetName("No scene selected")
+                defaultItem = item
+            end
+
+            Add(defaultItem)
+        else
+            Load(controller:GetSceneLayers())
+        end
+    end
+
+    private action Load(Array<Layer> layers)
+        integer counter = 0
+        repeat while counter < layers:GetSize()
+            Layer current = layers:Get(counter)
+            TreeItem layerTreeItem
+            layerTreeItem:SetName(current:GetName())    
+
+            if current is Layer2D
+                Layer2D layer = cast(Layer2D, current)
+
+                Iterator<Item2D> iterator = layer:GetIterator()
+                repeat while iterator:HasNext()
+                    Item2D item = iterator:Next()
+                    if item:HasProperty(resources:EDITOR_TAG) = false
+                        TreeItem treeItem = GetTreeItems(item)
+                        layerTreeItem:Add(treeItem)
+                    end
+                end
+
+                // Do any other special setup for Layer2D here, e.g. set up specific context menu or properties
+            elseif current is Layer3D
+                Layer3D layer = cast(Layer3D, current)
+
+                Iterator<Item3D> iterator = layer:GetIterator()
+                repeat while iterator:HasNext()
+                    Item3D item = iterator:Next()
+                    if item:HasProperty(resources:EDITOR_TAG) = false
+                        TreeItem treeItem = GetTreeItems(item)
+                        layerTreeItem:Add(treeItem)
+                    end
+                end
+
+                // Do any other special setup for Layer2D here, e.g. set up specific context menu or propertie
+            end
+
+            Add(layerTreeItem)
+
+            counter = counter + 1
+        end
+    end
+
+    private action GetTreeItems(Item2D item) returns TreeItem
+        TreeItem treeItem
+        treeItem:SetName(item:GetName())
+        Array<Item2D> children = item:GetChildren()
+        integer i = 0
+        repeat while i < children:GetSize()
+            treeItem:Add(GetTreeItems(children:Get(i)))
+            i = i + 1
+        end        
+
+        return treeItem
+    end
+
+    private action GetTreeItems(Item3D item) returns TreeItem
+        TreeItem treeItem
+        treeItem:SetName(item:GetName())
+        Iterator<Item3D> children = item:GetItems()
+        repeat while children:HasNext()
+            treeItem:Add(GetTreeItems(children:Next()))
+        end        
+
+        return treeItem
+    end
+
+end
