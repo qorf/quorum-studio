@@ -1,0 +1,37 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Item
+use Libraries.Development.Environment.Studio.Interface.AccessibleControl
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Controls.MenuRoot
+use Libraries.Game.GameStateManager
+use Libraries.Interface.AccessibilityManager
+
+class SummarizeControlBehavior is QuorumStudioBehavior
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action Run(BehaviorEvent event)
+        Item item = event:GetItem()
+        if item not= undefined and item is MenuItem
+            MenuItem menu = cast(MenuItem, item)
+            MenuRoot root = menu:GetMenuRoot()
+            Item previous = root:GetLastFocus()
+            item = previous
+        end
+
+        if item not= undefined and item is AccessibleControl
+            AccessibleControl control = cast(AccessibleControl, item)
+            output control:GetSummary()
+
+            GameStateManager manager
+            AccessibilityManager access = manager:GetAccessibilityManager()
+            if access not= undefined
+                access:Notify(control, control:GetSummary())
+            end
+        end
+    end
+end

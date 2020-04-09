@@ -57,8 +57,12 @@ use Libraries.Language.Compile.Symbol.ActionCallResolution
 use Libraries.Language.Compile.QualifiedName
 use Libraries.Interface.AccessibilityManager
 use Libraries.Interface.Controls.Tab
+use Libraries.Containers.HashTable
+use Libraries.Development.Versioning.DiffResult
+use Libraries.Development.Versioning.DiffEdit
+use Libraries.Language.Compile.CompilerError
 
-class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener
+class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener, AccessibleControl
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
     BuildManager manager = undefined
     GameStateManager gameStateManager
@@ -107,6 +111,90 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         
 
         return menu
+    end
+
+    action GetSummary returns text
+        integer lines = GetLineCount()
+        HashTable<integer, Hint> hints = statusGutter:GetHintLocations()
+        DiffResult result = statusGutter:GetDiffResult()
+        Class clazz = GetClass()
+        text message = "" + lines + " lines"
+
+        if clazz not= undefined
+            message = message + ", Class " + clazz:GetName()
+        end
+
+        if GetFile() not= undefined and errors not= undefined
+            text path = GetFile():GetAbsolutePath()
+            integer value = errors:GetErrorCountAtKey(path)
+            if value = 1
+                message = message + ", " + value + " error"
+            elseif value > 1
+                message = message + ", " + value + " errors"
+            end
+        end
+
+        if hints not= undefined
+            integer count = hints:GetSize()
+            if count = 1
+                message = message + ", " + count + " hint"
+            elseif count > 1
+                message = message + ", " + count + " hints"
+            end
+        end
+
+        if result not= undefined
+            integer changed = result:GetLinesChanged()
+            integer inserted = result:GetLinesInserted()
+            integer deleted = result:GetLinesDeleted()
+            if changed = 1
+                message = message + ", " + changed + " change"
+            elseif changed > 1
+                message = message + ", " + changed + " changes"
+            end
+
+            if inserted = 1
+                message = message + ", " + inserted + " addition"
+            elseif inserted > 1
+                message = message + ", " + inserted + " additions"
+            end
+
+            if deleted = 1
+                message = message + ", " + deleted + " deletion"
+            elseif deleted > 1
+                message = message + ", " + deleted + " deletions"
+            end
+        end
+        
+        return message
+    end
+
+    action GetWhereAmI returns text
+        integer line = GetCaretPosition()
+        text message = "Line " + line 
+        if GetFile() not= undefined and errors not= undefined
+            text path = GetFile():GetAbsolutePath()
+            Iterator<CompilerError> iterator = errors:GetErrorsAtKey(path)
+            boolean done = false
+            repeat while iterator:HasNext() and not done
+                CompilerError error = iterator:Next()
+                if error:GetLineNumber() = line
+                    done = true
+                    message = message + ", Error, " + error:GetErrorMessage()
+                end
+            end
+
+            Iterator<Hint> hinterator = errors:GetHintsAtKey(path)
+            done = false
+            repeat while hinterator:HasNext() and not done
+                Hint hint = hinterator:Next()
+                if hint:GetLineNumber() = line
+                    done = true
+                    message = message + ", Hint, " + hint:GetDisplayName()
+                end
+            end
+        end
+        return message
     end
 
     action GetCompilerErrorManager returns CompilerErrorManager
