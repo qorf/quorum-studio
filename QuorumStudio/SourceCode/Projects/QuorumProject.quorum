@@ -895,7 +895,17 @@ class QuorumProject is Project
                 logger:Log(textMessage)
                 return now
             end
-            AddProperty(key, object:GetText())
+            //if this was generated in an old version of Quorum Studio, upgrade it.
+            text value = object:GetText()
+            check
+                text studio = "Quorum Studio "
+                number n = cast(number, value:GetSubtext(studio:GetSize()))
+                if n < parent:Libraries.Development.Environment.Projects.Project:DEVELOPMENT_ENVIRONMENT_VERSION_NUMBER
+                    value = parent:Libraries.Development.Environment.Projects.Project:DEVELOPMENT_ENVIRONMENT_VERSION_VALUE
+                end
+            detect e
+            end
+            AddProperty(key, value)
         elseif key = PROJECT_TYPE
             if not object:IsText()
                 logger:Log(textMessage)
