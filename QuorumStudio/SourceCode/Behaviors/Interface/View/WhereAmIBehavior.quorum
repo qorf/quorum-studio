@@ -8,7 +8,7 @@ use Libraries.Interface.Controls.MenuRoot
 use Libraries.Game.GameStateManager
 use Libraries.Interface.AccessibilityManager
 
-class SummarizeControlBehavior is QuorumStudioBehavior
+class WhereAmIBehavior is QuorumStudioBehavior
 
     on create
         SetRunOnUpdate(true)
@@ -25,11 +25,12 @@ class SummarizeControlBehavior is QuorumStudioBehavior
 
         if item not= undefined and item is AccessibleControl
             AccessibleControl control = cast(AccessibleControl, item)
+            output control:GetWhereAmI()
 
             GameStateManager manager
             AccessibilityManager access = manager:GetAccessibilityManager()
             if access not= undefined
-                access:Notify(control, control:GetSummary())
+                access:Notify(control, control:GetWhereAmI())
             end
         end
     end

@@ -61,6 +61,7 @@ use Libraries.Containers.HashTable
 use Libraries.Development.Versioning.DiffResult
 use Libraries.Development.Versioning.DiffEdit
 use Libraries.Language.Compile.CompilerError
+use Libraries.Development.Versioning.GitConstants
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener, AccessibleControl
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -170,30 +171,48 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     end
 
     action GetWhereAmI returns text
-        integer line = GetCaretPosition()
-        text message = "Line " + line 
+        integer line = GetCaretLine() + 1
+        text message = "Line " + line + " of " + GetLineCount()
         if GetFile() not= undefined and errors not= undefined
             text path = GetFile():GetAbsolutePath()
             Iterator<CompilerError> iterator = errors:GetErrorsAtKey(path)
             boolean done = false
-            repeat while iterator:HasNext() and not done
+            repeat while iterator not= undefined and iterator:HasNext() and not done
                 CompilerError error = iterator:Next()
                 if error:GetLineNumber() = line
                     done = true
-                    message = message + ", Error, " + error:GetErrorMessage()
+                    message = message + ", Error: " + error:GetErrorMessage()
                 end
             end
 
             Iterator<Hint> hinterator = errors:GetHintsAtKey(path)
             done = false
-            repeat while hinterator:HasNext() and not done
+            repeat while hinterator not= undefined and hinterator:HasNext() and not done
                 Hint hint = hinterator:Next()
                 if hint:GetLineNumber() = line
                     done = true
-                    message = message + ", Hint, " + hint:GetDisplayName()
+                    message = message + ", Hint: " + hint:GetDisplayName()
                 end
             end
         end
+
+        GitConstants constants
+        DiffResult result = statusGutter:GetDiffResult()
+        if result not= undefined
+            Array<DiffEdit> edits = result:GetEdits()
+            if line - 1 < edits:GetSize()
+                DiffEdit edit = edits:Get(line - 1)
+                integer type = edit:GetEditType()
+                if type = constants:EDIT_CHANGE
+                    message = message + ", changed"
+                elseif type = constants:EDIT_INSERT
+                    message = message + ", inserted"
+                elseif type = constants:EDIT_DELETE
+                    message = message + ", deleted"
+                end
+            end
+        end
+
         return message
     end
 
