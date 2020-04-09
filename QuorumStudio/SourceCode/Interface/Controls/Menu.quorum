@@ -27,6 +27,7 @@ class Menu is MenuBar, SelectionListener
     MenuItem editMenu
     MenuItem viewMenu
     MenuItem navigateMenu
+    MenuItem sceneMenu
     MenuItem teamMenu
     MenuItem runMenu
     MenuItem windowsMenu
@@ -90,8 +91,9 @@ class Menu is MenuBar, SelectionListener
         SetupEditMenu()
         SetupViewMenu()
         SetupNavigateMenu()
-        SetupTeamMenu()
+        SetupSceneMenu()
         SetupRunMenu()
+        SetupTeamMenu()
         SetupWindowsMenu()
         SetupHelpMenu()
 
@@ -100,8 +102,9 @@ class Menu is MenuBar, SelectionListener
         menuItems:Add(editMenu)
         menuItems:Add(viewMenu)
         menuItems:Add(navigateMenu)
-        menuItems:Add(teamMenu)
+        menuItems:Add(sceneMenu)
         menuItems:Add(runMenu)
+        menuItems:Add(teamMenu)
         menuItems:Add(windowsMenu)
         menuItems:Add(helpMenu)
         Add(menuItems)
@@ -263,6 +266,28 @@ class Menu is MenuBar, SelectionListener
         zoomOut:SetBehavior(behaviors:GetScaleInterfaceDownBehavior())
         viewItems:Add(zoomOut)
 
+        MenuItem accesibility
+        accesibility:SetName("Accessibility")
+        viewItems:Add(accesibility)
+
+        MenuItem summarize
+        summarize:SetName("Summarize")
+        //summarize:SetShortcut(keyMap:GetScaleInterfaceDownKey())
+        //summarize:SetBehavior(behaviors:GetScaleInterfaceDownBehavior())
+        accesibility:Add(summarize)
+
+        MenuItem whereAmI
+        whereAmI:SetName("Where am I?")
+        //whereAmI:SetShortcut(keyMap:GetScaleInterfaceDownKey())
+        //whereAmI:SetBehavior(behaviors:GetScaleInterfaceDownBehavior())
+        accesibility:Add(whereAmI)
+
+        MenuItem reportInView
+        reportInView:SetName("Report in View")
+        //reportInView:SetShortcut(keyMap:GetScaleInterfaceDownKey())
+        //reportInView:SetBehavior(behaviors:GetScaleInterfaceDownBehavior())
+        accesibility:Add(reportInView)
+
         viewMenu:SetName("View")
         viewMenu:Add(viewItems)
     end
@@ -306,8 +331,47 @@ class Menu is MenuBar, SelectionListener
         navigateDeclaration:SetBehavior(behaviors:GetNavigateToDeclarationBehavior())
         navigateItems:Add(navigateDeclaration)
 
+        MenuItem nextStatus
+        nextStatus:SetName("Next Status")
+        //nextStatus:SetShortcut(keyMap:GetNavigateToSelectedKey())
+        //nextStatus:SetBehavior(behaviors:GetNavigateToDeclarationBehavior())
+        navigateItems:Add(nextStatus)
+
+        MenuItem previousStatus
+        previousStatus:SetName("Previous Status")
+        //previousStatus:SetShortcut(keyMap:GetNavigateToSelectedKey())
+        //previousStatus:SetBehavior(behaviors:GetNavigateToDeclarationBehavior())
+        navigateItems:Add(previousStatus)
+
         navigateMenu:SetName("Navigate")
         navigateMenu:Add(navigateItems)
+    end
+
+    private action SetupSceneMenu
+        Array<MenuItem> sceneItems
+
+        MenuItem move
+        move:SetName("Move")
+        sceneItems:Add(move)
+
+        MenuItem rotate
+        rotate:SetName("Rotate")
+        sceneItems:Add(rotate)
+
+        MenuItem cursor
+        cursor:SetName("Cursor")
+        sceneItems:Add(cursor)
+
+        MenuItem grid
+        grid:SetName("Grid")
+        sceneItems:Add(grid)
+
+        MenuItem camera
+        camera:SetName("Camera")
+        sceneItems:Add(camera)
+
+        sceneMenu:SetName("Scene")
+        sceneMenu:Add(sceneItems)
     end
 
     private action SetupTeamMenu
