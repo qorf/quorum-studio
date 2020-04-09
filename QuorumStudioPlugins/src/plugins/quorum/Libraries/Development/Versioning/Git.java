@@ -532,15 +532,23 @@ public class Git {
                         if(null != tag) switch (tag) {
                             case CHANGE:
                                 res.SetEditType(1);
+                                resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesChanged_(
+                                    resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesChanged_() + 1);
                                 break;
                             case DELETE:
                                 res.SetEditType(2);
+                                resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesDeleted_(
+                                    resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesDeleted_() + 1);
                                 break;
                             case INSERT:
                                 res.SetEditType(0);
+                                resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesInserted_(
+                                    resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesInserted_() + 1);
                                 break;
                             case EQUAL:
                                 res.SetEditType(3);
+                                resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesEqual_(
+                                    resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesEqual_() + 1);
                                 break;
                             default:
                                 break;
