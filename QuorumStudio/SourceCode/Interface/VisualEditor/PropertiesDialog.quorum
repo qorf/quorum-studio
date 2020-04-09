@@ -500,21 +500,23 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
     end
 
     action SelectionChanged(SelectionEvent event)
+        // TO-DO: Consider change to Layer in VisualEditorSelection
+
         if event:GetSelection() is VisualEditorSelection
             VisualEditorSelection selection = cast(VisualEditorSelection, event:GetSelection())
-            if selection:IsEmpty()
+            if selection:IsItemSelected() = false
                 if IsShowing()
                     Hide()
                 end
             else
-                SetFields(selection:GetSelection())
+                SetFields(selection:GetSelectedItem())
                 if not IsShowing()
                     Show()
                 end
             end
         elseif event:GetSelection() is ButtonGroupSelection
             ButtonGroupSelection selection = cast(ButtonGroupSelection, event:GetSelection())
-            InteractableItem item = controller:GetSelection()
+            InteractableItem item = controller:GetSelectedItem()
             if item not= undefined
                 item:SetEditorResponsiveness(selection:GetIndex())
             end
@@ -543,7 +545,7 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
     end
 
     action TextChanged(TextChangeEvent event)
-        InteractableItem currentItem = controller:GetSelection()
+        InteractableItem currentItem = controller:GetSelectedItem()
         Control control = event:GetControl()
 
         if currentItem = undefined
@@ -684,7 +686,7 @@ class PropertiesDialog is Dialog, SelectionListener, TextChangeListener
     end
 
     action SetPhysicsEnabled(boolean enabled)
-        InteractableItem item = controller:GetSelection()
+        InteractableItem item = controller:GetSelectedItem()
         if item not= undefined and item:IsEditorPhysicsEnabled() not= enabled
             item:SetEditorPhysicsEnabled(enabled)
         end

@@ -88,6 +88,7 @@ use Libraries.Development.Environment.Studio.Behaviors.FocusPropertiesBehavior
 use Libraries.Development.Environment.Studio.Behaviors.OpenVisualEditorFindDialogBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CloseVisualEditorFindDialogBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SelectionResetScaleBehavior
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTree
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     public constant number VERSION = 2.0
@@ -97,8 +98,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     public integer CANCEL_EXIT = 2
     integer DEFAULT_WINDOW_WIDTH = 2500
     integer DEFAULT_WINDOW_HEIGHT = 1500
-    ScrollPane projectPane
+    TabPane treeTabPane
+    Control treeNavigatorPane
     ProjectTree projectTree
+    SceneTree sceneTree
     CodeEditorTabPane codeTabs
     OutputEditorTabPane outputWindow
     Control mainContentPane
@@ -244,6 +247,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     action GetProjectTree returns ProjectTree
         return projectTree
+    end
+
+    action GetSceneTree returns SceneTree
+        return sceneTree
     end
 
     action GetToolbar returns Toolbar
@@ -885,7 +892,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         inputOutputPane:SetLayout(inputOutputLayout)
         inputOutputPane:SetName("Input Output")
 
-        mainContentPane:Add(projectPane)
+        mainContentPane:Add(treeNavigatorPane)
         inputOutputPane:Add(codeTabs)
         inputOutputPane:Add(outputWindow)
         mainContentPane:Add(inputOutputPane)
@@ -895,14 +902,53 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     end
 
     action CreateProjectsWindow()
-        LayoutProperties scrollLayout = projectPane:GetDefaultLayoutProperties()
-        scrollLayout:SetVerticalLayoutMode(scrollLayout:FILL)
-        scrollLayout:SetHorizontalLayoutMode(scrollLayout:STANDARD)
-        scrollLayout:SetPixelWidth(300)
+        Tab projectsTab
+        projectsTab:SetName("Projects")
+        projectsTab:DisplayCloseButton(false)
+        ScrollPane projectPane
+
+        LayoutProperties treeNavigatorLayout = treeNavigatorPane:GetDefaultLayoutProperties()
+        treeNavigatorLayout:SetVerticalLayoutMode(treeNavigatorLayout:FILL)
+        treeNavigatorLayout:SetHorizontalLayoutMode(treeNavigatorLayout:STANDARD)
+        treeNavigatorLayout:SetPixelWidth(300)
+        FlowLayout flow
+        treeNavigatorPane:SetLayout(flow)
+
+        LayoutProperties treeTabLayout = treeTabPane:GetDefaultLayoutProperties()
+        treeTabLayout:SetHorizontalLayoutMode(treeTabLayout:FILL)
+        treeTabLayout:SetVerticalLayoutMode(treeTabLayout:FILL)
+        
+        FlowLayout layout
+        treeTabPane:SetViewAreaLayout(layout)
 
         projectPane:SetBackgroundColor(resources:GetBackgroundColor())
         projectPane:SetName("Project Pane")
+        projectPane:SetPercentageWidth(1.0)
+        projectPane:SetPercentageHeight(1.0)
         projectPane:Add(projectTree)
+
+        projectsTab:SetRelatedItem(projectPane)
+        projectsTab:SetFocusTarget(projectTree)
+        treeTabPane:Add(projectsTab)
+        treeNavigatorPane:Add(treeTabPane)
+
+        Tab sceneTab
+        sceneTab:SetName("Scene")
+        sceneTab:DisplayCloseButton(false)
+        ScrollPane scenePane
+
+        scenePane:SetBackgroundColor(resources:GetBackgroundColor())
+        scenePane:SetName("Scene Pane")
+        scenePane:SetPercentageWidth(1.0)
+        scenePane:SetPercentageHeight(1.0)
+        scenePane:Add(sceneTree)
+        sceneTree:SetSceneController(undefined)
+
+        sceneTab:SetRelatedItem(scenePane)
+        sceneTab:SetFocusTarget(sceneTree)
+        treeTabPane:Add(sceneTab)
+
+        treeTabPane:Select(projectsTab)
     end
 
     private action RemoveHiddenFiles(Array<File> directory)

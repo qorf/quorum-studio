@@ -50,7 +50,7 @@ public class Cryptography {
         } catch (NoSuchPaddingException | NoSuchAlgorithmException
                 | InvalidKeyException | BadPaddingException
                 | IllegalBlockSizeException | IOException ex) {
-            throw new RuntimeException("Error decrypting file", ex);
+            throw new RuntimeException("Error decrypting file with message: " + ex.getMessage(), ex);
         }
     }
     
@@ -78,7 +78,7 @@ public class Cryptography {
         } catch (NoSuchPaddingException | NoSuchAlgorithmException
                 | InvalidKeyException | BadPaddingException
                 | IllegalBlockSizeException | IOException ex) {
-            throw new RuntimeException("Error encrypting file", ex);
+            throw new RuntimeException("Error encrypting file with message: " + ex.getMessage(), ex);
         }
     }
 }

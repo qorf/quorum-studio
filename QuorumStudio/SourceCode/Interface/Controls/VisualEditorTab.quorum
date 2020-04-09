@@ -22,6 +22,8 @@ use Libraries.Game.Scenes.SceneProperties
 use Libraries.Game.Layer2D
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditorResources
 use Libraries.Interface.Item3D
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTree
 
 class VisualEditorTab is Tab, DefaultSceneManager
 
@@ -59,7 +61,6 @@ class VisualEditorTab is Tab, DefaultSceneManager
         SetFocusTarget(controller)
 
         Load(scene)
-        // The default Layer itself is added to the game when the tab is toggled on.
 
         propertiesDialog:Initialize(controller)
     end
@@ -85,11 +86,6 @@ class VisualEditorTab is Tab, DefaultSceneManager
             // This layer might need to become something else in the future.
             // It might be a custom class or have the editor tag in its name.
             Layer3D layer
-
-            if controller:GetEditorLayer() = undefined
-                controller:SetEditorLayer(layer)
-            end
-
             current = layer
         elseif classValue = "Layer2D"
             Layer2D layer
@@ -97,14 +93,13 @@ class VisualEditorTab is Tab, DefaultSceneManager
         end
 
         current:SetName(name)
+        controller:AddLayer(current)
 
         return current
     end
 
     action Save
-        Array<Layer> layers
-        Layer3D layer = GetSceneController():GetEditorLayer()
-        layers:Add(layer)
+        Array<Layer> layers = GetSceneController():GetSceneLayers()
         Scene scene = Save(layers)
         scene:GetData():SetPrettyPrint(true)
         file:Write(scene:GetData():ToText())
@@ -192,30 +187,50 @@ class VisualEditorTab is Tab, DefaultSceneManager
 
     action OnToggleOn
         parent:Tab:OnToggleOn()
-        ShowLayer()
+        ShowLayers()
+
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        SceneTree tree = studio:GetSceneTree()
+        tree:SetSceneController(controller)
     end
 
     action OnToggleOff
-        HideLayer()
+        HideLayers()
         parent:Tab:OnToggleOff()
+
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        SceneTree tree = studio:GetSceneTree()
+        tree:SetSceneController(undefined)
     end
 
-    action HideLayer
-        Layer3D layer = GetSceneController():GetEditorLayer()
-        Game game = manager:GetGame()
-        game:RemoveLayer(layer)
+    action HideLayers
+        Array<Layer> layers = GetSceneController():GetSceneLayers()
+        integer counter = 0
+        repeat while counter < layers:GetSize()
+            Layer layer = layers:Get(counter)
+            Game game = manager:GetGame()
+            game:RemoveLayer(layer)
+            counter = counter + 1
+        end
 
         propertiesDialog:Hide()
     end
 
-    action ShowLayer
-        Layer3D layer = GetSceneController():GetEditorLayer()
-        Game game = manager:GetGame()
-        game:AddLayer(layer)
+    action ShowLayers
+        Array<Layer> layers = GetSceneController():GetSceneLayers()
+        integer counter = 0
+        repeat while counter < layers:GetSize()
+            Layer layer = layers:Get(counter)
+            Game game = manager:GetGame()
+            game:AddLayer(layer)
+            counter = counter + 1
+        end
+
+        propertiesDialog:Hide()
     end
 
     action OnClose
-        HideLayer()
+        HideLayers()
         // Do extra work to dispose of models, etc. here
     end
 
