@@ -29,6 +29,8 @@ class VisualSceneController is Control
     VisualEditorResources visualResources
     VisualEditorSelection selection
 
+    Array<SceneChangeListener> sceneChangeListeners
+
     // The rotational speed, measured in degrees per second,
     // and the directional speed, measured in 3D world units per second.
     public constant number CAMERA_ROTATIONAL_SPEED = 90
@@ -398,6 +400,10 @@ class VisualSceneController is Control
         if nextFocus not= undefined
             nextFocus:Focus()
         end
+
+        SceneChangeEvent event
+        event:Set(me, highlight:GetItem(), undefined, layer, event:REMOVED)
+        NotifySceneChangeListeners(event)
     end
 
     action CreateNewItemPreview
@@ -478,6 +484,10 @@ class VisualSceneController is Control
         //Focus()
 
         NotifyAccessibility(preview, "Placed " + model:GetName())
+        
+        SceneChangeEvent event
+        event:Set(me, model, undefined, layer, event:ADDED)
+        NotifySceneChangeListeners(event)
     end
 
     action AddLayer(Layer layer)
@@ -704,5 +714,47 @@ class VisualSceneController is Control
 
     action GetPreviewScale returns Vector3
         return previewScale
+    end
+
+    /*
+    If the given Item has a corresponding SelectionHighlight, this action
+    will return the highlight. Otherwise, it will return undefined.
+    */
+    action GetSelectionHighlight(Item item) returns SelectionHighlight
+        if item is Item3D
+            Item3D item3D = cast(Item3D, item)
+            integer i = 0
+            repeat while i < filterHighlights:GetSize()
+                SelectionHighlight highlight = filterHighlights:Get(i)
+                if highlight:GetItem() = item3D
+                    return highlight
+                end
+                i = i + 1
+            end
+        elseif item is Item2D
+            // TO-DO: Implement this for 2D as well.
+        end
+
+        return undefined
+    end
+
+    action AddSceneChangeListener(SceneChangeListener listener)
+        sceneChangeListeners:Add(listener)
+    end
+
+    action RemoveSceneChangeListener(SceneChangeListener listener)
+        sceneChangeListeners:Remove(listener)
+    end
+
+    private action NotifySceneChangeListeners(SceneChangeEvent event)
+        integer i = 0
+        repeat while i < sceneChangeListeners:GetSize()
+            if event:GetEventType() = event:ADDED
+                sceneChangeListeners:Get(i):SceneAddedItem(event)
+            else
+                sceneChangeListeners:Get(i):SceneRemovedItem(event)
+            end
+            i = i + 1
+        end
     end
 end
