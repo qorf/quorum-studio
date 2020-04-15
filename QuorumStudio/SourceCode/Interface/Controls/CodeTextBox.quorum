@@ -669,6 +669,66 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         AnnounceCurrentLine()
     end
 
+    action PreviousChange
+        integer line = GetCaretLine() + 1
+        GitConstants constants
+        DiffResult result = statusGutter:GetDiffResult()
+        if result not= undefined
+            Array<DiffEdit> edits = result:GetEdits()
+            if line > 0 and line < edits:GetSize()
+                i = line - 2
+                repeat while i >= 0
+                    DiffEdit edit = edits:Get(i)
+                    integer type = edit:GetEditType()
+                    if type = constants:EDIT_CHANGE
+                        NavigateTo(i + 1)
+                        AnnounceWhereAmI()
+                        return now
+                    elseif type = constants:EDIT_INSERT
+                        NavigateTo(i + 1)
+                        AnnounceWhereAmI()
+                        return now
+                    elseif type = constants:EDIT_DELETE
+                        NavigateTo(i + 1)
+                        AnnounceWhereAmI()
+                        return now
+                    end
+                    i = i - 1
+                end
+            end
+        end
+    end
+
+    action NextChange
+        integer line = GetCaretLine() + 1
+        GitConstants constants
+        DiffResult result = statusGutter:GetDiffResult()
+        if result not= undefined
+            Array<DiffEdit> edits = result:GetEdits()
+            if line > 0 and line < edits:GetSize()
+                i = line
+                repeat while i < edits:GetSize()
+                    DiffEdit edit = edits:Get(i)
+                    integer type = edit:GetEditType()
+                    if type = constants:EDIT_CHANGE
+                        NavigateTo(i + 1)
+                        AnnounceWhereAmI()
+                        return now
+                    elseif type = constants:EDIT_INSERT
+                        NavigateTo(i + 1)
+                        AnnounceWhereAmI()
+                        return now
+                    elseif type = constants:EDIT_DELETE
+                        NavigateTo(i + 1)
+                        AnnounceWhereAmI()
+                        return now
+                    end
+                    i = i + 1
+                end
+            end
+        end
+    end
+
     action SelectSmartNavigateDown
         if clazz = undefined
             return now
@@ -710,6 +770,13 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             Select(startIndex, nextActionIndex, true)
         elseif nextActionIndex < endIndex
             Select(nextActionIndex, endIndex, false)
+        end
+    end
+
+    private action AnnounceWhereAmI
+        AccessibilityManager accessibility = gameStateManager:GetAccessibilityManager()
+        if accessibility not= undefined
+            accessibility:Notify(me, GetWhereAmI(), accessibility:OTHER_NOTIFICATION)
         end
     end
 
