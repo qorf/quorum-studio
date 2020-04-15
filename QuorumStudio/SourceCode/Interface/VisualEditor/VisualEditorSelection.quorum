@@ -2,12 +2,11 @@ package Libraries.Development.Environment.Studio.Interface.VisualEditor
 
 use Libraries.Interface.Selections.Selection
 use Libraries.Interface.Item
-use Libraries.Game.Layer
 
 class VisualEditorSelection is Selection
     
     InteractableItem selectedItem = undefined
-    Layer selectedLayer = undefined
+    EditorLayer selectedLayer = undefined
 
     boolean itemChanged = false
     boolean layerChanged = false
@@ -22,18 +21,34 @@ class VisualEditorSelection is Selection
         UpdateDisplayName()
     end
 
-    action SetSelection(Layer layer)
+    action SetSelection(EditorLayer layer)
+        if selectedLayer not= undefined
+            selectedLayer:LostSelection()
+        end
+
         selectedLayer = layer
         layerChanged = true
         UpdateDisplayName()
+
+        if selectedLayer not= undefined
+            selectedLayer:GainedSelection()
+        end
     end
 
-    action SetSelection(Layer layer, InteractableItem item)
+    action SetSelection(EditorLayer layer, InteractableItem item)
+        if selectedLayer not= undefined
+            selectedLayer:LostSelection()
+        end
+
         selectedLayer = layer
         selectedItem = item
         layerChanged = true
         itemChanged = true
         UpdateDisplayName()
+
+        if selectedLayer not= undefined
+            selectedLayer:GainedSelection()
+        end
     end
 
     private action UpdateDisplayName
@@ -56,7 +71,7 @@ class VisualEditorSelection is Selection
         return selectedItem
     end
 
-    action GetSelectedLayer returns Layer
+    action GetSelectedLayer returns EditorLayer
         return selectedLayer
     end
 

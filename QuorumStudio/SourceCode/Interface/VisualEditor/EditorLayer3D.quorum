@@ -1,0 +1,67 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Game.Layer3D
+
+class EditorLayer3D is Layer3D, EditorLayer
+
+    GridPlane grid
+    boolean gridSnapEnabled = true
+
+    on create
+        Add(grid)
+        ShowEditorComponents(false)
+    end
+
+    action GetGrid returns GridPlane
+        return grid
+    end
+
+    action SetGridSnapping(boolean enabled)
+        if enabled
+            grid:Show()
+        else
+            grid:Hide()
+        end
+
+        gridSnapEnabled = enabled
+    end
+
+    action SetGridUnitSize(number units)
+        grid:SetGridUnitSize(units)
+
+        grid:SetPosition(grid:GetNearestGridCoordinate(grid:GetGlobalX()),
+            grid:GetNearestGridCoordinate(grid:GetGlobalY()),
+            grid:GetNearestGridCoordinate(grid:GetGlobalZ()))
+    end
+
+    action GetGridUnitSize returns number
+        return grid:GetGridUnitSize()
+    end
+
+    action IsGridSnapping returns boolean
+        return gridSnapEnabled
+    end
+
+    action GetNearestGridCoordinate(number coordinate) returns number
+        return grid:GetNearestGridCoordinate(coordinate)
+    end
+
+    action GetNextGridCoordinate(number coordinate) returns number
+        return grid:GetNextGridCoordinate(coordinate)
+    end
+
+    action GetPreviousGridCoordinate(number coordinate) returns number
+        return grid:GetPreviousGridCoordinate(coordinate)
+    end
+
+    action ShowEditorComponents(boolean shouldShow)
+        if shouldShow
+            if gridSnapEnabled
+                grid:Show()
+            end
+        else
+            grid:Hide()
+        end
+    end
+
+end

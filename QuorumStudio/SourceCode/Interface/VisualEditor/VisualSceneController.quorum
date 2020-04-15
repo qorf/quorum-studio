@@ -82,10 +82,6 @@ class VisualSceneController is Control
     integer sphereCounter = 1
     integer cylinderCounter = 1
 
-    // Values used for the grid lock functionality.
-    GridPlane grid
-    boolean gridSnapEnabled = true
-
     // Used for when a movement key is held and the grid lock is enabled.
     number gridMoveTimer = 0
     number gridMoveTimerMax = 0.5
@@ -151,6 +147,8 @@ class VisualSceneController is Control
         repeat while counter < layers:GetSize()
             Layer layer = layers:Get(counter)
             layer:SetViewport(cast(integer, GetGlobalX()), cast(integer, GetGlobalY()), cast(integer, GetWidth()), cast(integer, GetHeight()))
+            Camera camera = layer:GetCamera()
+            camera:SetSize(GetWidth(), GetHeight())
             counter = counter + 1
         end
     end
@@ -183,117 +181,125 @@ class VisualSceneController is Control
         Camera camera = GetSelectedLayer():GetCamera()
         boolean moved = false
 
-        if (yawDirection not= 0 or pitchDirection not= 0)
-            yaw = yaw + (yawDirection * CAMERA_ROTATIONAL_SPEED * seconds)
-            pitch = pitch + (pitchDirection * CAMERA_ROTATIONAL_SPEED * seconds)
-            if pitch > 90.0
-                pitch = 90.0
-            elseif pitch < -90.0
-                pitch = -90.0
+        if GetSelectedLayer() is EditorLayer3D
+
+            EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
+
+            if (yawDirection not= 0 or pitchDirection not= 0)
+                yaw = yaw + (yawDirection * CAMERA_ROTATIONAL_SPEED * seconds)
+                pitch = pitch + (pitchDirection * CAMERA_ROTATIONAL_SPEED * seconds)
+                if pitch > 90.0
+                    pitch = 90.0
+                elseif pitch < -90.0
+                    pitch = -90.0
+                end
+    
+                moved = true
+                camera:SetYawPitchRoll(yaw, pitch, 0)
             end
-
-            moved = true
-            camera:SetYawPitchRoll(yaw, pitch, 0)
-        end
-
-        if forwardDirection not= 0
-            workVector:Set(camera:GetDirection())
-            workVector:Scale(forwardDirection * CAMERA_DIRECTIONAL_SPEED * seconds)
-            camera:Move(workVector)
-            moved = true
-        end
-
-        if strafeDirection not= 0
-            workVector:Set(camera:GetDirection())
-            workVector:CrossProduct(camera:GetUp())
-            camera:Move(workVector:Scale(strafeDirection * CAMERA_DIRECTIONAL_SPEED * seconds))
-            moved = true
-        end
-
-        if verticalDirection not= 0
-            workVector:Set(camera:GetUp())
-            workVector:Scale(verticalDirection * CAMERA_DIRECTIONAL_SPEED * seconds)
-            camera:Move(workVector)
-            moved = true
-        end
-
-        if moved
-            Vector3 temp = camera:GetPosition()
-            number x = math:Round(temp:GetX(), 2)
-            number y = math:Round(temp:GetY(), 2)
-            number z = math:Round(temp:GetZ(), 2)
-            temp = camera:GetDirection()
-            number xDirection = math:Round(temp:GetX(), 2)
-            number yDirection = math:Round(temp:GetY(), 2)
-            number zDirection = math:Round(temp:GetZ(), 2)
-//            SetDescription("Camera " + x + ", " + y + ", " + z + "; pointing " + xDirection + ", " + yDirection + ", " + zDirection)
-        end
-
-        if manager:GetFocus() is InteractableItem
-            moved = false
-            workVector:Set(0, 0, 0)
-            InteractableItem focus = cast(InteractableItem, manager:GetFocus())
-
-            if gridSnapEnabled = false
-                if selectionXDirection not= 0
-                    workVector:SetX(selectionXDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
-                    moved = true
-                end
-
-                if selectionYDirection not= 0
-                    workVector:SetY(selectionYDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
-                    moved = true
-                end
-
-                if selectionZDirection not= 0
-                    workVector:SetZ(selectionZDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
-                    moved = true
-                end
-
-                if moved
-                    focus:Move(workVector)
-
-                    // Need to update highlight description here, and report the movement to accessibility
-                end
-            else
-                if selectionXDirection not= 0 or selectionYDirection not= 0 or selectionZDirection not= 0
-                    if gridMoveTimer <= 0
-                        gridMoveTimer = gridMoveTimerMax
-
-                        number x = focus:GetGlobalX()
-                        number y = focus:GetGlobalY()
-                        number z = focus:GetGlobalZ()
-
-                        if selectionXDirection < 0
-                            x = grid:GetPreviousGridCoordinate(x)
-                        elseif selectionXDirection > 0
-                            x = grid:GetNextGridCoordinate(x)
-                        end
-
-                        if selectionYDirection < 0
-                            y = grid:GetPreviousGridCoordinate(y)
-                        elseif selectionYDirection > 0
-                            y = grid:GetNextGridCoordinate(y)
-                        end
-
-                        if selectionZDirection < 0
-                            z = grid:GetPreviousGridCoordinate(z)
-                        elseif selectionZDirection > 0
-                            z = grid:GetNextGridCoordinate(z)
-                        end
-
-                        focus:Move(x - focus:GetGlobalX(), y - focus:GetGlobalY(), z - focus:GetGlobalZ())
-                        grid:SetPosition(grid:GetNearestGridCoordinate(focus:GetGlobalX()),
-                            0,
-                            grid:GetNearestGridCoordinate(focus:GetGlobalZ()))
-                    else
-                        gridMoveTimer = gridMoveTimer - seconds
+    
+            if forwardDirection not= 0
+                workVector:Set(camera:GetDirection())
+                workVector:Scale(forwardDirection * CAMERA_DIRECTIONAL_SPEED * seconds)
+                camera:Move(workVector)
+                moved = true
+            end
+    
+            if strafeDirection not= 0
+                workVector:Set(camera:GetDirection())
+                workVector:CrossProduct(camera:GetUp())
+                camera:Move(workVector:Scale(strafeDirection * CAMERA_DIRECTIONAL_SPEED * seconds))
+                moved = true
+            end
+    
+            if verticalDirection not= 0
+                workVector:Set(camera:GetUp())
+                workVector:Scale(verticalDirection * CAMERA_DIRECTIONAL_SPEED * seconds)
+                camera:Move(workVector)
+                moved = true
+            end
+    
+            if moved
+                Vector3 temp = camera:GetPosition()
+                number x = math:Round(temp:GetX(), 2)
+                number y = math:Round(temp:GetY(), 2)
+                number z = math:Round(temp:GetZ(), 2)
+                temp = camera:GetDirection()
+                number xDirection = math:Round(temp:GetX(), 2)
+                number yDirection = math:Round(temp:GetY(), 2)
+                number zDirection = math:Round(temp:GetZ(), 2)
+    //            SetDescription("Camera " + x + ", " + y + ", " + z + "; pointing " + xDirection + ", " + yDirection + ", " + zDirection)
+            end
+    
+            if manager:GetFocus() is InteractableItem
+                moved = false
+                workVector:Set(0, 0, 0)
+                InteractableItem focus = cast(InteractableItem, manager:GetFocus())
+    
+                boolean gridSnapEnabled = IsGridSnapping()
+    
+                if gridSnapEnabled = false
+                    if selectionXDirection not= 0
+                        workVector:SetX(selectionXDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
+                        moved = true
+                    end
+    
+                    if selectionYDirection not= 0
+                        workVector:SetY(selectionYDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
+                        moved = true
+                    end
+    
+                    if selectionZDirection not= 0
+                        workVector:SetZ(selectionZDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
+                        moved = true
+                    end
+    
+                    if moved
+                        focus:Move(workVector)
+    
+                        // Need to update highlight description here, and report the movement to accessibility
                     end
                 else
-                    gridMoveTimer = 0
+                    if selectionXDirection not= 0 or selectionYDirection not= 0 or selectionZDirection not= 0
+                        if gridMoveTimer <= 0
+                            gridMoveTimer = gridMoveTimerMax
+    
+                            number x = focus:GetGlobalX()
+                            number y = focus:GetGlobalY()
+                            number z = focus:GetGlobalZ()
+    
+                            if selectionXDirection < 0
+                                x = layer:GetPreviousGridCoordinate(x)
+                            elseif selectionXDirection > 0
+                                x = layer:GetNextGridCoordinate(x)
+                            end
+    
+                            if selectionYDirection < 0
+                                y = layer:GetPreviousGridCoordinate(y)
+                            elseif selectionYDirection > 0
+                                y = layer:GetNextGridCoordinate(y)
+                            end
+    
+                            if selectionZDirection < 0
+                                z = layer:GetPreviousGridCoordinate(z)
+                            elseif selectionZDirection > 0
+                                z = layer:GetNextGridCoordinate(z)
+                            end
+    
+                            focus:Move(x - focus:GetGlobalX(), y - focus:GetGlobalY(), z - focus:GetGlobalZ())
+                            GridPlane grid = layer:GetGrid()
+                            grid:SetPosition(grid:GetNearestGridCoordinate(focus:GetGlobalX()),
+                                0,
+                                grid:GetNearestGridCoordinate(focus:GetGlobalZ()))
+                        else
+                            gridMoveTimer = gridMoveTimer - seconds
+                        end
+                    else
+                        gridMoveTimer = 0
+                    end
                 end
+                
             end
-            
         end
     end
 
@@ -308,7 +314,7 @@ class VisualSceneController is Control
 
         // Display selection highlighting around the items.
         integer counter = 0
-        Layer3D layer = cast(Layer3D, GetSelectedLayer())
+        EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
         repeat while counter < filteredItems:GetSize()
             Item3D item = filteredItems:Get(counter)
             SelectionHighlight highlight
@@ -407,10 +413,10 @@ class VisualSceneController is Control
     end
 
     action CreateNewItemPreview
-        if GetSelectedLayer() is Layer3D
+        if GetSelectedLayer() is EditorLayer3D
             NewItemPreview preview
             preview:Load(me)
-            Layer3D layer = cast(Layer3D, GetSelectedLayer())
+            EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
             layer:Add(preview)
             preview:Focus()
         else
@@ -419,7 +425,7 @@ class VisualSceneController is Control
     end
 
     action CancelNewItemPreview(NewItemPreview preview)
-        Layer3D layer = cast(Layer3D, GetSelectedLayer())
+        EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
         layer:Remove(preview)
 
         previewScale = preview:GetScale()
@@ -456,7 +462,7 @@ class VisualSceneController is Control
     action ConfirmNewItemPreview(NewItemPreview preview)
         Model model = preview:ConvertToModel()
         previewTransform = preview:GetTransform()
-        Layer3D layer = cast(Layer3D, GetSelectedLayer())
+        EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
         layer:Add(model)
 
         integer type = preview:GetModelPresetCode()
@@ -490,15 +496,9 @@ class VisualSceneController is Control
         NotifySceneChangeListeners(event)
     end
 
-    action AddLayer(Layer layer)
+    action AddLayer(EditorLayer layer)
         if layers:IsEmpty()
             selection:SetSelection(layer)
-            if layer is Layer3D
-                Layer3D layer3D = cast(Layer3D, layer)
-                // TO-DO: Improve this.
-                // The grid needs to be managed across arbitrary Layer3Ds, not just one.
-                layer3D:Add(grid)
-            end
         end
 
         layers:Add(layer)
@@ -651,37 +651,36 @@ class VisualSceneController is Control
     end
 
     action SetGridSnapping(boolean enabled)
-        if gridSnapEnabled = enabled
+        EditorLayer layer = GetSelectedLayer()
+
+        if layer:IsGridSnapping() = enabled
             return now
         end
 
+        layer:SetGridSnapping(enabled)
+
         if enabled
-            grid:Show()
             NotifyAccessibility(me, "Grid snapping enabled")
         else
-            grid:Hide()
             NotifyAccessibility(me, "Grid snapping disabled")
         end
-
-        gridSnapEnabled = enabled
     end
 
     action SetGridUnitSize(number units)
-        grid:SetGridUnitSize(units)
+        EditorLayer layer = GetSelectedLayer()
+        layer:SetGridUnitSize(units)
         
         NotifyAccessibility(me, "Grid size " + units)
-
-        grid:SetPosition(grid:GetNearestGridCoordinate(grid:GetGlobalX()),
-            grid:GetNearestGridCoordinate(grid:GetGlobalY()),
-            grid:GetNearestGridCoordinate(grid:GetGlobalZ()))
     end
 
     action GetGridUnitSize returns number
-        return grid:GetGridUnitSize()
+        EditorLayer layer = GetSelectedLayer()
+        return layer:GetGridUnitSize()
     end
 
     action IsGridSnapping returns boolean
-        return gridSnapEnabled
+        EditorLayer layer = GetSelectedLayer()
+        return layer:IsGridSnapping()
     end
 
     action SetSelectedItem(InteractableItem item)
@@ -700,7 +699,7 @@ class VisualSceneController is Control
         return selection:GetSelectedItem()
     end
 
-    action GetSelectedLayer returns Layer
+    action GetSelectedLayer returns EditorLayer
         return selection:GetSelectedLayer()
     end
 

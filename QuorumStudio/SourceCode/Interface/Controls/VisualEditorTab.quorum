@@ -24,6 +24,11 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditor
 use Libraries.Interface.Item3D
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTree
+use Libraries.Game.Graphics.Camera
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer2D
+use Libraries.Containers.Number32BitArray
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer3D
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer
 
 class VisualEditorTab is Tab, DefaultSceneManager
 
@@ -76,19 +81,17 @@ class VisualEditorTab is Tab, DefaultSceneManager
 
         text name = layerJson:GetValue(properties:NAME)
         text classValue = layerJson:GetValue(properties:CLASS)
-        Layer current = undefined
+        EditorLayer current = undefined
 
         /*
         Currently we only accept the first 3D layer found. This will change
         when the VisualSceneController changes to work with the tree.
         */
         if classValue = "Layer3D"
-            // This layer might need to become something else in the future.
-            // It might be a custom class or have the editor tag in its name.
-            Layer3D layer
+            EditorLayer3D layer
             current = layer
         elseif classValue = "Layer2D"
-            Layer2D layer
+            EditorLayer2D layer
             current = layer
         end
 
@@ -96,6 +99,23 @@ class VisualEditorTab is Tab, DefaultSceneManager
         controller:AddLayer(current)
 
         return current
+    end
+
+    /*
+    This action can be used to override a portion of the default camera loading.
+    */
+    private action CustomLoadCameraProperty(Layer layer, Camera camera, text key, JavaScriptObjectNotation json) returns boolean
+        SceneProperties properties
+        if key = properties:SIZE
+            if layer is EditorLayer2D
+                EditorLayer2D layer2D = cast(EditorLayer2D, layer)
+                Number32BitArray size = ConvertToNumber32BitArray(json:GetObject(key))
+                layer2D:SetCameraPreviewSize(size:Get(0), size:Get(1))
+                return true
+            end
+        end
+
+        return false
     end
 
     action Save

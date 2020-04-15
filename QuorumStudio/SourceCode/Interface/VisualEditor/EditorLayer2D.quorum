@@ -1,0 +1,113 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Game.Layer2D
+use Libraries.Interface.Events.ResizeEvent
+
+class EditorLayer2D is Layer2D, EditorLayer
+
+    /*
+    The camera preview describes the basic position and dimensions of the camera in the scene.
+    It does NOT represent the editor camera! This represents where the camera will be if
+    you loaded the scene into a game and ran it outside of the editor.
+    */
+    CameraPreview2D preview
+
+    on create
+        VisualEditorResources resources
+        preview:SetSize(resources:CAMERA_PREVIEW_2D_DEFAULT_WIDTH, resources:CAMERA_PREVIEW_2D_DEFAULT_HEIGHT)
+        preview:SetPosition(preview:GetWidth() / 2.0, preview:GetHeight() / 2.0)
+        Add(preview)
+        preview:SetPosition(0, 0)
+
+        ShowEditorComponents(false)
+    end
+
+    action GetCameraPreview returns CameraPreview2D
+        return preview
+    end
+
+    action SetCameraPreviewX(number x)
+        preview:SetX(x)
+    end
+
+    action SetCameraPreviewY(number y)
+        preview:SetY(y)
+    end
+
+    action SetCameraPreviewPosition(number x, number y)
+        preview:SetPosition(x, y)
+    end
+
+    action SetCameraPreviewWidth(number width)
+        preview:SetWidth(width)
+    end
+
+    action SetCameraPreviewHeight(number height)
+        preview:SetHeight(height)
+    end
+
+    action SetCameraPreviewSize(number width, number height)
+        preview:SetSize(width, height)
+    end
+
+    action GetCameraPreviewX returns number
+        return preview:GetX()
+    end
+
+    action GetCameraPreviewY returns number
+        return preview:GetY()
+    end
+
+    action GetCameraPreviewWidth returns number
+        return preview:GetWidth()
+    end
+
+    action GetCameraPreviewHeight returns number
+        return preview:GetHeight()
+    end
+
+    action Resize(ResizeEvent event)
+        // Don't respond to resizing here -- allow the VisualSceneController to handle it for us.
+    end
+
+    action SetGridSnapping(boolean enabled)
+        // TO-DO
+    end
+
+    action SetGridUnitSize(number units)
+        // TO-DO
+    end
+
+    action GetGridUnitSize returns number
+        // TO-DO
+        return 0
+    end
+
+    action IsGridSnapping returns boolean
+        // TO-DO
+        return false
+    end
+
+    action GetNearestGridCoordinate(number coordinate) returns number
+        // TO-DO
+        return 0
+    end
+
+    action GetNextGridCoordinate(number coordinate) returns number
+        // TO-DO
+        return 0
+    end
+
+    action GetPreviousGridCoordinate(number coordinate) returns number
+        // TO-DO
+        return 0
+    end
+
+    action ShowEditorComponents(boolean shouldShow)
+        if shouldShow
+            preview:Show()
+        else
+            preview:Hide()
+        end
+    end
+end
