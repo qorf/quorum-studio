@@ -8,18 +8,37 @@ use Libraries.Game.Layer3D
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Containers.Iterator
 use Libraries.Interface.Item3D
+use Libraries.Interface.Events.SelectionListener
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Development.Environment.Studio.Behaviors.SceneTreeItemActivationBehavior
 
-class SceneTree is Tree
+class SceneTree is Tree, SelectionListener, SceneChangeListener
 
     VisualEditorResources resources
     VisualSceneController controller = undefined
     
     // A single Item indicating that no scene is loaded.
     TreeItem defaultItem = undefined
+
+    // A behavior given to each SceneTreeItem to focus scene items.
+    SceneTreeItemActivationBehavior itemActivationBehavior
+
+    // An Array used to select a single item in a Scene.
+    Array<Item3D> filterArray3D
+
+    on create
+        AddSelectionListener(me)
+        filterArray3D:SetSize(1)
+    end
     
+    action GetSceneController returns VisualSceneController
+        return controller
+    end
+
     action SetSceneController(VisualSceneController sceneController)
         if controller not= undefined
-            // Do any necessary clean-up here
+            controller:RemoveSceneChangeListener(me)
         end
 
         controller = sceneController
@@ -34,6 +53,7 @@ class SceneTree is Tree
 
             Add(defaultItem)
         else
+            controller:AddSceneChangeListener(me)
             Load(controller:GetSceneLayers())
         end
     end
@@ -42,8 +62,9 @@ class SceneTree is Tree
         integer counter = 0
         repeat while counter < layers:GetSize()
             Layer current = layers:Get(counter)
-            TreeItem layerTreeItem
+            SceneTreeItem layerTreeItem
             layerTreeItem:SetName(current:GetName())    
+            layerTreeItem:SetSceneLayer(current)
 
             if current is Layer2D
                 Layer2D layer = cast(Layer2D, current)
@@ -52,8 +73,8 @@ class SceneTree is Tree
                 repeat while iterator:HasNext()
                     Item2D item = iterator:Next()
                     if item:HasProperty(resources:EDITOR_TAG) = false
-                        TreeItem treeItem = GetTreeItems(item)
-                        layerTreeItem:Add(treeItem)
+                        SceneTreeItem treeItem = ItemToTreeItems(item)
+                        layerTreeItem:Add(cast(TreeItem, treeItem))
                     end
                 end
 
@@ -65,7 +86,7 @@ class SceneTree is Tree
                 repeat while iterator:HasNext()
                     Item3D item = iterator:Next()
                     if item:HasProperty(resources:EDITOR_TAG) = false
-                        TreeItem treeItem = GetTreeItems(item)
+                        TreeItem treeItem = ItemToTreeItems(item)
                         layerTreeItem:Add(treeItem)
                     end
                 end
@@ -73,34 +94,149 @@ class SceneTree is Tree
                 // Do any other special setup for Layer2D here, e.g. set up specific context menu or propertie
             end
 
-            Add(layerTreeItem)
+            Add(cast(TreeItem, layerTreeItem))
 
             counter = counter + 1
         end
     end
 
-    private action GetTreeItems(Item2D item) returns TreeItem
-        TreeItem treeItem
+    private action ItemToTreeItems(Item2D item) returns SceneTreeItem
+        SceneTreeItem treeItem
         treeItem:SetName(item:GetName())
+        treeItem:SetSceneItem(item)
         Array<Item2D> children = item:GetChildren()
         integer i = 0
         repeat while i < children:GetSize()
-            treeItem:Add(GetTreeItems(children:Get(i)))
+            treeItem:Add(cast(TreeItem, ItemToTreeItems(children:Get(i))))
             i = i + 1
-        end        
+        end
+
+        treeItem:SetBehavior(itemActivationBehavior)
 
         return treeItem
     end
 
-    private action GetTreeItems(Item3D item) returns TreeItem
-        TreeItem treeItem
+    private action ItemToTreeItems(Item3D item) returns SceneTreeItem
+        SceneTreeItem treeItem
         treeItem:SetName(item:GetName())
+        treeItem:SetSceneItem(item)
         Iterator<Item3D> children = item:GetItems()
         repeat while children:HasNext()
-            treeItem:Add(GetTreeItems(children:Next()))
-        end        
+            treeItem:Add(cast(TreeItem, ItemToTreeItems(children:Next())))
+        end
+
+        treeItem:SetBehavior(itemActivationBehavior)
 
         return treeItem
+    end
+
+    action SelectionChanged(SelectionEvent event)
+        if event:GetSelection() is TreeSelection
+            TreeSelection selection = cast(TreeSelection, event:GetSelection())
+            TreeItem selectedItem = selection:GetTreeItem()
+            if selectedItem = defaultItem
+                return now
+            end
+
+            SceneTreeItem treeItem = cast(SceneTreeItem, selectedItem)
+            Item relatedItem = treeItem:GetSceneItem()
+            if relatedItem is Item3D
+                filterArray3D:Set(0, cast(Item3D, relatedItem))
+                controller:SetFilteredItems(filterArray3D, false)
+            elseif relatedItem is Item2D
+                // Do something with the 2D item to select it in the scene
+            end
+
+        elseif event:GetSelection() is VisualEditorSelection
+
+        end
+    end
+
+    action SceneAddedItem(SceneChangeEvent event)
+        if controller = undefined
+            return now
+        end
+
+        Item item = event:GetItem()
+        Item parentItem = event:GetParentItem()
+        Layer layer = event:GetLayer()
+
+        Iterator<TreeItem> treeItems = GetTreeItems()
+
+        SceneTreeItem layerTreeItem = undefined
+        boolean finished = false
+
+        repeat while treeItems:HasNext() and finished = false
+            SceneTreeItem treeItem = cast(SceneTreeItem, treeItems:Next())
+            if treeItem:GetSceneLayer() = layer
+                layerTreeItem = treeItem
+                finished = true
+            end
+        end
+
+        if parentItem = undefined
+            if item is Item3D
+                layerTreeItem:Add(cast(TreeItem, ItemToTreeItems(cast(Item3D, item))))
+            elseif item is Item2D
+                layerTreeItem:Add(cast(TreeItem, ItemToTreeItems(cast(Item2D, item))))
+            end
+        else
+            SceneTreeItem targetItem = GetTreeItem(layerTreeItem, parentItem)
+            if targetItem not= undefined
+                if item is Item3D
+                    targetItem:Add(cast(TreeItem, ItemToTreeItems(cast(Item3D, item))))
+                elseif item is Item2D
+                    targetItem:Add(cast(TreeItem, ItemToTreeItems(cast(Item2D, item))))
+                end
+            end
+        end
+    end
+
+    action SceneRemovedItem(SceneChangeEvent event)
+        if controller = undefined
+            return now
+        end
+
+        Item item = event:GetItem()
+        Item parentItem = event:GetParentItem()
+        Layer layer = event:GetLayer()
+
+        Iterator<TreeItem> treeItems = GetTreeItems()
+
+        SceneTreeItem layerTreeItem = undefined
+        boolean finished = false
+
+        repeat while treeItems:HasNext() and finished = false
+            SceneTreeItem treeItem = cast(SceneTreeItem, treeItems:Next())
+            if treeItem:GetSceneLayer() = layer
+                layerTreeItem = treeItem
+                finished = true
+            end
+        end
+
+        if parentItem = undefined
+            layerTreeItem:Remove(cast(TreeItem, GetTreeItem(layerTreeItem, item)))
+        else
+            SceneTreeItem parentTreeItem = GetTreeItem(layerTreeItem, parentItem)
+            parentTreeItem:Remove(cast(TreeItem, GetTreeItem(parentTreeItem, item)))
+        end
+    end
+
+    private action GetTreeItem(SceneTreeItem root, Item item) returns SceneTreeItem
+        if root:GetSceneItem() = item
+            return root
+        end
+
+        Iterator<TreeItem> children = root:GetTreeItems()
+        SceneTreeItem target = undefined
+        repeat while children:HasNext()
+            target = GetTreeItem(cast(SceneTreeItem, children:Next()), item)
+            if target not= undefined and target:GetSceneItem() = item
+                return target
+            end
+        end
+
+        return undefined
     end
 
 end

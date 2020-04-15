@@ -1,0 +1,31 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTreeItem
+use Libraries.Interface.Item
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SelectionHighlight
+
+class SceneTreeItemActivationBehavior is QuorumStudioBehavior    
+
+    action Run(BehaviorEvent event)
+        if event:GetItem() is SceneTreeItem = false
+            return now
+        end
+
+        SceneTreeItem treeItem = cast(SceneTreeItem, event:GetItem())
+        Item item = treeItem:GetSceneItem()
+        if item = undefined
+            return now
+        end
+
+        VisualSceneController controller = treeItem:GetSceneController()
+        if controller not= undefined
+            SelectionHighlight highlight = controller:GetSelectionHighlight(item)
+            if highlight not= undefined
+                highlight:Focus()
+            end
+        end
+    end
+
+end
