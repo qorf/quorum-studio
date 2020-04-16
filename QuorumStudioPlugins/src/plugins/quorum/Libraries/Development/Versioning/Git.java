@@ -523,41 +523,53 @@ public class Git {
                     
                     quorum.Libraries.Development.Versioning.DiffResult resultForFile = new quorum.Libraries.Development.Versioning.DiffResult();
                     Iterator<DiffRow> iterator = rows.iterator();
-                    
+                    DiffRow.Tag previousTag = null;
+                    quorum.Libraries.Development.Versioning.DiffEdit previousRes = null;
                     int line = 0;
                     while(iterator.hasNext()) {
                         DiffRow row = iterator.next();
                         DiffRow.Tag tag = row.getTag();
                         quorum.Libraries.Development.Versioning.DiffEdit res = new quorum.Libraries.Development.Versioning.DiffEdit();
+                        res.startLine = line;
+                        res.endLine = line;
+                        
                         if(null != tag) switch (tag) {
                             case CHANGE:
                                 res.SetEditType(1);
                                 resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesChanged_(
                                     resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesChanged_() + 1);
+                                resultForFile.GetEdits().Add(res);
                                 break;
                             case DELETE:
                                 res.SetEditType(2);
                                 resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesDeleted_(
                                     resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesDeleted_() + 1);
+                                
+                                if((previousTag == null) || 
+                                   (previousTag != null && previousRes != null && previousTag != previousTag.DELETE)) {
+                                    previousRes.SetHasDeletion(true);
+                                }
                                 break;
                             case INSERT:
                                 res.SetEditType(0);
                                 resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesInserted_(
                                     resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesInserted_() + 1);
+                                resultForFile.GetEdits().Add(res);
                                 break;
                             case EQUAL:
                                 res.SetEditType(3);
                                 resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesEqual_(
                                     resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesEqual_() + 1);
+                                resultForFile.GetEdits().Add(res);
                                 break;
                             default:
                                 break;
                         }
                         
-                        res.startLine = line;
-                        res.endLine = line;
+                        previousTag = tag;
+                        previousRes = res;
                         line = line + 1;
-                        resultForFile.GetEdits().Add(res);
+                        
                     }
                     return resultForFile;
                 }
