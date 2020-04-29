@@ -1,32 +1,22 @@
 package Libraries.Development.Environment.Studio.Interface.VisualEditor
 
-use Libraries.Game.Graphics.Model
-use Libraries.Game.Graphics.Color
-use Libraries.Containers.Array
-use Libraries.Game.Graphics.Material
-use Libraries.Game.Graphics.ColorAttribute
 use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Interface.Events.FocusEvent
-use Libraries.Compute.Vector3
 use Libraries.Game.Scenes.SceneProperties
+use Libraries.Interface.Item
 
-class InteractableItem is Model
+class InteractableItem is Item
     
     VisualEditorResources resources
     VisualSceneController controller = undefined
-
-    number scaleX = 1
-    number scaleY = 1
-    number scaleZ = 1
-    number yaw = 0
-    number pitch = 0
-    number roll = 0
 
     on create
         SetProperty(resources:EDITOR_TAG, undefined)
         SetFocusable(true)
         SetAccessibilityCode(parent:Item:CUSTOM)
     end
+
+    blueprint action ResetScale
 
     action SetController(VisualSceneController controller)
         me:controller = controller
@@ -40,10 +30,6 @@ class InteractableItem is Model
         return resources
     end
 
-    action GetAccessibleParent returns Item
-        return GetController()
-    end
-
     action GainedFocus(FocusEvent event)
         if controller not= undefined
             controller:SetSelectedItem(me)
@@ -51,125 +37,15 @@ class InteractableItem is Model
     end
 
     action GainedSelection
-        // Do nothing. Classes inheriting from this may do something, though.
+        // Do nothing here -- inheriting classes may override this.
     end
 
     action LostSelection
-        // Do nothing. Classes inheriting from this may do something, though.
+        // Do nothing here -- inheriting classes may override this.
     end
 
     action NotifyAccessibility(text message)
         controller:NotifyAccessibility(me, message)
-    end
-
-    action SetDiffuseColor(Color color)
-        integer counter = 0
-        Array<Material> materials = GetMaterials()
-        repeat materials:GetSize() times
-            Material material = materials:Get(counter)
-            ColorAttribute attribute
-            if material:HasAttribute(attribute:GetDiffuseValue())
-                attribute = cast(ColorAttribute, material:GetAttribute(attribute:GetDiffuseValue()))
-                attribute:SetAttribute(attribute:GetDiffuseValue(), color)
-            end
-            counter = counter + 1
-        end
-
-        JavaScriptObjectNotation colorJson
-        colorJson:SetKey("Color")
-        colorJson:SetArray()
-        colorJson:Add(color:GetRed())
-        colorJson:Add(color:GetGreen())
-        colorJson:Add(color:GetBlue())
-        colorJson:Add(color:GetAlpha())
-        SetProperty("Color", colorJson)
-    end
-
-    action Scale(Vector3 vector)
-        scaleX = scaleX * vector:GetX()
-        scaleY = scaleY * vector:GetY()
-        scaleZ = scaleZ * vector:GetZ()
-        parent:Model:Scale(vector)
-    end
-
-    action SetScaleX(number scale)
-        number modify = (1.0 /  scaleX) * scale
-        scaleX = scale
-        parent:Model:Scale(modify, 1, 1)
-    end
-
-    action SetScaleY(number scale)
-        number modify = (1.0 /  scaleY) * scale
-        scaleY = scale
-        parent:Model:Scale(1, modify, 1)
-    end
-
-    action SetScaleZ(number scale)
-        number modify = (1.0 /  scaleZ) * scale
-        scaleZ = scale
-        parent:Model:Scale(1, 1, modify)
-    end
-
-    action SetRotation(number newYaw, number newPitch, number newRoll)
-        if roll not= 0
-            Rotate(0, 0, 1, -roll)
-        end
-        if pitch not= 0
-            Rotate(1, 0, 0, -pitch)
-        end
-        if yaw not= 0
-            Rotate(0, 1, 0, -yaw)
-        end
-
-        yaw = newYaw
-        pitch = newPitch
-        roll = newRoll
-
-        if yaw not= 0
-            Rotate(0, 1, 0, yaw)
-        end
-        if pitch not= 0
-            Rotate(1, 0, 0, pitch)
-        end
-        if roll not= 0
-            Rotate(0, 0, 1, roll)
-        end
-    end
-
-    action GetYaw returns number
-        return yaw
-    end
-
-    action GetPitch returns number
-        return pitch
-    end
-
-    action GetRoll returns number
-        return roll
-    end
-
-    action ResetScale
-        Vector3 vector
-        vector:Set(1.0 / scaleX, 1.0 / scaleY, 1.0 / scaleZ)
-        Scale(vector)
-    end
-
-    action GetScale returns Vector3
-        Vector3 vector
-        vector:Set(scaleX, scaleY, scaleZ)
-        return vector
-    end
-
-    action GetScaleX returns number
-        return scaleX
-    end
-
-    action GetScaleY returns number
-        return scaleY
-    end
-
-    action GetScaleZ returns number
-        return scaleZ
     end
 
     action IsEditorPhysicsEnabled returns boolean

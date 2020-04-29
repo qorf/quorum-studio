@@ -1,0 +1,641 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Events.SelectionListener
+use Libraries.Interface.Events.TextChangeListener
+use Libraries.Interface.Controls.TextField
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Development.Environment.Studio.Behaviors.PropertiesEnablePhysicsBehavior
+use Libraries.Interface.Selections.ButtonGroupSelection
+use Libraries.Interface.Controls.ButtonGroup
+use Libraries.Interface.Controls.RadioButton
+
+class Item2DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
+    
+    boolean initialized = false
+
+    VisualSceneController controller = undefined
+
+    // Controls used on the dialog itself
+    Label nameLabel = undefined
+    TextField nameField = undefined
+    TextField positionXField = undefined
+    TextField positionYField = undefined
+    TextField positionZField = undefined
+    TextField scaleXField = undefined
+    TextField scaleYField = undefined
+    TextField rotationField = undefined
+    Checkbox physicsEnabledCheckbox = undefined
+    ButtonGroup responsivenessGroup = undefined
+    TextField massField = undefined
+    TextField frictionField = undefined
+    TextField restitutionField = undefined
+
+    action Initialize(VisualSceneController controller)
+        if initialized
+            return now
+        end
+
+        SetInputGroup("PropertiesDialog")
+
+        initialized = true
+
+        // Used to set focus order at the end of this action.
+        Array<Control> focusArray
+
+        me:controller = controller
+        controller:SetProperties2DDialog(me)
+        controller:AddSelectionListener(me)
+
+        Label label
+        nameLabel = label
+        
+        TextField field
+        nameField = field
+
+        SetName("Object Properties")
+
+        SetPixelWidth(300)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+
+        LabelBoxView view
+        Color color
+        view:SetBorderThickness(1)
+        view:SetBorderStyle(view:ALL - view:TOP)
+        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        
+        Control panel
+        FlowLayout propertiesLayout
+        panel:SetLayout(propertiesLayout)
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+        panel:SetBorderColor(color:Black())
+        panel:SetBorderThickness(1)
+        panel:SetView2D(view)
+
+        Label basicPropertiesLabel
+        basicPropertiesLabel:SetSize(18)
+        basicPropertiesLabel:SetText("Basic Properties")
+        basicPropertiesLabel:SetLeftPadding(20)
+        panel:Add(basicPropertiesLabel)
+
+        FlowLayout nameLayout
+        Control nameContainer
+        nameContainer:SetLayout(nameLayout)
+        nameContainer:SetPercentageWidth(1.0)
+        nameContainer:SetVerticalLayoutMode(nameContainer:FIT_CONTENTS)
+        nameContainer:SetLeftPadding(20)
+        nameContainer:SetTopPadding(10)
+        nameContainer:SetRightPadding(30)
+        nameContainer:SetBottomPadding(10)
+
+        nameLabel:SetText("Name:")
+        nameLabel:SetRightPadding(10)
+        nameContainer:Add(nameLabel)
+        
+        nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
+        nameField:SetName("Name")
+        nameField:SetText("")
+        nameField:SetFocusable(true)
+        nameField:AddTextChangeListener(me)
+        nameContainer:Add(nameField)
+        focusArray:Add(nameField)
+        panel:Add(nameContainer)
+
+        Label positionLabel
+        
+        TextField positionXField
+        me:positionXField = positionXField
+
+        TextField positionYField
+        me:positionYField = positionYField
+
+        TextField positionZField
+        me:positionZField = positionZField
+
+        FlowLayout positionLayout
+        Control positionContainer
+        positionContainer:SetLayout(positionLayout)
+        positionContainer:SetPercentageWidth(1.0)
+        positionContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        positionContainer:SetLeftPadding(20)
+        positionContainer:SetTopPadding(10)
+        positionContainer:SetRightPadding(30)
+        positionContainer:SetBottomPadding(10)
+
+        positionLabel:SetText("Position:")
+        positionLabel:SetRightPadding(10)
+        positionContainer:Add(positionLabel)
+        
+        FlowLayout positionFieldLayout
+        Control positionFieldContainer
+        positionFieldContainer:SetLayout(positionFieldLayout)
+
+        positionFieldContainer:SetHorizontalLayoutMode(positionFieldContainer:FILL)
+        positionFieldContainer:SetName("Position Fields")
+        positionXField:SetName("X")
+        positionXField:SetText("")
+        positionXField:SetFocusable(true)
+        positionXField:AddTextChangeListener(me)
+        positionXField:SetRightPadding(8)
+        positionXField:SetPercentageWidth(0.33)
+        positionXField:SetPixelWidth(-8)
+        positionFieldContainer:Add(positionXField)
+
+        positionYField:SetName("Y")
+        positionYField:SetText("")
+        positionYField:SetFocusable(true)
+        positionYField:AddTextChangeListener(me)
+        positionYField:SetRightPadding(8)
+        positionYField:SetPercentageWidth(0.33)
+        positionYField:SetPixelWidth(-8)
+        positionFieldContainer:Add(positionYField)
+
+        positionZField:SetName("Z")
+        positionZField:SetText("")
+        positionZField:SetFocusable(true)
+        positionZField:AddTextChangeListener(me)
+        positionZField:SetRightPadding(8)
+        positionZField:SetPercentageWidth(0.33)
+        positionZField:SetPixelWidth(-8)
+        positionFieldContainer:Add(positionZField)
+
+        focusArray:Add(positionXField)
+        focusArray:Add(positionYField)
+        focusArray:Add(positionZField)
+
+        positionContainer:Add(positionFieldContainer)
+        panel:Add(positionContainer)
+
+        Label scaleLabel
+        
+        TextField scaleXField
+        me:scaleXField = scaleXField
+
+        TextField scaleYField
+        me:scaleYField = scaleYField
+
+        FlowLayout scaleLayout
+        Control scaleContainer
+        scaleContainer:SetLayout(scaleLayout)
+        scaleContainer:SetPercentageWidth(1.0)
+        scaleContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        scaleContainer:SetLeftPadding(20)
+        scaleContainer:SetTopPadding(10)
+        scaleContainer:SetRightPadding(30)
+        scaleContainer:SetBottomPadding(10)
+
+        scaleLabel:SetText("Scale:")
+        scaleLabel:SetRightPadding(10)
+        scaleContainer:Add(scaleLabel)
+        
+        FlowLayout scaleFieldLayout
+        Control scaleFieldContainer
+        scaleFieldContainer:SetLayout(scaleFieldLayout)
+
+        scaleFieldContainer:SetHorizontalLayoutMode(scaleFieldContainer:FILL)
+        scaleFieldContainer:SetName("Scale Fields")
+        scaleXField:SetName("X Scale")
+        scaleXField:SetText("")
+        scaleXField:SetFocusable(true)
+        scaleXField:AddTextChangeListener(me)
+        scaleXField:SetRightPadding(8)
+        scaleXField:SetPercentageWidth(0.5)
+        scaleXField:SetPixelWidth(-8)
+        scaleFieldContainer:Add(scaleXField)
+
+        scaleYField:SetName("Y Scale")
+        scaleYField:SetText("")
+        scaleYField:SetFocusable(true)
+        scaleYField:AddTextChangeListener(me)
+        scaleYField:SetRightPadding(8)
+        scaleYField:SetPercentageWidth(0.5)
+        scaleYField:SetPixelWidth(-8)
+        scaleFieldContainer:Add(scaleYField)
+
+        focusArray:Add(scaleXField)
+        focusArray:Add(scaleYField)
+
+        scaleContainer:Add(scaleFieldContainer)
+        panel:Add(scaleContainer)
+
+        Label rotationLabel
+        
+        TextField rotationField
+        me:rotationField = rotationField
+
+        FlowLayout rotationLayout
+        Control rotationContainer
+        rotationContainer:SetLayout(rotationLayout)
+        rotationContainer:SetPercentageWidth(1.0)
+        rotationContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        rotationContainer:SetLeftPadding(10)
+        rotationContainer:SetTopPadding(10)
+        rotationContainer:SetRightPadding(30)
+        rotationContainer:SetBottomPadding(10)
+
+        rotationLabel:SetText("Rotation:")
+        rotationLabel:SetRightPadding(10)
+        rotationContainer:Add(rotationLabel)
+        
+        FlowLayout rotationFieldLayout
+        Control rotationFieldContainer
+        rotationFieldContainer:SetLayout(rotationFieldLayout)
+
+        rotationFieldContainer:SetHorizontalLayoutMode(rotationFieldContainer:FILL)
+        rotationFieldContainer:SetName("Rotation Fields")
+        rotationField:SetName("Rotation")
+        rotationField:SetText("")
+        rotationField:SetFocusable(true)
+        rotationField:AddTextChangeListener(me)
+        rotationField:SetRightPadding(8)
+        rotationField:SetPercentageWidth(1)
+        rotationField:SetPixelWidth(-8)
+        rotationFieldContainer:Add(rotationField)
+
+        focusArray:Add(rotationField)
+
+        rotationContainer:Add(rotationFieldContainer)
+        panel:Add(rotationContainer)
+
+        Label physicsLabel
+        physicsLabel:SetSize(18)
+        physicsLabel:SetText("Physics")
+        physicsLabel:SetLeftPadding(20)
+        panel:Add(physicsLabel)
+
+        FlowLayout physicsEnabledLayout
+        Control physicsEnabledContainer
+        physicsEnabledContainer:SetLayout(physicsEnabledLayout)
+        physicsEnabledContainer:SetPercentageWidth(1.0)
+        physicsEnabledContainer:SetVerticalLayoutMode(physicsEnabledContainer:FIT_CONTENTS)
+        physicsEnabledContainer:SetLeftPadding(20)
+        physicsEnabledContainer:SetTopPadding(10)
+        physicsEnabledContainer:SetRightPadding(30)
+        physicsEnabledContainer:SetBottomPadding(10)
+
+        Checkbox physicsEnabledCheckbox
+        me:physicsEnabledCheckbox = physicsEnabledCheckbox
+        
+        physicsEnabledCheckbox:SetName("Physics Enabled")
+        physicsEnabledContainer:Add(physicsEnabledCheckbox)
+        physicsEnabledContainer:SetTopPadding(10)
+        physicsEnabledContainer:SetBottomPadding(10)
+        panel:Add(physicsEnabledContainer)
+
+        PropertiesEnablePhysicsBehavior propertiesEnablePhysicsBehavior
+        propertiesEnablePhysicsBehavior:SetDialog2D(me)
+        physicsEnabledCheckbox:SetBehavior(propertiesEnablePhysicsBehavior)
+
+        focusArray:Add(physicsEnabledCheckbox)
+
+        Control responsiveLabelControl
+        responsiveLabelControl:SetPercentageWidth(1.0)
+        responsiveLabelControl:SetVerticalLayoutMode(responsiveLabelControl:FIT_CONTENTS)
+        responsiveLabelControl:SetLeftPadding(20)
+        responsiveLabelControl:SetTopPadding(10)
+        panel:Add(responsiveLabelControl)
+
+        Label responsivenessLabel
+        responsivenessLabel:SetSize(16)
+        responsivenessLabel:SetText("Responsiveness")
+        responsiveLabelControl:Add(responsivenessLabel)
+
+        Control responsivenessPanel
+        responsivenessPanel:SetPercentageWidth(1.0)
+        responsivenessPanel:SetVerticalLayoutMode(responsivenessPanel:FIT_CONTENTS)
+        FlowLayout responsivenessPanelLayout
+        responsivenessPanel:SetLayout(responsivenessPanelLayout)
+        responsivenessPanel:SetLeftPadding(20)
+        responsivenessPanel:SetRightPadding(30)
+        responsivenessPanel:SetBottomPadding(10)
+
+        ButtonGroup responsivenessGroup
+        responsivenessGroup:SetName("Responsiveness")
+        me:responsivenessGroup = responsivenessGroup
+        responsivenessGroup:SetHorizontalLayoutMode(responsivenessPanel:FILL)
+        responsivenessGroup:SetVerticalLayoutMode(responsivenessPanel:FIT_CONTENTS)
+
+        RadioButton responsiveButton
+        responsiveButton:SetName("Responsive")
+        responsiveButton:SetHorizontalLayoutMode(physicsEnabledContainer:FILL)
+        
+        RadioButton nonResponsiveButton
+        nonResponsiveButton:SetName("Nonresponsive")
+        nonResponsiveButton:SetHorizontalLayoutMode(physicsEnabledContainer:FILL)
+        RadioButton unmovableButton
+        unmovableButton:SetName("Unmovable")
+        unmovableButton:SetHorizontalLayoutMode(physicsEnabledContainer:FILL)
+        
+        responsivenessGroup:Add(unmovableButton)
+        responsivenessGroup:Add(nonResponsiveButton)
+        responsivenessGroup:Add(responsiveButton)
+        responsivenessGroup:AddSelectionListener(me)
+
+        responsivenessPanel:Add(responsivenessGroup)
+        panel:Add(responsivenessPanel)
+        focusArray:Add(responsivenessGroup)
+
+        FlowLayout massLayout
+        Control massContainer
+        massContainer:SetLayout(massLayout)
+        massContainer:SetPercentageWidth(1.0)
+        massContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        massContainer:SetLeftPadding(20)
+        massContainer:SetTopPadding(10)
+        massContainer:SetRightPadding(30)
+        massContainer:SetBottomPadding(10)
+
+        Label massLabel
+        massLabel:SetText("Mass:")
+        massLabel:SetRightPadding(10)
+        massContainer:Add(massLabel)
+
+        TextField massField
+        me:massField = massField
+        massField:SetName("Mass")
+        massField:SetText("")
+        massField:SetFocusable(true)
+        massField:AddTextChangeListener(me)
+        massField:SetRightPadding(8)
+        massField:SetHorizontalLayoutMode(massContainer:FILL)
+        massContainer:Add(massField)
+
+        focusArray:Add(massField)
+        panel:Add(massContainer)
+
+        FlowLayout frictionLayout
+        Control frictionContainer
+        frictionContainer:SetLayout(frictionLayout)
+        frictionContainer:SetPercentageWidth(1.0)
+        frictionContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        frictionContainer:SetLeftPadding(20)
+        frictionContainer:SetTopPadding(10)
+        frictionContainer:SetRightPadding(30)
+        frictionContainer:SetBottomPadding(10)
+
+        Label frictionLabel
+        frictionLabel:SetText("Friction:")
+        frictionLabel:SetRightPadding(10)
+        frictionContainer:Add(frictionLabel)
+
+        TextField frictionField
+        me:frictionField = frictionField
+        frictionField:SetName("Friction")
+        frictionField:SetText("")
+        frictionField:SetFocusable(true)
+        frictionField:AddTextChangeListener(me)
+        frictionField:SetRightPadding(8)
+        frictionField:SetHorizontalLayoutMode(frictionContainer:FILL)
+        frictionContainer:Add(frictionField)
+
+        focusArray:Add(frictionField)
+        panel:Add(frictionContainer)
+
+        FlowLayout restitutionLayout
+        Control restitutionContainer
+        restitutionContainer:SetLayout(restitutionLayout)
+        restitutionContainer:SetPercentageWidth(1.0)
+        restitutionContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        restitutionContainer:SetLeftPadding(20)
+        restitutionContainer:SetTopPadding(10)
+        restitutionContainer:SetRightPadding(30)
+        restitutionContainer:SetBottomPadding(10)
+
+        Label restitutionLabel
+        restitutionLabel:SetText("Restitution:")
+        restitutionLabel:SetRightPadding(10)
+        restitutionContainer:Add(restitutionLabel)
+
+        TextField restitutionField
+        me:restitutionField = restitutionField
+        restitutionField:SetName("Friction")
+        restitutionField:SetText("")
+        restitutionField:SetFocusable(true)
+        restitutionField:AddTextChangeListener(me)
+        restitutionField:SetRightPadding(8)
+        restitutionField:SetHorizontalLayoutMode(frictionContainer:FILL)
+        restitutionContainer:Add(restitutionField)
+
+        focusArray:Add(restitutionField)
+        panel:Add(restitutionContainer)
+
+        Add(panel)
+
+        // Set up focus targets.
+        focusArray:Get(0):SetPreviousFocus(focusArray:Get(focusArray:GetSize() - 1))
+        focusArray:Get(0):SetNextFocus(focusArray:Get(1))
+
+        integer i = 1
+        repeat while i < focusArray:GetSize()
+            Control control = focusArray:Get(i)
+            control:SetPreviousFocus(focusArray:Get(i - 1))
+            control:SetNextFocus(focusArray:Get((i + 1) mod focusArray:GetSize()))
+            i = i + 1
+        end
+    end
+
+    action Show
+        if controller not= undefined
+            LayoutProperties properties = GetDefaultLayoutProperties()
+            properties:SetPercentageX(0)
+            properties:SetPercentageY(0)
+            properties:SetPercentageOriginX(1)
+            //properties:SetPercentageOriginY(1)
+            properties:SetPixelX(controller:GetGlobalX() + controller:GetWidth() - 5)
+//            properties:SetPixelY(controller:GetGlobalY() + controller:GetHeight())
+            properties:SetPixelY(controller:GetGlobalY())
+        end
+        parent:Dialog:Show()
+    end
+
+    action SelectionChanged(SelectionEvent event)
+        // TO-DO: Consider change to Layer in VisualEditorSelection
+        if event:GetSelection() is VisualEditorSelection
+            VisualEditorSelection selection = cast(VisualEditorSelection, event:GetSelection())
+            if selection:IsItemSelected() = false
+                if IsShowing()
+                    Hide()
+                end
+            else
+                if selection:GetSelectedItem() is InteractableItem2D
+                    SetFields(cast(InteractableItem2D, selection:GetSelectedItem()))
+                    if not IsShowing()
+                        Show()
+                    end
+                else
+                    if IsShowing()
+                        Hide()
+                    end
+                end
+            end
+        elseif event:GetSelection() is ButtonGroupSelection
+            ButtonGroupSelection selection = cast(ButtonGroupSelection, event:GetSelection())
+            InteractableItem item = controller:GetSelectedItem()
+            if item not= undefined
+                item:SetEditorResponsiveness(selection:GetIndex())
+            end
+        end
+    end
+
+    action SetFields(InteractableItem2D item)
+        nameField:SetText(item:GetName())
+        positionXField:SetText("" + item:GetX())
+        positionYField:SetText("" + item:GetY())
+        positionZField:SetText("" + item:GetEditorZ())
+        scaleXField:SetText("" + item:GetScaleX())
+        scaleYField:SetText("" + item:GetScaleY())
+        rotationField:SetText("" + item:GetRotation())
+        physicsEnabledCheckbox:SetToggleState(item:IsEditorPhysicsEnabled())
+        
+        integer responsive = item:GetEditorResponsiveness()
+        responsivenessGroup:GetButtonAt(responsive):SetToggleState(true)
+
+        massField:SetText("" + item:GetEditorMass())
+        frictionField:SetText("" + item:GetEditorFriction())
+        restitutionField:SetText("" + item:GetEditorRestitution())
+    end
+
+    action TextChanged(TextChangeEvent event)
+        InteractableItem2D currentItem = cast(InteractableItem2D, controller:GetSelectedItem())
+        Control control = event:GetControl()
+
+        if currentItem = undefined
+            return now
+        end
+
+        if control:Equals(nameField)
+            if nameField:GetText() not= currentItem:GetName()
+                currentItem:SetName(nameField:GetText())
+            end
+        elseif control:Equals(positionXField)
+            check
+                number value = positionXField:GetText():ParseNumber()
+                if value not= currentItem:GetX()
+                    currentItem:SetX(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(positionYField)
+            check
+                number value = positionYField:GetText():ParseNumber()
+                if value not= currentItem:GetY()
+                    currentItem:SetY(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(positionZField)
+            check
+                number value = positionZField:GetText():ParseNumber()
+                if value not= currentItem:GetEditorZ()
+                    currentItem:SetEditorZ(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(scaleXField)
+            check
+                number value = scaleXField:GetText():ParseNumber()
+                if value = 0
+                    return now
+                end
+
+                if value not= currentItem:GetScaleX()
+                    currentItem:SetScaleX(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(scaleYField)
+            check
+                number value = scaleYField:GetText():ParseNumber()
+                if value = 0
+                    return now
+                end
+
+                if value not= currentItem:GetScaleY()
+                    currentItem:SetScaleY(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(rotationField)
+            check
+                number value = rotationField:GetText():ParseNumber()
+
+                if value not= currentItem:GetRotation()
+                    currentItem:SetRotation(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(massField)
+            check
+                number value = massField:GetText():ParseNumber()
+
+                if value not= currentItem:GetEditorMass()
+                    currentItem:SetEditorMass(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(frictionField)
+            check
+                number value = frictionField:GetText():ParseNumber()
+
+                if value not= currentItem:GetEditorFriction()
+                    currentItem:SetEditorFriction(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(restitutionField)
+            check
+                number value = restitutionField:GetText():ParseNumber()
+
+                if value not= currentItem:GetEditorRestitution()
+                    currentItem:SetEditorRestitution(value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        end
+    end
+
+    action SetPhysicsEnabled(boolean enabled)
+        InteractableItem item = controller:GetSelectedItem()
+        if item not= undefined and item:IsEditorPhysicsEnabled() not= enabled
+            item:SetEditorPhysicsEnabled(enabled)
+        end
+    end
+
+    /*
+    Moves the focus to one of the fields in the properties dialog. By default
+    this is the name field (the first field in the panel), but it could also be
+    changed to a different field, possibly context sensitive.
+    */
+    action FocusField
+        nameField:Focus()
+        nameField:Select(0, nameField:GetSize(), true)
+    end
+
+    action GetSceneController returns VisualSceneController
+        return controller
+    end
+
+    action SetNameField(text name)
+        nameField:RemoveTextChangeListener(me)
+        nameField:SetText(name)
+        nameField:AddTextChangeListener(me)
+    end
+end

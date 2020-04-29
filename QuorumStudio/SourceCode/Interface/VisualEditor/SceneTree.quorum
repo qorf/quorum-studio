@@ -25,11 +25,11 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
     SceneTreeItemActivationBehavior itemActivationBehavior
 
     // An Array used to select a single item in a Scene.
-    Array<Item3D> filterArray3D
+    Array<Item> filterArray
 
     on create
         AddSelectionListener(me)
-        filterArray3D:SetSize(1)
+        filterArray:SetSize(1)
     end
     
     action GetSceneController returns VisualSceneController
@@ -58,40 +58,41 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
         end
     end
 
-    private action Load(Array<Layer> layers)
+    private action Load(Array<EditorLayer> layers)
         integer counter = 0
         repeat while counter < layers:GetSize()
-            Layer current = layers:Get(counter)
+            EditorLayer current = layers:Get(counter)
             SceneTreeItem layerTreeItem
             layerTreeItem:SetName(current:GetName())    
             layerTreeItem:SetSceneLayer(current)
+            layerTreeItem:SetBehavior(itemActivationBehavior)
 
-            if current is Layer2D
-                Layer2D layer = cast(Layer2D, current)
+            if current is EditorLayer2D
+                EditorLayer2D layer = cast(EditorLayer2D, current)
 
                 Iterator<Item2D> iterator = layer:GetIterator()
                 repeat while iterator:HasNext()
                     Item2D item = iterator:Next()
                     if item:HasProperty(resources:EDITOR_TAG) = false
-                        SceneTreeItem treeItem = ItemToTreeItems(item)
+                        SceneTreeItem treeItem = ItemToTreeItems(item, layer)
                         layerTreeItem:Add(cast(TreeItem, treeItem))
                     end
                 end
 
                 // Do any other special setup for Layer2D here, e.g. set up specific context menu or properties
-            elseif current is Layer3D
-                Layer3D layer = cast(Layer3D, current)
+            elseif current is EditorLayer3D
+                EditorLayer3D layer = cast(EditorLayer3D, current)
 
                 Iterator<Item3D> iterator = layer:GetIterator()
                 repeat while iterator:HasNext()
                     Item3D item = iterator:Next()
                     if item:HasProperty(resources:EDITOR_TAG) = false
-                        TreeItem treeItem = ItemToTreeItems(item)
+                        TreeItem treeItem = ItemToTreeItems(item, layer)
                         layerTreeItem:Add(treeItem)
                     end
                 end
 
-                // Do any other special setup for Layer2D here, e.g. set up specific context menu or propertie
+                // Do any other special setup for Layer2D here, e.g. set up specific context menu or properties
             end
 
             Add(cast(TreeItem, layerTreeItem))
@@ -100,14 +101,15 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
         end
     end
 
-    private action ItemToTreeItems(Item2D item) returns SceneTreeItem
+    private action ItemToTreeItems(Item2D item, EditorLayer layer) returns SceneTreeItem
         SceneTreeItem treeItem
         treeItem:SetName(item:GetName())
         treeItem:SetSceneItem(item)
+        treeItem:SetSceneLayer(layer)
         Array<Item2D> children = item:GetChildren()
         integer i = 0
         repeat while i < children:GetSize()
-            treeItem:Add(cast(TreeItem, ItemToTreeItems(children:Get(i))))
+            treeItem:Add(cast(TreeItem, ItemToTreeItems(children:Get(i), layer)))
             i = i + 1
         end
 
@@ -116,13 +118,14 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
         return treeItem
     end
 
-    private action ItemToTreeItems(Item3D item) returns SceneTreeItem
+    private action ItemToTreeItems(Item3D item, EditorLayer layer) returns SceneTreeItem
         SceneTreeItem treeItem
         treeItem:SetName(item:GetName())
         treeItem:SetSceneItem(item)
+        treeItem:SetSceneLayer(layer)
         Iterator<Item3D> children = item:GetItems()
         repeat while children:HasNext()
-            treeItem:Add(cast(TreeItem, ItemToTreeItems(children:Next())))
+            treeItem:Add(cast(TreeItem, ItemToTreeItems(children:Next(), layer)))
         end
 
         treeItem:SetBehavior(itemActivationBehavior)
@@ -139,12 +142,15 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
             end
 
             SceneTreeItem treeItem = cast(SceneTreeItem, selectedItem)
+            EditorLayer relatedLayer = treeItem:GetSceneLayer()
+            if relatedLayer not= controller:GetSelectedLayer()
+                controller:SetSelectedLayer(relatedLayer)
+            end
+
             Item relatedItem = treeItem:GetSceneItem()
-            if relatedItem is Item3D
-                filterArray3D:Set(0, cast(Item3D, relatedItem))
-                controller:SetFilteredItems(filterArray3D, false)
-            elseif relatedItem is Item2D
-                // Do something with the 2D item to select it in the scene
+            if relatedItem not= undefined
+                filterArray:Set(0, relatedItem)
+                controller:SetFilteredItems(filterArray, false)
             end
 
         elseif event:GetSelection() is VisualEditorSelection
@@ -159,7 +165,7 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
 
         Item item = event:GetItem()
         Item parentItem = event:GetParentItem()
-        Layer layer = event:GetLayer()
+        EditorLayer layer = event:GetLayer()
 
         Iterator<TreeItem> treeItems = GetTreeItems()
 
@@ -176,17 +182,17 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
 
         if parentItem = undefined
             if item is Item3D
-                layerTreeItem:Add(cast(TreeItem, ItemToTreeItems(cast(Item3D, item))))
+                layerTreeItem:Add(cast(TreeItem, ItemToTreeItems(cast(Item3D, item), layer)))
             elseif item is Item2D
-                layerTreeItem:Add(cast(TreeItem, ItemToTreeItems(cast(Item2D, item))))
+                layerTreeItem:Add(cast(TreeItem, ItemToTreeItems(cast(Item2D, item), layer)))
             end
         else
             SceneTreeItem targetItem = GetTreeItem(layerTreeItem, parentItem)
             if targetItem not= undefined
                 if item is Item3D
-                    targetItem:Add(cast(TreeItem, ItemToTreeItems(cast(Item3D, item))))
+                    targetItem:Add(cast(TreeItem, ItemToTreeItems(cast(Item3D, item), layer)))
                 elseif item is Item2D
-                    targetItem:Add(cast(TreeItem, ItemToTreeItems(cast(Item2D, item))))
+                    targetItem:Add(cast(TreeItem, ItemToTreeItems(cast(Item2D, item), layer)))
                 end
             end
         end
@@ -199,7 +205,7 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
 
         Item item = event:GetItem()
         Item parentItem = event:GetParentItem()
-        Layer layer = event:GetLayer()
+        EditorLayer layer = event:GetLayer()
 
         Iterator<TreeItem> treeItems = GetTreeItems()
 

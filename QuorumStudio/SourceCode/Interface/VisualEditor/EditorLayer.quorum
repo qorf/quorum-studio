@@ -1,8 +1,15 @@
 package Libraries.Development.Environment.Studio.Interface.VisualEditor
 
 use Libraries.Game.Layer
+use Libraries.Compute.Vector3
 
 class EditorLayer is Layer
+
+    Vector3 cameraEulerAngles
+
+    on create
+        cameraEulerAngles:Set(0, 0, 0)
+    end
 
     blueprint action SetGridSnapping(boolean enabled)
 
@@ -26,6 +33,42 @@ class EditorLayer is Layer
 
     action LostSelection
         ShowEditorComponents(false)
+    end
+
+    action SetCameraYaw(number yaw)
+        cameraEulerAngles:SetX(yaw)
+        GetCamera():SetYawPitchRoll(yaw, GetCameraPitch(), GetCameraRoll())
+    end
+
+    action GetCameraYaw returns number
+        return cameraEulerAngles:GetX()
+    end
+
+    action SetCameraPitch(number pitch)
+        cameraEulerAngles:SetY(pitch)
+        GetCamera():SetYawPitchRoll(GetCameraYaw(), pitch, GetCameraRoll())
+    end
+
+    action GetCameraPitch returns number
+        return cameraEulerAngles:GetY()
+    end
+
+    action SetCameraRoll(number roll)
+        cameraEulerAngles:SetZ(roll)
+        GetCamera():SetYawPitchRoll(GetCameraYaw(), GetCameraPitch(), roll)
+    end
+
+    action GetCameraRoll returns number
+        return cameraEulerAngles:GetZ()
+    end
+
+    action SetCameraYawPitchRoll(number yaw, number pitch, number roll)
+        cameraEulerAngles:Set(yaw, pitch, roll)
+        GetCamera():SetYawPitchRoll(yaw, pitch, roll)
+    end
+
+    action GetCameraYawPitchRoll returns Vector3
+        return cameraEulerAngles
     end
 
 end

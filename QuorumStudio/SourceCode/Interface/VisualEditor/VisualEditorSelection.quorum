@@ -16,9 +16,17 @@ class VisualEditorSelection is Selection
     end
 
     action SetSelection(InteractableItem item)
+        if selectedItem not= undefined
+            selectedItem:LostSelection()
+        end
+
         selectedItem = item
         itemChanged = true
         UpdateDisplayName()
+
+        if selectedItem not= undefined
+            selectedItem:GainedSelection()
+        end
     end
 
     action SetSelection(EditorLayer layer)
@@ -36,6 +44,19 @@ class VisualEditorSelection is Selection
     end
 
     action SetSelection(EditorLayer layer, InteractableItem item)
+        if layer = selectedLayer
+            if item not= selectedItem
+                SetSelection(item)
+            end
+            return now
+        elseif item = selectedItem
+            SetSelection(layer)
+        end
+
+        if selectedItem not= undefined
+            selectedItem:LostSelection()
+        end
+
         if selectedLayer not= undefined
             selectedLayer:LostSelection()
         end
@@ -48,6 +69,10 @@ class VisualEditorSelection is Selection
 
         if selectedLayer not= undefined
             selectedLayer:GainedSelection()
+        end
+
+        if selectedItem not= undefined
+            selectedItem:GainedSelection()
         end
     end
 

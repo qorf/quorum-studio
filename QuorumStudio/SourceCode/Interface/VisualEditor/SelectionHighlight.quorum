@@ -1,257 +1,19 @@
 package Libraries.Development.Environment.Studio.Interface.VisualEditor
 
-use Libraries.Game.Graphics.Model
+use Libraries.Interface.Item
 use Libraries.Game.Scenes.SceneProperties
-use Libraries.Interface.Item3D
-use Libraries.Interface.Events.FocusEvent
-use Libraries.Game.Graphics.Color
-use Libraries.Compute.Vector3
-use Libraries.Game.BoundingBox
 use Libraries.Data.Formats.JavaScriptObjectNotation
 
 class SelectionHighlight is InteractableItem
-    
-    Item3D item = undefined
 
     on create
         SetInputGroup("SelectionHighlight")
     end
 
-    action Load(Item3D item, VisualSceneController controller)
-        Color color = undefined
-        VisualEditorResources resources = GetResources()
-
-        if IsFocused()
-            color = resources:SELECTION_HIGHLIGHT_SELECTED_COLOR
-        else
-            color = resources:SELECTION_HIGHLIGHT_UNSELECTED_COLOR
-        end
-
-        number padding = resources:SELECTION_HIGHLIGHT_PADDING
-
-        SceneProperties properties
-
-        if item:HasProperty(properties:SCALE)
-            JavaScriptObjectNotation json = item:GetProperty(properties:SCALE)
-            parent:InteractableItem:scaleX = json:Get(0):GetNumber()
-            parent:InteractableItem:scaleY = json:Get(1):GetNumber()
-            parent:InteractableItem:scaleZ = json:Get(2):GetNumber()
-        end
-
-        number scaleX = parent:InteractableItem:scaleX
-        number scaleY = parent:InteractableItem:scaleY
-        number scaleZ = parent:InteractableItem:scaleZ
-
-        boolean loadedShape = false
-        if item is Model
-            Model model = cast(Model, item)
-            integer type = model:GetModelType()
-            if type = properties:BOX
-                LoadBox(item:GetWidth() * scaleX + padding, item:GetHeight() * scaleY + padding, item:GetDepth() * scaleZ + padding, color)
-                loadedShape = true
-            elseif type = properties:SPHERE
-                LoadSphere(item:GetWidth() * scaleX + padding, item:GetHeight() * scaleY + padding, item:GetDepth() * scaleZ + padding, color)
-                loadedShape = true
-            elseif type = properties:CYLINDER
-                LoadCylinder(item:GetWidth() * scaleX + padding, item:GetHeight() * scaleY + padding, item:GetDepth() * scaleZ + padding, color)
-                loadedShape = true
-            elseif type = properties:PLANE
-                LoadBox(item:GetWidth() * scaleX + padding, padding, item:GetDepth() * scaleZ + padding, color)
-                loadedShape = true
-            end
-        end
-
-        if loadedShape = false
-            LoadBox(item:GetWidth() * scaleX + padding, item:GetHeight() * scaleY + padding, item:GetDepth() * scaleZ + padding, color)
-        end
-
-        if item:HasProperty(properties:ROTATION)
-            JavaScriptObjectNotation json = item:GetProperty(properties:ROTATION)
-            number yaw = json:Get(0):GetNumber()
-            number pitch = json:Get(1):GetNumber()
-            number roll = json:Get(2):GetNumber()
-
-            Rotate(0, 1, 0, yaw)
-            Rotate(1, 0, 0, pitch)
-            Rotate(0, 0, 1, roll)
-
-            parent:InteractableItem:yaw = yaw
-            parent:InteractableItem:pitch = pitch
-            parent:InteractableItem:roll = roll
-        end
-
-        SetPosition(item:GetGlobalPosition())
-
-        me:item = item
-        SetController(controller)
-    end
-
-    action GetItem returns Item3D
-        return item
-    end
-
-    action GainedSelection
-        SetDiffuseColor(GetResources():SELECTION_HIGHLIGHT_SELECTED_COLOR)
-    end
-
-    action LostSelection
-        SetDiffuseColor(GetResources():SELECTION_HIGHLIGHT_UNSELECTED_COLOR)
-    end
-
-    action Scale(Vector3 vector)
-        parent:Model:Scale(vector)
-        if item not= undefined
-            item:Scale(vector)
-            UpdateScaleProperty()
-        end
-    end
-
-    action Scale(number x, number y, number z)
-        parent:Model:Scale(x, y, z)
-        if item not= undefined
-            item:Scale(x, y, z)
-            UpdateScaleProperty()
-        end
-    end
-
-    action SetScaleX(number scale)
-        number modify = (1.0 /  GetScaleX()) * scale
-        parent:InteractableItem:SetScaleX(scale)
-        if item not= undefined
-            item:Scale(modify, 1, 1)
-            UpdateScaleProperty()
-        end
-    end
-
-    action SetScaleY(number scale)
-        number modify = (1.0 /  GetScaleY()) * scale
-        parent:InteractableItem:SetScaleY(scale)
-        if item not= undefined
-            item:Scale(1, modify, 1)
-            UpdateScaleProperty()
-        end
-    end
-
-    action SetScaleZ(number scale)
-        number modify = (1.0 /  GetScaleZ()) * scale
-        parent:InteractableItem:SetScaleZ(scale)
-        if item not= undefined
-            item:Scale(1, 1, modify)
-            UpdateScaleProperty()
-        end
-    end
-
-    private action UpdateScaleProperty
-        SceneProperties properties
-        JavaScriptObjectNotation json = undefined
-        if item:HasProperty(properties:SCALE)
-            json = item:GetProperty(properties:SCALE)
-        else
-            JavaScriptObjectNotation newJson
-            json = newJson
-            json:SetArray()
-            json:Add(1.0)
-            json:Add(1.0)
-            json:Add(1.0)
-            item:SetProperty(properties:SCALE, json)
-        end
-
-        JavaScriptObjectNotation temp = json:Get(0)
-        temp:SetNumber(GetScaleX())
-        temp = json:Get(1)
-        temp:SetNumber(GetScaleY())
-        temp = json:Get(2)
-        temp:SetNumber(GetScaleZ())
-    end
-
-    action SetRotation(number newYaw, number newPitch, number newRoll)
-        output "Setting SH rotation: " + newYaw + ", " + newPitch + ", " + newRoll
-        number yaw = parent:InteractableItem:yaw
-        number pitch = parent:InteractableItem:pitch
-        number roll = parent:InteractableItem:roll
-
-        if item not= undefined
-            if roll not= 0
-                item:Rotate(0, 0, 1, -roll)
-            end
-            if pitch not= 0
-                item:Rotate(1, 0, 0, -pitch)
-            end
-            if yaw not= 0
-                item:Rotate(0, 1, 0, -yaw)
-            end
-    
-            if newYaw not= 0
-                item:Rotate(0, 1, 0, newYaw)
-            end
-            if newPitch not= 0
-                item:Rotate(1, 0, 0, newPitch)
-            end
-            if newRoll not= 0
-                item:Rotate(0, 0, 1, newRoll)
-            end
-
-            SceneProperties properties
-            JavaScriptObjectNotation json = undefined
-            if item:HasProperty(properties:ROTATION)
-                json = item:GetProperty(properties:ROTATION)
-            else
-                JavaScriptObjectNotation newJson
-                json = newJson
-                json:SetArray()
-                json:Add(0.0)
-                json:Add(0.0)
-                json:Add(0.0)
-                item:SetProperty(properties:ROTATION, json)
-            end
-    
-            JavaScriptObjectNotation temp = json:Get(0)
-            temp:SetNumber(newYaw)
-            temp = json:Get(1)
-            temp:SetNumber(newPitch)
-            temp = json:Get(2)
-            temp:SetNumber(newRoll)
-        end
-
-        parent:InteractableItem:SetRotation(newYaw, newPitch, newRoll)
-    end
-
-    action MoveX(number x)
-        parent:Model:MoveX(x)
-        if item not= undefined
-            item:MoveX(x)
-        end
-    end
-
-    action MoveY(number y)
-        parent:Model:MoveY(y)
-        if item not= undefined
-            item:MoveY(y)
-        end
-    end
-
-    action MoveZ(number z)
-        parent:Model:MoveZ(z)
-        if item not= undefined
-            item:MoveZ(z)
-        end
-    end
-
-    action Move(number x, number y, number z)
-        parent:Model:Move(x, y, z)
-        if item not= undefined
-            item:Move(x, y, z)
-        end
-    end
-
-    action Move(Vector3 vector)
-        parent:Model:Move(vector)
-        if item not= undefined
-            item:Move(vector)
-        end
-    end
+    blueprint action GetItem returns Item
 
     action SetName(text name)
+        Item item = GetItem()
         if item not= undefined and item:GetName() not= name
             item:SetName(name)
         end
@@ -260,6 +22,7 @@ class SelectionHighlight is InteractableItem
 
     action IsEditorPhysicsEnabled returns boolean
         SceneProperties properties
+        Item item = GetItem()
         if item:HasProperty(properties:PHYSICS_ENABLED)
             return item:GetProperty(properties:PHYSICS_ENABLED):GetBoolean()
         end
@@ -268,6 +31,7 @@ class SelectionHighlight is InteractableItem
 
     action SetEditorPhysicsEnabled(boolean enable)
         SceneProperties properties
+        Item item = GetItem()
         if item:HasProperty(properties:PHYSICS_ENABLED)
             JavaScriptObjectNotation json = item:GetProperty(properties:PHYSICS_ENABLED)
             json:SetBoolean(enable)
@@ -280,6 +44,7 @@ class SelectionHighlight is InteractableItem
 
     action GetEditorResponsiveness returns integer
         SceneProperties properties
+        Item item = GetItem()
         if item:HasProperty(properties:RESPONSIVENESS)
             return item:GetProperty(properties:RESPONSIVENESS):GetInteger()
         end
@@ -290,6 +55,7 @@ class SelectionHighlight is InteractableItem
 
     action SetEditorResponsiveness(integer responsive)
         SceneProperties properties
+        Item item = GetItem()
         if item:HasProperty(properties:RESPONSIVENESS)
             JavaScriptObjectNotation json = item:GetProperty(properties:RESPONSIVENESS)
             json:SetInteger(responsive)
@@ -302,6 +68,7 @@ class SelectionHighlight is InteractableItem
 
     action GetEditorMass returns number
         SceneProperties properties
+        Item item = GetItem()
         if item:HasProperty(properties:MASS)
             return item:GetProperty(properties:MASS):GetNumber()
         end
@@ -316,6 +83,7 @@ class SelectionHighlight is InteractableItem
 
     action SetEditorMass(number mass)
         SceneProperties properties
+        Item item = GetItem()
         if item:HasProperty(properties:MASS)
             JavaScriptObjectNotation json = item:GetProperty(properties:MASS)
             json:SetNumber(mass)
@@ -328,6 +96,7 @@ class SelectionHighlight is InteractableItem
 
     action GetEditorFriction returns number
         SceneProperties properties
+        Item item = GetItem()
         if item:HasProperty(properties:FRICTION)
             return item:GetProperty(properties:FRICTION):GetNumber()
         end
@@ -338,6 +107,7 @@ class SelectionHighlight is InteractableItem
 
     action SetEditorFriction(number friction)
         SceneProperties properties
+        Item item = GetItem()
         if item:HasProperty(properties:FRICTION)
             JavaScriptObjectNotation json = item:GetProperty(properties:FRICTION)
             json:SetNumber(friction)
@@ -350,6 +120,7 @@ class SelectionHighlight is InteractableItem
 
     action GetEditorRestitution returns number
         SceneProperties properties
+        Item item = GetItem()
         if item:HasProperty(properties:RESTITUTION)
             return item:GetProperty(properties:RESTITUTION):GetNumber()
         end
@@ -360,6 +131,7 @@ class SelectionHighlight is InteractableItem
 
     action SetEditorRestitution(number restitution)
         SceneProperties properties
+        Item item = GetItem()
         if item:HasProperty(properties:RESTITUTION)
             JavaScriptObjectNotation json = item:GetProperty(properties:RESTITUTION)
             json:SetNumber(restitution)

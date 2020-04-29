@@ -17,7 +17,7 @@ use Libraries.Compute.Matrix4
 use Libraries.Interface.AccessibilityManager
 use Libraries.Interface.Events.FocusListener
 use Libraries.Interface.Events.FocusEvent
-use Libraries.Game.Layer
+use Libraries.Compute.Vector2
 
 /*
 A class used to represent the 2D space within a Visual Editor tab.
@@ -25,7 +25,7 @@ The space this object takes up will be filled with the visual editor tab's Layer
 */
 class VisualSceneController is Control
 
-    Array<Layer> layers
+    Array<EditorLayer> layers
     VisualEditorResources visualResources
     VisualEditorSelection selection
 
@@ -33,18 +33,24 @@ class VisualSceneController is Control
 
     // The rotational speed, measured in degrees per second,
     // and the directional speed, measured in 3D world units per second.
-    public constant number CAMERA_ROTATIONAL_SPEED = 90
-    public constant number CAMERA_DIRECTIONAL_SPEED = 5
-    public constant number SELECTION_ROTATIONAL_SPEED = 90
-    public constant number SELECTION_DIRECTIONAL_SPEED = 5
+    public constant number CAMERA_ROTATIONAL_SPEED_3D = 90
+    public constant number CAMERA_DIRECTIONAL_SPEED_3D = 5
+    public constant number SELECTION_ROTATIONAL_SPEED_3D = 90
+    public constant number SELECTION_DIRECTIONAL_SPEED_3D = 5
 
-    // Euler angles and velocities of the layer's camera.
-    // Directions are always -1, 0, or 1, and are multiplied by either the
-    // rotational or directional speed during the Update to produce the per-frame velocity.
-    number yaw = 0
-    number pitch = 0
+    public constant number CAMERA_ROTATIONAL_SPEED_2D = 90
+    public constant number CAMERA_DIRECTIONAL_SPEED_2D = 600
+    public constant number SELECTION_ROTATIONAL_SPEED_2D = 90
+    public constant number SELECTION_DIRECTIONAL_SPEED_2D = 600
+
+    /*
+    Velocities of the layer's camera.
+    Directions are always -1, 0, or 1, and are multiplied by either the rotational
+    or directional speed during the Update to produce the per-frame velocity.
+    */
     integer yawDirection = 0
     integer pitchDirection = 0
+    integer rollDirection = 0
     integer forwardDirection = 0
     integer strafeDirection = 0
     integer verticalDirection = 0
@@ -54,8 +60,9 @@ class VisualSceneController is Control
     integer selectionYDirection = 0
     integer selectionZDirection = 0
 
-    // Vector which is constantly reused for frequent calculations.
-    Vector3 workVector
+    // Vectors which are constantly reused for frequent calculations.
+    Vector2 workVector2
+    Vector3 workVector3
 
     GameStateManager manager
     AccessibilityManager accessibility = undefined
@@ -67,7 +74,7 @@ class VisualSceneController is Control
     the camera). These can be iterated over to query for more information or to
     modify the elements.
     */
-    Array<Item3D> filteredItems = undefined
+    Array<Item> filteredItems = undefined
 
     /*
     "Highlight" drawables used to show which items have been filtered.
@@ -86,8 +93,9 @@ class VisualSceneController is Control
     number gridMoveTimer = 0
     number gridMoveTimerMax = 0.5
 
-    // A reference to the property dialog for this controller. Provided from the tab.
-    PropertiesDialog propertiesDialog = undefined
+    // A reference to the property dialogs for this controller. Provided from the tab.
+    Item3DPropertiesDialog item3dPropertiesDialog = undefined
+    Item2DPropertiesDialog item2dPropertiesDialog = undefined
 
     // A reference to the find dialog for this controller.
     VisualEditorFindDialog findDialog
@@ -145,7 +153,7 @@ class VisualSceneController is Control
 
         integer counter = 0
         repeat while counter < layers:GetSize()
-            Layer layer = layers:Get(counter)
+            EditorLayer layer = layers:Get(counter)
             layer:SetViewport(cast(integer, GetGlobalX()), cast(integer, GetGlobalY()), cast(integer, GetWidth()), cast(integer, GetHeight()))
             Camera camera = layer:GetCamera()
             camera:SetSize(GetWidth(), GetHeight())
@@ -161,12 +169,28 @@ class VisualSceneController is Control
         return visualResources
     end
 
-    action SetPropertiesDialog(PropertiesDialog dialog)
-        propertiesDialog = dialog
+    action SetProperties3DDialog(Item3DPropertiesDialog dialog)
+        item3dPropertiesDialog = dialog
     end
 
-    action GetPropertiesDialog returns PropertiesDialog
-        return propertiesDialog
+    action GetProperties3DDialog returns Item3DPropertiesDialog
+        return item3dPropertiesDialog
+    end
+
+    action SetProperties2DDialog(Item2DPropertiesDialog dialog)
+        item2dPropertiesDialog = dialog
+    end
+
+    action GetProperties2DDialog returns Item2DPropertiesDialog
+        return item2dPropertiesDialog
+    end
+
+    action FocusItemProperties
+        if GetSelectedLayer() is EditorLayer2D
+            item2dPropertiesDialog:FocusField()
+        elseif GetSelectedLayer() is EditorLayer3D
+            item3dPropertiesDialog:FocusField()
+        end
     end
 
     action GetFindDialog returns VisualEditorFindDialog
@@ -185,79 +209,62 @@ class VisualSceneController is Control
 
             EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
 
-            if (yawDirection not= 0 or pitchDirection not= 0)
-                yaw = yaw + (yawDirection * CAMERA_ROTATIONAL_SPEED * seconds)
-                pitch = pitch + (pitchDirection * CAMERA_ROTATIONAL_SPEED * seconds)
+            if (yawDirection not= 0 or pitchDirection not= 0 or rollDirection not= 0)
+                number yaw = layer:GetCameraYaw() + (yawDirection * CAMERA_ROTATIONAL_SPEED_3D * seconds)
+                number pitch = layer:GetCameraPitch() + (pitchDirection * CAMERA_ROTATIONAL_SPEED_3D * seconds)
                 if pitch > 90.0
                     pitch = 90.0
                 elseif pitch < -90.0
                     pitch = -90.0
                 end
-    
-                moved = true
-                camera:SetYawPitchRoll(yaw, pitch, 0)
+                number roll = layer:GetCameraRoll() + (rollDirection * CAMERA_ROTATIONAL_SPEED_3D * seconds)
+                
+                layer:SetCameraYawPitchRoll(yaw, pitch, roll)
             end
     
             if forwardDirection not= 0
-                workVector:Set(camera:GetDirection())
-                workVector:Scale(forwardDirection * CAMERA_DIRECTIONAL_SPEED * seconds)
-                camera:Move(workVector)
-                moved = true
+                workVector3:Set(camera:GetDirection())
+                workVector3:Scale(forwardDirection * CAMERA_DIRECTIONAL_SPEED_3D * seconds)
+                camera:Move(workVector3)
             end
     
             if strafeDirection not= 0
-                workVector:Set(camera:GetDirection())
-                workVector:CrossProduct(camera:GetUp())
-                camera:Move(workVector:Scale(strafeDirection * CAMERA_DIRECTIONAL_SPEED * seconds))
-                moved = true
+                workVector3:Set(camera:GetDirection())
+                workVector3:CrossProduct(camera:GetUp())
+                camera:Move(workVector3:Scale(strafeDirection * CAMERA_DIRECTIONAL_SPEED_3D * seconds))
             end
     
             if verticalDirection not= 0
-                workVector:Set(camera:GetUp())
-                workVector:Scale(verticalDirection * CAMERA_DIRECTIONAL_SPEED * seconds)
-                camera:Move(workVector)
-                moved = true
+                workVector3:Set(camera:GetUp())
+                workVector3:Scale(verticalDirection * CAMERA_DIRECTIONAL_SPEED_3D * seconds)
+                camera:Move(workVector3)
             end
     
-            if moved
-                Vector3 temp = camera:GetPosition()
-                number x = math:Round(temp:GetX(), 2)
-                number y = math:Round(temp:GetY(), 2)
-                number z = math:Round(temp:GetZ(), 2)
-                temp = camera:GetDirection()
-                number xDirection = math:Round(temp:GetX(), 2)
-                number yDirection = math:Round(temp:GetY(), 2)
-                number zDirection = math:Round(temp:GetZ(), 2)
-    //            SetDescription("Camera " + x + ", " + y + ", " + z + "; pointing " + xDirection + ", " + yDirection + ", " + zDirection)
-            end
-    
-            if manager:GetFocus() is InteractableItem
+            if manager:GetFocus() is InteractableItem3D
                 moved = false
-                workVector:Set(0, 0, 0)
-                InteractableItem focus = cast(InteractableItem, manager:GetFocus())
+                workVector3:Set(0, 0, 0)
+                InteractableItem3D focus = cast(InteractableItem3D, manager:GetFocus())
     
                 boolean gridSnapEnabled = IsGridSnapping()
     
                 if gridSnapEnabled = false
                     if selectionXDirection not= 0
-                        workVector:SetX(selectionXDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
+                        workVector3:SetX(selectionXDirection * SELECTION_DIRECTIONAL_SPEED_3D * seconds)
                         moved = true
                     end
     
                     if selectionYDirection not= 0
-                        workVector:SetY(selectionYDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
+                        workVector3:SetY(selectionYDirection * SELECTION_DIRECTIONAL_SPEED_3D * seconds)
                         moved = true
                     end
     
                     if selectionZDirection not= 0
-                        workVector:SetZ(selectionZDirection * SELECTION_DIRECTIONAL_SPEED * seconds)
+                        workVector3:SetZ(selectionZDirection * SELECTION_DIRECTIONAL_SPEED_3D * seconds)
                         moved = true
                     end
     
                     if moved
-                        focus:Move(workVector)
-    
-                        // Need to update highlight description here, and report the movement to accessibility
+                        focus:Move(workVector3)
                     end
                 else
                     if selectionXDirection not= 0 or selectionYDirection not= 0 or selectionZDirection not= 0
@@ -298,31 +305,138 @@ class VisualSceneController is Control
                         gridMoveTimer = 0
                     end
                 end
-                
             end
+
+        elseif GetSelectedLayer() is EditorLayer2D
+            EditorLayer2D layer = cast(EditorLayer2D, GetSelectedLayer())
+
+            if (rollDirection not= 0)
+                number roll = layer:GetCameraRoll() + (rollDirection * CAMERA_ROTATIONAL_SPEED_2D * seconds)
+                layer:SetCameraRoll(roll)
+            end
+    
+            if strafeDirection not= 0
+                workVector3:Set(camera:GetDirection())
+                workVector3:CrossProduct(camera:GetUp())
+                camera:Move(workVector3:Scale(-strafeDirection * CAMERA_DIRECTIONAL_SPEED_2D * seconds))
+                moved = true
+            end
+    
+            if forwardDirection not= 0
+                workVector3:Set(camera:GetUp())
+                workVector3:Scale(forwardDirection * CAMERA_DIRECTIONAL_SPEED_2D * seconds)
+                camera:Move(workVector3)
+            end
+    
+            if manager:GetFocus() is InteractableItem2D
+                moved = false
+                workVector2:Set(0, 0)
+                InteractableItem2D focus = cast(InteractableItem2D, manager:GetFocus())
+    
+                // TO-DO: Support grid snapping
+                boolean gridSnapEnabled = false//IsGridSnapping()
+    
+                if gridSnapEnabled = false
+                    if selectionXDirection not= 0
+                        workVector2:SetX(selectionXDirection * SELECTION_DIRECTIONAL_SPEED_2D * seconds)
+                        moved = true
+                    end
+    
+                    if selectionZDirection not= 0
+                        workVector2:SetY(selectionZDirection * SELECTION_DIRECTIONAL_SPEED_2D * seconds)
+                        moved = true
+                    end
+    
+                    if moved
+                        focus:Move(workVector2)
+                    end
+                else
+//                    if selectionXDirection not= 0 or selectionYDirection not= 0 or selectionZDirection not= 0
+//                        if gridMoveTimer <= 0
+//                            gridMoveTimer = gridMoveTimerMax
+//    
+//                            number x = focus:GetGlobalX()
+//                            number y = focus:GetGlobalY()
+//                            number z = focus:GetGlobalZ()
+//    
+//                            if selectionXDirection < 0
+//                                x = layer:GetPreviousGridCoordinate(x)
+//                            elseif selectionXDirection > 0
+//                                x = layer:GetNextGridCoordinate(x)
+//                            end
+//    
+//                            if selectionYDirection < 0
+//                                y = layer:GetPreviousGridCoordinate(y)
+//                            elseif selectionYDirection > 0
+//                                y = layer:GetNextGridCoordinate(y)
+//                            end
+//    
+//                            if selectionZDirection < 0
+//                                z = layer:GetPreviousGridCoordinate(z)
+//                            elseif selectionZDirection > 0
+//                                z = layer:GetNextGridCoordinate(z)
+//                            end
+//    
+//                            focus:Move(x - focus:GetGlobalX(), y - focus:GetGlobalY(), z - focus:GetGlobalZ())
+//                            GridPlane grid = layer:GetGrid()
+//                            grid:SetPosition(grid:GetNearestGridCoordinate(focus:GetGlobalX()),
+//                                0,
+//                                grid:GetNearestGridCoordinate(focus:GetGlobalZ()))
+//                        else
+//                            gridMoveTimer = gridMoveTimer - seconds
+//                        end
+//                    else
+//                        gridMoveTimer = 0
+//                    end
+                end
+            end
+
         end
     end
 
-    action SetFilteredItems(Array<Item3D> items, boolean moveFocus)
+    action SetFilteredItems(Array<Item> items, boolean moveFocus)
         filteredItems = items
 
         // Remove previous highlights.
         repeat while filterHighlights:IsEmpty() = false
             SelectionHighlight highlight = filterHighlights:RemoveFromEnd()
-            highlight:GetLayer():Remove(highlight)
+            if highlight is SelectionHighlight3D
+                SelectionHighlight3D highlight3D = cast(SelectionHighlight3D, highlight)
+                highlight3D:GetLayer():Remove(highlight3D)
+            elseif highlight is SelectionHighlight2D
+                SelectionHighlight2D highlight2D = cast(SelectionHighlight2D, highlight)
+                highlight2D:GetLayer():Remove(highlight2D)
+            end
         end
 
         // Display selection highlighting around the items.
-        integer counter = 0
-        EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
-        repeat while counter < filteredItems:GetSize()
-            Item3D item = filteredItems:Get(counter)
-            SelectionHighlight highlight
-            highlight:Load(item, me)
-            filterHighlights:Add(highlight)
-            layer:Add(highlight)
+        
+        EditorLayer currentLayer = GetSelectedLayer()
 
-            counter = counter + 1
+        if currentLayer is EditorLayer3D
+            EditorLayer3D layer = cast(EditorLayer3D, currentLayer)
+            integer counter = 0
+            repeat while counter < filteredItems:GetSize()
+                Item3D item = cast(Item3D, filteredItems:Get(counter))
+                SelectionHighlight3D highlight
+                highlight:Load(item, me)
+                filterHighlights:Add(highlight)
+                layer:Add(highlight)
+    
+                counter = counter + 1
+            end
+        else
+            EditorLayer2D layer = cast(EditorLayer2D, currentLayer)
+            integer counter = 0
+            repeat while counter < filteredItems:GetSize()
+                Item2D item = cast(Item2D, filteredItems:Get(counter))
+                SelectionHighlight2D highlight
+                highlight:Load(item, me)
+                filterHighlights:Add(highlight)
+                layer:Add(highlight)
+    
+                counter = counter + 1
+            end
         end
 
         SetFilterHighlightData()
@@ -342,11 +456,35 @@ class VisualSceneController is Control
         end
     end
 
+    private action EmptyFilteredItems(boolean moveFocus)
+        filteredItems = undefined
+
+        // Remove previous highlights.
+        repeat while filterHighlights:IsEmpty() = false
+            SelectionHighlight highlight = filterHighlights:RemoveFromEnd()
+            if highlight is SelectionHighlight3D
+                SelectionHighlight3D highlight3D = cast(SelectionHighlight3D, highlight)
+                highlight3D:GetLayer():Remove(highlight3D)
+            else
+                SelectionHighlight2D highlight2D = cast(SelectionHighlight2D, highlight)
+                highlight2D:GetLayer():Remove(highlight2D)
+            end
+        end
+
+        SetFilterHighlightData()
+
+        if moveFocus
+            Focus()
+        else
+            SetSelectedItem(undefined)
+        end
+    end
+
     private action SetFilterHighlightData
         integer counter = 0
         repeat while counter < filterHighlights:GetSize()
             SelectionHighlight highlight = filterHighlights:Get(counter)
-            Item3D item = highlight:GetItem()
+            Item item = highlight:GetItem()
 
             if counter = 0
                 highlight:SetPreviousFocus(filterHighlights:GetFromEnd())
@@ -391,9 +529,21 @@ class VisualSceneController is Control
             end
         end
 
-        Layer3D layer = highlight:GetLayer()
-        layer:Remove(highlight)
-        layer:Remove(highlight:GetItem())
+        EditorLayer resultLayer = undefined
+
+        if highlight is SelectionHighlight3D
+            SelectionHighlight3D highlight3D = cast(SelectionHighlight3D, highlight)
+            EditorLayer3D layer = cast(EditorLayer3D, highlight3D:GetLayer())
+            resultLayer = layer
+            layer:Remove(highlight3D)
+            layer:Remove(cast(Item3D, highlight3D:GetItem()))
+        else
+            SelectionHighlight2D highlight2D = cast(SelectionHighlight2D, highlight)
+            EditorLayer2D layer = cast(EditorLayer2D, highlight2D:GetLayer())
+            resultLayer = layer
+            layer:Remove(highlight2D)
+            layer:Remove(cast(Item2D, highlight2D:GetItem()))
+        end
 
         integer index = filterHighlights:GetFirstLocation(highlight)
         if index >= 0
@@ -408,27 +558,32 @@ class VisualSceneController is Control
         end
 
         SceneChangeEvent event
-        event:Set(me, highlight:GetItem(), undefined, layer, event:REMOVED)
+        event:Set(me, highlight:GetItem(), undefined, resultLayer, event:REMOVED)
         NotifySceneChangeListeners(event)
     end
 
     action CreateNewItemPreview
         if GetSelectedLayer() is EditorLayer3D
-            NewItemPreview preview
+            NewItemPreview3D preview
             preview:Load(me)
             EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
             layer:Add(preview)
             preview:Focus()
         else
-            // Do something for 2D here
+            // TO-DO
         end
     end
 
     action CancelNewItemPreview(NewItemPreview preview)
-        EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
-        layer:Remove(preview)
+        if preview is NewItemPreview3D
+            NewItemPreview3D preview3D = cast(NewItemPreview3D, preview)
+            EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
+            layer:Remove(preview3D)
 
-        previewScale = preview:GetScale()
+            previewScale = preview3D:GetScale()
+        else
+            // TO-DO
+        end
 
         // This Dispose call currently does nothing, but if there are any
         // resources that need to be cleaned up, it should be done here.
@@ -459,40 +614,51 @@ class VisualSceneController is Control
         return "Item"
     end
 
-    action ConfirmNewItemPreview(NewItemPreview preview)
-        Model model = preview:ConvertToModel()
-        previewTransform = preview:GetTransform()
-        EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
-        layer:Add(model)
+    action ConfirmNewItemPreview(NewItemPreview newItem)
+        Item result = undefined
+        EditorLayer resultLayer = undefined
 
-        integer type = preview:GetModelPresetCode()
+        if newItem is NewItemPreview3D
+            NewItemPreview3D preview = cast(NewItemPreview3D, newItem)
+            Model model = preview:ConvertToModel()
+            result = model
 
-        boolean usingDefaultName = (GetDefaultItemName(type) = model:GetName())
+            previewTransform = preview:GetTransform()
+            EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
+            resultLayer = layer
+            layer:Add(model)
 
-        if usingDefaultName
-            if type = 0
-                cubeCounter = cubeCounter + 1
-            elseif type = 1
-                sphereCounter = sphereCounter + 1
-            elseif type = 2
-                cylinderCounter = cylinderCounter + 1
+            integer type = preview:GetModelPresetCode()
+
+            boolean usingDefaultName = (GetDefaultItemName(type) = model:GetName())
+
+            if usingDefaultName
+                if type = 0
+                    cubeCounter = cubeCounter + 1
+                elseif type = 1
+                    sphereCounter = sphereCounter + 1
+                elseif type = 2
+                    cylinderCounter = cylinderCounter + 1
+                end
+
+                preview:SetName(GetDefaultItemName(type))
+                SetSelectedItem(preview)
             end
 
-            preview:SetName(GetDefaultItemName(type))
-            SetSelectedItem(preview)
+            previewScale = preview:GetScale()
+        elseif newItem is NewItemPreview2D
+            // TO-DO
         end
-
-        previewScale = preview:GetScale()
 
         // This Dispose call currently does nothing, but if there are any
         // resources that need to be cleaned up, it should be done here.
         //preview:Dispose()
         //Focus()
 
-        NotifyAccessibility(preview, "Placed " + model:GetName())
+        NotifyAccessibility(newItem, "Placed " + result:GetName())
         
         SceneChangeEvent event
-        event:Set(me, model, undefined, layer, event:ADDED)
+        event:Set(me, result, undefined, resultLayer, event:ADDED)
         NotifySceneChangeListeners(event)
     end
 
@@ -508,7 +674,7 @@ class VisualSceneController is Control
         yawDirection = direction
 
         if direction = 0
-            NotifyAccessibility(me, "Yaw " + math:Round(yaw, 1))
+            NotifyAccessibility(me, "Yaw " + math:Round(GetSelectedLayer():GetCameraYaw(), 1))
         end
     end
 
@@ -520,7 +686,7 @@ class VisualSceneController is Control
         pitchDirection = direction
 
         if direction = 0
-            NotifyAccessibility(me, "Pitch " + math:Round(pitch, 1))
+            NotifyAccessibility(me, "Pitch " + math:Round(GetSelectedLayer():GetCameraPitch(), 1))
         end
     end
 
@@ -528,16 +694,32 @@ class VisualSceneController is Control
         return pitchDirection
     end
 
+    action SetRollDirection(integer direction)
+        rollDirection = direction
+
+        if direction = 0
+            NotifyAccessibility(me, "Roll " + math:Round(GetSelectedLayer():GetCameraRoll(), 1))
+        end
+    end
+
+    action GetRollDirection returns integer
+        return rollDirection
+    end
+
     action IsCameraRotating returns boolean
         return GetYawDirection() not= 0 or GetPitchDirection() not= 0
     end
 
     action GetYaw returns number
-        return yaw
+        return GetSelectedLayer():GetCameraYaw()
     end
 
     action GetPitch returns number
-        return pitch
+        return GetSelectedLayer():GetCameraPitch()
+    end
+
+    action GetRoll returns number
+        return GetSelectedLayer():GetCameraRoll()
     end
 
     action SetForwardDirection(integer direction)
@@ -684,15 +866,17 @@ class VisualSceneController is Control
     end
 
     action SetSelectedItem(InteractableItem item)
-        if selection:IsItemSelected()
-            selection:GetSelectedItem():LostSelection()
-        end
-
         selection:SetSelection(item)
+    end
 
-        if item not= undefined
-            item:GainedSelection()
+    action SetSelectedLayer(EditorLayer layer)
+        if layer = selection:GetSelectedLayer()
+            return now
         end
+
+        EmptyFilteredItems(false)
+
+        selection:SetSelection(layer, undefined)
     end
 
     action GetSelectedItem returns InteractableItem
@@ -703,7 +887,7 @@ class VisualSceneController is Control
         return selection:GetSelectedLayer()
     end
 
-    action GetSceneLayers returns Array<Layer>
+    action GetSceneLayers returns Array<EditorLayer>
         return layers
     end
 
@@ -720,18 +904,13 @@ class VisualSceneController is Control
     will return the highlight. Otherwise, it will return undefined.
     */
     action GetSelectionHighlight(Item item) returns SelectionHighlight
-        if item is Item3D
-            Item3D item3D = cast(Item3D, item)
-            integer i = 0
-            repeat while i < filterHighlights:GetSize()
-                SelectionHighlight highlight = filterHighlights:Get(i)
-                if highlight:GetItem() = item3D
-                    return highlight
-                end
-                i = i + 1
+        integer i = 0
+        repeat while i < filterHighlights:GetSize()
+            SelectionHighlight highlight = filterHighlights:Get(i)
+            if highlight:GetItem() = item
+                return highlight
             end
-        elseif item is Item2D
-            // TO-DO: Implement this for 2D as well.
+            i = i + 1
         end
 
         return undefined

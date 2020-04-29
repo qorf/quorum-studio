@@ -15,7 +15,7 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneC
 use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Game.Graphics.Skybox
 use Libraries.System.Properties
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.PropertiesDialog
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Item3DPropertiesDialog
 use Libraries.Game.Scenes.DefaultSceneManager
 use Libraries.Game.Layer
 use Libraries.Game.Scenes.SceneProperties
@@ -29,6 +29,7 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer2
 use Libraries.Containers.Number32BitArray
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer3D
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Item2DPropertiesDialog
 
 class VisualEditorTab is Tab, DefaultSceneManager
 
@@ -37,7 +38,8 @@ class VisualEditorTab is Tab, DefaultSceneManager
     VisualSceneController controller = undefined
     GameStateManager manager
 
-    PropertiesDialog propertiesDialog
+    Item2DPropertiesDialog item2dPropertiesDialog
+    Item3DPropertiesDialog item3dPropertiesDialog
 
     action GetFile returns File
         return file
@@ -67,7 +69,8 @@ class VisualEditorTab is Tab, DefaultSceneManager
 
         Load(scene)
 
-        propertiesDialog:Initialize(controller)
+        item3dPropertiesDialog:Initialize(controller)
+        item2dPropertiesDialog:Initialize(controller)
     end
 
     /* 
@@ -119,7 +122,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
     end
 
     action Save
-        Array<Layer> layers = GetSceneController():GetSceneLayers()
+        Array<EditorLayer> layers = GetSceneController():GetSceneLayers()
         Scene scene = Save(layers)
         scene:GetData():SetPrettyPrint(true)
         file:Write(scene:GetData():ToText())
@@ -224,7 +227,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
     end
 
     action HideLayers
-        Array<Layer> layers = GetSceneController():GetSceneLayers()
+        Array<EditorLayer> layers = GetSceneController():GetSceneLayers()
         integer counter = 0
         repeat while counter < layers:GetSize()
             Layer layer = layers:Get(counter)
@@ -233,11 +236,11 @@ class VisualEditorTab is Tab, DefaultSceneManager
             counter = counter + 1
         end
 
-        propertiesDialog:Hide()
+        item3dPropertiesDialog:Hide()
     end
 
     action ShowLayers
-        Array<Layer> layers = GetSceneController():GetSceneLayers()
+        Array<EditorLayer> layers = GetSceneController():GetSceneLayers()
         integer counter = 0
         repeat while counter < layers:GetSize()
             Layer layer = layers:Get(counter)
@@ -246,7 +249,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
             counter = counter + 1
         end
 
-        propertiesDialog:Hide()
+        item3dPropertiesDialog:Hide()
     end
 
     action OnClose

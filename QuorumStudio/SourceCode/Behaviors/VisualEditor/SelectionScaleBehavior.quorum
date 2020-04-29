@@ -3,6 +3,8 @@ package Libraries.Development.Environment.Studio.Behaviors
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
 use Libraries.Compute.Vector3
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem3D
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem2D
 
 class SelectionScaleBehavior is QuorumStudioBehavior
 
@@ -21,8 +23,8 @@ class SelectionScaleBehavior is QuorumStudioBehavior
     end
 
     action Run(BehaviorEvent event)
-        if event:GetItem() is InteractableItem
-            InteractableItem item = cast(InteractableItem, event:GetItem())
+        if event:GetItem() is InteractableItem3D
+            InteractableItem3D item = cast(InteractableItem3D, event:GetItem())
             item:Scale(scale)
 
             // Temporary output while developing.
@@ -42,6 +44,24 @@ class SelectionScaleBehavior is QuorumStudioBehavior
                 item:NotifyAccessibility("Scaled Z up")
             elseif scale:GetZ() < 1
                 item:NotifyAccessibility("Scaled Z down")
+            end
+        elseif event:GetItem() is InteractableItem2D
+            InteractableItem2D item = cast(InteractableItem2D, event:GetItem())
+            item:Scale(scale:GetX(), scale:GetY())
+
+            // Temporary output while developing.
+            if (scale:GetX() > 1 and scale:GetY() > 1)
+                item:NotifyAccessibility("Scaled up")
+            elseif (scale:GetX() < 1 and scale:GetY() < 1)
+                item:NotifyAccessibility("Scaled down")
+            elseif scale:GetX() > 1
+                item:NotifyAccessibility("Scaled X up")
+            elseif scale:GetX() < 1
+                item:NotifyAccessibility("Scaled X down")
+            elseif scale:GetY() > 1
+                item:NotifyAccessibility("Scaled Y up")
+            elseif scale:GetY() < 1
+                item:NotifyAccessibility("Scaled Y down")
             end
         end
     end

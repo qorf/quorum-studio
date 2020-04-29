@@ -1,29 +1,45 @@
 package Libraries.Development.Environment.Studio.Behaviors
 
 use Libraries.Interface.Events.BehaviorEvent
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.PropertiesDialog
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Item3DPropertiesDialog
 use Libraries.Interface.Item
 use Libraries.Interface.Controls.ToggleButton
 use Libraries.Interface.Behaviors.Behavior
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Item2DPropertiesDialog
 
 class PropertiesEnablePhysicsBehavior is Behavior
 
-    PropertiesDialog dialog = undefined
+    Item2DPropertiesDialog dialog2D = undefined
+    Item3DPropertiesDialog dialog3D = undefined
 
-    action SetDialog(PropertiesDialog properties)
-        dialog = properties
+    action SetDialog2D(Item2DPropertiesDialog properties)
+        dialog2D = properties
     end
 
-    action GetDialog returns PropertiesDialog
-        return dialog
+    action SetDialog2D returns Item2DPropertiesDialog
+        return dialog2D
+    end
+
+    action SetDialog3D(Item3DPropertiesDialog properties)
+        dialog3D = properties
+    end
+
+    action SetDialog3D returns Item3DPropertiesDialog
+        return dialog3D
     end
 
     action Run(BehaviorEvent event)
-        if dialog not= undefined
+        if dialog2D not= undefined
             Item item = event:GetItem()
             if item is ToggleButton
                 ToggleButton button = cast(ToggleButton, item)
-                dialog:SetPhysicsEnabled(button:GetToggleState())
+                dialog2D:SetPhysicsEnabled(button:GetToggleState())
+            end
+        elseif dialog3D not= undefined
+            Item item = event:GetItem()
+            if item is ToggleButton
+                ToggleButton button = cast(ToggleButton, item)
+                dialog3D:SetPhysicsEnabled(button:GetToggleState())
             end
         end
     end

@@ -10,6 +10,9 @@ use Libraries.Containers.Array
 use Libraries.Interface.Item3D
 use Libraries.Game.Graphics.Model
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer3D
+use Libraries.Interface.Item
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer2D
+use Libraries.Interface.Item2D
 
 class CameraItemsInViewBehavior is QuorumStudioBehavior
 
@@ -17,22 +20,36 @@ class CameraItemsInViewBehavior is QuorumStudioBehavior
         if event:GetItem() is VisualSceneController
             VisualSceneController controller = cast(VisualSceneController, event:GetItem())
             text editorTag = controller:GetEditorTag()
+            Array<Item> itemsInView
 
-            EditorLayer3D layer = cast(EditorLayer3D, controller:GetSelectedLayer())
-            Camera camera = layer:GetCamera()
-            Frustum frustum = camera:GetFrustum()
+            if controller:GetSelectedLayer() is EditorLayer3D
+                EditorLayer3D layer = cast(EditorLayer3D, controller:GetSelectedLayer())
+                Camera camera = layer:GetCamera()
+                Frustum frustum = camera:GetFrustum()
 
-            // Most likely we need to filter this somehow. We only want to consider items in the scene itself,
-            // and not any items the editor has added (e.g. selection highlighting).
-            Iterator<Item3D> iterator = layer:GetIterator()
-
-            Array<Item3D> itemsInView
-
-            repeat while iterator:HasNext()
-                Item3D item = iterator:Next()
-                if item:HasProperty(editorTag) = false
-                    if frustum:PointInFrustum(item:GetGlobalPosition())
-                        itemsInView:Add(item)
+                Iterator<Item3D> iterator = layer:GetIterator()
+    
+                repeat while iterator:HasNext()
+                    Item3D item = iterator:Next()
+                    if item:HasProperty(editorTag) = false
+                        if frustum:PointInFrustum(item:GetGlobalPosition())
+                            itemsInView:Add(item)
+                        end
+                    end
+                end
+            elseif controller:GetSelectedLayer() is EditorLayer2D
+                EditorLayer2D layer = cast(EditorLayer2D, controller:GetSelectedLayer())
+                Camera camera = layer:GetCamera()
+                Frustum frustum = camera:GetFrustum()
+    
+                Iterator<Item2D> iterator = layer:GetIterator()
+    
+                repeat while iterator:HasNext()
+                    Item2D item = iterator:Next()
+                    if item:HasProperty(editorTag) = false
+                        if frustum:PointInFrustum(item:GetGlobalX(), item:GetGlobalY(), item:GetGlobalZ())
+                            itemsInView:Add(item)
+                        end
                     end
                 end
             end

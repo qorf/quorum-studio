@@ -2,14 +2,18 @@ package Libraries.Development.Environment.Studio.Behaviors
 
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.PropertiesDialog
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Item3DPropertiesDialog
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Item2DPropertiesDialog
 
 class UnfocusPropertiesBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
         VisualSceneController controller = undefined
 
-        if event:GetItem() is PropertiesDialog
-            PropertiesDialog dialog = cast(PropertiesDialog, event:GetItem())
+        if event:GetItem() is Item3DPropertiesDialog
+            Item3DPropertiesDialog dialog = cast(Item3DPropertiesDialog, event:GetItem())
+            controller = dialog:GetSceneController()
+        elseif event:GetItem() is Item2DPropertiesDialog
+            Item2DPropertiesDialog dialog = cast(Item2DPropertiesDialog, event:GetItem())
             controller = dialog:GetSceneController()
         end
 

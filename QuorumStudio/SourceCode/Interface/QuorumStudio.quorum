@@ -89,6 +89,7 @@ use Libraries.Development.Environment.Studio.Behaviors.OpenVisualEditorFindDialo
 use Libraries.Development.Environment.Studio.Behaviors.CloseVisualEditorFindDialogBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SelectionResetScaleBehavior
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTree
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     public constant number VERSION = 2.0
@@ -213,9 +214,13 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         currentFocus = event:GetNewFocus()
         previousFocus = event:GetLastFocus()
 
+        if currentFocus is InteractableItem
+            // If the focus was an InteractableItem, it must be from the scene editor.
+            focus = windowsList:GetValue(codeTabs:GetName())
+
         //Bubble up the parents until you find which window you're in
         //then set the window focus cycle to move there
-        if currentFocus is Item2D
+        elseif currentFocus is Item2D
             Item2D newFocus = cast(Item2D, currentFocus)
             if newFocus:GetParent() not= undefined
                 boolean notFound = true
@@ -227,9 +232,6 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
                     newFocus = newFocus:GetParent()
                 end
             end
-        else
-            // If the focus wasn't an Item2D, it must be from the 3D scene editor.
-            focus = windowsList:GetValue(codeTabs:GetName())
         end
     end
 

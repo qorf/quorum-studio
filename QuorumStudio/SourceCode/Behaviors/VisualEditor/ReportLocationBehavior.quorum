@@ -2,7 +2,8 @@ package Libraries.Development.Environment.Studio.Behaviors
 
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem2D
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem3D
 use Libraries.Compute.Math
 use Libraries.Compute.Vector3
 
@@ -16,10 +17,14 @@ class ReportLocationBehavior is QuorumStudioBehavior
             Vector3 position = controller:GetSelectedLayer():GetCamera():GetPosition()
             text message = math:Round(position:GetX(), 2) + ", " + math:Round(position:GetY(), 2) + ", " + math:Round(position:GetZ(), 2)
             controller:NotifyAccessibility(controller, "Camera at " + message)
-        elseif event:GetItem() is InteractableItem
-            InteractableItem item = cast(InteractableItem, event:GetItem())
+        elseif event:GetItem() is InteractableItem3D
+            InteractableItem3D item = cast(InteractableItem3D, event:GetItem())
             Vector3 position = item:GetGlobalPosition()
             text message = math:Round(position:GetX(), 2) + ", " + math:Round(position:GetY(), 2) + ", " + math:Round(position:GetZ(), 2)
+            item:NotifyAccessibility(message)
+        elseif event:GetItem() is InteractableItem2D
+            InteractableItem2D item = cast(InteractableItem2D, event:GetItem())
+            text message = math:Round(item:GetGlobalX(), 2) + ", " + math:Round(item:GetGlobalY(), 2)
             item:NotifyAccessibility(message)
         end
     end
