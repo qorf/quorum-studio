@@ -59,6 +59,9 @@ class VisualSceneController is Control
     integer selectionXDirection = 0
     integer selectionYDirection = 0
     integer selectionZDirection = 0
+    integer selectionYawDirection = 0
+    integer selectionPitchDirection = 0
+    integer selectionRollDirection = 0
 
     // Vectors which are constantly reused for frequent calculations.
     Vector2 workVector2
@@ -305,6 +308,12 @@ class VisualSceneController is Control
                         gridMoveTimer = 0
                     end
                 end
+
+                if IsSelectionRotating()
+                    workVector3:Set(focus:GetYaw(), focus:GetPitch(), focus:GetRoll())
+                    workVector3:Add(seconds * selectionYawDirection * SELECTION_ROTATIONAL_SPEED_3D, seconds * selectionPitchDirection * SELECTION_ROTATIONAL_SPEED_3D, seconds * selectionRollDirection * SELECTION_ROTATIONAL_SPEED_3D)
+                    focus:SetRotation(workVector3)
+                end
             end
 
         elseif GetSelectedLayer() is EditorLayer2D
@@ -326,6 +335,11 @@ class VisualSceneController is Control
                 workVector3:Set(camera:GetUp())
                 workVector3:Scale(forwardDirection * CAMERA_DIRECTIONAL_SPEED_2D * seconds)
                 camera:Move(workVector3)
+                moved = true
+            end
+
+            if moved
+                layer:UpdateGridPosition()
             end
     
             if manager:GetFocus() is InteractableItem2D
@@ -333,8 +347,7 @@ class VisualSceneController is Control
                 workVector2:Set(0, 0)
                 InteractableItem2D focus = cast(InteractableItem2D, manager:GetFocus())
     
-                // TO-DO: Support grid snapping
-                boolean gridSnapEnabled = false//IsGridSnapping()
+                boolean gridSnapEnabled = IsGridSnapping()
     
                 if gridSnapEnabled = false
                     if selectionXDirection not= 0
@@ -351,43 +364,38 @@ class VisualSceneController is Control
                         focus:Move(workVector2)
                     end
                 else
-//                    if selectionXDirection not= 0 or selectionYDirection not= 0 or selectionZDirection not= 0
-//                        if gridMoveTimer <= 0
-//                            gridMoveTimer = gridMoveTimerMax
-//    
-//                            number x = focus:GetGlobalX()
-//                            number y = focus:GetGlobalY()
-//                            number z = focus:GetGlobalZ()
-//    
-//                            if selectionXDirection < 0
-//                                x = layer:GetPreviousGridCoordinate(x)
-//                            elseif selectionXDirection > 0
-//                                x = layer:GetNextGridCoordinate(x)
-//                            end
-//    
-//                            if selectionYDirection < 0
-//                                y = layer:GetPreviousGridCoordinate(y)
-//                            elseif selectionYDirection > 0
-//                                y = layer:GetNextGridCoordinate(y)
-//                            end
-//    
-//                            if selectionZDirection < 0
-//                                z = layer:GetPreviousGridCoordinate(z)
-//                            elseif selectionZDirection > 0
-//                                z = layer:GetNextGridCoordinate(z)
-//                            end
-//    
-//                            focus:Move(x - focus:GetGlobalX(), y - focus:GetGlobalY(), z - focus:GetGlobalZ())
-//                            GridPlane grid = layer:GetGrid()
-//                            grid:SetPosition(grid:GetNearestGridCoordinate(focus:GetGlobalX()),
-//                                0,
-//                                grid:GetNearestGridCoordinate(focus:GetGlobalZ()))
-//                        else
-//                            gridMoveTimer = gridMoveTimer - seconds
-//                        end
-//                    else
-//                        gridMoveTimer = 0
-//                    end
+                    if selectionXDirection not= 0 or selectionYDirection not= 0 or selectionZDirection not= 0
+                        if gridMoveTimer <= 0
+                            gridMoveTimer = gridMoveTimerMax
+    
+                            number x = focus:GetGlobalX()
+                            number y = focus:GetGlobalY()
+    
+                            if selectionXDirection < 0
+                                x = layer:GetPreviousGridCoordinate(x)
+                            elseif selectionXDirection > 0
+                                x = layer:GetNextGridCoordinate(x)
+                            end
+    
+                            if selectionZDirection < 0
+                                y = layer:GetPreviousGridCoordinate(y)
+                            elseif selectionZDirection > 0
+                                y = layer:GetNextGridCoordinate(y)
+                            end
+    
+                            focus:Move(x - focus:GetGlobalX(), y - focus:GetGlobalY())
+                        else
+                            gridMoveTimer = gridMoveTimer - seconds
+                        end
+                    else
+                        gridMoveTimer = 0
+                    end
+                end
+
+                if GetSelectionRollDirection() not= 0
+                    number angle = focus:GetRotation()
+                    angle = angle + (seconds * selectionRollDirection * SELECTION_ROTATIONAL_SPEED_2D)
+                    focus:SetRotation(angle)
                 end
             end
 
@@ -667,6 +675,7 @@ class VisualSceneController is Control
             selection:SetSelection(layer)
         end
 
+        layer:SetSceneController(me)
         layers:Add(layer)
     end
 
@@ -824,6 +833,62 @@ class VisualSceneController is Control
 
     action IsSelectionMoving returns boolean
         return GetSelectionXDirection() not= 0 or GetSelectionYDirection() not= 0 or GetSelectionZDirection() not= 0
+    end
+
+    action SetSelectionYawDirection(integer direction)
+        selectionYawDirection = direction
+
+        if direction = 0
+            if manager:GetFocus() is InteractableItem3D
+                InteractableItem3D focus = cast(InteractableItem3D, manager:GetFocus())
+                number yaw = math:Round(focus:GetYaw(), 1)
+                NotifyAccessibility(focus, "yaw " + yaw)
+            end
+        end
+    end
+
+    action GetSelectionYawDirection returns integer
+        return selectionYawDirection
+    end
+
+    action SetSelectionPitchDirection(integer direction)
+        selectionPitchDirection = direction
+
+        if direction = 0
+            if manager:GetFocus() is InteractableItem3D
+                InteractableItem3D focus = cast(InteractableItem3D, manager:GetFocus())
+                number pitch = math:Round(focus:GetPitch(), 1)
+                NotifyAccessibility(focus, "pitch " + pitch)
+            end
+        end
+    end
+
+    action GetSelectionPitchDirection returns integer
+        return selectionPitchDirection
+    end
+
+    action SetSelectionRollDirection(integer direction)
+        selectionRollDirection = direction
+
+        if direction = 0
+            if manager:GetFocus() is InteractableItem3D
+                InteractableItem3D focus = cast(InteractableItem3D, manager:GetFocus())
+                number roll = math:Round(focus:GetRoll(), 1)
+                NotifyAccessibility(focus, "roll " + roll)
+            elseif manager:GetFocus() is InteractableItem2D
+                InteractableItem2D focus = cast(InteractableItem2D, manager:GetFocus())
+                number rotation = math:Round(focus:GetRotation(), 1)
+                NotifyAccessibility(focus, rotation + " degrees")
+            end
+        end
+    end
+
+    action GetSelectionRollDirection returns integer
+        return selectionRollDirection
+    end
+
+    action IsSelectionRotating returns boolean
+        return GetSelectionYawDirection() not= 0 or GetSelectionPitchDirection() not= 0 or GetSelectionRollDirection() not= 0
     end
 
     action NotifyAccessibility(Item item, text message)

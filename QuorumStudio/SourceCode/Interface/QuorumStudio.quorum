@@ -69,6 +69,9 @@ use Libraries.Development.Environment.Studio.Behaviors.CameraItemsInViewBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SelectionXDirectionBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SelectionYDirectionBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SelectionZDirectionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SelectionYawDirectionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SelectionPitchDirectionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SelectionRollDirectionBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SelectionScaleBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SelectionDeleteBehavior
 use Libraries.Development.Environment.Studio.Behaviors.NewItemCycleModelBehavior
@@ -551,6 +554,54 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         selectionTable:Add(selectionMoveForwardStop, selectionMoveZStopBehavior)
         selectionTable:Add(selectionMoveBackwardStart, selectionMoveBackwardStartBehavior)
         selectionTable:Add(selectionMoveBackwardStop, selectionMoveZStopBehavior)
+
+        InputSet selectionRotateYawLeftStart = map:GetSelectionRotateYawLeftKey()
+        InputSet selectionRotateYawLeftStop = map:GetSelectionRotateYawLeftKey()
+        selectionRotateYawLeftStop:SetInputTrigger(selectionRotateYawLeftStop:FINISH)
+        InputSet selectionRotateYawRightStart = map:GetSelectionRotateYawRightKey()
+        InputSet selectionRotateYawRightStop = map:GetSelectionRotateYawRightKey()
+        selectionRotateYawRightStop:SetInputTrigger(selectionRotateYawRightStop:FINISH)
+
+        SelectionYawDirectionBehavior selectionStartRotatingYawLeftBehavior = behaviors:GetSelectionStartRotatingYawLeftBehavior()
+        SelectionYawDirectionBehavior selectionStartRotatingYawRightBehavior = behaviors:GetSelectionStartRotatingYawRightBehavior()
+        SelectionYawDirectionBehavior selectionStopRotatingYawBehavior = behaviors:GetSelectionStopRotatingYawBehavior()
+
+        selectionTable:Add(selectionRotateYawLeftStart, selectionStartRotatingYawLeftBehavior)
+        selectionTable:Add(selectionRotateYawLeftStop, selectionStopRotatingYawBehavior)
+        selectionTable:Add(selectionRotateYawRightStart, selectionStartRotatingYawRightBehavior)
+        selectionTable:Add(selectionRotateYawRightStop, selectionStopRotatingYawBehavior)
+
+        InputSet selectionRotatePitchUpStart = map:GetSelectionRotatePitchUpKey()
+        InputSet selectionRotatePitchUpStop = map:GetSelectionRotatePitchUpKey()
+        selectionRotatePitchUpStop:SetInputTrigger(selectionRotatePitchUpStop:FINISH)
+        InputSet selectionRotatePitchDownStart = map:GetSelectionRotatePitchDownKey()
+        InputSet selectionRotatePitchDownStop = map:GetSelectionRotatePitchDownKey()
+        selectionRotatePitchDownStop:SetInputTrigger(selectionRotatePitchDownStop:FINISH)
+
+        SelectionPitchDirectionBehavior selectionStartRotatingPitchUpBehavior = behaviors:GetSelectionStartRotatingPitchUpBehavior()
+        SelectionPitchDirectionBehavior selectionStartRotatingPitchDownBehavior = behaviors:GetSelectionStartRotatingPitchDownBehavior()
+        SelectionPitchDirectionBehavior selectionStopRotatingPitchBehavior = behaviors:GetSelectionStopRotatingPitchBehavior()
+
+        selectionTable:Add(selectionRotatePitchUpStart, selectionStartRotatingPitchUpBehavior)
+        selectionTable:Add(selectionRotatePitchUpStop, selectionStopRotatingPitchBehavior)
+        selectionTable:Add(selectionRotatePitchDownStart, selectionStartRotatingPitchDownBehavior)
+        selectionTable:Add(selectionRotatePitchDownStop, selectionStopRotatingPitchBehavior)
+
+        InputSet selectionRotateRollLeftStart = map:GetSelectionRotateRollLeftKey()
+        InputSet selectionRotateRollLeftStop = map:GetSelectionRotateRollLeftKey()
+        selectionRotateRollLeftStop:SetInputTrigger(selectionRotateRollLeftStop:FINISH)
+        InputSet selectionRotateRollRightStart = map:GetSelectionRotateRollRightKey()
+        InputSet selectionRotateRollRightStop = map:GetSelectionRotateRollRightKey()
+        selectionRotateRollRightStop:SetInputTrigger(selectionRotateRollRightStop:FINISH)
+
+        SelectionRollDirectionBehavior selectionStartRotatingRollLeftBehavior = behaviors:GetSelectionStartRotatingRollLeftBehavior()
+        SelectionRollDirectionBehavior selectionStartRotatingRollRightBehavior = behaviors:GetSelectionStartRotatingRollRightBehavior()
+        SelectionRollDirectionBehavior selectionStopRotatingRollBehavior = behaviors:GetSelectionStopRotatingRollBehavior()
+
+        selectionTable:Add(selectionRotateRollLeftStart, selectionStartRotatingRollLeftBehavior)
+        selectionTable:Add(selectionRotateRollLeftStop, selectionStopRotatingRollBehavior)
+        selectionTable:Add(selectionRotateRollRightStart, selectionStartRotatingRollRightBehavior)
+        selectionTable:Add(selectionRotateRollRightStop, selectionStopRotatingRollBehavior)
 
         InputSet selectionScaleUpSet = map:GetSelectionScaleUpKey()
         InputSet selectionScaleDownSet = map:GetSelectionScaleDownKey()

@@ -2,6 +2,9 @@ package Libraries.Development.Environment.Studio.Interface.VisualEditor
 
 use Libraries.Game.Layer2D
 use Libraries.Interface.Events.ResizeEvent
+use Libraries.Game.Graphics.Camera
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Item
 
 class EditorLayer2D is Layer2D, EditorLayer
 
@@ -12,6 +15,9 @@ class EditorLayer2D is Layer2D, EditorLayer
     */
     CameraPreview2D preview
 
+    Grid2D grid
+    boolean gridSnapEnabled = true
+
     on create
         VisualEditorResources resources
         preview:SetSize(resources:CAMERA_PREVIEW_2D_DEFAULT_WIDTH, resources:CAMERA_PREVIEW_2D_DEFAULT_HEIGHT)
@@ -19,7 +25,20 @@ class EditorLayer2D is Layer2D, EditorLayer
         Add(preview)
         preview:SetPosition(0, 0)
 
+        grid:SetGridSize(GetCamera():GetWidth() + grid:GetGridUnitSize(), GetCamera():GetHeight() + grid:GetGridUnitSize())
+        Add(grid)
+        UpdateGridPosition()
+
         ShowEditorComponents(false)
+    end
+
+    action ProcessMouseEvent(MouseEvent event) returns Item
+        VisualSceneController controller = GetSceneController()
+        if controller = undefined or (not controller:GetSelectedLayer():Equals(me))
+            return undefined
+        end
+
+        return parent:Layer2D:ProcessMouseEvent(event)
     end
 
     action GetCameraPreview returns CameraPreview2D
@@ -71,43 +90,62 @@ class EditorLayer2D is Layer2D, EditorLayer
     end
 
     action SetGridSnapping(boolean enabled)
-        // TO-DO
+        if enabled
+            grid:Show()
+        else
+            grid:Hide()
+        end
+
+        gridSnapEnabled = enabled
     end
 
     action SetGridUnitSize(number units)
-        // TO-DO
+        grid:SetGridUnitSize(cast(integer, units))
     end
 
     action GetGridUnitSize returns number
-        // TO-DO
-        return 0
+        return grid:GetGridUnitSize()
     end
 
     action IsGridSnapping returns boolean
-        // TO-DO
-        return false
+        return gridSnapEnabled
     end
 
     action GetNearestGridCoordinate(number coordinate) returns number
-        // TO-DO
-        return 0
+        return grid:GetNearestGridCoordinate(coordinate)
     end
 
     action GetNextGridCoordinate(number coordinate) returns number
-        // TO-DO
-        return 0
+        return grid:GetNextGridCoordinate(coordinate)
     end
 
     action GetPreviousGridCoordinate(number coordinate) returns number
-        // TO-DO
-        return 0
+        return grid:GetPreviousGridCoordinate(coordinate)
+    end
+
+    action UpdateGridPosition
+        Camera camera = GetCamera()
+        number x = camera:GetPosition():GetX() - camera:GetWidth() / 2.0
+        number y = camera:GetPosition():GetY() - camera:GetHeight() / 2.0
+
+        if not grid:IsGridCoordinate(x)
+            x = grid:GetPreviousGridCoordinate(x)
+        end
+        if not grid:IsGridCoordinate(y)
+            y = grid:GetPreviousGridCoordinate(y)
+        end
+
+        grid:SetPosition(x, y)
     end
 
     action ShowEditorComponents(boolean shouldShow)
         if shouldShow
             preview:Show()
+            grid:Show()
+            UpdateGridPosition()
         else
             preview:Hide()
+            grid:Hide()
         end
     end
 end

@@ -1,0 +1,22 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
+
+class SelectionYawDirectionBehavior is QuorumStudioBehavior
+
+    // The direction value must always be -1, 0, or 1.
+    integer direction = 0
+
+    action SetDirection(integer direction)
+        me:direction = direction
+    end
+
+    action Run(BehaviorEvent event)
+        if event:GetItem() is InteractableItem
+            InteractableItem highlight = cast(InteractableItem, event:GetItem())
+            highlight:GetController():SetSelectionYawDirection(direction)
+        end
+    end
+end

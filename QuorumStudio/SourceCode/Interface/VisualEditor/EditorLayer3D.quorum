@@ -1,6 +1,8 @@
 package Libraries.Development.Environment.Studio.Interface.VisualEditor
 
 use Libraries.Game.Layer3D
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Item
 
 class EditorLayer3D is Layer3D, EditorLayer
 
@@ -10,6 +12,15 @@ class EditorLayer3D is Layer3D, EditorLayer
     on create
         Add(grid)
         ShowEditorComponents(false)
+    end
+
+    action ProcessMouseEvent(MouseEvent event) returns Item
+        VisualSceneController controller = GetSceneController()
+        if controller = undefined or (not controller:GetSelectedLayer():Equals(me))
+            return undefined
+        end
+
+        return parent:Layer3D:ProcessMouseEvent(event)
     end
 
     action GetGrid returns GridPlane
