@@ -110,7 +110,10 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         Array<Token> mainFileTokens
         mainFileTokens:SetMaxSize(500)
         lexer:Reset()
+        constant text DEBUGGER_STYLE = "Debugger"
+        TextStyle debuggerStyle = box:GetTextStyle(DEBUGGER_STYLE)
         box:EmptyTextStyles()
+
         Token token = lexer:NextToken()
         mainFileTokens:Add(token)
         i = 0
@@ -278,7 +281,9 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         end
 
         //add the debugger line
-
+        if debuggerStyle not= undefined
+            box:AddTextStyle(DEBUGGER_STYLE, debuggerStyle)
+        end
 
         File f = path
         
