@@ -1,0 +1,41 @@
+package Libraries.Development.Environment.Studio.Interface
+use Libraries.Interface.Controls.TextStyles.TextStyle
+use Libraries.Containers.Array
+use Libraries.Language.Debug.Breakpoint
+
+class BreakpointTextStyle is TextStyle
+    integer line = -1
+    CodeTextBox box = undefined
+    Breakpoint point = undefined
+
+    action SetIndex(integer index)
+        parent:TextStyle:SetIndex(index)
+        if box not= undefined and point not= undefined
+            line = box:GetLineIndexOfCharacter(index)
+            point:SetLine(line)
+        end
+    end
+
+    action GetLine returns integer
+        return line
+    end
+
+    action GetBreakpoint returns Breakpoint
+        return point
+    end
+
+    action SetBreakpoint(Breakpoint point)
+        me:point = point
+    end
+
+    action GetBox returns CodeTextBox
+        return box
+    end
+
+    action SetBox(CodeTextBox box)
+        me:box = box
+    end
+    action SetLine(integer line)
+        me:line = line
+    end
+end

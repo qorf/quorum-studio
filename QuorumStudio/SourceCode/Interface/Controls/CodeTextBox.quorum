@@ -92,6 +92,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     NextBehavior nextBehavior
     FindDialog findDialog = undefined
     CompilerErrorManager errors = undefined
+    integer breakpointAmount = 0
 
     on create
         Game game = gameStateManager:GetGame()
@@ -255,23 +256,45 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         end
     end
 
+    action IncrementBreakpoint returns integer
+        breakpointAmount = breakpointAmount + 1
+        return breakpointAmount
+    end
+
+    action Changed(BreakpointTextStyle style, integer newIndex)
+        output "Index: " + newIndex + ", Line: " + GetLineIndexOfCharacter(newIndex)
+        //output "Breakpoint moved: " + newIndex
+    end
+
     action ToggledBreakpoint(BreakpointEvent event)
         Breakpoint bp = event:GetBreakpoint()
         if bp:GetFile():GetAbsolutePath() not= GetFile():GetAbsolutePath()
             return now
         end
-        if event:IsAdded()
-            integer line = bp:GetLine()
+        integer line = bp:GetLine()
+        Array<TextStyle> styles = GetTextStylesOnLine(line)
+
+        boolean wasRemoved = false
+        if styles not= undefined and not event:IsAdded()
+            i = 0
+            repeat while i < styles:GetSize()
+                TextStyle style = styles:Get(i)
+                if style is BreakpointTextStyle
+                    RemoveTextStyle(style)
+                    wasRemoved = true
+                end
+                i = i + 1
+            end
+        else
             ColoredHighlight breakpointHighlight
             breakpointHighlight:SetColor(breakpointColor)
             breakpointHighlight:SetLineHighlight(true)
-            TextStyle breakpointStyle
+            BreakpointTextStyle breakpointStyle
             breakpointStyle:SetIndex(GetIndexOfLine(line))
             breakpointStyle:SetHighlight(breakpointHighlight)
-            AddTextStyle("Breakpoint" + bp:GetLine(), breakpointStyle)
-        else
-            integer line = bp:GetLine()
-            RemoveTextStyle("Breakpoint" + bp:GetLine())
+            breakpointStyle:SetBreakpoint(bp)
+            breakpointStyle:SetBox(me)
+            AddTextStyle("Breakpoint" + IncrementBreakpoint(), breakpointStyle)
         end
     end
 

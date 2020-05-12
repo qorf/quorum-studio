@@ -222,6 +222,29 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         return bps:GetIterator()
     end
 
+    Array<Breakpoint> bpCache
+    action RehashBreakpoints(text path)
+        HashTable<integer, Breakpoint> points = breakpoints:GetValue(path)
+        
+        if points not= undefined
+            Iterator<Breakpoint> iterator = points:GetValueIterator()
+            repeat while iterator:HasNext()
+                Breakpoint bp = iterator:Next()
+                bpCache:Add(bp)
+            end
+
+            points:Empty()
+            i = 0
+            repeat while i < bpCache:GetSize()
+                Breakpoint value = bpCache:Get(i)
+                points:Add(value:GetLine(), value)
+                i = i + 1
+            end
+
+            bpCache:Empty()
+        end
+    end
+
     action GetBreakpointIterator(text path) returns Iterator<Breakpoint>
         HashTable<integer, Breakpoint> points = breakpoints:GetValue(path)
         if points = undefined
