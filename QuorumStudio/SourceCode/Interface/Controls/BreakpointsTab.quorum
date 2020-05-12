@@ -95,7 +95,41 @@ class BreakpointsTab is Tab, BreakpointListener
         return pane
     end
 
+    private action Rehash(text path)
+        //this key doesn't exist, so do nothing.
+        if rows:HasKey(path) 
+            //if it has this path, go find that and kill it, if you have to.
+            BreakpointRow parentRow = rows:GetValue(path)
+            //rows:RemoveAllKeys(path)
+            breakpointTree:Remove(parentRow)
+            rows:RemoveKey(path)
+        else 
+            return now
+        end
+
+        //we killed the value, because we had to, so now make a new one and reset this thing.
+        BreakpointRow rowFile
+        rowFile:SetFile(path)
+        rows:Add(path, rowFile)
+
+        Iterator<Breakpoint> iterator = manager:GetBreakpointIterator(path)
+        repeat while iterator not= undefined and iterator:HasNext()
+            Breakpoint bp = iterator:Next()
+            BreakpointRow row
+            row:SetBreakpoint(bp)
+
+            
+            rows:Add(path + bp:GetLine() , row)
+            breakpointTree:Add(rowFile)
+            rowFile:AddRow(row)
+        end
+    end
+
     action ToggledBreakpoint(BreakpointEvent event)
+        if event:IsRehashEvent()
+            Rehash(event:GetPath())
+            return now
+        end
         Breakpoint point = event:GetBreakpoint()
         File file = point:GetFile()
         integer line = point:GetLine()
