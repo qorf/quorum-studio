@@ -43,9 +43,15 @@ class ExecuteCodeCompletionBehavior is Behavior
 
     action Run(BehaviorEvent event)
         if completion not= undefined and box not= undefined and result not= undefined
+            and completion:completionText not= undefined
             text value = completion:completionText
             text filter = result:filter
-            value = value:GetSubtext(filter:GetSize())
+            integer size = 0
+            if filter not= undefined
+                size = filter:GetSize()
+            end
+            
+            value = value:GetSubtext(size)
             integer position = box:GetCaretPosition()
 
             if completion:isActionWithoutParameters
