@@ -8,7 +8,6 @@ use Libraries.Compute.Vector3
 
 class NewItemPreview3D is NewItemPreview, InteractableItem3D
 
-    VisualSceneController controller = undefined
     Color color = undefined
 
     /*
@@ -33,7 +32,7 @@ class NewItemPreview3D is NewItemPreview, InteractableItem3D
     end
 
     action Load(VisualSceneController controller)
-        me:controller = controller
+        SetController(controller)
         Color colorPreview = controller:GetColorPreview()
 
         Vector3 scale = controller:GetPreviewScale()
@@ -83,10 +82,10 @@ class NewItemPreview3D is NewItemPreview, InteractableItem3D
             mine:row3column2 = transform:row3column2
             mine:row3column3 = transform:row3column3
         end
-        SetController(controller)
     end
 
     action CyclePresetModel
+        VisualSceneController controller = GetController()
         boolean usingDefaultName = (controller:GetDefaultItemName(modelPreset) = GetName())
 
         modelPreset = (modelPreset + 1) mod 3

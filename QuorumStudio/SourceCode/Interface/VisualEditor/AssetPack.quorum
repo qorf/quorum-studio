@@ -1,0 +1,97 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Containers.HashTable
+use Libraries.Game.Graphics.ImageSheet
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.Graphics.TextureRegion
+use Libraries.Containers.Iterator
+use Libraries.System.File
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Game.Graphics.Texture
+use Libraries.Game.Graphics.Color
+
+class AssetPack
+
+    text name = "Asset Pack"
+    HashTable<text, ItemBlueprint> blueprints
+
+    action Add(ImageSheet sheet)
+        // TO-DO
+    end
+
+    action Add(Drawable drawable)
+        blueprints:Add(drawable:GetName(), DrawableToBlueprint(drawable))
+    end
+
+    action LoadTileset(File file)
+        JavaScriptObjectNotation json
+        json:Read(file)
+        
+        SetName(json:GetValue("Name"))
+        integer width = json:GetInteger("Width")
+        integer height = json:GetInteger("Height")
+        text filePath = json:GetValue("File")
+
+        Texture texture
+        texture:LoadFromFile(filePath)
+
+        Color color
+
+        JavaScriptObjectNotation tiles = json:GetObject("Tiles")
+        Iterator<JavaScriptObjectNotation> iterator = tiles:GetIterator()
+        repeat while iterator:HasNext()
+            JavaScriptObjectNotation tile = iterator:Next()
+            DrawableBlueprint schematic
+            TextureRegion region
+            integer x = tile:GetInteger("X")
+            integer y = tile:GetInteger("Y")
+            region:LoadTextureRegion(texture, x * width, y * height, width, height)
+            
+            schematic:SetName(tile:GetValue("Name"))
+            schematic:SetDescription(tile:GetValue("Description"))
+            schematic:SetTexture(region)
+            schematic:SetSize(width, height)
+            schematic:SetColor(color:White())
+            schematic:SetPreferredGridWidth(width)
+            schematic:SetPreferredGridHeight(height)
+            blueprints:Add(schematic:GetName(), schematic)
+        end
+    end
+
+    private action DrawableToBlueprint(Drawable drawable) returns ItemBlueprint
+        DrawableBlueprint result
+
+        result:SetName(drawable:GetName())
+        result:SetDescription(drawable:GetDescription())
+        result:SetSize(drawable:GetWidth(), drawable:GetHeight())
+        result:SetScale(drawable:GetScaleX(), drawable:GetScaleY())
+        result:SetColor(drawable:GetColorGroup())
+
+        TextureRegion region
+        region:CopyTextureRegion(drawable)
+        result:SetTexture(region)
+
+        return result
+    end
+
+    action GetBlueprint(text name) returns ItemBlueprint
+        return blueprints:GetValue(name)
+    end
+
+    action GetKeyIterator returns Iterator<text>
+        return blueprints:GetKeyIterator()
+    end
+
+    action GetBlueprintIterator returns Iterator<ItemBlueprint>
+        return blueprints:GetValueIterator()
+    end
+
+    action GetName returns text
+        return name
+    end
+
+    action SetName(text name)
+        me:name = name
+    end
+
+end

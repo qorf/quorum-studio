@@ -1,0 +1,114 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Studio.Palette
+use Libraries.Game.Graphics.Drawable
+use Libraries.Game.Graphics.Color
+use Libraries.Containers.Iterator
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Studio.Behaviors.PaletteCreatePreviewBehavior
+use Libraries.System.File
+
+class ScenePalette is Palette
+
+    VisualSceneController controller = undefined
+
+    // A single Item indicating that no scene is loaded.
+    TreeItem defaultItem = undefined
+
+    // A (stateless) behavior shared by all palette items to create new previews in the scene.
+    PaletteCreatePreviewBehavior paletteActivationBehavior
+
+    Array<AssetPack> loadedAssetPacks
+
+    on create
+        SetSceneController(undefined)
+    end
+
+    action SetSceneController(VisualSceneController sceneController)
+        controller = sceneController
+
+        Empty()
+        if controller = undefined
+            if defaultItem = undefined
+                TreeItem item
+                item:SetName("No scene selected")
+                defaultItem = item
+            end
+
+            Add(defaultItem)
+        else
+            integer counter = 0
+            repeat while counter < loadedAssetPacks:GetSize()
+                AddAssetsToTree(loadedAssetPacks:Get(counter))
+                counter = counter + 1
+            end
+        end
+    end
+
+    action GetSceneController returns VisualSceneController
+        return controller
+    end
+
+    action LoadDefaultAssets
+        AssetPack primitives2D
+        primitives2D:SetName("2D Primitives")
+
+        Color color
+
+        Drawable rectangle
+        rectangle:SetName("Rectangle")
+        rectangle:LoadFilledRectangle(100, 100, color:White())
+        primitives2D:Add(rectangle)
+
+        Drawable circle
+        circle:SetName("Circle")
+        circle:LoadFilledCircle(50, color:White())
+        primitives2D:Add(circle)
+
+        LoadAssetPack(primitives2D)
+
+        AssetPack natureSummerTileset
+        File tilesetFile
+        tilesetFile:SetPath("Resources/Tilesets/Nature Summer Tileset.json")
+        natureSummerTileset:LoadTileset(tilesetFile)
+        LoadAssetPack(natureSummerTileset)
+    end
+
+    action LoadAssetPack(AssetPack pack)
+        loadedAssetPacks:Add(pack)
+        if controller not= undefined
+            AddAssetsToTree(pack)
+        end
+    end
+
+    private action AddAssetsToTree(AssetPack pack)
+        TreeItem root
+        root:SetName(pack:GetName())
+        
+        Iterator<text> iterator = pack:GetKeyIterator()
+        Array<text> array
+
+        repeat while iterator:HasNext()
+            array:Add(iterator:Next())
+        end
+
+        array:Sort()
+
+        integer counter = 0
+        repeat while counter < array:GetSize()
+            ItemBlueprint itemBlueprint = pack:GetBlueprint(array:Get(counter))    
+
+            ScenePaletteItem item
+            item:SetItemBlueprint(itemBlueprint)
+            item:SetName(itemBlueprint:GetName())
+            item:SetBehavior(paletteActivationBehavior)
+            
+            root:Add(cast(TreeItem, item))
+            counter = counter + 1
+        end
+
+        Add(root)
+    end
+
+end

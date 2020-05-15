@@ -93,6 +93,7 @@ use Libraries.Development.Environment.Studio.Behaviors.CloseVisualEditorFindDial
 use Libraries.Development.Environment.Studio.Behaviors.SelectionResetScaleBehavior
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTree
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.ScenePalette
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     public constant number VERSION = 2.0
@@ -106,6 +107,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     Control treeNavigatorPane
     ProjectTree projectTree
     SceneTree sceneTree
+    ScenePalette scenePalette
     CodeEditorTabPane codeTabs
     OutputEditorTabPane outputWindow
     Control mainContentPane
@@ -256,6 +258,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     action GetSceneTree returns SceneTree
         return sceneTree
+    end
+
+    action GetScenePalette returns ScenePalette
+        return scenePalette
     end
 
     action GetToolbar returns Toolbar
@@ -683,6 +689,19 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         itemPreviewTable:Add(selectionMoveBackwardStart, selectionMoveBackwardStartBehavior)
         itemPreviewTable:Add(selectionMoveBackwardStop, selectionMoveZStopBehavior)
 
+        itemPreviewTable:Add(selectionRotateYawLeftStart, selectionStartRotatingYawLeftBehavior)
+        itemPreviewTable:Add(selectionRotateYawLeftStop, selectionStopRotatingYawBehavior)
+        itemPreviewTable:Add(selectionRotateYawRightStart, selectionStartRotatingYawRightBehavior)
+        itemPreviewTable:Add(selectionRotateYawRightStop, selectionStopRotatingYawBehavior)
+        itemPreviewTable:Add(selectionRotatePitchUpStart, selectionStartRotatingPitchUpBehavior)
+        itemPreviewTable:Add(selectionRotatePitchUpStop, selectionStopRotatingPitchBehavior)
+        itemPreviewTable:Add(selectionRotatePitchDownStart, selectionStartRotatingPitchDownBehavior)
+        itemPreviewTable:Add(selectionRotatePitchDownStop, selectionStopRotatingPitchBehavior)
+        itemPreviewTable:Add(selectionRotateRollLeftStart, selectionStartRotatingRollLeftBehavior)
+        itemPreviewTable:Add(selectionRotateRollLeftStop, selectionStopRotatingRollBehavior)
+        itemPreviewTable:Add(selectionRotateRollRightStart, selectionStartRotatingRollRightBehavior)
+        itemPreviewTable:Add(selectionRotateRollRightStop, selectionStopRotatingRollBehavior)
+
         itemPreviewTable:Add(selectionScaleUpSet, selectionScaleUpBehavior)
         itemPreviewTable:Add(selectionScaleDownSet, selectionScaleDownBehavior)
         itemPreviewTable:Add(selectionScaleXUpSet, selectionScaleXUpBehavior)
@@ -1000,6 +1019,22 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         sceneTab:SetRelatedItem(scenePane)
         sceneTab:SetFocusTarget(sceneTree)
         treeTabPane:Add(sceneTab)
+
+        Tab paletteTab
+        paletteTab:SetName("Palette")
+        paletteTab:DisplayCloseButton(false)
+        ScrollPane palettePane
+
+        palettePane:SetBackgroundColor(resources:GetBackgroundColor())
+        palettePane:SetName("Palette Pane")
+        palettePane:SetPercentageWidth(1.0)
+        palettePane:SetPercentageHeight(1.0)
+        palettePane:Add(scenePalette)
+        scenePalette:LoadDefaultAssets()
+
+        paletteTab:SetRelatedItem(palettePane)
+        paletteTab:SetFocusTarget(scenePalette)
+        treeTabPane:Add(paletteTab)
 
         treeTabPane:Select(projectsTab)
     end

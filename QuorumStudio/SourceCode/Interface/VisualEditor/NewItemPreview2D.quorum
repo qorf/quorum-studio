@@ -1,5 +1,35 @@
 package Libraries.Development.Environment.Studio.Interface.VisualEditor
+use Libraries.Game.Graphics.Color
 
 class NewItemPreview2D is NewItemPreview, InteractableItem2D
 
+    action Load(VisualSceneController controller, DrawableBlueprint schematic)
+        SetController(controller)
+        SetItemBlueprint(schematic)
+
+        SetName(schematic:GetName() + controller:GetNextNamePostfix(schematic:GetName()))
+        SetDescription(schematic:GetDescription())
+        Load(schematic:GetTexture())
+        SetSize(schematic:GetWidth(), schematic:GetHeight())
+        SetScale(schematic:GetScaleX(), schematic:GetScaleY())
+        SetRotation(schematic:GetRotation())
+        SetColor(schematic:GetColor())
+    end
+
+    action ConvertToDrawable returns Drawable
+        Drawable drawable
+        drawable:Load(me)
+        drawable:SetName(GetName())
+        drawable:SetSize(GetWidth(), GetHeight())
+        drawable:SetScale(GetScaleX(), GetScaleY())
+        drawable:SetRotation(GetRotation())
+        drawable:SetColor(GetColor():Copy())
+        drawable:SetPosition(GetX(), GetY())
+
+        return drawable
+    end
+
+    action CyclePresetColor
+        // TO-DO
+    end
 end

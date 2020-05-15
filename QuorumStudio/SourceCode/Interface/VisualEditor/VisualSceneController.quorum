@@ -18,6 +18,8 @@ use Libraries.Interface.AccessibilityManager
 use Libraries.Interface.Events.FocusListener
 use Libraries.Interface.Events.FocusEvent
 use Libraries.Compute.Vector2
+use Libraries.Game.Graphics.Drawable
+use Libraries.Containers.HashTable
 
 /*
 A class used to represent the 2D space within a Visual Editor tab.
@@ -88,9 +90,11 @@ class VisualSceneController is Control
     integer modelPresetPreview = 0
     integer colorPresetPreview = 0
 
-    integer cubeCounter = 1
-    integer sphereCounter = 1
-    integer cylinderCounter = 1
+    /*
+    Tracks how many times each name has been used from the palette.
+    Used to add numbers to the end of the names of duplicate items.
+    */
+    HashTable<text, integer> nameCounts
 
     // Used for when a movement key is held and the grid lock is enabled.
     number gridMoveTimer = 0
@@ -570,15 +574,56 @@ class VisualSceneController is Control
         NotifySceneChangeListeners(event)
     end
 
-    action CreateNewItemPreview
-        if GetSelectedLayer() is EditorLayer3D
-            NewItemPreview3D preview
-            preview:Load(me)
-            EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
+    action CreateNewItemPreview(ItemBlueprint schematic)
+
+        // Old-style item creation. Will be replaced soon.
+        if schematic = undefined
+            if GetSelectedLayer() is EditorLayer3D
+                NewItemPreview3D preview
+                preview:Load(me)
+                EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
+                layer:Add(preview)
+                preview:Focus()
+            else
+                // TO-DO
+            end
+                return now
+        end
+
+        if schematic is DrawableBlueprint
+            DrawableBlueprint drawableBlueprint = cast(DrawableBlueprint, schematic)
+            if not (GetSelectedLayer() is EditorLayer2D)
+                integer counter = 0
+                boolean found = false
+                repeat while counter < layers:GetSize()
+                    EditorLayer layer = layers:Get(counter)
+                    if layer is EditorLayer2D
+                        SetSelectedLayer(layer)
+                        counter = layers:GetSize()
+                        found = true
+                    end
+                    counter = counter + 1
+                end
+
+                if not found
+                    return now
+                end
+            end
+
+            EditorLayer2D layer = cast(EditorLayer2D, GetSelectedLayer())
+
+            if drawableBlueprint:GetPreferredGridWidth() not= 0 and drawableBlueprint:GetPreferredGridHeight() not= 0
+                // TO-DO: Consider both width and height when setting grid unit size.
+                layer:SetGridUnitSize(drawableBlueprint:GetPreferredGridWidth())
+                layer:UpdateGridPosition()
+            end
+
+            NewItemPreview2D preview
+            preview:Load(me, drawableBlueprint)
+            // TO-DO: Position preview to match cursor
+
             layer:Add(preview)
             preview:Focus()
-        else
-            // TO-DO
         end
     end
 
@@ -590,12 +635,11 @@ class VisualSceneController is Control
 
             previewScale = preview3D:GetScale()
         else
-            // TO-DO
+            NewItemPreview2D preview2D = cast(NewItemPreview2D, preview)
+            EditorLayer2D layer = cast(EditorLayer2D, GetSelectedLayer())
+            layer:Remove(preview2D)
         end
 
-        // This Dispose call currently does nothing, but if there are any
-        // resources that need to be cleaned up, it should be done here.
-        preview:Dispose()
         Focus()
 
         NotifyAccessibility(me, "Cancelled placement")
@@ -612,11 +656,11 @@ class VisualSceneController is Control
 
     action GetDefaultItemName(integer type) returns text
         if type = 0
-            return "Box " + cubeCounter
+            return "Box"
         elseif type = 1
-            return "Sphere " + sphereCounter
+            return "Sphere"
         elseif type = 2
-            return "Cylinder " + cylinderCounter
+            return "Cylinder"
         end
 
         return "Item"
@@ -625,6 +669,10 @@ class VisualSceneController is Control
     action ConfirmNewItemPreview(NewItemPreview newItem)
         Item result = undefined
         EditorLayer resultLayer = undefined
+
+        if newItem:GetItemBlueprint() not= undefined
+            IncrementNameCount(newItem:GetItemBlueprint():GetName())
+        end
 
         if newItem is NewItemPreview3D
             NewItemPreview3D preview = cast(NewItemPreview3D, newItem)
@@ -641,13 +689,13 @@ class VisualSceneController is Control
             boolean usingDefaultName = (GetDefaultItemName(type) = model:GetName())
 
             if usingDefaultName
-                if type = 0
-                    cubeCounter = cubeCounter + 1
-                elseif type = 1
-                    sphereCounter = sphereCounter + 1
-                elseif type = 2
-                    cylinderCounter = cylinderCounter + 1
-                end
+//                if type = 0
+//                    cubeCounter = cubeCounter + 1
+//                elseif type = 1
+//                    sphereCounter = sphereCounter + 1
+//                elseif type = 2
+//                    cylinderCounter = cylinderCounter + 1
+//                end
 
                 preview:SetName(GetDefaultItemName(type))
                 SetSelectedItem(preview)
@@ -655,7 +703,13 @@ class VisualSceneController is Control
 
             previewScale = preview:GetScale()
         elseif newItem is NewItemPreview2D
-            // TO-DO
+            NewItemPreview2D preview = cast(NewItemPreview2D, newItem)
+            Drawable drawable = preview:ConvertToDrawable()
+            result = drawable
+
+            EditorLayer2D layer = cast(EditorLayer2D, GetSelectedLayer())
+            resultLayer = layer
+            layer:Add(drawable)
         end
 
         // This Dispose call currently does nothing, but if there are any
@@ -668,6 +722,16 @@ class VisualSceneController is Control
         SceneChangeEvent event
         event:Set(me, result, undefined, resultLayer, event:ADDED)
         NotifySceneChangeListeners(event)
+
+        if newItem:GetItemBlueprint() not= undefined
+            text name = newItem:GetItemBlueprint():GetName()
+            newItem:SetName(name + GetNextNamePostfix(name))
+            if newItem is NewItemPreview3D
+                item3dPropertiesDialog:SetFields(cast(NewItemPreview3D, newItem))
+            elseif newItem is NewItemPreview2D
+                item2dPropertiesDialog:SetFields(cast(NewItemPreview2D, newItem))
+            end
+        end
     end
 
     action AddLayer(EditorLayer layer)
@@ -979,6 +1043,26 @@ class VisualSceneController is Control
         end
 
         return undefined
+    end
+
+    action GetNameCount(text name) returns integer
+        if nameCounts:HasKey(name)
+            return nameCounts:GetValue(name)
+        end
+        return 0
+    end
+
+    action IncrementNameCount(text name)
+        nameCounts:Set(name, GetNameCount(name) + 1)
+    end
+
+    action GetNextNamePostfix(text name) returns text
+        integer count = GetNameCount(name)
+        if count = 0
+            return ""
+        end
+
+        return " " + count
     end
 
     action AddSceneChangeListener(SceneChangeListener listener)
