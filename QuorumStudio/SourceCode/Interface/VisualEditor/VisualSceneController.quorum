@@ -799,11 +799,18 @@ class VisualSceneController is Control
         forwardDirection = direction
 
         if IsCameraMoving() = false
-            Vector3 temp = GetSelectedLayer():GetCamera():GetPosition()
-            number x = math:Round(temp:GetX(), 2)
-            number y = math:Round(temp:GetY(), 2)
-            number z = math:Round(temp:GetZ(), 2)
-            NotifyAccessibility(me, "Camera " + x + ", " + y + ", " + z)
+            if GetSelectedLayer() is EditorLayer2D
+                Vector3 temp = GetSelectedLayer():GetCamera():GetPosition()
+                number x = math:Round(temp:GetX(), 1)
+                number y = math:Round(temp:GetY(), 1)
+                NotifyAccessibility(me, "Camera " + x + ", " + y)
+            else
+                Vector3 temp = GetSelectedLayer():GetCamera():GetPosition()
+                number x = math:Round(temp:GetX(), 2)
+                number y = math:Round(temp:GetY(), 2)
+                number z = math:Round(temp:GetZ(), 2)
+                NotifyAccessibility(me, "Camera " + x + ", " + y + ", " + z)
+            end
         end
     end
 
@@ -815,11 +822,18 @@ class VisualSceneController is Control
         strafeDirection = direction
 
         if IsCameraMoving() = false
-            Vector3 temp = GetSelectedLayer():GetCamera():GetPosition()
-            number x = math:Round(temp:GetX(), 2)
-            number y = math:Round(temp:GetY(), 2)
-            number z = math:Round(temp:GetZ(), 2)
-            NotifyAccessibility(me, "Camera " + x + ", " + y + ", " + z)
+            if GetSelectedLayer() is EditorLayer2D
+                Vector3 temp = GetSelectedLayer():GetCamera():GetPosition()
+                number x = math:Round(temp:GetX(), 1)
+                number y = math:Round(temp:GetY(), 1)
+                NotifyAccessibility(me, "Camera " + x + ", " + y)
+            else
+                Vector3 temp = GetSelectedLayer():GetCamera():GetPosition()
+                number x = math:Round(temp:GetX(), 2)
+                number y = math:Round(temp:GetY(), 2)
+                number z = math:Round(temp:GetZ(), 2)
+                NotifyAccessibility(me, "Camera " + x + ", " + y + ", " + z)
+            end
         end
     end
 
@@ -831,11 +845,18 @@ class VisualSceneController is Control
         verticalDirection = direction
 
         if IsCameraMoving() = false
-            Vector3 temp = GetSelectedLayer():GetCamera():GetPosition()
-            number x = math:Round(temp:GetX(), 2)
-            number y = math:Round(temp:GetY(), 2)
-            number z = math:Round(temp:GetZ(), 2)
-            NotifyAccessibility(me, "Camera " + x + ", " + y + ", " + z)
+            if GetSelectedLayer() is EditorLayer2D
+                Vector3 temp = GetSelectedLayer():GetCamera():GetPosition()
+                number x = math:Round(temp:GetX(), 1)
+                number y = math:Round(temp:GetY(), 1)
+                NotifyAccessibility(me, "Camera " + x + ", " + y)
+            else
+                Vector3 temp = GetSelectedLayer():GetCamera():GetPosition()
+                number x = math:Round(temp:GetX(), 2)
+                number y = math:Round(temp:GetY(), 2)
+                number z = math:Round(temp:GetZ(), 2)
+                NotifyAccessibility(me, "Camera " + x + ", " + y + ", " + z)
+            end
         end
     end
 
@@ -883,8 +904,12 @@ class VisualSceneController is Control
         selectionZDirection = direction
 
         if direction = 0
-            if manager:GetFocus() is InteractableItem
-                InteractableItem focus = cast(InteractableItem, manager:GetFocus())
+            if manager:GetFocus() is InteractableItem2D
+                InteractableItem focus = cast(InteractableItem2D, manager:GetFocus())
+                number y = math:Round(focus:GetGlobalY(), 2)
+                NotifyAccessibility(focus, "y " + y)
+            elseif manager:GetFocus() is InteractableItem3D
+                InteractableItem focus = cast(InteractableItem3D, manager:GetFocus())
                 number z = math:Round(focus:GetGlobalZ(), 2)
                 NotifyAccessibility(focus, "z " + z)
             end
