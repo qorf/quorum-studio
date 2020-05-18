@@ -1,7 +1,4 @@
 use Libraries.Game.Game
-use Libraries.Data.Formats.JavaScriptObjectNotation
-use Libraries.Containers.Iterator
-use Libraries.Game.Scenes.DefaultSceneManager
 use Libraries.Game.Scenes.Scene
 use Libraries.System.File
 
@@ -22,26 +19,12 @@ class Main is Game
     end
 
     /*
-        This action sets up the default values for a game. For example, we might
-        use the Libraries.Game.Graphics.Drawable class to load up an image or 
-        a shape. Or, we might add a Libraries.Interface.Button for making something clickable
-        or a Libraries.Interface.TextBox for gathering user input in a game.
+        Inside of this template, we load up a scene from on disk. The game automatically knows and can read these files.
     */
     action CreateGame
-        DefaultSceneManager manager
-        Scene scene
-
         File file
-        file:SetAbsolutePath("/Users/stefika/Quorum Studio/Scene/Scenes/Scene2.qs")
-        scene:Load(file)
-
-        JavaScriptObjectNotation json
-        json:Read(file)
-
-        json:SetPrettyPrint(true)
-        output json:ToText()
-
-        manager:Load(scene)
+        file:SetPath("Scenes/Scene.qs")
+        LoadScene(file)
     end
 
     /*
