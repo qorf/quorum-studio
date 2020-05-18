@@ -67,6 +67,9 @@ class NewProjectDialog is Dialog, SelectionListener
     TreeItem physics3D
     TreeItem skybox
 
+    TreeItem scenesParent
+    TreeItem blankScene
+
     TreeItem legoParent
     TreeItem lego
     TreeItem legoMove
@@ -112,6 +115,15 @@ game object, setting up its actions for use in the
 game, and starting an application window that a game 
 will draw in. Auditory games may also be built using 
 the same framework."
+
+    text blankSceneDescription = 
+"
+This project creates a default scene file, along with 
+adding code into the main game to load the scene. This 
+ensures that all physics properties, graphics, sounds, 
+and other attributes created with the visual editor are 
+automatically loaded and placed into the game.
+"
     text legoDescription = 
 "This project creates a default Lego Quorum 
 application. In this case, if a Lego robot is 
@@ -431,6 +443,14 @@ Glassfish)."
         skybox:SetName("Skybox")
         skybox:SetDescription(skyboxDescription)
 
+        applicationsTree:Add(scenesParent)
+        scenesParent:SetName("Scenes")
+        scenesParent:SetDescription("")
+        scenesParent:Add(blankScene)
+        blankScene:SetName("Blank Scene")
+        blankScene:SetDescription(blankSceneDescription)
+        
+
         applicationsTree:Add(legoParent)
         legoParent:SetName("LEGO")
         legoParent:SetDescription("")
@@ -484,6 +504,7 @@ Glassfish)."
         descriptions:Add(userInterface, userInterfaceDescription)
         descriptions:Add(sineWaves, sineWavesDescription)
         descriptions:Add(skybox, skyboxDescription)
+        descriptions:Add(blankScene, blankSceneDescription)
     end
 
     private action SetupIconsList()
@@ -570,6 +591,9 @@ Glassfish)."
         iconsList:Add(skybox, skyboxIcon)
         iconsList:Add(userInterface, userInterfaceIcon)
         iconsList:Add(webServer, serverIcon)
+
+        //scenes
+        iconsList:Add(blankScene, gameIcon)
     end
 
     action SetCurrentDescription(TreeItem item)        
@@ -595,6 +619,7 @@ Glassfish)."
         templates:Add(skybox, "Templates/Other/Skybox")
         templates:Add(userInterface, "Templates/Other/UserInterface")
         templates:Add(webServer, "Templates/Other/WebServer") 
+        templates:Add(blankScene, "Templates/Scenes/Blank")
     end
 
     private action SetCurrentProjectIcon(TreeItem item)
@@ -660,6 +685,9 @@ Glassfish)."
         skybox:SetBehavior(listBehavior)
         userInterface:SetBehavior(listBehavior)
         webServer:SetBehavior(listBehavior) 
+
+        //scenes
+        blankScene:SetBehavior(listBehavior)
     end
 
     action GetLocation returns text
@@ -748,9 +776,6 @@ Glassfish)."
     action OnShow
         generalParent:Open()
         blank:Select()
-        //SetCurrentProjectIcon(otherParent)
-        //SetCurrentDescription(generalParent)
-        //nameField:SetText("")
         locationField:SetText(studio:GetProjectsFolder():GetAbsolutePath())
         applicationsTree:Focus()
     end
