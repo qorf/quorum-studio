@@ -15,8 +15,17 @@ class SceneTreeItemActivationBehavior is QuorumStudioBehavior
 
         SceneTreeItem treeItem = cast(SceneTreeItem, event:GetItem())
         Item item = treeItem:GetSceneItem()
-        if item = undefined
-            return now
+
+        //If there is no item, check if a layer is active and if so, jump to it
+        if item = undefined and treeItem:GetSceneLayer() not= undefined
+            text value = treeItem:GetName()
+            VisualSceneController controller = treeItem:GetSceneController()
+            if controller not= undefined
+                controller:SetSelectedLayer(treeItem:GetSceneLayer())
+                controller:Focus()
+            end
+        elseif item = undefined and treeItem:GetSceneLayer() = undefined
+            return now //there is no selected layer, so bail.
         end
 
         VisualSceneController controller = treeItem:GetSceneController()
@@ -30,5 +39,4 @@ class SceneTreeItemActivationBehavior is QuorumStudioBehavior
             end
         end
     end
-
 end
