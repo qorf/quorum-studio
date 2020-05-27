@@ -23,6 +23,9 @@ use Libraries.Interface.Controls.Column
 use Libraries.Interface.Controls.Cell
 use Libraries.Language.Compile.CompilerError
 use Libraries.Development.Environment.Studio.Behaviors.JumpToErrorBehavior
+use Libraries.Game.InputTable
+use Libraries.Game.InputSet
+use Libraries.Interface.Events.KeyboardEvent
 
 class ErrorTab is Tab
     BuildManager manager = undefined
@@ -109,6 +112,29 @@ class ErrorTab is Tab
         SetRelatedItem(GetPane())
         DisplayCloseButton(true)
         SetFocusTarget(table)
+
+        KeyboardEvent keys
+        InputTable inputTable = table:CopyAndActivateInputTable("CompilerErrorSpreadsheetInputTable")
+        InputSet metaX
+        metaX:SetKeyboardInput(keys:X)
+        metaX:AddModifier(metaX:META)
+
+        InputSet metaV
+        metaV:SetKeyboardInput(keys:V)
+        metaV:AddModifier(metaV:META)
+
+        InputSet ctrlX
+        ctrlX:SetKeyboardInput(keys:X)
+        ctrlX:AddModifier(ctrlX:CONTROL)
+
+        InputSet ctrlV
+        ctrlV:SetKeyboardInput(keys:V)
+        ctrlV:AddModifier(ctrlV:CONTROL)
+
+        inputTable:RemoveKey(metaX)
+        inputTable:RemoveKey(metaV)
+        inputTable:RemoveKey(ctrlX)
+        inputTable:RemoveKey(ctrlV)
     end
 
     action Empty 
