@@ -9,12 +9,15 @@ use Libraries.System.File
 use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Game.Graphics.Texture
 use Libraries.Game.Graphics.Color
+use Libraries.Containers.Array
 use Libraries.Game.Scenes.SceneProperties
 
 class AssetPack
 
     text name = "Asset Pack"
     HashTable<text, ItemBlueprint> blueprints
+    HashTable<text, Array<ItemBlueprint>> categories
+    public constant text DEFAULT = "Default"
 
     action Add(ImageSheet sheet)
         // TO-DO
@@ -22,6 +25,7 @@ class AssetPack
 
     action Add(Drawable drawable)
         blueprints:Add(drawable:GetName(), DrawableToBlueprint(drawable))
+        AddToCategory(DEFAULT, DrawableToBlueprint(drawable))
     end
 
     action LoadTileset(File file)
@@ -47,17 +51,47 @@ class AssetPack
             TextureRegion region
             integer x = tile:GetInteger("X")
             integer y = tile:GetInteger("Y")
-            region:LoadTextureRegion(texture, x * width, y * height, width, height)
+            integer sizeX = 1
+            integer sizeY = 1
+            if tile:HasValue("SizeX")
+                sizeX = tile:GetInteger("SizeX")
+            end
+
+            if tile:HasValue("SizeY")
+                sizeY = tile:GetInteger("SizeY")
+            end
+            region:LoadTextureRegion(texture, x * width, y * height, width * sizeX, height * sizeY)
             
             schematic:SetName(tile:GetValue("Name"))
             schematic:SetDescription(tile:GetValue("Description"))
             schematic:SetTexture(region)
-            schematic:SetSize(width, height)
+            schematic:SetSize(width * sizeX, height * sizeY)
             schematic:SetColor(color:White())
             schematic:SetPreferredGridWidth(width)
             schematic:SetPreferredGridHeight(height)
             schematic:SetDrawableType(properties:CUSTOM)
             blueprints:Add(schematic:GetName(), schematic)
+
+            text category = DEFAULT
+            boolean hasCategory = tile:HasValue("Category")
+            if hasCategory
+                category = tile:GetValue("Category")
+            end
+            AddToCategory(category, schematic)
+        end
+    end
+
+    private action AddToCategory(text category, ItemBlueprint schematic)
+        //add to the category keys
+        boolean hasCatInHash = categories:HasKey(category)
+        if hasCatInHash //get the array and add to it
+            Array<ItemBlueprint> array = categories:GetValue(category)
+            array:Add(schematic)
+        else
+            Array<ItemBlueprint> array
+            array:Add(schematic)
+
+            categories:Add(category, array)
         end
     end
 
@@ -81,6 +115,26 @@ class AssetPack
 
     action GetBlueprint(text name) returns ItemBlueprint
         return blueprints:GetValue(name)
+    end
+
+    action GetCategoryKeyIterator returns Iterator<text>
+        return categories:GetKeyIterator()
+    end
+
+    action GetDefaultCategory returns Iterator<ItemBlueprint>
+        Array<ItemBlueprint> array = categories:GetValue(DEFAULT)
+        if array not= undefined
+            return array:GetIterator()
+        end
+        return undefined
+    end
+
+    action GetCategory(text category) returns Array<ItemBlueprint>
+        Array<ItemBlueprint> array = categories:GetValue(category)
+        if array not= undefined
+            return array
+        end
+        return undefined
     end
 
     action GetKeyIterator returns Iterator<text>

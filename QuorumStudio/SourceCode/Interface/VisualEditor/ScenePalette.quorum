@@ -10,7 +10,7 @@ use Libraries.Development.Environment.Studio.Behaviors.PaletteCreatePreviewBehav
 use Libraries.System.File
 
 class ScenePalette is Palette
-
+    ItemBlueprintComparison itemComparison
     VisualSceneController controller = undefined
 
     // A single Item indicating that no scene is loaded.
@@ -53,7 +53,7 @@ class ScenePalette is Palette
 
     action LoadDefaultAssets
         AssetPack primitives2D
-        primitives2D:SetName("2D Primitives")
+        primitives2D:SetName("Primitives 2D")
 
         Color color
 
@@ -69,11 +69,25 @@ class ScenePalette is Palette
 
         LoadAssetPack(primitives2D)
 
-        AssetPack natureSummerTileset
-        File tilesetFile
-        tilesetFile:SetPath("Resources/Tilesets/Nature Summer Tileset.json")
-        natureSummerTileset:LoadTileset(tilesetFile)
-        LoadAssetPack(natureSummerTileset)
+        //now load any assets from the tilesets folder
+        File tilesetFolder
+        tilesetFolder:SetPath("Resources/Tilesets")
+        Array<File> files = tilesetFolder:GetDirectoryListing()
+        i = 0
+        repeat while files not= undefined and i < files:GetSize()
+            File file = files:Get(i)
+            text ext = file:GetFileExtension()
+            if ext = "json"
+                //if loading a user tileset fails, just don't load it.
+                check
+                    AssetPack tileset
+                    tileset:LoadTileset(file)
+                    LoadAssetPack(tileset)
+                detect e
+                end
+            end
+            i = i + 1
+        end
     end
 
     action LoadAssetPack(AssetPack pack)
@@ -83,31 +97,81 @@ class ScenePalette is Palette
         end
     end
 
-    private action AddAssetsToTree(AssetPack pack)
-        TreeItem root
-        root:SetName(pack:GetName())
-        
-        Iterator<text> iterator = pack:GetKeyIterator()
-        Array<text> array
-
-        repeat while iterator:HasNext()
-            array:Add(iterator:Next())
-        end
-
-        array:Sort()
-
+    private action AddItemsToTreeItem(TreeItem treeItem, Array<ItemBlueprint> array)
         integer counter = 0
         repeat while counter < array:GetSize()
-            ItemBlueprint itemBlueprint = pack:GetBlueprint(array:Get(counter))    
+            ItemBlueprint itemBlueprint = array:Get(counter)   
 
             ScenePaletteItem item
             item:SetItemBlueprint(itemBlueprint)
             item:SetName(itemBlueprint:GetName())
             item:SetBehavior(paletteActivationBehavior)
             
-            root:Add(cast(TreeItem, item))
+            treeItem:Add(cast(TreeItem, item))
             counter = counter + 1
         end
+    end
+
+    private action AddAssetsToTree(AssetPack pack)
+        TreeItem root
+        root:SetName(pack:GetName())
+
+        //first get all the categories and sort them
+        Iterator<text> categoryIterator = pack:GetCategoryKeyIterator()
+        Array<text> categoryKeys
+
+        repeat while categoryIterator:HasNext()
+            categoryKeys:Add(categoryIterator:Next())
+        end
+
+        categoryKeys:Sort()
+
+        //now make new tree values and fill up the categories
+        i = 0
+        repeat while i < categoryKeys:GetSize()
+            text value = categoryKeys:Get(i)
+            //handle the default pack differently, at the end
+            if value not= pack:DEFAULT
+                TreeItem cat //cat up a tree? The joke is solid. Judge if you want.
+                cat:SetName(value)
+    
+                Array<ItemBlueprint> items = pack:GetCategory(value)
+                items:Sort(itemComparison)
+                AddItemsToTreeItem(cat, items)
+                root:Add(cat) //add a cat to the tree
+            end
+
+            i = i + 1
+        end
+
+        //now add in all the default items.
+        //there may not be any items in the default set, so ignore this if there isn't.
+        Array<ItemBlueprint> items = pack:GetCategory(pack:DEFAULT)
+        if items not= undefined
+            items:Sort(itemComparison)
+            AddItemsToTreeItem(root, items)
+        end
+//        Iterator<text> iterator = pack:GetKeyIterator()
+//        Array<text> array
+//
+//        repeat while iterator:HasNext()
+//            array:Add(iterator:Next())
+//        end
+//
+//        array:Sort()
+//
+//        integer counter = 0
+//        repeat while counter < array:GetSize()
+//            ItemBlueprint itemBlueprint = pack:GetBlueprint(array:Get(counter))    
+//
+//            ScenePaletteItem item
+//            item:SetItemBlueprint(itemBlueprint)
+//            item:SetName(itemBlueprint:GetName())
+//            item:SetBehavior(paletteActivationBehavior)
+//            
+//            root:Add(cast(TreeItem, item))
+//            counter = counter + 1
+//        end
 
         Add(root)
     end
