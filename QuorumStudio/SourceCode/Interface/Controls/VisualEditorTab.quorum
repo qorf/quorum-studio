@@ -122,6 +122,17 @@ class VisualEditorTab is Tab, DefaultSceneManager
         return false
     end
 
+    private action CustomSaveCameraProperty(Layer layer, Camera camera, text key, JavaScriptObjectNotation json) returns boolean
+        SceneProperties properties
+        if key = properties:SIZE and layer is EditorLayer2D
+            EditorLayer2D layer2D = cast(EditorLayer2D, layer)
+            json:Add(properties:SIZE, NewJsonArray(layer2D:GetCameraPreviewWidth(), layer2D:GetCameraPreviewHeight()))
+            return true
+        end
+
+        return false
+    end
+
     action Save
         Array<EditorLayer> layers = GetSceneController():GetSceneLayers()
         Scene scene = Save(layers)

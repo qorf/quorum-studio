@@ -9,6 +9,7 @@ use Libraries.System.File
 use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Game.Graphics.Texture
 use Libraries.Game.Graphics.Color
+use Libraries.Game.Scenes.SceneProperties
 
 class AssetPack
 
@@ -36,6 +37,7 @@ class AssetPack
         texture:LoadFromFile(filePath)
 
         Color color
+        SceneProperties properties
 
         JavaScriptObjectNotation tiles = json:GetObject("Tiles")
         Iterator<JavaScriptObjectNotation> iterator = tiles:GetIterator()
@@ -54,6 +56,7 @@ class AssetPack
             schematic:SetColor(color:White())
             schematic:SetPreferredGridWidth(width)
             schematic:SetPreferredGridHeight(height)
+            schematic:SetDrawableType(properties:CUSTOM)
             blueprints:Add(schematic:GetName(), schematic)
         end
     end
@@ -70,6 +73,8 @@ class AssetPack
         TextureRegion region
         region:CopyTextureRegion(drawable)
         result:SetTexture(region)
+
+        result:SetDrawableType(drawable:GetDrawableType())
 
         return result
     end

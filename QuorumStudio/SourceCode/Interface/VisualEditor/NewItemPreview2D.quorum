@@ -25,6 +25,14 @@ class NewItemPreview2D is NewItemPreview, InteractableItem2D
         drawable:SetRotation(GetRotation())
         drawable:SetColor(GetColor():Copy())
         drawable:SetPosition(GetX(), GetY())
+        
+        ItemBlueprint itemBlueprint = GetItemBlueprint()
+        if itemBlueprint is DrawableBlueprint
+            DrawableBlueprint schematic = cast(DrawableBlueprint, itemBlueprint)
+            if schematic:GetDrawableType() >= 0
+                drawable:SetDrawableType(schematic:GetDrawableType())
+            end
+        end
 
         return drawable
     end
