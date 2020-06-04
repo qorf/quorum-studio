@@ -5,6 +5,7 @@ use Libraries.Interface.Events.ResizeEvent
 use Libraries.Game.Graphics.Camera
 use Libraries.Interface.Events.MouseEvent
 use Libraries.Interface.Item
+use Libraries.Game.Graphics.OrthographicCamera
 
 class EditorLayer2D is Layer2D, EditorLayer
 
@@ -14,6 +15,8 @@ class EditorLayer2D is Layer2D, EditorLayer
     you loaded the scene into a game and ran it outside of the editor.
     */
     CameraPreview2D preview
+
+    EditorCursor2D cursor
 
     Grid2D grid
     boolean gridSnapEnabled = true
@@ -27,6 +30,9 @@ class EditorLayer2D is Layer2D, EditorLayer
         grid:SetGridSize(GetCamera():GetWidth() + grid:GetGridUnitSize(), GetCamera():GetHeight() + grid:GetGridUnitSize())
         Add(grid)
         UpdateGridPosition()
+
+        cursor:Load(me)
+        Add(cursor)
 
         ShowEditorComponents(false)
     end
@@ -100,6 +106,7 @@ class EditorLayer2D is Layer2D, EditorLayer
 
     action SetGridUnitSize(number units)
         grid:SetGridUnitSize(cast(integer, units))
+        cursor:SetGridUnitSize(cast(integer, units))
     end
 
     action GetGridUnitSize returns number
@@ -124,8 +131,14 @@ class EditorLayer2D is Layer2D, EditorLayer
 
     action UpdateGridPosition
         Camera camera = GetCamera()
-        number x = camera:GetPosition():GetX() - camera:GetWidth() / 2.0
-        number y = camera:GetPosition():GetY() - camera:GetHeight() / 2.0
+        number zoom = 1
+        if camera is OrthographicCamera
+            OrthographicCamera orthographic = cast(OrthographicCamera, camera)
+            zoom = orthographic:GetZoom()
+        end
+
+        number x = camera:GetPosition():GetX() - (camera:GetWidth() / zoom) / 2.0
+        number y = camera:GetPosition():GetY() - (camera:GetHeight() / zoom) / 2.0
 
         if not grid:IsGridCoordinate(x)
             x = grid:GetPreviousGridCoordinate(x)
@@ -137,6 +150,34 @@ class EditorLayer2D is Layer2D, EditorLayer
         grid:SetPosition(x, y)
     end
 
+    action UpdateGridSize
+        Camera camera = GetCamera()
+        number width = camera:GetWidth()
+        number height = camera:GetHeight()
+
+        if camera is OrthographicCamera
+            OrthographicCamera orthographic = cast(OrthographicCamera, camera)
+            width = width / orthographic:GetZoom()
+            height = height / orthographic:GetZoom()
+        end
+
+        grid:SetGridSize(width, height)
+
+        UpdateGridPosition()
+    end
+
+    action GetCursor returns EditorCursor
+        return cursor
+    end
+
+    action ShowCursor(boolean visible)
+        if visible
+            cursor:Show()
+        else
+            cursor:Hide()
+        end
+    end
+
     action ShowEditorComponents(boolean shouldShow)
         if shouldShow
             preview:Show()
@@ -145,6 +186,7 @@ class EditorLayer2D is Layer2D, EditorLayer
         else
             preview:Hide()
             grid:Hide()
+            cursor:Hide()
         end
     end
 end

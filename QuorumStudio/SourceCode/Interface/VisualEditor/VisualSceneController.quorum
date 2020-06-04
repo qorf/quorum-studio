@@ -103,6 +103,7 @@ class VisualSceneController is Control
     // A reference to the property dialogs for this controller. Provided from the tab.
     Item3DPropertiesDialog item3dPropertiesDialog = undefined
     Item2DPropertiesDialog item2dPropertiesDialog = undefined
+    Camera2DPropertiesDialog camera2dPropertiesDialog = undefined
 
     // A reference to the find dialog for this controller.
     VisualEditorFindDialog findDialog
@@ -186,6 +187,14 @@ class VisualSceneController is Control
 
     action SetProperties2DDialog(Item2DPropertiesDialog dialog)
         item2dPropertiesDialog = dialog
+    end
+
+    action SetCameraProperties2DDialog(Camera2DPropertiesDialog dialog)
+        camera2dPropertiesDialog = dialog
+    end
+
+    action GetCameraProperties2DDialog returns Camera2DPropertiesDialog
+        return camera2dPropertiesDialog
     end
 
     action GetProperties2DDialog returns Item2DPropertiesDialog
@@ -346,10 +355,19 @@ class VisualSceneController is Control
                 layer:UpdateGridPosition()
             end
     
-            if manager:GetFocus() is InteractableItem2D
+            if IsFocused() or manager:GetFocus() is InteractableItem2D
                 moved = false
+                boolean isCursor = false
                 workVector2:Set(0, 0)
-                InteractableItem2D focus = cast(InteractableItem2D, manager:GetFocus())
+
+                Item2D target = undefined
+                
+                if IsFocused()
+                    isCursor = true
+                    target = cast(Item2D, cast(Object, layer:GetCursor()))
+                else
+                    target = cast(Item2D, manager:GetFocus())
+                end
     
                 boolean gridSnapEnabled = IsGridSnapping()
     
@@ -359,21 +377,21 @@ class VisualSceneController is Control
                         moved = true
                     end
     
-                    if selectionZDirection not= 0
-                        workVector2:SetY(selectionZDirection * SELECTION_DIRECTIONAL_SPEED_2D * seconds)
+                    if selectionYDirection not= 0
+                        workVector2:SetY(selectionYDirection * SELECTION_DIRECTIONAL_SPEED_2D * seconds)
                         moved = true
                     end
     
                     if moved
-                        focus:Move(workVector2)
+                        target:Move(workVector2)
                     end
                 else
-                    if selectionXDirection not= 0 or selectionYDirection not= 0 or selectionZDirection not= 0
+                    if selectionXDirection not= 0 or selectionYDirection not= 0
                         if gridMoveTimer <= 0
                             gridMoveTimer = gridMoveTimerMax
     
-                            number x = focus:GetGlobalX()
-                            number y = focus:GetGlobalY()
+                            number x = target:GetGlobalX()
+                            number y = target:GetGlobalY()
     
                             if selectionXDirection < 0
                                 x = layer:GetPreviousGridCoordinate(x)
@@ -381,13 +399,13 @@ class VisualSceneController is Control
                                 x = layer:GetNextGridCoordinate(x)
                             end
     
-                            if selectionZDirection < 0
+                            if selectionYDirection < 0
                                 y = layer:GetPreviousGridCoordinate(y)
-                            elseif selectionZDirection > 0
+                            elseif selectionYDirection > 0
                                 y = layer:GetNextGridCoordinate(y)
                             end
     
-                            focus:Move(x - focus:GetGlobalX(), y - focus:GetGlobalY())
+                            target:Move(x - target:GetGlobalX(), y - target:GetGlobalY())
                         else
                             gridMoveTimer = gridMoveTimer - seconds
                         end
@@ -396,10 +414,10 @@ class VisualSceneController is Control
                     end
                 end
 
-                if GetSelectionRollDirection() not= 0
-                    number angle = focus:GetRotation()
+                if GetSelectionRollDirection() not= 0 and isCursor = false
+                    number angle = target:GetRotation()
                     angle = angle + (seconds * selectionRollDirection * SELECTION_ROTATIONAL_SPEED_2D)
-                    focus:SetRotation(angle)
+                    target:SetRotation(angle)
                 end
             end
 
@@ -643,6 +661,24 @@ class VisualSceneController is Control
         Focus()
 
         NotifyAccessibility(me, "Cancelled placement")
+    end
+
+    action SelectEditorCamera(EditorLayer layer)
+        if layer is EditorLayer2D
+            EditorLayer2D layer2D = cast(EditorLayer2D, layer)
+            CameraItem2D item
+            item:Load(layer:GetCamera(), me)
+            layer2D:Add(item)
+            SetSelection(layer2D, item)
+
+            item:Focus()
+        elseif layer is EditorLayer3D
+            // TO-DO
+        end
+    end
+
+    action DeselectEditorCamera
+
     end
 
     Matrix4 previewTransform = undefined
@@ -1033,6 +1069,15 @@ class VisualSceneController is Control
         selection:SetSelection(layer, undefined)
     end
 
+    action SetSelection(EditorLayer layer, InteractableItem item)
+        if layer = selection:GetSelectedLayer() and item = selection:GetSelectedItem()
+            return now
+        end
+
+        EmptyFilteredItems(false)
+        selection:SetSelection(layer, item)
+    end
+
     action GetSelectedItem returns InteractableItem
         return selection:GetSelectedItem()
     end
@@ -1047,6 +1092,17 @@ class VisualSceneController is Control
 
     action GainedFocus(FocusEvent event)
         SetSelectedItem(undefined)
+        EditorLayer layer = GetSelectedLayer()
+        if layer not= undefined
+            layer:ShowCursor(true)
+        end
+    end
+
+    action LostFocus(FocusEvent event)
+        EditorLayer layer = GetSelectedLayer()
+        if layer not= undefined
+            layer:ShowCursor(false)
+        end
     end
 
     action GetPreviewScale returns Vector3

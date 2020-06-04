@@ -391,6 +391,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         table:SetIdentifier("VisualSceneController")
         KeyMap map = resources:GetKeyMap()
 
+        /*
         InputSet rotateLeftStart = map:GetCameraRotateLeftKey()
         InputSet rotateLeftStop = map:GetCameraRotateLeftKey()
         rotateLeftStop:SetInputTrigger(rotateLeftStop:FINISH)
@@ -470,6 +471,79 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         table:Add(moveUpStop, moveVerticalStopBehavior)
         table:Add(moveDownStart, moveDownStartBehavior)
         table:Add(moveDownStop, moveVerticalStopBehavior)
+        */
+
+        InputSet selectionMoveLeft3DStart = map:GetSelectionMoveLeft3DKey()
+        InputSet selectionMoveLeft3DStop = map:GetSelectionMoveLeft3DKey()
+        selectionMoveLeft3DStop:SetInputTrigger(selectionMoveLeft3DStop:FINISH)
+        InputSet selectionMoveRight3DStart = map:GetSelectionMoveRight3DKey()
+        InputSet selectionMoveRight3DStop = map:GetSelectionMoveRight3DKey()
+        selectionMoveRight3DStop:SetInputTrigger(selectionMoveRight3DStop:FINISH)
+
+        SelectionXDirectionBehavior selectionMoveLeftStartBehavior = behaviors:GetSelectionStartMovingLeftBehavior()
+        SelectionXDirectionBehavior selectionMoveRightStartBehavior = behaviors:GetSelectionStartMovingRightBehavior()
+        SelectionXDirectionBehavior selectionMoveXStopBehavior = behaviors:GetSelectionStopMovingXBehavior()
+
+        table:Add(selectionMoveLeft3DStart, selectionMoveLeftStartBehavior)
+        table:Add(selectionMoveLeft3DStop, selectionMoveXStopBehavior)
+        table:Add(selectionMoveRight3DStart, selectionMoveRightStartBehavior)
+        table:Add(selectionMoveRight3DStop, selectionMoveXStopBehavior)
+
+        InputSet selectionMoveUp3DStart = map:GetSelectionMoveUp3DKey()
+        InputSet selectionMoveUp3DStop = map:GetSelectionMoveUp3DKey()
+        selectionMoveUp3DStop:SetInputTrigger(selectionMoveUp3DStop:FINISH)
+        InputSet selectionMoveDown3DStart = map:GetSelectionMoveDown3DKey()
+        InputSet selectionMoveDown3DStop = map:GetSelectionMoveDown3DKey()
+        selectionMoveDown3DStop:SetInputTrigger(selectionMoveDown3DStop:FINISH)
+
+        SelectionYDirectionBehavior selectionMoveUpStartBehavior = behaviors:GetSelectionStartMovingUpBehavior()
+        SelectionYDirectionBehavior selectionMoveDownStartBehavior = behaviors:GetSelectionStartMovingDownBehavior()
+        SelectionYDirectionBehavior selectionMoveYStopBehavior = behaviors:GetSelectionStopMovingYBehavior()
+
+        table:Add(selectionMoveUp3DStart, selectionMoveUpStartBehavior)
+        table:Add(selectionMoveUp3DStop, selectionMoveYStopBehavior)
+        table:Add(selectionMoveDown3DStart, selectionMoveDownStartBehavior)
+        table:Add(selectionMoveDown3DStop, selectionMoveYStopBehavior)
+
+        InputSet selectionMoveForward3DStart = map:GetSelectionMoveForward3DKey()
+        InputSet selectionMoveForward3DStop = map:GetSelectionMoveForward3DKey()
+        selectionMoveForward3DStop:SetInputTrigger(selectionMoveForward3DStop:FINISH)
+        InputSet selectionMoveBackward3DStart = map:GetSelectionMoveBackward3DKey()
+        InputSet selectionMoveBackward3DStop = map:GetSelectionMoveBackward3DKey()
+        selectionMoveBackward3DStop:SetInputTrigger(selectionMoveBackward3DStop:FINISH)
+
+        SelectionZDirectionBehavior selectionMoveForwardStartBehavior = behaviors:GetSelectionStartMovingForwardBehavior()
+        SelectionZDirectionBehavior selectionMoveBackwardStartBehavior = behaviors:GetSelectionStartMovingBackwardBehavior()
+        SelectionZDirectionBehavior selectionMoveZStopBehavior = behaviors:GetSelectionStopMovingZBehavior()
+
+        table:Add(selectionMoveForward3DStart, selectionMoveForwardStartBehavior)
+        table:Add(selectionMoveForward3DStop, selectionMoveZStopBehavior)
+        table:Add(selectionMoveBackward3DStart, selectionMoveBackwardStartBehavior)
+        table:Add(selectionMoveBackward3DStop, selectionMoveZStopBehavior)
+
+        InputSet selectionMoveLeft2DStart = map:GetSelectionMoveLeft2DKey()
+        InputSet selectionMoveLeft2DStop = map:GetSelectionMoveLeft2DKey()
+        selectionMoveLeft2DStop:SetInputTrigger(selectionMoveLeft2DStop:FINISH)
+        InputSet selectionMoveRight2DStart = map:GetSelectionMoveRight2DKey()
+        InputSet selectionMoveRight2DStop = map:GetSelectionMoveRight2DKey()
+        selectionMoveRight2DStop:SetInputTrigger(selectionMoveRight2DStop:FINISH)
+
+        table:Add(selectionMoveLeft2DStart, selectionMoveLeftStartBehavior)
+        table:Add(selectionMoveLeft2DStop, selectionMoveXStopBehavior)
+        table:Add(selectionMoveRight2DStart, selectionMoveRightStartBehavior)
+        table:Add(selectionMoveRight2DStop, selectionMoveXStopBehavior)
+
+        InputSet selectionMoveUp2DStart = map:GetSelectionMoveUp2DKey()
+        InputSet selectionMoveUp2DStop = map:GetSelectionMoveUp2DKey()
+        selectionMoveUp2DStop:SetInputTrigger(selectionMoveUp2DStop:FINISH)
+        InputSet selectionMoveDown2DStart = map:GetSelectionMoveDown2DKey()
+        InputSet selectionMoveDown2DStop = map:GetSelectionMoveDown2DKey()
+        selectionMoveDown2DStop:SetInputTrigger(selectionMoveDown2DStop:FINISH)
+
+        table:Add(selectionMoveUp2DStart, selectionMoveUpStartBehavior)
+        table:Add(selectionMoveUp2DStop, selectionMoveYStopBehavior)
+        table:Add(selectionMoveDown2DStart, selectionMoveDownStartBehavior)
+        table:Add(selectionMoveDown2DStop, selectionMoveYStopBehavior)
 
         InputSet itemsInView = map:GetCameraItemsInViewKey()
         CameraItemsInViewBehavior itemsInViewBehavior = behaviors:GetCameraItemsInViewBehavior()
@@ -508,58 +582,64 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
         AddInputTable(table)
 
+        InputTable cameraItemTable2D
+        cameraItemTable2D:SetIdentifier("CameraItem2D")
+
+        cameraItemTable2D:Add(reportLocation, reportLocationBehavior)
+
+        cameraItemTable2D:Add(selectionMoveLeft2DStart, selectionMoveLeftStartBehavior)
+        cameraItemTable2D:Add(selectionMoveLeft2DStop, selectionMoveXStopBehavior)
+        cameraItemTable2D:Add(selectionMoveRight2DStart, selectionMoveRightStartBehavior)
+        cameraItemTable2D:Add(selectionMoveRight2DStop, selectionMoveXStopBehavior)
+
+        cameraItemTable2D:Add(selectionMoveUp2DStart, selectionMoveUpStartBehavior)
+        cameraItemTable2D:Add(selectionMoveUp2DStop, selectionMoveYStopBehavior)
+        cameraItemTable2D:Add(selectionMoveDown2DStart, selectionMoveDownStartBehavior)
+        cameraItemTable2D:Add(selectionMoveDown2DStop, selectionMoveYStopBehavior)        
+
+        AddInputTable(cameraItemTable2D)
+
+        InputTable cameraItemTable3D
+        cameraItemTable3D:SetIdentifier("CameraItem3D")
+
+        cameraItemTable3D:Add(reportLocation, reportLocationBehavior)
+
+        cameraItemTable3D:Add(selectionMoveLeft3DStart, selectionMoveLeftStartBehavior)
+        cameraItemTable3D:Add(selectionMoveLeft3DStop, selectionMoveXStopBehavior)
+        cameraItemTable3D:Add(selectionMoveRight3DStart, selectionMoveRightStartBehavior)
+        cameraItemTable3D:Add(selectionMoveRight3DStop, selectionMoveXStopBehavior)
+
+        cameraItemTable3D:Add(selectionMoveUp3DStart, selectionMoveUpStartBehavior)
+        cameraItemTable3D:Add(selectionMoveUp3DStop, selectionMoveYStopBehavior)
+        cameraItemTable3D:Add(selectionMoveDown3DStart, selectionMoveDownStartBehavior)
+        cameraItemTable3D:Add(selectionMoveDown3DStop, selectionMoveYStopBehavior)
+
+        cameraItemTable3D:Add(selectionMoveForward3DStart, selectionMoveForwardStartBehavior)
+        cameraItemTable3D:Add(selectionMoveForward3DStop, selectionMoveZStopBehavior)
+        cameraItemTable3D:Add(selectionMoveBackward3DStart, selectionMoveBackwardStartBehavior)
+        cameraItemTable3D:Add(selectionMoveBackward3DStop, selectionMoveZStopBehavior)
+
+        AddInputTable(cameraItemTable3D)
+
         InputTable selectionTable
-        selectionTable:SetIdentifier("SelectionHighlight")
+        selectionTable:SetIdentifier("SelectionHighlight3D")
         
         selectionTable:Add(reportLocation, reportLocationBehavior)
 
-        InputSet selectionMoveLeftStart = map:GetSelectionMoveLeftKey()
-        InputSet selectionMoveLeftStop = map:GetSelectionMoveLeftKey()
-        selectionMoveLeftStop:SetInputTrigger(selectionMoveLeftStop:FINISH)
-        InputSet selectionMoveRightStart = map:GetSelectionMoveRightKey()
-        InputSet selectionMoveRightStop = map:GetSelectionMoveRightKey()
-        selectionMoveRightStop:SetInputTrigger(selectionMoveRightStop:FINISH)
+        selectionTable:Add(selectionMoveLeft3DStart, selectionMoveLeftStartBehavior)
+        selectionTable:Add(selectionMoveLeft3DStop, selectionMoveXStopBehavior)
+        selectionTable:Add(selectionMoveRight3DStart, selectionMoveRightStartBehavior)
+        selectionTable:Add(selectionMoveRight3DStop, selectionMoveXStopBehavior)
 
-        SelectionXDirectionBehavior selectionMoveLeftStartBehavior = behaviors:GetSelectionStartMovingLeftBehavior()
-        SelectionXDirectionBehavior selectionMoveRightStartBehavior = behaviors:GetSelectionStartMovingRightBehavior()
-        SelectionXDirectionBehavior selectionMoveXStopBehavior = behaviors:GetSelectionStopMovingXBehavior()
+        selectionTable:Add(selectionMoveUp3DStart, selectionMoveUpStartBehavior)
+        selectionTable:Add(selectionMoveUp3DStop, selectionMoveYStopBehavior)
+        selectionTable:Add(selectionMoveDown3DStart, selectionMoveDownStartBehavior)
+        selectionTable:Add(selectionMoveDown3DStop, selectionMoveYStopBehavior)
 
-        selectionTable:Add(selectionMoveLeftStart, selectionMoveLeftStartBehavior)
-        selectionTable:Add(selectionMoveLeftStop, selectionMoveXStopBehavior)
-        selectionTable:Add(selectionMoveRightStart, selectionMoveRightStartBehavior)
-        selectionTable:Add(selectionMoveRightStop, selectionMoveXStopBehavior)
-
-        InputSet selectionMoveUpStart = map:GetSelectionMoveUpKey()
-        InputSet selectionMoveUpStop = map:GetSelectionMoveUpKey()
-        selectionMoveUpStop:SetInputTrigger(selectionMoveUpStop:FINISH)
-        InputSet selectionMoveDownStart = map:GetSelectionMoveDownKey()
-        InputSet selectionMoveDownStop = map:GetSelectionMoveDownKey()
-        selectionMoveDownStop:SetInputTrigger(selectionMoveDownStop:FINISH)
-
-        SelectionYDirectionBehavior selectionMoveUpStartBehavior = behaviors:GetSelectionStartMovingUpBehavior()
-        SelectionYDirectionBehavior selectionMoveDownStartBehavior = behaviors:GetSelectionStartMovingDownBehavior()
-        SelectionYDirectionBehavior selectionMoveYStopBehavior = behaviors:GetSelectionStopMovingYBehavior()
-
-        selectionTable:Add(selectionMoveUpStart, selectionMoveUpStartBehavior)
-        selectionTable:Add(selectionMoveUpStop, selectionMoveYStopBehavior)
-        selectionTable:Add(selectionMoveDownStart, selectionMoveDownStartBehavior)
-        selectionTable:Add(selectionMoveDownStop, selectionMoveYStopBehavior)
-
-        InputSet selectionMoveForwardStart = map:GetSelectionMoveForwardKey()
-        InputSet selectionMoveForwardStop = map:GetSelectionMoveForwardKey()
-        selectionMoveForwardStop:SetInputTrigger(selectionMoveForwardStop:FINISH)
-        InputSet selectionMoveBackwardStart = map:GetSelectionMoveBackwardKey()
-        InputSet selectionMoveBackwardStop = map:GetSelectionMoveBackwardKey()
-        selectionMoveBackwardStop:SetInputTrigger(selectionMoveBackwardStop:FINISH)
-
-        SelectionZDirectionBehavior selectionMoveForwardStartBehavior = behaviors:GetSelectionStartMovingForwardBehavior()
-        SelectionZDirectionBehavior selectionMoveBackwardStartBehavior = behaviors:GetSelectionStartMovingBackwardBehavior()
-        SelectionZDirectionBehavior selectionMoveZStopBehavior = behaviors:GetSelectionStopMovingZBehavior()
-
-        selectionTable:Add(selectionMoveForwardStart, selectionMoveForwardStartBehavior)
-        selectionTable:Add(selectionMoveForwardStop, selectionMoveZStopBehavior)
-        selectionTable:Add(selectionMoveBackwardStart, selectionMoveBackwardStartBehavior)
-        selectionTable:Add(selectionMoveBackwardStop, selectionMoveZStopBehavior)
+        selectionTable:Add(selectionMoveForward3DStart, selectionMoveForwardStartBehavior)
+        selectionTable:Add(selectionMoveForward3DStop, selectionMoveZStopBehavior)
+        selectionTable:Add(selectionMoveBackward3DStart, selectionMoveBackwardStartBehavior)
+        selectionTable:Add(selectionMoveBackward3DStop, selectionMoveZStopBehavior)
 
         InputSet selectionRotateYawLeftStart = map:GetSelectionRotateYawLeftKey()
         InputSet selectionRotateYawLeftStop = map:GetSelectionRotateYawLeftKey()
@@ -670,24 +750,75 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
         AddInputTable(selectionTable)
 
+        InputTable selectionTable2D
+        selectionTable2D:SetIdentifier("SelectionHighlight2D")
+        
+        selectionTable2D:Add(reportLocation, reportLocationBehavior)
+
+        selectionTable2D:Add(selectionMoveLeft2DStart, selectionMoveLeftStartBehavior)
+        selectionTable2D:Add(selectionMoveLeft2DStop, selectionMoveXStopBehavior)
+        selectionTable2D:Add(selectionMoveRight2DStart, selectionMoveRightStartBehavior)
+        selectionTable2D:Add(selectionMoveRight2DStop, selectionMoveXStopBehavior)
+
+        selectionTable2D:Add(selectionMoveUp2DStart, selectionMoveUpStartBehavior)
+        selectionTable2D:Add(selectionMoveUp2DStop, selectionMoveYStopBehavior)
+        selectionTable2D:Add(selectionMoveDown2DStart, selectionMoveDownStartBehavior)
+        selectionTable2D:Add(selectionMoveDown2DStop, selectionMoveYStopBehavior)
+
+        InputSet selectionRotateForward2DStart = map:GetSelectionRotateForward2DKey()
+        InputSet selectionRotateForward2DStop = map:GetSelectionRotateForward2DKey()
+        selectionRotateForward2DStop:SetInputTrigger(selectionRotateForward2DStop:FINISH)
+        InputSet selectionRotateBackward2DStart = map:GetSelectionRotateBackward2DKey()
+        InputSet selectionRotateBackward2DStop = map:GetSelectionRotateBackward2DKey()
+        selectionRotateBackward2DStop:SetInputTrigger(selectionRotateBackward2DStop:FINISH)
+
+        selectionTable2D:Add(selectionRotateForward2DStart, selectionStartRotatingRollLeftBehavior)
+        selectionTable2D:Add(selectionRotateForward2DStop, selectionStopRotatingRollBehavior)
+        selectionTable2D:Add(selectionRotateBackward2DStart, selectionStartRotatingRollRightBehavior)
+        selectionTable2D:Add(selectionRotateBackward2DStop, selectionStopRotatingRollBehavior)
+
+        selectionTable2D:Add(selectionScaleUpSet, selectionScaleUpBehavior)
+        selectionTable2D:Add(selectionScaleDownSet, selectionScaleDownBehavior)
+
+        selectionTable2D:Add(selectionScaleXUpSet, selectionScaleXUpBehavior)
+        selectionTable2D:Add(selectionScaleXDownSet, selectionScaleXDownBehavior)
+
+        selectionTable2D:Add(selectionScaleYUpSet, selectionScaleYUpBehavior)
+        selectionTable2D:Add(selectionScaleYDownSet, selectionScaleYDownBehavior)
+
+        selectionTable2D:Add(selectionDeleteSet, selectionDeleteBehavior)
+        selectionTable2D:Add(selectionCancelSet, selectionCancelBehavior)
+
+        selectionTable2D:Add(toggleGridInput, toggleGridBehavior)
+        selectionTable2D:Add(increaseGridUnitInput, increaseGridUnitBehavior)
+        selectionTable2D:Add(decreaseGridUnitInput, decreaseGridUnitBehavior)
+
+        selectionTable2D:Add(focusPropertiesSet, focusPropertiesBehavior)
+
+        selectionTable2D:Add(openEditorFindDialogInput, openEditorFindDialogBehavior)
+
+        selectionTable2D:Add(resetScaleSet, resetScaleBehavior)
+
+        AddInputTable(selectionTable2D)
+
         InputTable itemPreviewTable
-        itemPreviewTable:SetIdentifier("NewItemPreview")
+        itemPreviewTable:SetIdentifier("NewItemPreview3D")
 
         itemPreviewTable:Add(reportLocation, reportLocationBehavior)
 
         // The NewItemPreview shares the same movement/scaling behavior as SelectionHighlights.
-        itemPreviewTable:Add(selectionMoveLeftStart, selectionMoveLeftStartBehavior)
-        itemPreviewTable:Add(selectionMoveLeftStop, selectionMoveXStopBehavior)
-        itemPreviewTable:Add(selectionMoveRightStart, selectionMoveRightStartBehavior)
-        itemPreviewTable:Add(selectionMoveRightStop, selectionMoveXStopBehavior)
-        itemPreviewTable:Add(selectionMoveUpStart, selectionMoveUpStartBehavior)
-        itemPreviewTable:Add(selectionMoveUpStop, selectionMoveYStopBehavior)
-        itemPreviewTable:Add(selectionMoveDownStart, selectionMoveDownStartBehavior)
-        itemPreviewTable:Add(selectionMoveDownStop, selectionMoveYStopBehavior)
-        itemPreviewTable:Add(selectionMoveForwardStart, selectionMoveForwardStartBehavior)
-        itemPreviewTable:Add(selectionMoveForwardStop, selectionMoveZStopBehavior)
-        itemPreviewTable:Add(selectionMoveBackwardStart, selectionMoveBackwardStartBehavior)
-        itemPreviewTable:Add(selectionMoveBackwardStop, selectionMoveZStopBehavior)
+        itemPreviewTable:Add(selectionMoveLeft3DStart, selectionMoveLeftStartBehavior)
+        itemPreviewTable:Add(selectionMoveLeft3DStop, selectionMoveXStopBehavior)
+        itemPreviewTable:Add(selectionMoveRight3DStart, selectionMoveRightStartBehavior)
+        itemPreviewTable:Add(selectionMoveRight3DStop, selectionMoveXStopBehavior)
+        itemPreviewTable:Add(selectionMoveUp3DStart, selectionMoveUpStartBehavior)
+        itemPreviewTable:Add(selectionMoveUp3DStop, selectionMoveYStopBehavior)
+        itemPreviewTable:Add(selectionMoveDown3DStart, selectionMoveDownStartBehavior)
+        itemPreviewTable:Add(selectionMoveDown3DStop, selectionMoveYStopBehavior)
+        itemPreviewTable:Add(selectionMoveForward3DStart, selectionMoveForwardStartBehavior)
+        itemPreviewTable:Add(selectionMoveForward3DStop, selectionMoveZStopBehavior)
+        itemPreviewTable:Add(selectionMoveBackward3DStart, selectionMoveBackwardStartBehavior)
+        itemPreviewTable:Add(selectionMoveBackward3DStop, selectionMoveZStopBehavior)
 
         itemPreviewTable:Add(selectionRotateYawLeftStart, selectionStartRotatingYawLeftBehavior)
         itemPreviewTable:Add(selectionRotateYawLeftStop, selectionStopRotatingYawBehavior)
@@ -740,6 +871,51 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         itemPreviewTable:Add(resetScaleSet, resetScaleBehavior)
 
         AddInputTable(itemPreviewTable)
+
+        InputTable itemPreviewTable2D
+        itemPreviewTable2D:SetIdentifier("NewItemPreview2D")
+
+        itemPreviewTable2D:Add(reportLocation, reportLocationBehavior)
+
+        // The NewItemPreview shares the same movement/scaling behavior as SelectionHighlights.
+        itemPreviewTable2D:Add(selectionMoveLeft2DStart, selectionMoveLeftStartBehavior)
+        itemPreviewTable2D:Add(selectionMoveLeft2DStop, selectionMoveXStopBehavior)
+        itemPreviewTable2D:Add(selectionMoveRight2DStart, selectionMoveRightStartBehavior)
+        itemPreviewTable2D:Add(selectionMoveRight2DStop, selectionMoveXStopBehavior)
+        itemPreviewTable2D:Add(selectionMoveUp2DStart, selectionMoveUpStartBehavior)
+        itemPreviewTable2D:Add(selectionMoveUp2DStop, selectionMoveYStopBehavior)
+        itemPreviewTable2D:Add(selectionMoveDown2DStart, selectionMoveDownStartBehavior)
+        itemPreviewTable2D:Add(selectionMoveDown2DStop, selectionMoveYStopBehavior)
+
+        itemPreviewTable2D:Add(selectionRotateForward2DStart, selectionStartRotatingRollLeftBehavior)
+        itemPreviewTable2D:Add(selectionRotateForward2DStop, selectionStopRotatingRollBehavior)
+        itemPreviewTable2D:Add(selectionRotateForward2DStart, selectionStartRotatingRollRightBehavior)
+        itemPreviewTable2D:Add(selectionRotateForward2DStop, selectionStopRotatingRollBehavior)
+
+        itemPreviewTable2D:Add(selectionScaleUpSet, selectionScaleUpBehavior)
+        itemPreviewTable2D:Add(selectionScaleDownSet, selectionScaleDownBehavior)
+        itemPreviewTable2D:Add(selectionScaleXUpSet, selectionScaleXUpBehavior)
+        itemPreviewTable2D:Add(selectionScaleXDownSet, selectionScaleXDownBehavior)
+        itemPreviewTable2D:Add(selectionScaleYUpSet, selectionScaleYUpBehavior)
+        itemPreviewTable2D:Add(selectionScaleYDownSet, selectionScaleYDownBehavior)
+
+        itemPreviewTable2D:Add(newItemCycleModel, newItemCycleModelBehavior)
+        itemPreviewTable2D:Add(newItemCycleColor, newItemCycleColorBehavior)
+
+        itemPreviewTable2D:Add(newItemCancel, newItemCancelBehavior)
+        itemPreviewTable2D:Add(newItemConfirm, newItemConfirmBehavior)
+
+        itemPreviewTable2D:Add(toggleGridInput, toggleGridBehavior)
+        itemPreviewTable2D:Add(increaseGridUnitInput, increaseGridUnitBehavior)
+        itemPreviewTable2D:Add(decreaseGridUnitInput, decreaseGridUnitBehavior)
+
+        itemPreviewTable2D:Add(focusPropertiesSet, focusPropertiesBehavior)
+
+        itemPreviewTable2D:Add(openEditorFindDialogInput, openEditorFindDialogBehavior)
+
+        itemPreviewTable2D:Add(resetScaleSet, resetScaleBehavior)
+
+        AddInputTable(itemPreviewTable2D)
 
         InputTable propertiesDialogTable
         propertiesDialogTable:SetIdentifier("PropertiesDialog")

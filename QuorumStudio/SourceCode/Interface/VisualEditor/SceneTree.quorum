@@ -12,6 +12,7 @@ use Libraries.Interface.Events.SelectionListener
 use Libraries.Interface.Events.SelectionEvent
 use Libraries.Interface.Selections.TreeSelection
 use Libraries.Development.Environment.Studio.Behaviors.SceneTreeItemActivationBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SceneTreeEditorCameraBehavior
 
 class SceneTree is Tree, SelectionListener, SceneChangeListener
 
@@ -23,6 +24,9 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
 
     // A behavior given to each SceneTreeItem to focus scene items.
     SceneTreeItemActivationBehavior itemActivationBehavior
+
+    // A behavior used for the default editor camera items.
+    SceneTreeEditorCameraBehavior editorCameraBehavior
 
     // An Array used to select a single item in a Scene.
     Array<Item> filterArray
@@ -68,6 +72,24 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
             layerTreeItem:SetSceneLayer(current)
             layerTreeItem:SetBehavior(itemActivationBehavior)
 
+            SceneTreeItem cameraItem
+            cameraItem:SetName("Cameras")
+            cameraItem:SetSceneLayer(current)
+            cameraItem:SetBehavior(itemActivationBehavior)
+            layerTreeItem:Add(cast(TreeItem, cameraItem))
+
+            SceneTreeItem editorCameraItem
+            editorCameraItem:SetName("Editor Camera")
+            editorCameraItem:SetSceneLayer(current)
+            editorCameraItem:SetBehavior(editorCameraBehavior)
+            cameraItem:Add(cast(TreeItem, editorCameraItem))
+
+            SceneTreeItem itemContainerItem
+            itemContainerItem:SetName("Items")
+            itemContainerItem:SetSceneLayer(current)    
+            itemContainerItem:SetBehavior(itemActivationBehavior)
+            layerTreeItem:Add(cast(TreeItem, itemContainerItem))    
+
             if current is EditorLayer2D
                 EditorLayer2D layer = cast(EditorLayer2D, current)
 
@@ -76,7 +98,7 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
                     Item2D item = iterator:Next()
                     if item:HasProperty(resources:EDITOR_TAG) = false
                         SceneTreeItem treeItem = ItemToTreeItems(item, layer)
-                        layerTreeItem:Add(cast(TreeItem, treeItem))
+                        itemContainerItem:Add(cast(TreeItem, treeItem))
                     end
                 end
 
@@ -89,7 +111,7 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
                     Item3D item = iterator:Next()
                     if item:HasProperty(resources:EDITOR_TAG) = false
                         TreeItem treeItem = ItemToTreeItems(item, layer)
-                        layerTreeItem:Add(treeItem)
+                        itemContainerItem:Add(treeItem)
                     end
                 end
 

@@ -1,0 +1,43 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Game.Graphics.Drawable
+use Libraries.Containers.Array
+
+class EditorCursor2D is EditorCursor, Drawable
+
+    EditorLayer2D editorLayer = undefined
+
+    // How many world units wide/tall the current grid units are.
+    number gridUnitSize = 0
+
+    // How many grid units wide or tall the cursor currently is.
+    integer gridWidth = 1
+    integer gridHeight = 1
+    
+    action Load(EditorLayer2D layer)
+        editorLayer = layer
+
+        VisualEditorResources resources    
+        LoadFilledRectangle(100, 100, resources:CURSOR_2D_COLOR)
+        SetZ(resources:CURSOR_2D_DEPTH)
+        SetGridUnitSize(layer:GetGridUnitSize())
+    end
+
+    action SetGridUnitSize(number size)
+        gridUnitSize = size
+        SetSize(gridUnitSize * gridWidth, gridUnitSize * gridHeight)
+    end
+
+    action GetItemsAtCursor returns Array<Item>
+        Array<Item> array
+
+        
+
+        return array
+    end
+
+    action GetEditorLayer returns EditorLayer
+        return editorLayer
+    end
+
+end
