@@ -45,12 +45,14 @@ class Options is ProjectListener
     constant text LIBRARY = "Library"
     constant text MAXIMIZE_WINDOW = "Maximize Window"
     constant text LOCAL_PASSWORD_ENCRYPTION_KEY = "KbPdSgVkYp3s6v9y$B&E)H@McQfThWmZ"
+    public constant text QUORUM_WEBSITE_PASSWORD_KEY = "QUORUM-WEBSITE_3948Y 93F8 34F93 94F8Y3P4F34FOI3U4F&&__"
 
     File optionsLocation
     File keymapLocation
     File passwordsLocation
     File projectsLocation
-    boolean placeConfigInAppDataOnWindows = true
+    boolean specialBetaBuild = true
+    boolean placeConfigInAppDataOnWindows = false
     boolean placeConfigInApplicationSupportOnMac = true
     boolean overrideLibraryLocation = false
     text libraryOverridePath = ""
@@ -160,6 +162,12 @@ class Options is ProjectListener
 
     action AddPassword(text location, Credentials credentials)
         passwords:Add(location, credentials)
+    end
+
+    action RemovePassword(text location)
+        if passwords:HasKey(location)
+            passwords:RemoveKey(location)
+        end
     end
 
     action GetInterfaceScale returns number
@@ -613,4 +621,12 @@ class Options is ProjectListener
             end
         end
     end
+    action GetSpecialBetaBuild returns boolean
+        return specialBetaBuild
+    end
+
+    action SetSpecialBetaBuild(boolean specialBetaBuild)
+        me:specialBetaBuild = specialBetaBuild
+    end
+
 end

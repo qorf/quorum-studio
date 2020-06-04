@@ -9,14 +9,23 @@
 ;--------------------------------
 ;General
 
-  ;Name and file
-  !define VERSION "2.0"
-  !define REGISTRY_KEY "Software\QuorumStudio"
+    ;Name and file
+    !define PRODUCT_VERSION "2.0.0.0"
+    !define REGISTRY_KEY "Software\QuorumStudio"
+    !define VERSION "2.0"
 
-  Name "Quorum Studio ${VERSION}"
-  Caption "Quorum Studio"
+    VIProductVersion "${PRODUCT_VERSION}"
+    VIFileVersion "${PRODUCT_VERSION}"
+    VIAddVersionKey "FileVersion" "${VERSION}"
+    VIAddVersionKey  "ProductVersion" "${VERSION}"
+    VIAddVersionKey "ProductName" "Quorum Studio"
+    VIAddVersionKey "LegalCopyright" "(C) Andreas Stefik and William Allee"
+    VIAddVersionKey "FileDescription" "Quorum Studio is an integrated development environment and game editor for all users."
+
+  Name "Quorum Studio"
+  Caption "Quorum Studio 2.0"
   Icon "quorum.ico"
-  OutFile "Quorum Studio ${VERSION}.exe"
+  OutFile "Quorum-Studio-${VERSION}.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES64\QuorumStudio"
@@ -45,10 +54,11 @@
   !insertmacro MUI_PAGE_DIRECTORY
   
   ;Start Menu Folder Page Configuration
+  !define MUI_STARTMENUPAGE_DEFAULTFOLDER "Quorum Studio"
   !define MUI_STARTMENUPAGE_REGISTRY_ROOT "HKCU" 
   !define MUI_STARTMENUPAGE_REGISTRY_KEY ${REGISTRY_KEY}
   !define MUI_STARTMENUPAGE_REGISTRY_VALUENAME "Start Menu Folder"
-  
+
   !insertmacro MUI_PAGE_STARTMENU Application $StartMenuFolder
   
   !insertmacro MUI_PAGE_INSTFILES
@@ -119,7 +129,7 @@ Section "Core" SecDummy
     CreateShortcut "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
   
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\QuorumStudio" \
-                 "DisplayName" "Quorum Studio ${VERSION}"
+                 "DisplayName" "Quorum Studio"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\QuorumStudio" \
                  "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
   !insertmacro MUI_STARTMENU_WRITE_END

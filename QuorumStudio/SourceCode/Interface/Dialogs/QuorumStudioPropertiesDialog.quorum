@@ -1,0 +1,254 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Controls.TabPane
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.ScrollPane
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Button
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Projects.ProjectProperty
+use Libraries.Containers.Iterator
+use Libraries.Containers.Array
+use Libraries.Game.Graphics.Gradient
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Interface.Events.MouseWheelListener
+use Libraries.Interface.Events.MouseEvent
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.Behaviors.EmptyTextFieldBehavior
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Configuration.Options
+use Libraries.Development.Environment.Projects.Credentials
+use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioPropertiesOkBehavior
+
+
+class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
+
+    boolean initialized = false
+
+    //variables for the Teams tab
+    TextField usernameTeams
+    TextField passwordTeams
+
+    TabPane tabPane
+
+    EmptyTextFieldBehavior emptyTextFieldBehavior
+    // Behaviors used by the OK and Cancel buttons.
+    QuorumStudioPropertiesOkBehavior okBehavior
+    DialogCancelBehavior cancelBehavior
+    Options options = undefined
+
+    action OnShow
+        tabPane:Focus()
+        Tab tab = tabPane:GetSelectedTab()
+        if not tab:Equals(tabPane:Get(0))
+            tab:Activate()
+        end
+    end
+
+    on create
+        okBehavior:SetDialog(me)
+        cancelBehavior:SetDialog(me)
+        SetBehavior(okBehavior)
+
+        passwordTeams:SetPasswordField(true)
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        options = studio:GetOptions()
+        Load()
+        
+    end
+
+    action Initialize
+        if initialized
+            output "WARNING: Re-initializing the QuorumStudioPropertiesDialog."
+        end
+
+        initialized = true
+
+        SetName("Quorum Studio Properties")
+        SetPixelWidth(600)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+
+        
+        FlowLayout tabLayout
+        tabPane:SetViewAreaLayout(tabLayout)
+        tabPane:SetPercentageWidth(1.0)
+        tabPane:SetPixelHeight(700)
+
+        tabPane:Add(CreateLoginTab())
+        Add(tabPane)
+    end
+
+    action Save
+        text user = usernameTeams:GetText()
+        text pass = passwordTeams:GetText()
+
+        //check if they've put anything in the boxes 
+        //and set it to be encrypted
+        if user not= undefined and pass not= undefined 
+            and not user:IsEmpty() and not pass:IsEmpty()
+            Credentials credentials
+            credentials:SetUsername(user)
+            credentials:SetPassword(pass)
+            options:AddPassword(options:QUORUM_WEBSITE_PASSWORD_KEY, credentials)
+        else 
+            options:RemovePassword(options:QUORUM_WEBSITE_PASSWORD_KEY)
+        end
+    end
+
+    action Load
+        Credentials credentials = options:GetPassword(options:QUORUM_WEBSITE_PASSWORD_KEY)
+        if credentials not= undefined
+            usernameTeams:SetText(credentials:GetUsername())
+            passwordTeams:SetText(credentials:GetPassword())
+        end
+    end
+
+    action IsInitialized returns boolean
+        return initialized
+    end
+
+
+    private action CreateLoginTab returns Tab
+        Tab tab
+        tab:SetFocusTarget(usernameTeams)
+        tab:SetName("Login")
+        tab:DisplayCloseButton(false)
+
+        Control panel
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+
+        LabelBoxView panelView
+        Color color
+
+        panelView:Initialize(color:CustomColor(0.95, 0.95, 0.95, 1), color:Black())
+        panel:SetView2D(panelView)
+
+        FlowLayout layout
+        panel:SetLayout(layout)
+        tab:SetRelatedItem(panel)
+
+        
+
+        FlowLayout resourcesLayout
+        Control resourcesContainer
+        resourcesContainer:SetLayout(resourcesLayout)
+        resourcesContainer:SetPercentageWidth(1.0)
+        resourcesContainer:SetPixelWidth(-10)
+        resourcesContainer:SetVerticalLayoutMode(resourcesContainer:FIT_CONTENTS)
+        resourcesContainer:SetLeftPadding(10)
+        resourcesContainer:SetTopPadding(10)
+
+        
+
+        Label versionControlLabel
+        versionControlLabel:SetPercentageWidth(1.0)
+        versionControlLabel:SetSize(20)
+        versionControlLabel:SetText("Quorum Login")
+        versionControlLabel:SetLeftPadding(10)
+        versionControlLabel:SetTopPadding(20)
+        panel:Add(versionControlLabel)
+        panel:Add(resourcesContainer)
+
+
+        Label usernameLabel
+        usernameLabel:SetText("Username")
+        usernameLabel:SetPercentageWidth(1.0)
+        usernameLabel:SetLeftPadding(10)
+        usernameLabel:SetTopPadding(10)
+        resourcesContainer:Add(usernameLabel)
+
+        emptyTextFieldBehavior:SetTextField(usernameTeams)
+
+        usernameTeams:SetName("Username Textfield")
+        usernameTeams:SetPercentageWidth(1.0)
+        usernameTeams:SetPixelWidth(-10)
+        usernameTeams:SetLeftPadding(10)
+        usernameTeams:SetTopPadding(10)
+        resourcesContainer:Add(usernameTeams)
+
+        Label androidLabel
+        androidLabel:SetText("Password")
+        androidLabel:SetLeftPadding(10)
+        androidLabel:SetTopPadding(10)
+        resourcesContainer:Add(androidLabel)
+
+        passwordTeams:SetName("Password Textfield")
+        passwordTeams:SetPercentageWidth(1.0)
+        passwordTeams:SetPixelWidth(-10)
+        passwordTeams:SetLeftPadding(10)
+        passwordTeams:SetTopPadding(10)
+        resourcesContainer:Add(passwordTeams)
+
+        Control newLine
+        newLine:SetHorizontalLayoutMode(newLine:FILL)
+        panel:Add(newLine)
+
+        Control confirmArea
+        FlowLayout confirmLayout
+        confirmArea:SetLayout(confirmLayout)
+        confirmArea:SetPercentageWidth(1.0)
+        confirmArea:SetTopPadding(20)
+        confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
+
+        Control confirmPadding
+        confirmPadding:SetPercentageWidth(0.56)
+        confirmPadding:SetPixelHeight(1)
+        confirmArea:Add(confirmPadding)
+
+        Button cancelButton
+        cancelButton:SetName("Cancel")
+        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        cancelButton:SetPercentageWidth(0.2)
+        cancelButton:SetLeftPadding(0)
+        cancelButton:SetTopPadding(40)
+        cancelButton:SetBottomPadding(20)
+        cancelButton:SetBehavior(cancelBehavior)
+        confirmArea:Add(cancelButton)
+
+        Gradient okayGradient
+        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
+        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
+        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
+
+        Button okayButton
+        okayButton:SetName("OK")
+        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        okayButton:SetBackgroundColor(okayGradient)
+        okayButton:SetPercentageWidth(0.2)
+        okayButton:SetLeftPadding(10)
+        okayButton:SetTopPadding(40)
+        okayButton:SetBottomPadding(20)
+        okayButton:SetBehavior(okBehavior)
+        confirmArea:Add(okayButton)
+
+        panel:Add(confirmArea)
+
+        usernameTeams:SetNextFocus(passwordTeams)
+        usernameTeams:SetPreviousFocus(okayButton)
+        passwordTeams:SetNextFocus(cancelButton)
+        passwordTeams:SetPreviousFocus(usernameTeams)
+
+
+
+        cancelButton:SetNextFocus(okayButton)
+        cancelButton:SetPreviousFocus(passwordTeams)
+        okayButton:SetNextFocus(usernameTeams)
+        okayButton:SetPreviousFocus(cancelButton)
+
+        return tab
+    end
+
+    action OnHide()
+    end
+end
