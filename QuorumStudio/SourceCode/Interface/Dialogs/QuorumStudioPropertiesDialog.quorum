@@ -63,6 +63,8 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         GameStateManager manager
         QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
         options = studio:GetOptions()
+        Load()
+        
     end
 
     action Initialize
@@ -87,11 +89,28 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
     end
 
     action Save
-        output "Saved"
+        text user = usernameTeams:GetText()
+        text pass = passwordTeams:GetText()
+
+        //check if they've put anything in the boxes 
+        //and set it to be encrypted
+        if user not= undefined and pass not= undefined 
+            and not user:IsEmpty() and not pass:IsEmpty()
+            Credentials credentials
+            credentials:SetUsername(user)
+            credentials:SetPassword(pass)
+            options:AddPassword(options:QUORUM_WEBSITE_PASSWORD_KEY, credentials)
+        else 
+            options:RemovePassword(options:QUORUM_WEBSITE_PASSWORD_KEY)
+        end
     end
 
     action Load
-        output "Loaded"
+        Credentials credentials = options:GetPassword(options:QUORUM_WEBSITE_PASSWORD_KEY)
+        if credentials not= undefined
+            usernameTeams:SetText(credentials:GetUsername())
+            passwordTeams:SetText(credentials:GetPassword())
+        end
     end
 
     action IsInitialized returns boolean
