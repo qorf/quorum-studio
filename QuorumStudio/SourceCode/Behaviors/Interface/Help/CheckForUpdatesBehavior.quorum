@@ -13,6 +13,7 @@ use Libraries.Development.Environment.Configuration.Options
 use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Development.Environment.Projects.Credentials
+use Libraries.Concurrency.ThreadRunner
 
 class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
     QuorumStudio studio = undefined
@@ -95,8 +96,10 @@ class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
                 text user = credentials:GetUsername()
                 text password = credentials:GetPassword()
 
-                output user
-                output password
+                Behaviors behaviors = studio:GetBehaviors()
+                ThreadRunner thread = behaviors:GetNetworkThreadRunner()
+                ThreadedBehavior behave = behaviors:GetThreadedQuorumLoginBehavior()
+                thread:Add(behave)
             end
         else //there is no new version. Just post the dialog
              //saying that we are up to date.

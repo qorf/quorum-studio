@@ -1,0 +1,71 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Network.NetworkConnection
+use Libraries.Network.NetworkRequest
+use Libraries.Network.NetworkResponseEvent
+use Libraries.Network.NetworkRequestListener
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Studio.Interface.CheckForUpdatesDialog
+use Libraries.Development.Environment.Configuration.Options
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Development.Environment.Projects.Credentials
+
+class QuorumLoginBehavior is QuorumStudioBehavior, NetworkRequestListener
+    QuorumStudio studio = undefined
+    ProjectManager manager = undefined
+    Options options = undefined
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+        manager = studio:GetProjectManager()
+        options = studio:GetOptions()
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
+
+    action Run(BehaviorEvent event)
+        output "Running login behavior"
+        NetworkRequest request
+        request:SetRequestTypeToPost()
+
+        if options = undefined
+            GameStateManager gsm
+            studio = cast(QuorumStudio, gsm:GetGame())
+            options = studio:GetOptions()
+        end
+
+        request:SetWebAddress("https://quorumlanguage.com/login.php")
+        Credentials credentials = options:GetPassword(options:QUORUM_WEBSITE_PASSWORD_KEY)
+        if credentials = undefined 
+            or credentials:GetUsername() = undefined
+            or credentials:GetPassword() = undefined
+            or credentials:GetUsername():IsEmpty()
+            or credentials:GetPassword():IsEmpty()
+            //the user has no login credentials
+            
+        else// Try to login!
+            text user = credentials:GetUsername()
+            text pass = credentials:GetPassword()
+            request:SetBody("username="+user + "&password=" + pass)
+            NetworkConnection http
+            http:AddListener(me)
+    
+            check
+                http:SendRequest(request)
+            detect e
+            end
+        end        
+    end
+
+    action ResponseReceived(NetworkResponseEvent response)
+        output "Received Response."
+        text value = response:GetResponseText():Trim()
+        output value
+    end
+end
