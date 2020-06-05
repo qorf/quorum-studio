@@ -13,11 +13,16 @@ use Libraries.Development.Environment.Configuration.Options
 use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Development.Environment.Projects.Credentials
+use Libraries.Containers.HashTable
+use Libraries.Containers.Array
 
 class QuorumLoginBehavior is QuorumStudioBehavior, NetworkRequestListener
     QuorumStudio studio = undefined
     ProjectManager manager = undefined
     Options options = undefined
+    text loginSuccess = "success"
+    Behavior successfulLoginBehavior = undefined
+    Behavior failedLoginBehavior = undefined
 
     action SetMainApplication(QuorumStudio studio)
         me:studio = studio
@@ -30,7 +35,6 @@ class QuorumLoginBehavior is QuorumStudioBehavior, NetworkRequestListener
     end
 
     action Run(BehaviorEvent event)
-        output "Running login behavior"
         NetworkRequest request
         request:SetRequestTypeToPost()
 
@@ -64,8 +68,48 @@ class QuorumLoginBehavior is QuorumStudioBehavior, NetworkRequestListener
     end
 
     action ResponseReceived(NetworkResponseEvent response)
-        output "Received Response."
         text value = response:GetResponseText():Trim()
-        output value
+        text cookieID = undefined
+        if value = loginSuccess
+            HashTable<text,text> hash = response:GetHeaders()
+            text cookie = hash:GetValue("Set-Cookie")
+
+            Array<text> split = cookie:Split(";")
+            if split not= undefined and split:GetSize() > 0
+                text session = split:Get(0) //server sends this back first
+                Array<text> sessionArray = session:Split("=")
+                if sessionArray not= undefined and sessionArray:GetSize() > 1
+                    cookieID = sessionArray:Get(1)
+                end
+            end
+        end
+
+        options:SetLoginCookie(cookieID)
+        if cookieID not= undefined
+            Behavior behave = GetSuccessfulLoginBehavior()
+            if behave not= undefined
+                behave:Run(undefined)
+            end
+        else
+            Behavior behave = GetFailedLoginBehavior()
+            if behave not= undefined
+                behave:Run(undefined)
+            end
+        end
+    end
+
+    action GetSuccessfulLoginBehavior returns Behavior
+        return successfulLoginBehavior
+    end
+
+    action SetSuccessfulLoginBehavior(Behavior successfulLoginBehavior)
+        me:successfulLoginBehavior = successfulLoginBehavior
+    end
+    action GetFailedLoginBehavior returns Behavior
+        return failedLoginBehavior
+    end
+
+    action SetFailedLoginBehavior(Behavior failedLoginBehavior)
+        me:failedLoginBehavior = failedLoginBehavior
     end
 end

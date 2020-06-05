@@ -46,11 +46,13 @@ class Options is ProjectListener
     constant text MAXIMIZE_WINDOW = "Maximize Window"
     constant text LOCAL_PASSWORD_ENCRYPTION_KEY = "KbPdSgVkYp3s6v9y$B&E)H@McQfThWmZ"
     public constant text QUORUM_WEBSITE_PASSWORD_KEY = "QUORUM-WEBSITE_3948Y 93F8 34F93 94F8Y3P4F34FOI3U4F&&__"
+    text loginCookie = undefined
 
     File optionsLocation
     File keymapLocation
     File passwordsLocation
     File projectsLocation
+    File propertiesLocation
     boolean specialBetaBuild = true
     boolean placeConfigInAppDataOnWindows = true
     boolean placeConfigInApplicationSupportOnMac = true
@@ -86,6 +88,8 @@ class Options is ProjectListener
                 file:CreateDirectory()
             end
 
+            propertiesLocation = file
+
             File newOptionsFile
             newOptionsFile:SetWorkingDirectory(file:GetAbsolutePath())
             newOptionsFile:SetPath("Options.json")
@@ -110,6 +114,8 @@ class Options is ProjectListener
             if not file:Exists()
                 file:CreateDirectory()
             end
+
+            propertiesLocation = file
 
             File newOptionsFile
             newOptionsFile:SetWorkingDirectory(file:GetAbsolutePath())
@@ -155,6 +161,16 @@ class Options is ProjectListener
     integer width = 2500
     integer height = 1500
     text treeSelect = ""
+
+    action GetAutoUpdateName returns text
+        Properties properties
+        if properties:IsWindows()
+            return "studio.exe"
+        elseif properties:IsMac()
+            return "studio.pkg"
+        end
+        return undefined
+    end
 
     action GetPassword(text location) returns Credentials
         return passwords:GetValue(location)
@@ -629,4 +645,19 @@ class Options is ProjectListener
         me:specialBetaBuild = specialBetaBuild
     end
 
+    action GetLoginCookie returns text
+        return loginCookie
+    end
+
+    action SetLoginCookie(text loginCookie)
+        me:loginCookie = loginCookie
+    end
+
+    action GetPropertiesLocation returns File
+        return propertiesLocation
+    end
+
+    action SetPropertiesLocation(File propertiesLocation)
+        me:propertiesLocation = propertiesLocation
+    end
 end

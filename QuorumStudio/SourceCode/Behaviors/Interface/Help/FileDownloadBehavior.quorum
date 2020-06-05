@@ -1,0 +1,93 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Network.NetworkConnection
+use Libraries.Network.NetworkRequest
+use Libraries.Network.NetworkResponseEvent
+use Libraries.Network.NetworkRequestListener
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Studio.Interface.CheckForUpdatesDialog
+use Libraries.Development.Environment.Configuration.Options
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Development.Environment.Projects.Credentials
+use Libraries.Containers.HashTable
+use Libraries.Containers.Array
+use Libraries.System.File
+
+class FileDownloadBehavior is QuorumStudioBehavior, NetworkRequestListener
+    QuorumStudio studio = undefined
+    Options options = undefined
+    text fileDownloadToRequest = ""
+    File downloadLocation = undefined
+    Behavior postDownloadBehavior = undefined
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+        options = studio:GetOptions()
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
+
+    action Run(BehaviorEvent event)
+        if options = undefined
+            GameStateManager gsm
+            studio = cast(QuorumStudio, gsm:GetGame())
+            options = studio:GetOptions()
+        end
+
+        text cookie = options:GetLoginCookie()
+        if cookie = undefined
+            return now
+        end
+        NetworkRequest request
+        request:SetRequestTypeToGet()
+        request:SetWebAddress("https://quorumlanguage.com/downloadQuorum.php?file="+fileDownloadToRequest+"&")
+        request:SetDownloadFile(GetDownloadLocation())
+        request:AddHeader("Cookie", "sessionID=" + cookie)
+        
+
+        NetworkConnection http
+        http:AddListener(me)
+
+        check
+            http:SendRequest(request)
+        detect e
+            output e:GetStackTraceMessage()
+        end      
+    end
+
+    action ResponseReceived(NetworkResponseEvent response)
+        if postDownloadBehavior not= undefined
+            postDownloadBehavior:Run(undefined)
+        end
+    end
+
+    action GetFileDownloadToRequest returns text
+        return fileDownloadToRequest
+    end
+
+    action SetFileDownloadToRequest(text fileDownloadToRequest)
+        me:fileDownloadToRequest = fileDownloadToRequest
+    end
+
+    action GetDownloadLocation returns File
+        return downloadLocation
+    end
+
+    action SetDownloadLocation(File downloadLocation)
+        me:downloadLocation = downloadLocation
+    end
+
+    action GetPostDownloadBehavior returns Behavior
+        return postDownloadBehavior
+    end
+
+    action SetPostDownloadBehavior(Behavior postDownloadBehavior)
+        me:postDownloadBehavior = postDownloadBehavior
+    end
+end
