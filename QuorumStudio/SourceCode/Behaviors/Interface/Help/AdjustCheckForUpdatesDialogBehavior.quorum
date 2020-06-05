@@ -1,0 +1,52 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Network.NetworkConnection
+use Libraries.Network.NetworkRequest
+use Libraries.Network.NetworkResponseEvent
+use Libraries.Network.NetworkRequestListener
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Studio.Interface.CheckForUpdatesDialog
+use Libraries.Development.Environment.Configuration.Options
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Development.Environment.Projects.Credentials
+use Libraries.Concurrency.ThreadRunner
+use Libraries.System.Properties
+use Libraries.System.File
+
+class AdjustCheckForUpdatesBehavior is QuorumStudioBehavior
+    QuorumStudio studio = undefined
+    Options options = undefined
+    number version = -1
+    CheckForUpdatesDialog dialog
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+        options = studio:GetOptions()
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
+
+    action Run(BehaviorEvent event)
+        dialog:Initialize()
+        dialog:Show()
+    end
+
+    action GetVersion returns number
+        return version
+    end
+
+    action SetVersion(number version)
+        dialog:SetNewVersion(version)
+        me:version = version
+    end
+
+    action GetDialog returns CheckForUpdatesDialog
+        return dialog
+    end
+end

@@ -10,6 +10,10 @@ use Libraries.Concurrency.ProcessStartedEvent
 use Libraries.Concurrency.ProcessStoppedEvent
 use Libraries.Concurrency.ProcessErrorEvent
 use Libraries.Concurrency.ProcessOutputEvent
+use Libraries.System.Properties
+use Libraries.Containers.Array
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Resources
 
 class RunProcessBehavior is QuorumStudioBehavior, ProcessListener
     QuorumStudio studio = undefined
@@ -31,11 +35,37 @@ class RunProcessBehavior is QuorumStudioBehavior, ProcessListener
         end
         File folder = file:GetParentDirectory()
         
-        ProcessRunner runner
-        runner:AddListener(me)
-        runner:SetDirectory(folder)
-        runner:SetProcessName(file:GetAbsolutePath())
-        runner:Run()
+        Properties properties
+        //On Windows, we have tto run in elevated mode.
+        //Run the bundled .bat file to do this
+        if properties:IsWindows()
+            ProcessRunner runner
+            runner:AddListener(me)
+            runner:SetDirectory(folder)
+
+            GameStateManager manager
+            me:studio = cast(QuorumStudio, manager:GetGame())
+            Resources resources = studio:GetResources()
+            File uac = resources:GetUserAccountControlBatch()
+
+            //copy the UAC file to the same directory
+            File newUAC
+            newUAC:SetWorkingDirectory(folder:GetAbsolutePath())
+            newUAC:SetPath(uac:GetFileName())
+            uac:Copy(newUAC)
+
+            Array<text> parameters = runner:GetParameters()
+            parameters:Add(file:GetFileName())
+
+            runner:SetProcessName(newUAC:GetAbsolutePath())
+            runner:Run()
+        else 
+            ProcessRunner runner
+            runner:AddListener(me)
+            runner:SetDirectory(folder)
+            runner:SetProcessName(file:GetAbsolutePath())
+            runner:Run()
+        end
     end
 
     action GetFile returns File
@@ -53,6 +83,7 @@ class RunProcessBehavior is QuorumStudioBehavior, ProcessListener
     end
 
     action Run(ProcessErrorEvent event)
+        output "Error: " + event:GetOutput()
     end
 
     action Run(ProcessOutputEvent event)

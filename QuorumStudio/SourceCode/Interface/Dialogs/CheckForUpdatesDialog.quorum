@@ -12,6 +12,8 @@ use Libraries.Development.Environment.Studio.Behaviors.CancelExitBehavior
 use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.AccessibilityManager
+use Libraries.Compute.Math
+use Libraries.Interface.Controls.ProgressBar
 
 class CheckForUpdatesDialog is Dialog
     GameStateManager manager
@@ -20,12 +22,15 @@ class CheckForUpdatesDialog is Dialog
 
     boolean initialized = false
     number newVersion = 1.0
+    number percent = -1
+    boolean shutdown = false
+    ProgressBar progress
 
     on create
     end
 
     action OnShow()
-        warningLabel:Focus()
+        progress:Focus()
     end
 
     action Initialize
@@ -50,7 +55,9 @@ class CheckForUpdatesDialog is Dialog
         panel:SetBorderThickness(1)
         panel:Add(CreateControl())
         panel:SetView2D(view)
+        panel:Add(progress)
         Add(panel)
+        progress:SetFocusable(true)
     end
 
     private action CreateControl returns Control
@@ -72,17 +79,14 @@ class CheckForUpdatesDialog is Dialog
             result = "Could not connect to update server."
         elseif newVersion > version
             result = "Quorum Studio version " + newVersion + "
-Now available at https://quorumlanguage.com/download.html
-The download link was copied to the clipboard."
-
-            studio:SetClipboard("https://quorumlanguage.com/download.html")
+                Download in progress."
         else
             result = "You are up to date!"
         end
 
         AccessibilityManager access = manager:GetAccessibilityManager()
         if access not= undefined
-            access:Notify(warningLabel, result + ". The download link was copied to clipboard")
+            access:Notify(warningLabel, result + ". Download in progress. Please wait.")
         end
 
         warningLabel:SetText(result)
@@ -113,6 +117,21 @@ The download link was copied to the clipboard."
         return control
     end
 
+    action Update(number seconds)
+        if percent not= -1
+            text result = "Quorum Studio version " + newVersion + "
+                Download in progress "
+            integer value = cast(integer, percent)
+            result = result + value + "%"
+            warningLabel:SetText(result)
+            progress:SetValue(value)
+        end
+
+        if shutdown
+            Hide()
+        end
+    end
+
     action OnHide()
         studio:ResetExitFlag()   
     end
@@ -123,5 +142,21 @@ The download link was copied to the clipboard."
 
     action SetNewVersion(number new)
         me:newVersion = new
+    end
+
+    action GetPercent returns number
+        return percent
+    end
+
+    action SetPercent(number percent)
+        me:percent = percent
+    end
+
+    action GetShutdown returns boolean
+        return shutdown
+    end
+
+    action SetShutdown(boolean shutdown)
+        me:shutdown = shutdown
     end
 end

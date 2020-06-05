@@ -16,6 +16,10 @@ use Libraries.Development.Environment.Projects.Credentials
 use Libraries.Containers.HashTable
 use Libraries.Containers.Array
 use Libraries.System.File
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Interface.AccessibilityManager
+use Libraries.Compute.Math
 
 class FileDownloadBehavior is QuorumStudioBehavior, NetworkRequestListener
     QuorumStudio studio = undefined
@@ -23,10 +27,17 @@ class FileDownloadBehavior is QuorumStudioBehavior, NetworkRequestListener
     text fileDownloadToRequest = ""
     File downloadLocation = undefined
     Behavior postDownloadBehavior = undefined
+    AccessibilityManager access = undefined
+    OutputEditorTabPane pane = undefined
+    OutputTab out = undefined
+    CheckForUpdatesDialog dialog = undefined
 
     action SetMainApplication(QuorumStudio studio)
         me:studio = studio
         options = studio:GetOptions()
+        access = studio:GetAccessibilityManager()
+        pane = studio:GetOutputPane()
+        out = pane:GetOutputTab()
     end
 
     action GetMainApplication returns QuorumStudio
@@ -38,6 +49,17 @@ class FileDownloadBehavior is QuorumStudioBehavior, NetworkRequestListener
             GameStateManager gsm
             studio = cast(QuorumStudio, gsm:GetGame())
             options = studio:GetOptions()
+            access = studio:GetAccessibilityManager()
+            pane = studio:GetOutputPane()
+            out = pane:GetOutputTab()
+        end
+
+        text update = "
+Update Found. Downloading " + fileDownloadToRequest
+        
+        //out:Append(update)
+        if access not= undefined
+            access:Notify(out, update)
         end
 
         text cookie = options:GetLoginCookie()
@@ -62,8 +84,28 @@ class FileDownloadBehavior is QuorumStudioBehavior, NetworkRequestListener
     end
 
     action ResponseReceived(NetworkResponseEvent response)
+        text update = "
+Download Complete. Starting Installer."
+        out:Append(update)
+        if access not= undefined
+            access:Notify(out, update)
+        end
+
+        if dialog not= undefined
+            dialog:SetShutdown(true)
+        end
         if postDownloadBehavior not= undefined
             postDownloadBehavior:Run(undefined)
+        end
+    end
+
+    action DownloadProgress(integer length, integer read)
+        number l = length
+        number r = read
+        number percent = 100 * (r / l)
+
+        if dialog not= undefined
+            dialog:SetPercent(percent)
         end
     end
 
@@ -89,5 +131,13 @@ class FileDownloadBehavior is QuorumStudioBehavior, NetworkRequestListener
 
     action SetPostDownloadBehavior(Behavior postDownloadBehavior)
         me:postDownloadBehavior = postDownloadBehavior
+    end
+
+    action GetDialog returns CheckForUpdatesDialog
+        return dialog
+    end
+
+    action SetDialog(CheckForUpdatesDialog dialog)
+        me:dialog = dialog
     end
 end
