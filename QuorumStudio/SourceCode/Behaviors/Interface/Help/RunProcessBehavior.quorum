@@ -63,7 +63,10 @@ class RunProcessBehavior is QuorumStudioBehavior, ProcessListener
             ProcessRunner runner
             runner:AddListener(me)
             runner:SetDirectory(folder)
-            runner:SetProcessName(file:GetAbsolutePath())
+            Array<text> parameters = runner:GetParameters()
+            parameters:Add(file:GetFileName())
+
+            runner:SetProcessName("open")
             runner:Run()
         end
     end
