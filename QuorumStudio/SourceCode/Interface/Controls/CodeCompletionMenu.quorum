@@ -62,9 +62,11 @@ class CodeCompletionMenu is PopupMenu
 
         boolean useFirstColor = true
 
+        Array<MenuItem> primitives
         Array<MenuItem> other
         Array<MenuItem> locals
         Array<MenuItem> fields
+        Array<MenuItem> parentFields
         Array<MenuItem> actions
         repeat while iterator:HasNext()
             CodeCompletionItem code = iterator:Next()
@@ -108,21 +110,26 @@ class CodeCompletionMenu is PopupMenu
                 elseif code:GetType() = code:CLASS
                     other:Add(item)
                 elseif code:GetType() = code:PRIMITIVE
-                    other:Add(item)
+                    primitives:Add(item)
                 elseif code:GetType() = code:CONTROL_STRUCTURE
-                    other:Add(item)
+                    primitives:Add(item)
                 elseif code:GetType() = code:PACKAGE
                     other:Add(item)
+                elseif code:GetType() = code:PARENT_FIELD_PRIVATE
+                    parentFields:Add(item)
+                elseif code:GetType() = code:PARENT_FIELD_PUBLIC
+                    parentFields:Add(item)
                 end
-                //items:Add(item)
             end
         end
 
         MenuItemComparison compare
-        AddToResult(other, compare)
         AddToResult(locals, compare)
+        AddToResult(primitives, compare)
         AddToResult(fields, compare)
         AddToResult(actions, compare)
+        AddToResult(parentFields, compare)
+        AddToResult(other, compare)
 
         if IsEmpty() = false and GetSelection():IsEmpty() = true
             // Moving the selection down forces the menu to select the first
