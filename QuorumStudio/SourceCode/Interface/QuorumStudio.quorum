@@ -94,6 +94,9 @@ use Libraries.Development.Environment.Studio.Behaviors.SelectionResetScaleBehavi
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTree
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.ScenePalette
+use Libraries.Development.Environment.Studio.Behaviors.CursorSelectItemsBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CursorIncreaseSizeBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CursorDecreaseSizeBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     public constant number VERSION = 2.0
@@ -580,6 +583,19 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         OpenVisualEditorFindDialogBehavior openEditorFindDialogBehavior = behaviors:GetOpenVisualEditorFindDialogBehavior()
         table:Add(openEditorFindDialogInput, openEditorFindDialogBehavior)
 
+        InputSet cursorSelectItemsInput = map:GetCursorSelectItemsKey()
+        CursorSelectItemsBehavior cursorSelectItemsBehavior = behaviors:GetCursorSelectItemsBehavior()
+        table:Add(cursorSelectItemsInput, cursorSelectItemsBehavior)
+
+        InputSet selectionScaleUpSet = map:GetSelectionScaleUpKey()
+        InputSet selectionScaleDownSet = map:GetSelectionScaleDownKey()
+
+        CursorIncreaseSizeBehavior cursorIncreaseSizeBehavior = behaviors:GetCursorIncreaseSizeBehavior()
+        CursorDecreaseSizeBehavior cursorDecreaseSizeBehavior = behaviors:GetCursorDecreaseSizeBehavior()
+
+        table:Add(selectionScaleUpSet, cursorIncreaseSizeBehavior)
+        table:Add(selectionScaleDownSet, cursorDecreaseSizeBehavior)
+
         AddInputTable(table)
 
         InputTable cameraItemTable2D
@@ -595,7 +611,13 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         cameraItemTable2D:Add(selectionMoveUp2DStart, selectionMoveUpStartBehavior)
         cameraItemTable2D:Add(selectionMoveUp2DStop, selectionMoveYStopBehavior)
         cameraItemTable2D:Add(selectionMoveDown2DStart, selectionMoveDownStartBehavior)
-        cameraItemTable2D:Add(selectionMoveDown2DStop, selectionMoveYStopBehavior)        
+        cameraItemTable2D:Add(selectionMoveDown2DStop, selectionMoveYStopBehavior)
+
+        SelectionScaleBehavior selectionScaleUpBehavior = behaviors:GetSelectionScaleUpBehavior()
+        SelectionScaleBehavior selectionScaleDownBehavior = behaviors:GetSelectionScaleDownBehavior()
+
+        cameraItemTable2D:Add(selectionScaleUpSet, selectionScaleUpBehavior)
+        cameraItemTable2D:Add(selectionScaleDownSet, selectionScaleDownBehavior)
 
         AddInputTable(cameraItemTable2D)
 
@@ -688,12 +710,6 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         selectionTable:Add(selectionRotateRollLeftStop, selectionStopRotatingRollBehavior)
         selectionTable:Add(selectionRotateRollRightStart, selectionStartRotatingRollRightBehavior)
         selectionTable:Add(selectionRotateRollRightStop, selectionStopRotatingRollBehavior)
-
-        InputSet selectionScaleUpSet = map:GetSelectionScaleUpKey()
-        InputSet selectionScaleDownSet = map:GetSelectionScaleDownKey()
-
-        SelectionScaleBehavior selectionScaleUpBehavior = behaviors:GetSelectionScaleUpBehavior()
-        SelectionScaleBehavior selectionScaleDownBehavior = behaviors:GetSelectionScaleDownBehavior()
 
         selectionTable:Add(selectionScaleUpSet, selectionScaleUpBehavior)
         selectionTable:Add(selectionScaleDownSet, selectionScaleDownBehavior)
