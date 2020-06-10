@@ -11,6 +11,12 @@ use Libraries.Interface.Controls.MenuItem
 use Libraries.Development.Environment.Studio.Behaviors.ExecuteCodeCompletionBehavior
 use Libraries.Development.Environment.Studio.Behaviors.MenuItemComparison
 use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.Graphics.Drawable
+use Libraries.Interface.Controls.Icon
+use Libraries.Game.Graphics.Texture
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.MenuRoot
+use Libraries.Interface.Controls.Control
 
 class CodeCompletionMenu is PopupMenu
 
@@ -18,8 +24,15 @@ class CodeCompletionMenu is PopupMenu
     BuildManager builder = undefined
     Color primaryColor
     Color secondaryColor
-
-
+    
+    Icon primitiveIcon
+    Icon actionIcon
+    Icon actionPrivateIcon
+    Icon fieldIcon
+    Icon defaultIcon
+    Icon variableIcon
+    Icon parentIcon
+    Icon classIcon
     on create
         SetInputGroup("CodeCompletionMenuRoot")
         SetScrollable(true)
@@ -31,6 +44,13 @@ class CodeCompletionMenu is PopupMenu
         SetBorderThickness(2)
         // 15 is the integer constant value of the "ALL" border style in LayoutProperties
         GetDefaultLayoutProperties():SetBorderStyle(15)
+    end
+
+    action LoadGraphics(LayoutProperties properties)
+        parent:PopupMenu:LoadGraphics(properties)
+
+        //If loaded from here, MenuItems override their colors in the parent's load graphics.
+        //Is that a bug? Feels like it
     end
 
     action GetTextBox returns CodeTextBox
@@ -51,8 +71,30 @@ class CodeCompletionMenu is PopupMenu
         OpenAt(x, y)
     end
 
+    boolean loadedOnce = false
     action Filter(BehaviorEvent event)
         Empty()
+
+        if not loadedOnce
+            integer size = 25
+            Color red = primaryColor:Red()
+            Color blue = primaryColor:Blue()
+            Color green = primaryColor:Green()
+            Color black = primaryColor:Black()
+            Color orange = primaryColor:Orange()
+            Color olive = primaryColor:Olive()
+            Color magenta = primaryColor:Magenta()
+            Color grey = primaryColor:LightGray()
+            primitiveIcon:LoadFilledCircle(size, orange)
+            fieldIcon:LoadFilledRectangle(size, size, green)
+            actionIcon:LoadFilledTriangle(0,0,size/2, size, size, 0, olive)
+            actionPrivateIcon:LoadFilledTriangle(0,size,size/2, 0, size, size, magenta)
+            defaultIcon:LoadFilledCircle(size, black)
+            variableIcon:LoadFilledRectangle(size, size, grey)
+            parentIcon:LoadFilledCircle(size, red)
+            classIcon:LoadFilledRectangle(size, size, black)
+            loadedOnce = true
+        end
 
         CodeCompletionResult result = builder:RequestCodeCompletion()
         Iterator<CodeCompletionItem> iterator = result:GetIterator()
@@ -90,34 +132,49 @@ class CodeCompletionMenu is PopupMenu
                 item:SetBehavior(behave)
 
                 if code:GetType() = code:LOCAL_VARIABLE
+                    item:SetIcon(variableIcon)
                     locals:Add(item)
                 elseif code:GetType() = code:PARAMETER
+                    item:SetIcon(variableIcon)
                     locals:Add(item)
                 elseif code:GetType() = code:PRIVATE_FIELD_VARIABLE
+                    item:SetIcon(fieldIcon)
                     fields:Add(item)
                 elseif code:GetType() = code:PUBLIC_FIELD_VARIABLE
+                    item:SetIcon(fieldIcon)
                     fields:Add(item)
                 elseif code:GetType() = code:PRIVATE_ACTION
+                    item:SetIcon(actionIcon)
                     actions:Add(item)
                 elseif code:GetType() = code:PUBLIC_ACTION
+                    item:SetIcon(actionIcon)
                     actions:Add(item)
                 elseif code:GetType() = code:PRIVATE_SYSTEM_ACTION
+                    item:SetIcon(actionIcon)
                     actions:Add(item)
                 elseif code:GetType() = code:PUBLIC_SYSTEM_ACTION
+                    item:SetIcon(actionIcon)
                     actions:Add(item)
                 elseif code:GetType() = code:PUBLIC_BLUEPRINT_ACTION
+                    item:SetIcon(actionIcon)
                     actions:Add(item)
                 elseif code:GetType() = code:CLASS
+                    item:SetIcon(classIcon)
                     other:Add(item)
                 elseif code:GetType() = code:PRIMITIVE
+                    item:SetIcon(primitiveIcon)
                     primitives:Add(item)
                 elseif code:GetType() = code:CONTROL_STRUCTURE
+                    item:SetIcon(primitiveIcon)
                     primitives:Add(item)
                 elseif code:GetType() = code:PACKAGE
+                    item:SetIcon(defaultIcon)
                     other:Add(item)
                 elseif code:GetType() = code:PARENT_FIELD_PRIVATE
+                    item:SetIcon(parentIcon)
                     parentFields:Add(item)
                 elseif code:GetType() = code:PARENT_FIELD_PUBLIC
+                    item:SetIcon(parentIcon)
                     parentFields:Add(item)
                 end
             end
