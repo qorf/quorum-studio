@@ -13,6 +13,10 @@ use Libraries.Development.Environment.Configuration.Options
 use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Development.Environment.Projects.Credentials
+use Libraries.Concurrency.ThreadRunner
+use Libraries.System.Properties
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
 
 class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
     QuorumStudio studio = undefined
@@ -64,6 +68,9 @@ class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
     action ResponseReceived(NetworkResponseEvent response)
         text value = response:GetResponseText()
         number newVersion = -1
+        text windows = undefined
+        text mac = undefined
+        text updateFile = undefined
         if value not= undefined
             JavaScriptObjectNotation notation
             notation:Read(value)
@@ -71,8 +78,46 @@ class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
         
             check
                 newVersion = cast(number, notation:GetValue("Version"))
+                windows = notation:GetValue("Windows")
+                mac = notation:GetValue("Mac")
             detect e //ignore this
+                return now //this file is corrupt, so you know, don't update to that.
             end
+        end
+
+        //The new version of quorum studio requires flags specifying which version 
+        //we are getting from the system. 
+        if windows = undefined or mac = undefined
+            return now
+        end
+
+        //we need some place safe to store the file.
+        File propertiesLocation = options:GetPropertiesLocation()
+        if propertiesLocation = undefined or not propertiesLocation:Exists()
+            return now
+        end
+
+        File downloadLocation
+        downloadLocation:SetWorkingDirectory(propertiesLocation:GetAbsolutePath())
+
+        //figure out what OS I'm on and then use that version for the update request
+        Properties properties
+        if properties:IsWindows()
+            updateFile = windows
+        elseif properties:IsMac()
+            updateFile = mac
+        end
+
+        text name = options:GetAutoUpdateName()
+        //something else is wrong and this system isn't supported for auto-update
+        if name = undefined
+            return now
+        end
+
+        downloadLocation:SetPath(name)
+        //only mac and windows are supported for the auto-update system.
+        if updateFile = undefined
+            return now
         end
 
         number version = studio:VERSION
@@ -95,8 +140,29 @@ class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
                 text user = credentials:GetUsername()
                 text password = credentials:GetPassword()
 
-                output user
-                output password
+                Behaviors behaviors = studio:GetBehaviors()
+                ThreadRunner thread = behaviors:GetNetworkThreadRunner()
+                QuorumLoginBehavior qlb
+                FileDownloadBehavior flb
+                flb:SetFileDownloadToRequest(updateFile)
+                flb:SetDownloadLocation(downloadLocation)
+                RunProcessBehavior runBehave
+                runBehave:SetFile(downloadLocation)
+                flb:SetPostDownloadBehavior(runBehave)
+
+                qlb:SetSuccessfulLoginBehavior(flb)
+                ThreadedBehavior behave
+
+                behave:SetNestedBehavior(qlb)
+                behave:SetThreadRunner(thread)
+                thread:Add(behave)
+
+                AdjustCheckForUpdatesBehavior adjust
+                adjust:SetVersion(newVersion)
+                OutputEditorTabPane pane = studio:GetOutputPane()
+                pane:AddBehavior(adjust)
+
+                flb:SetDialog(adjust:GetDialog())
             end
         else //there is no new version. Just post the dialog
              //saying that we are up to date.

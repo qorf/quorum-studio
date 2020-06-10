@@ -115,10 +115,15 @@ class Behaviors
     QuorumStudio studio = undefined
     HashTable<text, QuorumStudioBehavior> behaviors
 
+    constant text QUORUM_LOGIN_BEHAVIOR = "Quorum Login Behavior"
     //threading 
     BuildManager builder
     ThreadRunner indexThread
     ThreadRunner buildSystemRunner
+    ThreadRunner networkThreadRunner
+    QuorumLoginBehavior quorumLoginBehavior
+    ThreadedBehavior threadedQuorumLoginBehavior
+    ThreadedBehavior threadedFileDownload
     ThreadedBehavior threadedBuild
     ThreadedBehavior threadedCleanAndBuild
     ThreadedBehavior threadedClean
@@ -467,6 +472,10 @@ class Behaviors
         threadedBootstrapBehavior:SetNestedBehavior(bootstrapBehavior)
         threadedBootstrapBehavior:SetThreadRunner(buildSystemRunner)
 
+        threadedQuorumLoginBehavior:SetNestedBehavior(quorumLoginBehavior)
+        threadedQuorumLoginBehavior:SetThreadRunner(networkThreadRunner)
+        behaviors:Add(QUORUM_LOGIN_BEHAVIOR, quorumLoginBehavior)
+
         // Set direction and magnitude of interface scaling behaviors.
         interfaceScaleUp:SetScaleUp(true)
         interfaceScaleDown:SetScaleUp(false)
@@ -693,6 +702,10 @@ class Behaviors
         return builder
     end
 
+    action GetNetworkThreadRunner returns ThreadRunner
+        return networkThreadRunner
+    end
+
     action GetBuildThreadRunner returns ThreadRunner
         return buildSystemRunner
     end
@@ -728,6 +741,14 @@ class Behaviors
 
     action GetExitBehavior returns ExitBehavior
         return exitBehavior
+    end
+
+    action GetThreadedQuorumLoginBehavior returns ThreadedBehavior
+        return threadedQuorumLoginBehavior
+    end
+
+    action GetQuorumLoginBehavior returns QuorumLoginBehavior
+        return quorumLoginBehavior
     end
 
     //Run Menu

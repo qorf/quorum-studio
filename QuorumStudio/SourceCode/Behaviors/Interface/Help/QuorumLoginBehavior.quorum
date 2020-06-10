@@ -1,0 +1,115 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Network.NetworkConnection
+use Libraries.Network.NetworkRequest
+use Libraries.Network.NetworkResponseEvent
+use Libraries.Network.NetworkRequestListener
+use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Studio.Interface.CheckForUpdatesDialog
+use Libraries.Development.Environment.Configuration.Options
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Development.Environment.Projects.Credentials
+use Libraries.Containers.HashTable
+use Libraries.Containers.Array
+
+class QuorumLoginBehavior is QuorumStudioBehavior, NetworkRequestListener
+    QuorumStudio studio = undefined
+    ProjectManager manager = undefined
+    Options options = undefined
+    text loginSuccess = "success"
+    Behavior successfulLoginBehavior = undefined
+    Behavior failedLoginBehavior = undefined
+
+    action SetMainApplication(QuorumStudio studio)
+        me:studio = studio
+        manager = studio:GetProjectManager()
+        options = studio:GetOptions()
+    end
+
+    action GetMainApplication returns QuorumStudio
+        return studio
+    end
+
+    action Run(BehaviorEvent event)
+        NetworkRequest request
+        request:SetRequestTypeToPost()
+
+        if options = undefined
+            GameStateManager gsm
+            studio = cast(QuorumStudio, gsm:GetGame())
+            options = studio:GetOptions()
+        end
+
+        request:SetWebAddress("https://quorumlanguage.com/login.php")
+        Credentials credentials = options:GetPassword(options:QUORUM_WEBSITE_PASSWORD_KEY)
+        if credentials = undefined 
+            or credentials:GetUsername() = undefined
+            or credentials:GetPassword() = undefined
+            or credentials:GetUsername():IsEmpty()
+            or credentials:GetPassword():IsEmpty()
+            //the user has no login credentials
+            
+        else// Try to login!
+            text user = credentials:GetUsername()
+            text pass = credentials:GetPassword()
+            request:SetBody("username="+user + "&password=" + pass)
+            NetworkConnection http
+            http:AddListener(me)
+    
+            check
+                http:SendRequest(request)
+            detect e
+            end
+        end        
+    end
+
+    action ResponseReceived(NetworkResponseEvent response)
+        text value = response:GetResponseText():Trim()
+        text cookieID = undefined
+        if value = loginSuccess
+            HashTable<text,text> hash = response:GetHeaders()
+            text cookie = hash:GetValue("Set-Cookie")
+
+            Array<text> split = cookie:Split(";")
+            if split not= undefined and split:GetSize() > 0
+                text session = split:Get(0) //server sends this back first
+                Array<text> sessionArray = session:Split("=")
+                if sessionArray not= undefined and sessionArray:GetSize() > 1
+                    cookieID = sessionArray:Get(1)
+                end
+            end
+        end
+
+        options:SetLoginCookie(cookieID)
+        if cookieID not= undefined
+            Behavior behave = GetSuccessfulLoginBehavior()
+            if behave not= undefined
+                behave:Run(undefined)
+            end
+        else
+            Behavior behave = GetFailedLoginBehavior()
+            if behave not= undefined
+                behave:Run(undefined)
+            end
+        end
+    end
+
+    action GetSuccessfulLoginBehavior returns Behavior
+        return successfulLoginBehavior
+    end
+
+    action SetSuccessfulLoginBehavior(Behavior successfulLoginBehavior)
+        me:successfulLoginBehavior = successfulLoginBehavior
+    end
+    action GetFailedLoginBehavior returns Behavior
+        return failedLoginBehavior
+    end
+
+    action SetFailedLoginBehavior(Behavior failedLoginBehavior)
+        me:failedLoginBehavior = failedLoginBehavior
+    end
+end
