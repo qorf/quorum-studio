@@ -21,7 +21,9 @@ class CheckForUpdatesDialog is Dialog
     Label warningLabel
 
     boolean initialized = false
-    number newVersion = 1.0
+    integer newMajorVersion = -10
+    integer newMinorVersion = -10
+    integer newBuildVersion = -10
     number percent = -1
     boolean shutdown = false
     ProgressBar progress
@@ -69,16 +71,12 @@ class CheckForUpdatesDialog is Dialog
         control:SetBorderColor(color:Black())
         control:SetPercentageWidth(1.0)
         control:SetVerticalLayoutMode(control:FIT_CONTENTS)
-        
-        number version = studio:VERSION
-        
-        
 
         text result = ""
-        if newVersion = -10
+        if newMajorVersion < 0
             result = "Could not connect to update server."
-        elseif newVersion > version
-            result = "Quorum Studio version " + newVersion + "
+        elseif IsNewer()
+            result = "Quorum Studio " + GetNewVersionNumber() + "
                 Download in progress."
         else
             result = "You are up to date!"
@@ -117,9 +115,30 @@ class CheckForUpdatesDialog is Dialog
         return control
     end
 
+    private action IsNewer returns boolean
+        integer major = studio:GetMajorVersion()
+        integer minor = studio:GetMinorVersion()
+        integer build = studio:GetBuildVersion()
+
+        if newMajorVersion > major
+            return true
+        elseif newMajorVersion = major and newMinorVersion > minor
+            return true
+        elseif newMajorVersion = major and newMinorVersion = minor and 
+            newBuildVersion > build
+            return true
+        end
+        
+        return false
+    end
+
+    private action GetNewVersionNumber returns text
+        return "" + newMajorVersion + "." + newMinorVersion + "." + newBuildVersion
+    end
+
     action Update(number seconds)
         if percent not= -1
-            text result = "Quorum Studio version " + newVersion + "
+            text result = "Quorum Studio version " + GetNewVersionNumber() + "
                 Download in progress "
             integer value = cast(integer, percent)
             result = result + value + "%"
@@ -136,14 +155,6 @@ class CheckForUpdatesDialog is Dialog
         studio:ResetExitFlag()   
     end
 
-    action GetNewVersion returns number
-        return newVersion
-    end
-
-    action SetNewVersion(number new)
-        me:newVersion = new
-    end
-
     action GetPercent returns number
         return percent
     end
@@ -158,5 +169,29 @@ class CheckForUpdatesDialog is Dialog
 
     action SetShutdown(boolean shutdown)
         me:shutdown = shutdown
+    end
+
+    action GetNewMajorVersion returns integer
+        return newMajorVersion
+    end
+
+    action SetNewMajorVersion(integer newMajorVersion)
+        me:newMajorVersion = newMajorVersion
+    end
+
+    action GetNewMinorVersion returns integer
+        return newMinorVersion
+    end
+
+    action SetNewMinorVersion(integer newMinorVersion)
+        me:newMinorVersion = newMinorVersion
+    end
+
+    action GetNewBuildVersion returns integer
+        return newBuildVersion
+    end
+
+    action SetNewBuildVersion(integer newBuildVersion)
+        me:newBuildVersion = newBuildVersion
     end
 end
