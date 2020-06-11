@@ -1,5 +1,6 @@
  package Libraries.Development.Environment.Studio.Interface.VisualEditor
 use Libraries.Game.Graphics.Camera
+use Libraries.Game.Graphics.OrthographicCamera
 
 class CameraItem2D is CameraItem, InteractableItem2D
 
@@ -63,6 +64,20 @@ class CameraItem2D is CameraItem, InteractableItem2D
             EditorLayer2D layer = cast(EditorLayer2D, GetLayer())
             layer:UpdateGridPosition()
         end
+    end
+
+    action SetZoom(number zoom)
+        OrthographicCamera camera = cast(OrthographicCamera, GetCamera())
+        camera:SetZoom(zoom)
+        if GetLayer() is EditorLayer2D
+            EditorLayer2D layer = cast(EditorLayer2D, GetLayer())
+            layer:UpdateGridSize()
+        end
+    end
+
+    action GetZoom returns number
+        OrthographicCamera camera = cast(OrthographicCamera, GetCamera())
+        return camera:GetZoom()
     end
 
 end

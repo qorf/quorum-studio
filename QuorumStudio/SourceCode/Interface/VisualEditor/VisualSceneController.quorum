@@ -592,6 +592,52 @@ class VisualSceneController is Control
         NotifySceneChangeListeners(event)
     end
 
+    /*
+    This action will delete an item that has been added to the scene.
+    */
+    action Delete(Item item)
+        EditorLayer resultLayer = undefined
+
+        if item is Item2D
+            Item2D item2D = cast(Item2D, item)
+            EditorLayer2D layer = cast(EditorLayer2D, item2D:GetLayer())
+            resultLayer = layer
+            layer:Remove(item2D)
+        elseif item is Item3D
+            Item3D item3D = cast(Item3D, item)
+            EditorLayer3D layer = cast(EditorLayer3D, item3D:GetLayer())
+            resultLayer = layer
+            layer:Remove(item3D)
+        end
+
+        integer index = 0
+        repeat while index < filterHighlights:GetSize()
+            SelectionHighlight highlight = filterHighlights:Get(index)
+            if highlight:GetItem() = item
+                filterHighlights:RemoveAt(index)
+                if resultLayer is EditorLayer2D
+                    EditorLayer2D layer = cast(EditorLayer2D, resultLayer)
+                    layer:Remove(cast(SelectionHighlight2D, highlight))
+                elseif resultLayer is EditorLayer3D
+                    EditorLayer3D layer = cast(EditorLayer3D, resultLayer)
+                    layer:Remove(cast(SelectionHighlight3D, highlight))
+                end
+
+                // Manually set the index so we'll escape the loop early.
+                index = filterHighlights:GetSize()
+
+                // Refresh filter highlight focus order and descriptions.
+                SetFilterHighlightData()
+            end
+
+            index = index + 1
+        end
+
+        SceneChangeEvent event
+        event:Set(me, item, undefined, resultLayer, event:REMOVED)
+        NotifySceneChangeListeners(event)
+    end
+
     action CreateNewItemPreview(ItemBlueprint schematic)
 
         // Old-style item creation. Will be replaced soon.

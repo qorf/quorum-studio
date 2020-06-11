@@ -97,6 +97,8 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.ScenePalette
 use Libraries.Development.Environment.Studio.Behaviors.CursorSelectItemsBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CursorIncreaseSizeBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CursorDecreaseSizeBehavior
+use Libraries.Interface.Controls.Tree
+use Libraries.Interface.Selections.TabPaneSelection
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     public constant number VERSION = 2.0
@@ -301,6 +303,21 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     action GetFocusSelection returns integer
         return focus
+    end
+
+    /*
+    This action returns the current tree which is active in the tree tab pane.
+    For example, if the ProjectTree is visible, the ProjectTree will be returned.
+    If the SceneTree is currently visible in the active tab, it will be returned instead.
+    */
+    action GetActiveTree returns Tree
+        TabPaneSelection selection = treeTabPane:GetSelection()
+        Tab tab = selection:GetTab()
+        Item focusTarget = tab:GetFocusTarget()
+        if focusTarget is Tree
+            return cast(Tree, focusTarget)
+        end
+        return undefined
     end
 
     action Started
@@ -744,12 +761,14 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         selectionTable:Add(selectionScaleZDownSet, selectionScaleZDownBehavior)
 
         InputSet selectionDeleteSet = map:GetSelectionDeleteKey()
+        InputSet selectionDeleteSet2 = map:GetSelectionDeleteKey2()
         InputSet selectionCancelSet = map:GetSelectionCancelKey()
 
         SelectionDeleteBehavior selectionDeleteBehavior = behaviors:GetSelectionDeleteBehavior()
         SelectionCancelBehavior selectionCancelBehavior = behaviors:GetSelectionCancelBehavior()
 
         selectionTable:Add(selectionDeleteSet, selectionDeleteBehavior)
+        selectionTable:Add(selectionDeleteSet2, selectionDeleteBehavior)
         selectionTable:Add(selectionCancelSet, selectionCancelBehavior)
 
         selectionTable:Add(toggleGridInput, toggleGridBehavior)
@@ -805,6 +824,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         selectionTable2D:Add(selectionScaleYDownSet, selectionScaleYDownBehavior)
 
         selectionTable2D:Add(selectionDeleteSet, selectionDeleteBehavior)
+        selectionTable2D:Add(selectionDeleteSet2, selectionDeleteBehavior)
         selectionTable2D:Add(selectionCancelSet, selectionCancelBehavior)
 
         selectionTable2D:Add(toggleGridInput, toggleGridBehavior)

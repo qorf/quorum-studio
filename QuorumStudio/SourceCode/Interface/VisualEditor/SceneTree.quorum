@@ -237,17 +237,16 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
 
         repeat while treeItems:HasNext() and finished = false
             SceneTreeItem treeItem = cast(SceneTreeItem, treeItems:Next())
-            if treeItem:GetSceneLayer() = layer
-                layerTreeItem = treeItem
+            SceneTreeItem target = GetTreeItem(treeItem, item)
+            if target not= undefined
+                if treeItem = target
+                    Remove(cast(TreeItem, treeItem))
+                else
+                    TreeItem parentTreeItem = target:GetParentTreeItem()
+                    parentTreeItem:Remove(cast(TreeItem, target))
+                end
                 finished = true
             end
-        end
-
-        if parentItem = undefined
-            layerTreeItem:Remove(cast(TreeItem, GetTreeItem(layerTreeItem, item)))
-        else
-            SceneTreeItem parentTreeItem = GetTreeItem(layerTreeItem, parentItem)
-            parentTreeItem:Remove(cast(TreeItem, GetTreeItem(parentTreeItem, item)))
         end
     end
 
