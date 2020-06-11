@@ -21,6 +21,7 @@ class CheckForUpdatesDialog is Dialog
     Label warningLabel
 
     boolean initialized = false
+    boolean updateChecked = false
     integer newMajorVersion = -10
     integer newMinorVersion = -10
     integer newBuildVersion = -10
@@ -73,7 +74,7 @@ class CheckForUpdatesDialog is Dialog
         control:SetVerticalLayoutMode(control:FIT_CONTENTS)
 
         text result = ""
-        if newMajorVersion < 0
+        if not updateChecked
             result = "Could not connect to update server."
         elseif IsNewer()
             result = "Quorum Studio " + GetNewVersionNumber() + "
@@ -194,4 +195,12 @@ class CheckForUpdatesDialog is Dialog
     action SetNewBuildVersion(integer newBuildVersion)
         me:newBuildVersion = newBuildVersion
     end
+    action GetUpdateChecked returns boolean
+        return updateChecked
+    end
+
+    action SetUpdateChecked(boolean updateChecked)
+        me:updateChecked = updateChecked
+    end
+
 end
