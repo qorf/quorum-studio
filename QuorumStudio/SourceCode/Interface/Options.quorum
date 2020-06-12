@@ -44,6 +44,7 @@ class Options is ProjectListener
     constant text OVERRIDE_STANDARD_LIBRARY_PATH = "Override Standard Library"
     constant text LIBRARY = "Library"
     constant text MAXIMIZE_WINDOW = "Maximize Window"
+    constant text BETA = "Beta"
     constant text LOCAL_PASSWORD_ENCRYPTION_KEY = "KbPdSgVkYp3s6v9y$B&E)H@McQfThWmZ"
     public constant text QUORUM_WEBSITE_PASSWORD_KEY = "QUORUM-WEBSITE_3948Y 93F8 34F93 94F8Y3P4F34FOI3U4F&&__"
     text loginCookie = undefined
@@ -429,6 +430,7 @@ class Options is ProjectListener
         notation:Add(WINDOW_HEIGHT, height)
         notation:Add(OVERRIDE_STANDARD_LIBRARY_PATH, overrideLibraryLocation)
         notation:Add(LIBRARY, libraryOverridePath)
+        notation:Add(BETA, specialBetaBuild)
 
         GameStateManager gameStateManager
         notation:Add(MAXIMIZE_WINDOW, gameStateManager:GetGame():IsWindowMaximized())
@@ -527,6 +529,11 @@ class Options is ProjectListener
                     end
                 end
                 i = i + 1
+            end
+        elseif key = BETA
+            if object:IsBoolean()
+                boolean value = object:GetBoolean()
+                me:specialBetaBuild = value
             end
         elseif key = FRAMES_PER_SECOND_COUNTER
             if object:IsBoolean()

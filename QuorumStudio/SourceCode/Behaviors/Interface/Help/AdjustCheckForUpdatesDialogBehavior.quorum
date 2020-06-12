@@ -20,7 +20,9 @@ use Libraries.System.File
 class AdjustCheckForUpdatesBehavior is QuorumStudioBehavior
     QuorumStudio studio = undefined
     Options options = undefined
-    number version = -1
+    integer newMajorVersion = -10
+    integer newMinorVersion = -10
+    integer newBuildVersion = -10
     CheckForUpdatesDialog dialog
 
     action SetMainApplication(QuorumStudio studio)
@@ -37,13 +39,31 @@ class AdjustCheckForUpdatesBehavior is QuorumStudioBehavior
         dialog:Show()
     end
 
-    action GetVersion returns number
-        return version
+    action GetNewMajorVersion returns integer
+        return newMajorVersion
     end
 
-    action SetVersion(number version)
-        dialog:SetNewVersion(version)
-        me:version = version
+    action SetNewMajorVersion(integer newMajorVersion)
+        dialog:SetNewMajorVersion(newMajorVersion)
+        me:newMajorVersion = newMajorVersion
+    end
+
+    action GetNewMinorVersion returns integer
+        return newMinorVersion
+    end
+
+    action SetNewMinorVersion(integer newMinorVersion)
+        dialog:SetNewMinorVersion(newMinorVersion)
+        me:newMinorVersion = newMinorVersion
+    end
+
+    action GetNewBuildVersion returns integer
+        return newBuildVersion
+    end
+
+    action SetNewBuildVersion(integer newBuildVersion)
+        dialog:SetNewBuildVersion(newBuildVersion)
+        me:newBuildVersion = newBuildVersion
     end
 
     action GetDialog returns CheckForUpdatesDialog

@@ -101,8 +101,10 @@ use Libraries.Interface.Controls.Tree
 use Libraries.Interface.Selections.TabPaneSelection
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
-    public constant number VERSION = 2.0
-    constant text NAME = "Quorum Studio " + VERSION
+    constant integer MAJOR_VERSION = 2
+    constant integer MINOR_VERSION = 0
+    constant integer BUILD_VERSION = 1
+    constant text NAME = "Quorum Studio " + MAJOR_VERSION + "." + MINOR_VERSION + "." + BUILD_VERSION
     public integer SAVE_CHANGES = 0
     public integer DISCARD_CHANGES = 1
     public integer CANCEL_EXIT = 2
@@ -143,6 +145,42 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     SplashScreen splashScreen = undefined
     boolean splashScreenHide = false
     integer exitStatus = SAVE_CHANGES
+
+    action GetDisplayName returns text
+        return NAME
+    end
+
+    action IsNewer(integer newMajorVersion, integer newMinorVersion, integer newBuildVersion) returns boolean
+        integer major = GetMajorVersion()
+        integer minor = GetMinorVersion()
+        integer build = GetBuildVersion()
+
+        if newMajorVersion > major
+            return true
+        elseif newMajorVersion = major and newMinorVersion > minor
+            return true
+        elseif newMajorVersion = major and newMinorVersion = minor and 
+            newBuildVersion > build
+            return true
+        end
+        
+        return false
+    end
+    action GetVersion returns text
+        return "" + MAJOR_VERSION + "." + MINOR_VERSION + "." + BUILD_VERSION
+    end
+
+    action GetMajorVersion returns integer
+        return MAJOR_VERSION
+    end
+
+    action GetMinorVersion returns integer
+        return MINOR_VERSION
+    end
+
+    action GetBuildVersion returns integer
+        return BUILD_VERSION
+    end
 
     action Start
         DesktopConfiguration config = GetDesktopConfiguration()
