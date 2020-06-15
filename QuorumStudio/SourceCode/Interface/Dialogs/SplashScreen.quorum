@@ -16,6 +16,7 @@ use Libraries.Language.Compile.Library
 use Libraries.Language.Compile.CompilerListener
 use Libraries.Interface.AccessibilityManager
 use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Compute.Math
 
 class SplashScreen is Dialog, CompilerListener
     boolean initialized = false
@@ -28,6 +29,7 @@ class SplashScreen is Dialog, CompilerListener
     Library library = undefined
     number currentPercent = 0
     GameStateManager manager
+    Math math
 
     on create
         SetModal(true)
@@ -53,7 +55,7 @@ class SplashScreen is Dialog, CompilerListener
         end
         AccessibilityManager access = manager:GetAccessibilityManager()
         if access not= undefined
-            access:Notify(me, result)
+            access:Notify(manager:GetFocus(), result)
         end
         
         loading:SetText(result)
@@ -117,9 +119,11 @@ class SplashScreen is Dialog, CompilerListener
         progress:Focus()
     end
 
+    
     action Update(number seconds)
         logo:Rotate(seconds * 90)
-        progress:SetValue(currentPercent)
+        number value = math:RoundToNearestInteger(currentPercent)
+        progress:SetValue(value)
         loading:SetX(studio:GetX())
     end
 
