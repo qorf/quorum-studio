@@ -10,6 +10,8 @@ use Libraries.Interface.Item
 use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Undo.TextBoxEditManager
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.SceneControllerEditManager
 
 class UndoBehavior is EditorBehavior
     action Run(Item item)
@@ -19,6 +21,12 @@ class UndoBehavior is EditorBehavior
             if edits not= undefined and edits:CanUndo()
                 edits:Undo()
                 box:GetEditorTab():SetIsDirty(true)
+            end
+        elseif item is VisualSceneController
+            VisualSceneController controller = cast(VisualSceneController, item)
+            SceneControllerEditManager manager = controller:GetEditManager()
+            if manager not= undefined and manager:CanUndo()
+                manager:Undo()
             end
         end
     end

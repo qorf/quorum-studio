@@ -1,0 +1,45 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits
+
+use Libraries.Interface.Undo.Edit
+use Libraries.Interface.Item
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+
+class InsertEdit is Edit
+    
+    VisualSceneController controller = undefined
+    Array<Item> items = undefined
+    EditorLayer layer = undefined
+
+    action Create(VisualSceneController controller, EditorLayer layer, Item item)
+        me:controller = controller
+        me:layer = layer
+
+        Array<Item> items
+        items:Add(item)
+        me:items = items
+    end
+
+    action Create(VisualSceneController controller, EditorLayer layer, Array<Item> items)
+        me:controller = controller
+        me:items = items
+        me:layer = layer
+    end
+
+    action Undo
+        integer counter = 0
+        repeat while counter < items:GetSize()
+            controller:Delete(items:Get(counter))
+            counter = counter + 1
+        end
+    end
+
+    action Redo
+        integer counter = 0
+        repeat while counter < items:GetSize()
+            controller:Add(layer, items:Get(counter))
+            counter = counter + 1
+        end
+    end
+end

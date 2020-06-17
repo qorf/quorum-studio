@@ -20,6 +20,8 @@ use Libraries.Interface.Events.FocusEvent
 use Libraries.Compute.Vector2
 use Libraries.Game.Graphics.Drawable
 use Libraries.Containers.HashTable
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.SceneControllerEditManager
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.DeleteEdit
 
 /*
 A class used to represent the 2D space within a Visual Editor tab.
@@ -32,6 +34,8 @@ class VisualSceneController is Control
     VisualEditorSelection selection
 
     Array<SceneChangeListener> sceneChangeListeners
+
+    SceneControllerEditManager editManager
 
     // The rotational speed, measured in degrees per second,
     // and the directional speed, measured in 3D world units per second.
@@ -203,7 +207,11 @@ class VisualSceneController is Control
 
     action FocusItemProperties
         if GetSelectedLayer() is EditorLayer2D
-            item2dPropertiesDialog:FocusField()
+            if GetSelectedItem() is CameraItem2D
+                camera2dPropertiesDialog:FocusField()
+            else
+                item2dPropertiesDialog:FocusField()
+            end
         elseif GetSelectedLayer() is EditorLayer3D
             item3dPropertiesDialog:FocusField()
         end
@@ -211,6 +219,10 @@ class VisualSceneController is Control
 
     action GetFindDialog returns VisualEditorFindDialog
         return findDialog
+    end
+
+    action GetEditManager returns SceneControllerEditManager
+        return editManager
     end
 
     action Update(number seconds)
@@ -587,6 +599,10 @@ class VisualSceneController is Control
             nextFocus:Focus()
         end
 
+        DeleteEdit edit
+        edit:Create(me, resultLayer, highlight:GetItem())
+        editManager:Add(edit)
+
         SceneChangeEvent event
         event:Set(me, highlight:GetItem(), undefined, resultLayer, event:REMOVED)
         NotifySceneChangeListeners(event)
@@ -633,6 +649,10 @@ class VisualSceneController is Control
             index = index + 1
         end
 
+        DeleteEdit edit
+        edit:Create(me, resultLayer, item)
+        editManager:Add(edit)
+
         SceneChangeEvent event
         event:Set(me, item, undefined, resultLayer, event:REMOVED)
         NotifySceneChangeListeners(event)
@@ -640,7 +660,7 @@ class VisualSceneController is Control
 
     action CreateNewItemPreview(ItemBlueprint schematic)
 
-        // Old-style item creation. Will be replaced soon.
+        // TO-DO: Old-style item creation. Will be replaced soon.
         if schematic = undefined
             if GetSelectedLayer() is EditorLayer3D
                 NewItemPreview3D preview
@@ -814,6 +834,27 @@ class VisualSceneController is Control
                 item2dPropertiesDialog:SetFields(cast(NewItemPreview2D, newItem))
             end
         end
+    end
+
+    action Add(EditorLayer layer, Item item)
+        if layer is EditorLayer2D and item is Item2D
+            EditorLayer2D layer2D = cast(EditorLayer2D, layer)
+            Item2D item2D = cast(Item2D, item)
+            layer2D:Add(item2D)
+        elseif layer is EditorLayer3D and item is Item3D
+            EditorLayer3D layer3D = cast(EditorLayer3D, layer)
+            Item3D item3D = cast(Item3D, item)
+            layer3D:Add(item3D)    
+        else
+            alert("I couldn't add the item " + item:GetName() + " because it's incompatible with the requested layer.")
+        end
+
+        // It's not clear if we should notify accessibility here, or allow a change in selection to handle that for us.
+        //NotifyAccessibility(newItem, "Placed " + result:GetName())
+        
+        SceneChangeEvent event
+        event:Set(me, item, undefined, layer, event:ADDED)
+        NotifySceneChangeListeners(event)
     end
 
     action AddLayer(EditorLayer layer)
