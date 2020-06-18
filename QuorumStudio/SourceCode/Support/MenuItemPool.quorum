@@ -1,0 +1,22 @@
+package Libraries.Interface.Pools
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Controls.CodeCompletionMenuItem
+
+shared class MenuItemPool
+    Array<MenuItem> itemPool
+
+    action GetNextMenuItem returns MenuItem
+        if itemPool:IsEmpty()
+            CodeCompletionMenuItem item
+            return item
+        else 
+            MenuItem item = itemPool:RemoveFromEnd()
+            return item
+        end
+    end
+
+    action Recycle(MenuItem item)
+        itemPool:Add(item)
+    end
+end

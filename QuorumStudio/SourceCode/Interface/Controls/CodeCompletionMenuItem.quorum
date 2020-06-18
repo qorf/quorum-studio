@@ -1,0 +1,210 @@
+package Libraries.Interface.Controls
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.Gradient
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Views.LabelBoxView
+use Libraries.Interface.Views.MenuItemView
+use Libraries.Game.Graphics.Font
+use Libraries.Interface.Views.ControlView
+use Libraries.Interface.Views.CodeCompletionMenuItemView
+
+class CodeCompletionMenuItem is MenuItem
+    Color black
+    Color white
+    Color magenta
+    Color defaultLabelViewBackground
+    Color gray
+    Color lightGray
+    Gradient gradient
+    Color backgroundColor
+    Color defaultBorderColor
+    Color defaultSelectionColor
+    Color defaultSelectionBorderColor
+    CodeCompletionMenuItemView content = undefined
+    CodeCompletionMenuItemView view = undefined
+    boolean selected = false
+
+    on create
+        black = black:Black()
+        white = black:White()
+        defaultLabelViewBackground:SetColor(1,1,1,0)
+        gray:SetColor(0.85, 0.85, 0.9, 1)
+        lightGray:SetColor(0.9, 0.9, 0.9, 1)
+        gradient:Set(gray, gray, lightGray, lightGray)
+        defaultBorderColor:SetColor(0,0,0,1)
+        defaultSelectionColor:SetColor(0.25, 0.25, 1, 1)
+        defaultSelectionBorderColor:SetColor(0, 0, 0, 1)
+        magenta = black:Magenta()
+
+        LayoutProperties properties = GetDefaultLayoutProperties()
+        properties:SetSelectionFontColor(white)
+        properties:SetFontColor(black)
+        properties:SetSelectionColor(defaultSelectionColor)
+        properties:SetBackgroundColor(white)
+    end
+
+//    action GainedSelection
+//        if GetView2D() is ControlView
+//            ControlView content = cast(ControlView, GetView2D())
+//            content:GainedSelection()
+//            
+//        end
+//        output "Gained " + IsSelected() + ", Name: " + GetName() 
+//        selected = true
+//        LayoutProperties properties = GetDefaultLayoutProperties()
+//        //LoadGraphics(properties)
+//    end
+//
+//    action LostSelection
+//        if GetView2D() is ControlView
+//            ControlView content = cast(ControlView, GetView2D())
+//            content:LostSelection()
+//            
+//        end
+//        output "Lost " + IsSelected() + ", Name: " + GetName()
+//        selected = false
+//        LayoutProperties value = GetDefaultLayoutProperties()
+//        //LoadGraphics(value)
+//    end
+
+    action BeginMouseOver
+        MenuRoot bar = GetMenuRoot()
+        if bar not= undefined and bar:IsSelecting()
+            if not parent:MenuItem:open
+                Open()
+            end
+            Select()
+        end
+    end
+
+    action EndMouseOver
+        output "End Mouse over From Menu Item"
+    //    Remove(mouseOverEffect)
+    end
+
+    action LoadGraphics(LayoutProperties properties)
+        ColorGroup backgroundColor = properties:GetBackgroundColor()
+        ColorGroup selectionColor = properties:GetSelectionColor()
+
+        if GetParentMenu() = undefined and (GetMenuRoot() not= undefined and GetMenuRoot():HasBar())
+            parent:MenuItem:rootLayout:SetIgnoreHidden(true)
+            SetLayout(parent:MenuItem:rootLayout)
+
+            parent:MenuItem:shortcutLabel:Hide()
+            parent:MenuItem:arrow:Hide()
+
+            if backgroundColor = undefined
+                backgroundColor = gradient
+            end
+
+            SetMenuDirection(parent:MenuItem:DOWN)
+
+            properties:SetHorizontalLayoutMode(parent:MenuItem:menuProperties:FIT_CONTENTS)
+        else
+            SetLayout(parent:MenuItem:menuItemLayout)
+
+            properties:SetHorizontalLayoutMode(parent:MenuItem:menuProperties:STANDARD)
+            properties:SetPercentageWidth(1.0)
+
+            SetMenuDirection(parent:MenuItem:RIGHT)
+
+            if backgroundColor = undefined
+                backgroundColor = gray
+            end
+        end
+
+        //properties:SetBackgroundColor(backgroundColor)
+        if properties:GetBorderColor() = undefined
+            properties:SetBorderColor(defaultBorderColor)
+        end
+
+        if properties:GetSelectionBorderColor() = undefined
+            properties:SetSelectionBorderColor(defaultSelectionBorderColor)
+        end
+
+        if properties:GetSelectionColor() = undefined
+            properties:SetSelectionColor(defaultSelectionColor)
+        end
+
+        
+
+        parent:MenuItem:panel:SetName(GetName() + " Menu Panel")
+        parent:MenuItem:panelProperties:SetBorderThickness(properties:GetBorderThickness())
+
+        //properties:SetFontColor(black)
+        //properties:SetSelectionFontColor(white)
+
+        if content = undefined
+            CodeCompletionMenuItemView content2
+            content = content2
+            content2:SetBorderThickness(cast(integer, properties:GetBorderThickness()))
+            content2:SetBorderStyle(content:LEFT + content:RIGHT + content:BOTTOM)
+            content2:Initialize(defaultLabelViewBackground, black)
+            
+        end
+        parent:MenuItem:panelView = content
+
+
+        parent:MenuItem:panel:SetView2D(parent:MenuItem:panelView)
+
+        if parent:MenuItem:menuProperties:GetIcon() not= undefined
+            parent:MenuItem:icon:Load(parent:MenuItem:menuProperties:GetIcon())
+            if parent:MenuItem:menuProperties:GetIconColor() not= undefined
+                parent:MenuItem:icon:SetColor(parent:MenuItem:menuProperties:GetIconColor())
+            end
+            parent:MenuItem:icon:Show()
+        else
+            parent:MenuItem:icon:LoadFilledRectangle(1, 1, magenta)
+            parent:MenuItem:icon:Hide()
+        end
+
+        parent:MenuItem:arrow:SetColor(parent:MenuItem:menuProperties:GetFontColor())
+        parent:MenuItem:arrow:LoadFilledTriangle(0, 0, 0, 200, 173, 100, parent:MenuItem:menuProperties:GetFontColor())
+
+        text labelText = properties:GetLabelText()
+        if labelText = ""
+            labelText = GetName()
+        end
+
+        Font font = properties:GetFont()
+        font:SetSize(cast(integer, properties:GetFontSize() * properties:GetInterfaceScale()))
+
+        //boolean selected = IsSelected()
+        parent:MenuItem:label:SetFont(font)
+        parent:MenuItem:label:SetSize(properties:GetFontSize())
+        parent:MenuItem:label:SetInterfaceScale(properties:GetInterfaceScale())
+        parent:MenuItem:label:SetText(labelText)
+
+        if selected
+            parent:MenuItem:label:SetColor(white)
+            parent:MenuItem:shortcutLabel:SetColor(white)
+        else
+            parent:MenuItem:label:SetColor(black)
+            parent:MenuItem:shortcutLabel:SetColor(black)
+        end
+
+        parent:MenuItem:shortcutLabel:SetSize(properties:GetFontSize())
+
+        if parent:MenuItem:shortcutLabel:GetText() = ""
+            parent:MenuItem:shortcutLabel:Hide()
+        else
+            parent:MenuItem:shortcutLabel:Show()
+        end
+
+        //This is a box with a border on it that is the background of the menu
+        if view = undefined
+            CodeCompletionMenuItemView view2
+            view = view2
+        end
+
+        if selected
+            view:Initialize(properties:GetSelectionColor(), properties:GetSelectionBorderColor())
+        else
+            view:Initialize(properties:GetBackgroundColor(), properties:GetBorderColor())
+        end
+        SetView2D(view)
+
+        parent:Control:LoadGraphics(properties)
+    end
+end

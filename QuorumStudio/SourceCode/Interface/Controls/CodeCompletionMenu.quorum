@@ -17,6 +17,8 @@ use Libraries.Game.Graphics.Texture
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Controls.MenuRoot
 use Libraries.Interface.Controls.Control
+use Libraries.Interface.Pools.MenuItemPool
+use Libraries.Interface.Views.ControlView
 
 class CodeCompletionMenu is PopupMenu
 
@@ -33,9 +35,18 @@ class CodeCompletionMenu is PopupMenu
     Icon variableIcon
     Icon parentIcon
     Icon classIcon
+
+    Array<MenuItem> primitives
+    Array<MenuItem> other
+    Array<MenuItem> locals
+    Array<MenuItem> fields
+    Array<MenuItem> parentFields
+    Array<MenuItem> actions
+
+    MenuItemPool itemPool
     on create
         SetInputGroup("CodeCompletionMenuRoot")
-        SetScrollable(true)
+        SetScrollable(false)
         primaryColor:SetColor(1.0, 1.0, 1.0, 1.0)
         secondaryColor:SetColor(250.0/255.0, 250.0/255.0, 250.0/255.0, 1)
 
@@ -61,9 +72,12 @@ class CodeCompletionMenu is PopupMenu
         me:textBox = textBox
     end
 
+    /* This is an explicit request by the user to initiate code completion.
+    */
     action Generate(BuildManager builder)
         me:builder = builder
 
+        output "Called Generate"
         Filter(undefined)
 
         number x = textBox:GetCaretGlobalX()
@@ -71,10 +85,25 @@ class CodeCompletionMenu is PopupMenu
         OpenAt(x, y)
     end
 
+    
+
+    action Empty
+        repeat while parent:PopupMenu:panel:IsEmpty() = false
+            MenuItem item = parent:PopupMenu:panel:GetFromEnd()
+            itemPool:Recycle(item)
+            Remove(item)
+        end
+
+        primitives:Empty()
+        other:Empty()
+        locals:Empty()
+        fields:Empty()
+        parentFields:Empty()
+        actions:Empty()
+    end
+
     boolean loadedOnce = false
     action Filter(BehaviorEvent event)
-        Empty()
-
         if not loadedOnce
             integer size = 25
             Color red = primaryColor:Red()
@@ -96,6 +125,16 @@ class CodeCompletionMenu is PopupMenu
             loadedOnce = true
         end
 
+        if event = undefined //explicit user request, have to redo
+
+        else 
+
+        end
+        
+    end
+
+    private action Regenerate
+        Empty()
         CodeCompletionResult result = builder:RequestCodeCompletion()
         Iterator<CodeCompletionItem> iterator = result:GetIterator()
         if not iterator:HasNext()
@@ -103,17 +142,12 @@ class CodeCompletionMenu is PopupMenu
         end
 
         boolean useFirstColor = true
-
-        Array<MenuItem> primitives
-        Array<MenuItem> other
-        Array<MenuItem> locals
-        Array<MenuItem> fields
-        Array<MenuItem> parentFields
-        Array<MenuItem> actions
+        
         repeat while iterator:HasNext()
             CodeCompletionItem code = iterator:Next()
             if code:displayText:StartsWith(result:filter)
-                MenuItem item
+                MenuItem item = itemPool:GetNextMenuItem()
+                
                 item:SetName(code:displayText)
                 item:SetShortcut(code:rightDisplayText)
 
@@ -177,6 +211,9 @@ class CodeCompletionMenu is PopupMenu
                     item:SetIcon(parentIcon)
                     parentFields:Add(item)
                 end
+
+                LayoutProperties prop = item:GetDefaultLayoutProperties()
+                prop:SetRenderingFlag(false)
             end
         end
 
