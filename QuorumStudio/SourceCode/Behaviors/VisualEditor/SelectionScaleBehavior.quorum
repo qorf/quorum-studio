@@ -5,6 +5,8 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.Interactable
 use Libraries.Compute.Vector3
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem3D
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem2D
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.CameraItem2D
+use Libraries.Game.Graphics.OrthographicCamera
 
 class SelectionScaleBehavior is QuorumStudioBehavior
 
@@ -23,7 +25,23 @@ class SelectionScaleBehavior is QuorumStudioBehavior
     end
 
     action Run(BehaviorEvent event)
-        if event:GetItem() is InteractableItem3D
+        if event:GetItem() is CameraItem2D
+            CameraItem2D cameraItem = cast(CameraItem2D, event:GetItem())
+            number zoom = cameraItem:GetZoom()
+
+            if (scale:GetX() > 1 and scale:GetY() > 1 and scale:GetZ() > 1)
+                cameraItem:SetZoom(zoom + 0.2)
+            elseif (scale:GetX() < 1 and scale:GetY() < 1 and scale:GetZ() < 1)
+                number value = zoom - 0.2
+                if value < 0.2
+                    value = 0.2
+                end
+
+                cameraItem:SetZoom(value)
+            end
+            
+
+        elseif event:GetItem() is InteractableItem3D
             InteractableItem3D item = cast(InteractableItem3D, event:GetItem())
             item:Scale(scale)
 

@@ -70,6 +70,17 @@ class AssetPack
             schematic:SetPreferredGridWidth(width)
             schematic:SetPreferredGridHeight(height)
             schematic:SetDrawableType(properties:CUSTOM)
+
+            if tile:HasValue("Physics Enabled")
+                boolean hasPhysics = tile:GetBoolean("Physics Enabled")
+                if hasPhysics
+                    schematic:SetPhysicsEnabled(hasPhysics)
+                    if tile:HasValue("Responsiveness")
+                        schematic:SetResponsiveness(tile:GetInteger("Responsiveness"))
+                    end
+                end
+            end
+
             blueprints:Add(schematic:GetName(), schematic)
 
             text category = DEFAULT

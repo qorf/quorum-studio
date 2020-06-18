@@ -94,6 +94,11 @@ use Libraries.Development.Environment.Studio.Behaviors.SelectionResetScaleBehavi
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTree
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.ScenePalette
+use Libraries.Development.Environment.Studio.Behaviors.CursorSelectItemsBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CursorIncreaseSizeBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CursorDecreaseSizeBehavior
+use Libraries.Interface.Controls.Tree
+use Libraries.Interface.Selections.TabPaneSelection
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 2
@@ -336,6 +341,21 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     action GetFocusSelection returns integer
         return focus
+    end
+
+    /*
+    This action returns the current tree which is active in the tree tab pane.
+    For example, if the ProjectTree is visible, the ProjectTree will be returned.
+    If the SceneTree is currently visible in the active tab, it will be returned instead.
+    */
+    action GetActiveTree returns Tree
+        TabPaneSelection selection = treeTabPane:GetSelection()
+        Tab tab = selection:GetTab()
+        Item focusTarget = tab:GetFocusTarget()
+        if focusTarget is Tree
+            return cast(Tree, focusTarget)
+        end
+        return undefined
     end
 
     action Started
@@ -620,6 +640,19 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         OpenVisualEditorFindDialogBehavior openEditorFindDialogBehavior = behaviors:GetOpenVisualEditorFindDialogBehavior()
         table:Add(openEditorFindDialogInput, openEditorFindDialogBehavior)
 
+        InputSet cursorSelectItemsInput = map:GetCursorSelectItemsKey()
+        CursorSelectItemsBehavior cursorSelectItemsBehavior = behaviors:GetCursorSelectItemsBehavior()
+        table:Add(cursorSelectItemsInput, cursorSelectItemsBehavior)
+
+        InputSet selectionScaleUpSet = map:GetSelectionScaleUpKey()
+        InputSet selectionScaleDownSet = map:GetSelectionScaleDownKey()
+
+        CursorIncreaseSizeBehavior cursorIncreaseSizeBehavior = behaviors:GetCursorIncreaseSizeBehavior()
+        CursorDecreaseSizeBehavior cursorDecreaseSizeBehavior = behaviors:GetCursorDecreaseSizeBehavior()
+
+        table:Add(selectionScaleUpSet, cursorIncreaseSizeBehavior)
+        table:Add(selectionScaleDownSet, cursorDecreaseSizeBehavior)
+
         AddInputTable(table)
 
         InputTable cameraItemTable2D
@@ -635,7 +668,17 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         cameraItemTable2D:Add(selectionMoveUp2DStart, selectionMoveUpStartBehavior)
         cameraItemTable2D:Add(selectionMoveUp2DStop, selectionMoveYStopBehavior)
         cameraItemTable2D:Add(selectionMoveDown2DStart, selectionMoveDownStartBehavior)
-        cameraItemTable2D:Add(selectionMoveDown2DStop, selectionMoveYStopBehavior)        
+        cameraItemTable2D:Add(selectionMoveDown2DStop, selectionMoveYStopBehavior)
+
+        SelectionScaleBehavior selectionScaleUpBehavior = behaviors:GetSelectionScaleUpBehavior()
+        SelectionScaleBehavior selectionScaleDownBehavior = behaviors:GetSelectionScaleDownBehavior()
+
+        cameraItemTable2D:Add(selectionScaleUpSet, selectionScaleUpBehavior)
+        cameraItemTable2D:Add(selectionScaleDownSet, selectionScaleDownBehavior)
+
+        InputSet focusPropertiesSet = map:GetFocusPropertiesKey()
+        FocusPropertiesBehavior focusPropertiesBehavior = behaviors:GetFocusPropertiesBehavior()
+        cameraItemTable2D:Add(focusPropertiesSet, focusPropertiesBehavior)
 
         AddInputTable(cameraItemTable2D)
 
@@ -658,6 +701,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         cameraItemTable3D:Add(selectionMoveForward3DStop, selectionMoveZStopBehavior)
         cameraItemTable3D:Add(selectionMoveBackward3DStart, selectionMoveBackwardStartBehavior)
         cameraItemTable3D:Add(selectionMoveBackward3DStop, selectionMoveZStopBehavior)
+
+        cameraItemTable3D:Add(focusPropertiesSet, focusPropertiesBehavior)
 
         AddInputTable(cameraItemTable3D)
 
@@ -729,12 +774,6 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         selectionTable:Add(selectionRotateRollRightStart, selectionStartRotatingRollRightBehavior)
         selectionTable:Add(selectionRotateRollRightStop, selectionStopRotatingRollBehavior)
 
-        InputSet selectionScaleUpSet = map:GetSelectionScaleUpKey()
-        InputSet selectionScaleDownSet = map:GetSelectionScaleDownKey()
-
-        SelectionScaleBehavior selectionScaleUpBehavior = behaviors:GetSelectionScaleUpBehavior()
-        SelectionScaleBehavior selectionScaleDownBehavior = behaviors:GetSelectionScaleDownBehavior()
-
         selectionTable:Add(selectionScaleUpSet, selectionScaleUpBehavior)
         selectionTable:Add(selectionScaleDownSet, selectionScaleDownBehavior)
 
@@ -766,20 +805,20 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         selectionTable:Add(selectionScaleZDownSet, selectionScaleZDownBehavior)
 
         InputSet selectionDeleteSet = map:GetSelectionDeleteKey()
+        InputSet selectionDeleteSet2 = map:GetSelectionDeleteKey2()
         InputSet selectionCancelSet = map:GetSelectionCancelKey()
 
         SelectionDeleteBehavior selectionDeleteBehavior = behaviors:GetSelectionDeleteBehavior()
         SelectionCancelBehavior selectionCancelBehavior = behaviors:GetSelectionCancelBehavior()
 
         selectionTable:Add(selectionDeleteSet, selectionDeleteBehavior)
+        selectionTable:Add(selectionDeleteSet2, selectionDeleteBehavior)
         selectionTable:Add(selectionCancelSet, selectionCancelBehavior)
 
         selectionTable:Add(toggleGridInput, toggleGridBehavior)
         selectionTable:Add(increaseGridUnitInput, increaseGridUnitBehavior)
         selectionTable:Add(decreaseGridUnitInput, decreaseGridUnitBehavior)
 
-        InputSet focusPropertiesSet = map:GetFocusPropertiesKey()
-        FocusPropertiesBehavior focusPropertiesBehavior = behaviors:GetFocusPropertiesBehavior()
         selectionTable:Add(focusPropertiesSet, focusPropertiesBehavior)
 
         selectionTable:Add(openEditorFindDialogInput, openEditorFindDialogBehavior)
@@ -827,6 +866,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         selectionTable2D:Add(selectionScaleYDownSet, selectionScaleYDownBehavior)
 
         selectionTable2D:Add(selectionDeleteSet, selectionDeleteBehavior)
+        selectionTable2D:Add(selectionDeleteSet2, selectionDeleteBehavior)
         selectionTable2D:Add(selectionCancelSet, selectionCancelBehavior)
 
         selectionTable2D:Add(toggleGridInput, toggleGridBehavior)

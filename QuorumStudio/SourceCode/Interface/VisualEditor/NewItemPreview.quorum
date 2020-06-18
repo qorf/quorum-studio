@@ -1,4 +1,7 @@
 package Libraries.Development.Environment.Studio.Interface.VisualEditor
+use Libraries.Interface.Events.FocusEvent
+use Libraries.Game.DialogLayer
+use Libraries.Interface.Item2D
 
 class NewItemPreview is InteractableItem
 
@@ -12,6 +15,17 @@ class NewItemPreview is InteractableItem
 
     action GetItemBlueprint returns ItemBlueprint
         return schematic
+    end
+
+    action LostFocus(FocusEvent event)
+        if event:GetNewFocus() is Item2D
+            Item2D item = cast(Item2D, event:GetNewFocus())
+            if item:GetLayer() is DialogLayer
+                return now
+            end
+        end
+
+        GetController():CancelNewItemPreview(me)
     end
 
 end

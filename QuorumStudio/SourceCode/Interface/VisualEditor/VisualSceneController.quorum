@@ -20,6 +20,8 @@ use Libraries.Interface.Events.FocusEvent
 use Libraries.Compute.Vector2
 use Libraries.Game.Graphics.Drawable
 use Libraries.Containers.HashTable
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.SceneControllerEditManager
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.DeleteEdit
 
 /*
 A class used to represent the 2D space within a Visual Editor tab.
@@ -32,6 +34,8 @@ class VisualSceneController is Control
     VisualEditorSelection selection
 
     Array<SceneChangeListener> sceneChangeListeners
+
+    SceneControllerEditManager editManager
 
     // The rotational speed, measured in degrees per second,
     // and the directional speed, measured in 3D world units per second.
@@ -110,6 +114,9 @@ class VisualSceneController is Control
 
     Vector3 previewScale
 
+    // Used to forcibly change the focus and send information via the screen reader.
+    Item2D dummyItem
+
     on create
         FlowLayout layout
         SetLayout(layout)
@@ -130,6 +137,32 @@ class VisualSceneController is Control
         findDialog:Initialize(me)
 
         previewScale:Set(1, 1, 1)
+
+        dummyItem:SetName("Scene Controller Node")
+        dummyItem:SetProperty(visualResources:EDITOR_TAG, undefined)
+        dummyItem:SetFocusable(true)
+        Add(dummyItem)
+    end
+
+    action GetDescription returns text
+        if GetSelectedLayer() not= undefined
+            EditorCursor cursor = GetSelectedLayer():GetCursor()
+            if cursor is EditorCursor2D
+                EditorCursor2D cursor2D = cast(EditorCursor2D, cursor)
+                text value = cast(integer, cursor2D:GetX()) + ", " + cast(integer, cursor2D:GetY())
+                Array<Item> items = cursor2D:GetItemsAtCursor()
+                if items:GetSize() = 1
+                    value = value + " 1 item " + items:Get(0):GetName()
+                elseif items:GetSize() > 0
+                    value = value + " " + items:GetSize() + " items"
+                end
+                return value
+            else
+                // Handle the 3D cursor here
+            end
+        end
+
+        return parent:Item:GetDescription()
     end
 
     action GetColorPreview returns Color
@@ -203,7 +236,11 @@ class VisualSceneController is Control
 
     action FocusItemProperties
         if GetSelectedLayer() is EditorLayer2D
-            item2dPropertiesDialog:FocusField()
+            if GetSelectedItem() is CameraItem2D
+                camera2dPropertiesDialog:FocusField()
+            else
+                item2dPropertiesDialog:FocusField()
+            end
         elseif GetSelectedLayer() is EditorLayer3D
             item3dPropertiesDialog:FocusField()
         end
@@ -211,6 +248,10 @@ class VisualSceneController is Control
 
     action GetFindDialog returns VisualEditorFindDialog
         return findDialog
+    end
+
+    action GetEditManager returns SceneControllerEditManager
+        return editManager
     end
 
     action Update(number seconds)
@@ -406,6 +447,7 @@ class VisualSceneController is Control
                             end
     
                             target:Move(x - target:GetGlobalX(), y - target:GetGlobalY())
+                            moved = true
                         else
                             gridMoveTimer = gridMoveTimer - seconds
                         end
@@ -418,6 +460,16 @@ class VisualSceneController is Control
                     number angle = target:GetRotation()
                     angle = angle + (seconds * selectionRollDirection * SELECTION_ROTATIONAL_SPEED_2D)
                     target:SetRotation(angle)
+                end
+
+                if moved and isCursor
+                    accessibility:DescriptionChanged(me)
+                    FocusEvent event
+                    event:Initialize(me, dummyItem)
+                    accessibility:FocusChanged(event)
+                    FocusEvent event2
+                    event2:Initialize(dummyItem, me)
+                    accessibility:FocusChanged(event2)
                 end
             end
 
@@ -587,14 +639,68 @@ class VisualSceneController is Control
             nextFocus:Focus()
         end
 
+        DeleteEdit edit
+        edit:Create(me, resultLayer, highlight:GetItem())
+        editManager:Add(edit)
+
         SceneChangeEvent event
         event:Set(me, highlight:GetItem(), undefined, resultLayer, event:REMOVED)
         NotifySceneChangeListeners(event)
     end
 
+    /*
+    This action will delete an item that has been added to the scene.
+    */
+    action Delete(Item item)
+        EditorLayer resultLayer = undefined
+
+        if item is Item2D
+            Item2D item2D = cast(Item2D, item)
+            EditorLayer2D layer = cast(EditorLayer2D, item2D:GetLayer())
+            resultLayer = layer
+            layer:Remove(item2D)
+        elseif item is Item3D
+            Item3D item3D = cast(Item3D, item)
+            EditorLayer3D layer = cast(EditorLayer3D, item3D:GetLayer())
+            resultLayer = layer
+            layer:Remove(item3D)
+        end
+
+        integer index = 0
+        repeat while index < filterHighlights:GetSize()
+            SelectionHighlight highlight = filterHighlights:Get(index)
+            if highlight:GetItem() = item
+                filterHighlights:RemoveAt(index)
+                if resultLayer is EditorLayer2D
+                    EditorLayer2D layer = cast(EditorLayer2D, resultLayer)
+                    layer:Remove(cast(SelectionHighlight2D, highlight))
+                elseif resultLayer is EditorLayer3D
+                    EditorLayer3D layer = cast(EditorLayer3D, resultLayer)
+                    layer:Remove(cast(SelectionHighlight3D, highlight))
+                end
+
+                // Manually set the index so we'll escape the loop early.
+                index = filterHighlights:GetSize()
+
+                // Refresh filter highlight focus order and descriptions.
+                SetFilterHighlightData()
+            end
+
+            index = index + 1
+        end
+
+        DeleteEdit edit
+        edit:Create(me, resultLayer, item)
+        editManager:Add(edit)
+
+        SceneChangeEvent event
+        event:Set(me, item, undefined, resultLayer, event:REMOVED)
+        NotifySceneChangeListeners(event)
+    end
+
     action CreateNewItemPreview(ItemBlueprint schematic)
 
-        // Old-style item creation. Will be replaced soon.
+        // TO-DO: Old-style item creation. Will be replaced soon.
         if schematic = undefined
             if GetSelectedLayer() is EditorLayer3D
                 NewItemPreview3D preview
@@ -657,10 +763,6 @@ class VisualSceneController is Control
             EditorLayer2D layer = cast(EditorLayer2D, GetSelectedLayer())
             layer:Remove(preview2D)
         end
-
-        Focus()
-
-        NotifyAccessibility(me, "Cancelled placement")
     end
 
     action SelectEditorCamera(EditorLayer layer)
@@ -768,6 +870,27 @@ class VisualSceneController is Control
                 item2dPropertiesDialog:SetFields(cast(NewItemPreview2D, newItem))
             end
         end
+    end
+
+    action Add(EditorLayer layer, Item item)
+        if layer is EditorLayer2D and item is Item2D
+            EditorLayer2D layer2D = cast(EditorLayer2D, layer)
+            Item2D item2D = cast(Item2D, item)
+            layer2D:Add(item2D)
+        elseif layer is EditorLayer3D and item is Item3D
+            EditorLayer3D layer3D = cast(EditorLayer3D, layer)
+            Item3D item3D = cast(Item3D, item)
+            layer3D:Add(item3D)    
+        else
+            alert("I couldn't add the item " + item:GetName() + " because it's incompatible with the requested layer.")
+        end
+
+        // It's not clear if we should notify accessibility here, or allow a change in selection to handle that for us.
+        //NotifyAccessibility(newItem, "Placed " + result:GetName())
+        
+        SceneChangeEvent event
+        event:Set(me, item, undefined, layer, event:ADDED)
+        NotifySceneChangeListeners(event)
     end
 
     action AddLayer(EditorLayer layer)
@@ -1086,6 +1209,15 @@ class VisualSceneController is Control
         return selection:GetSelectedLayer()
     end
 
+    action GetCursor returns EditorCursor
+        EditorLayer layer = GetSelectedLayer()
+        if layer = undefined
+            return undefined
+        end
+
+        return layer:GetCursor()
+    end
+
     action GetSceneLayers returns Array<EditorLayer>
         return layers
     end
@@ -1096,6 +1228,9 @@ class VisualSceneController is Control
         if layer not= undefined
             layer:ShowCursor(true)
         end
+
+        // Update the description for the controller in accessibility.
+        accessibility:DescriptionChanged(me)
     end
 
     action LostFocus(FocusEvent event)

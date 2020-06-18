@@ -11,29 +11,47 @@ use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.System.File
 use Libraries.Interface.Controls.OptionDialog
 use Libraries.Interface.Behaviors.Controls.DeleteFileIfOkBehavior
+use Libraries.Interface.Controls.Tree
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTree
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTreeItem
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
 
 class DeleteBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
         GameStateManager manager
         Game game = manager:GetGame()
         QuorumStudio studio = cast(QuorumStudio, game)
-        ProjectTree tree = studio:GetProjectTree()
-        TreeSelection selection = tree:GetSelection()
-        if not selection:IsEmpty()
-            TreeItem treeItem = selection:GetTreeItem()
-            if treeItem is ProjectTreeItem
-                ProjectTreeItem item = cast(ProjectTreeItem, treeItem)
-                File file = item:GetFile()
-                if file not= undefined and file:IsFile()
-                    OptionDialog dialog
-                    dialog:SetName("Delete File Dialog")
-                    DeleteFileIfOkBehavior behavior
-                    behavior:SetFile(file)
-                    behavior:SetItem(item)
-                    behavior:SetDialog(dialog)
-                    dialog:SetBehavior(behavior)
-                    dialog:Show()
-                    dialog:Focus()
+        Tree activeTree = studio:GetActiveTree()
+
+        if activeTree:Equals(studio:GetProjectTree())
+            ProjectTree tree = cast(ProjectTree, activeTree)
+            TreeSelection selection = tree:GetSelection()
+            if not selection:IsEmpty()
+                TreeItem treeItem = selection:GetTreeItem()
+                if treeItem is ProjectTreeItem
+                    ProjectTreeItem item = cast(ProjectTreeItem, treeItem)
+                    File file = item:GetFile()
+                    if file not= undefined and file:IsFile()
+                        OptionDialog dialog
+                        dialog:SetName("Delete File Dialog")
+                        DeleteFileIfOkBehavior behavior
+                        behavior:SetFile(file)
+                        behavior:SetItem(item)
+                        behavior:SetDialog(dialog)
+                        dialog:SetBehavior(behavior)
+                        dialog:Show()
+                        dialog:Focus()
+                    end
+                end
+            end
+        elseif activeTree:Equals(studio:GetSceneTree())
+            SceneTree tree = cast(SceneTree, activeTree)
+            TreeSelection selection = tree:GetSelection()
+            if not selection:IsEmpty()
+                SceneTreeItem treeItem = cast(SceneTreeItem, selection:GetTreeItem())
+                VisualSceneController controller = tree:GetSceneController()
+                if treeItem:GetSceneItem() not= undefined
+                    controller:Delete(treeItem:GetSceneItem())
                 end
             end
         end

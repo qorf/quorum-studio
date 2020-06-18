@@ -1,5 +1,7 @@
 package Libraries.Development.Environment.Studio.Interface.VisualEditor
 use Libraries.Game.Graphics.Color
+use Libraries.Game.Scenes.SceneProperties
+use Libraries.Data.Formats.JavaScriptObjectNotation
 
 class NewItemPreview2D is NewItemPreview, InteractableItem2D
 
@@ -18,6 +20,13 @@ class NewItemPreview2D is NewItemPreview, InteractableItem2D
         SetScale(schematic:GetScaleX(), schematic:GetScaleY())
         SetRotation(schematic:GetRotation())
         SetColor(schematic:GetColor())
+
+        if schematic:IsPhysicsEnabled()
+            SetEditorPhysicsEnabled(true)
+            if schematic:GetResponsiveness() >= 0
+                SetEditorResponsiveness(schematic:GetResponsiveness())
+            end
+        end
     end
 
     action ConvertToDrawable returns Drawable
@@ -35,6 +44,20 @@ class NewItemPreview2D is NewItemPreview, InteractableItem2D
             DrawableBlueprint schematic = cast(DrawableBlueprint, itemBlueprint)
             if schematic:GetDrawableType() >= 0
                 drawable:SetDrawableType(schematic:GetDrawableType())
+            end
+        end
+
+        if IsEditorPhysicsEnabled()
+            SceneProperties properties
+            JavaScriptObjectNotation physicsJson
+            physicsJson:SetBoolean(true)
+            drawable:SetProperty(properties:PHYSICS_ENABLED, physicsJson)
+
+            integer responsiveness = GetEditorResponsiveness()
+            if responsiveness >= 0
+                JavaScriptObjectNotation responsiveJson
+                responsiveJson:SetInteger(responsiveness)
+                drawable:SetProperty(properties:RESPONSIVENESS, responsiveJson)
             end
         end
 
