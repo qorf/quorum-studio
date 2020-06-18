@@ -114,6 +114,9 @@ class VisualSceneController is Control
 
     Vector3 previewScale
 
+    // Used to forcibly change the focus and send information via the screen reader.
+    Item2D dummyItem
+
     on create
         FlowLayout layout
         SetLayout(layout)
@@ -134,6 +137,32 @@ class VisualSceneController is Control
         findDialog:Initialize(me)
 
         previewScale:Set(1, 1, 1)
+
+        dummyItem:SetName("Scene Controller Node")
+        dummyItem:SetProperty(visualResources:EDITOR_TAG, undefined)
+        dummyItem:SetFocusable(true)
+        Add(dummyItem)
+    end
+
+    action GetDescription returns text
+        if GetSelectedLayer() not= undefined
+            EditorCursor cursor = GetSelectedLayer():GetCursor()
+            if cursor is EditorCursor2D
+                EditorCursor2D cursor2D = cast(EditorCursor2D, cursor)
+                text value = cast(integer, cursor2D:GetX()) + ", " + cast(integer, cursor2D:GetY())
+                Array<Item> items = cursor2D:GetItemsAtCursor()
+                if items:GetSize() = 1
+                    value = value + " 1 item " + items:Get(0):GetName()
+                elseif items:GetSize() > 0
+                    value = value + " " + items:GetSize() + " items"
+                end
+                return value
+            else
+                // Handle the 3D cursor here
+            end
+        end
+
+        return parent:Item:GetDescription()
     end
 
     action GetColorPreview returns Color
@@ -418,6 +447,7 @@ class VisualSceneController is Control
                             end
     
                             target:Move(x - target:GetGlobalX(), y - target:GetGlobalY())
+                            moved = true
                         else
                             gridMoveTimer = gridMoveTimer - seconds
                         end
@@ -430,6 +460,16 @@ class VisualSceneController is Control
                     number angle = target:GetRotation()
                     angle = angle + (seconds * selectionRollDirection * SELECTION_ROTATIONAL_SPEED_2D)
                     target:SetRotation(angle)
+                end
+
+                if moved and isCursor
+                    accessibility:DescriptionChanged(me)
+                    FocusEvent event
+                    event:Initialize(me, dummyItem)
+                    accessibility:FocusChanged(event)
+                    FocusEvent event2
+                    event2:Initialize(dummyItem, me)
+                    accessibility:FocusChanged(event2)
                 end
             end
 
@@ -723,10 +763,6 @@ class VisualSceneController is Control
             EditorLayer2D layer = cast(EditorLayer2D, GetSelectedLayer())
             layer:Remove(preview2D)
         end
-
-        Focus()
-
-        NotifyAccessibility(me, "Cancelled placement")
     end
 
     action SelectEditorCamera(EditorLayer layer)
@@ -1192,6 +1228,9 @@ class VisualSceneController is Control
         if layer not= undefined
             layer:ShowCursor(true)
         end
+
+        // Update the description for the controller in accessibility.
+        accessibility:DescriptionChanged(me)
     end
 
     action LostFocus(FocusEvent event)
