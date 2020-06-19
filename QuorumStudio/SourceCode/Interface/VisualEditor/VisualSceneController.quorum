@@ -149,7 +149,7 @@ class VisualSceneController is Control
             EditorCursor cursor = GetSelectedLayer():GetCursor()
             if cursor is EditorCursor2D
                 EditorCursor2D cursor2D = cast(EditorCursor2D, cursor)
-                text value = cast(integer, cursor2D:GetX()) + ", " + cast(integer, cursor2D:GetY())
+                text value = cast(integer, cursor2D:GetX()) + " " + cast(integer, cursor2D:GetY())
                 Array<Item> items = cursor2D:GetItemsAtCursor()
                 if items:GetSize() = 1
                     value = value + " 1 item " + items:Get(0):GetName()
@@ -463,13 +463,15 @@ class VisualSceneController is Control
                 end
 
                 if moved and isCursor
-                    accessibility:DescriptionChanged(me)
-                    FocusEvent event
-                    event:Initialize(me, dummyItem)
-                    accessibility:FocusChanged(event)
-                    FocusEvent event2
-                    event2:Initialize(dummyItem, me)
-                    accessibility:FocusChanged(event2)
+                    if accessibility not= undefined
+                        accessibility:DescriptionChanged(me)
+                        FocusEvent event
+                        event:Initialize(me, dummyItem)
+                        accessibility:FocusChanged(event)
+                        FocusEvent event2
+                        event2:Initialize(dummyItem, me)
+                        accessibility:FocusChanged(event2)
+                    end
                 end
             end
 
@@ -1229,8 +1231,10 @@ class VisualSceneController is Control
             layer:ShowCursor(true)
         end
 
-        // Update the description for the controller in accessibility.
-        accessibility:DescriptionChanged(me)
+        if accessibility not= undefined
+            // Update the description for the controller in accessibility.
+            accessibility:DescriptionChanged(me)
+        end
     end
 
     action LostFocus(FocusEvent event)
