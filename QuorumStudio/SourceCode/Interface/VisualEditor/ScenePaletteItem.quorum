@@ -1,8 +1,15 @@
 package Libraries.Development.Environment.Studio.Interface.VisualEditor
 
 use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Studio.Interface.PaletteItemContent
 
 class ScenePaletteItem is TreeItem
+
+    PaletteItemContent content
+
+    on create
+//        SetTreeItemContent(content)
+    end
 
     ItemBlueprint itemBlueprint = undefined
 
@@ -12,6 +19,12 @@ class ScenePaletteItem is TreeItem
 
     action SetItemBlueprint(ItemBlueprint itemBlueprint)
         me:itemBlueprint = itemBlueprint
+
+        if itemBlueprint is DrawableBlueprint
+            SetTreeItemContent(content)
+            DrawableBlueprint schematic = cast(DrawableBlueprint, itemBlueprint)
+            content:Load(schematic:GetTexture())
+        end
     end    
 
     action GetPalette returns ScenePalette

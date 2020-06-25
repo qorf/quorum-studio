@@ -199,6 +199,11 @@ class VisualSceneController is Control
             Camera camera = layer:GetCamera()
             camera:SetSize(GetWidth(), GetHeight())
             counter = counter + 1
+
+            if layer is EditorLayer2D
+                EditorLayer2D layer2D = cast(EditorLayer2D, layer)
+                layer2D:UpdateGridPosition()
+            end
         end
     end
 
@@ -896,10 +901,7 @@ class VisualSceneController is Control
     end
 
     action AddLayer(EditorLayer layer)
-        if layers:IsEmpty()
-            selection:SetSelection(layer)
-        end
-
+        selection:SetSelection(layer)
         layer:SetSceneController(me)
         layers:Add(layer)
     end
