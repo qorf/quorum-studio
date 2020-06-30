@@ -82,6 +82,8 @@ class GridPlane is Model
 
         alphaTestAttribute:SetAttribute(alphaTestAttribute:GetAlphaTestValue(), alphaThreshold)
         material:Add(alphaTestAttribute)
+
+        SetAcceptsMouseInput(false)
     end
 
     /*
@@ -114,6 +116,12 @@ class GridPlane is Model
 
     action GetGridUnitSize returns number
         return gridUnits
+    end
+
+    action IsGridCoordinate(number coordinate) returns boolean
+        integer coord = cast(integer, coordinate)
+        // If the floating point division returns the same value as integer division, return true
+        return (coordinate / gridUnits) = (coord / gridUnits)
     end
 
     action GetNearestGridCoordinate(number coordinate) returns number

@@ -1,9 +1,11 @@
 package Libraries.Development.Environment.Studio.Interface
 use Libraries.Game.InputSet
 use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Events.MouseEvent
 
 class MacKeyMap is KeyMap
     KeyboardEvent keys
+    MouseEvent mouseButtons
 
     action GetNewProjectKey returns InputSet
         InputSet set
@@ -909,6 +911,19 @@ class MacKeyMap is KeyMap
     action GetCursorSelectItemsKey returns InputSet
         InputSet set
         set:SetKeyboardInput(keys:ENTER)
+        return set
+    end
+
+    action GetSelectSceneItemKey returns InputSet
+        InputSet set
+        set:SetMouseInput(mouseButtons:LEFT)
+        return set
+    end
+
+    action GetSelectionHighlightDragKey returns InputSet
+        InputSet set
+        set:SetDragItemInput()
+        set:SetInputTrigger(set:CONTINUE)
         return set
     end
 end

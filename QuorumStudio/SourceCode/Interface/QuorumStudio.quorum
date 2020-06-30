@@ -99,6 +99,9 @@ use Libraries.Development.Environment.Studio.Behaviors.CursorIncreaseSizeBehavio
 use Libraries.Development.Environment.Studio.Behaviors.CursorDecreaseSizeBehavior
 use Libraries.Interface.Controls.Tree
 use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditorResources
+use Libraries.Development.Environment.Studio.Behaviors.SelectSceneItemBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SelectionHighlightDragBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 2
@@ -655,6 +658,16 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
         AddInputTable(table)
 
+        VisualEditorResources visualResources
+        InputTable sceneItemTable
+        sceneItemTable:SetIdentifier(visualResources:SCENE_ITEM_INPUT_GROUP)
+
+        InputSet selectSceneItemInput = map:GetSelectSceneItemKey()
+        SelectSceneItemBehavior selectSceneItemBehavior = behaviors:GetSelectSceneItemBehavior()
+        sceneItemTable:Add(selectSceneItemInput, selectSceneItemBehavior)
+
+        AddInputTable(sceneItemTable)
+
         InputTable cameraItemTable2D
         cameraItemTable2D:SetIdentifier("CameraItem2D")
 
@@ -878,6 +891,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         selectionTable2D:Add(openEditorFindDialogInput, openEditorFindDialogBehavior)
 
         selectionTable2D:Add(resetScaleSet, resetScaleBehavior)
+
+        InputSet selectionHighlightDragInput = map:GetSelectionHighlightDragKey()
+        SelectionHighlightDragBehavior selectionHighlightDragBehavior = behaviors:GetSelectionHighlightDragBehavior()
+        selectionTable2D:Add(selectionHighlightDragInput, selectionHighlightDragBehavior)
 
         AddInputTable(selectionTable2D)
 

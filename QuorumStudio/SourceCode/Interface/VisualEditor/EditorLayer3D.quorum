@@ -23,7 +23,11 @@ class EditorLayer3D is Layer3D, EditorLayer
             return undefined
         end
 
-        return parent:Layer3D:ProcessMouseEvent(event)
+        Item item = parent:Layer3D:ProcessMouseEvent(event)
+        if item not= undefined and event:eventType = event:CLICKED_MOUSE
+            output "ProcessMouseEvent: " + item:GetName()
+        end
+        return item
     end
 
     action GetGrid returns GridPlane
@@ -66,6 +70,10 @@ class EditorLayer3D is Layer3D, EditorLayer
 
     action GetPreviousGridCoordinate(number coordinate) returns number
         return grid:GetPreviousGridCoordinate(coordinate)
+    end
+
+    action IsGridCoordinate(number coordinate) returns boolean
+        return grid:IsGridCoordinate(coordinate)
     end
 
     action GetCursor returns EditorCursor

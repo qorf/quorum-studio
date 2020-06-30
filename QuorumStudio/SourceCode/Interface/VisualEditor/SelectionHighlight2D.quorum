@@ -8,14 +8,15 @@ use Libraries.Data.Formats.JavaScriptObjectNotation
 
 class SelectionHighlight2D is InteractableItem2D, SelectionHighlight
 
+    Item2D item = undefined
+    Drawable highlightBox
+
     on create
         VisualEditorResources resources
         SetZ(resources:SELECTION_HIGHLIGHT_2D_DEPTH)
         SetInputGroup("SelectionHighlight2D")
+        SetName("Selection Highlight")
     end
-
-    Item2D item = undefined
-    Drawable highlightBox
 
     action GetItem returns Item
         return item
@@ -40,6 +41,8 @@ class SelectionHighlight2D is InteractableItem2D, SelectionHighlight
         highlightBox:LoadFilledRectangle(1, 1, color)
         highlightBox:SetSize(item:GetWidth() + 2 * padding, item:GetHeight() + 2 * padding)
         highlightBox:SetPosition(-padding, -padding)
+        highlightBox:SetAcceptsMouseInput(false)
+        highlightBox:SetName("Selection Highlight Glow Effect")
         Add(highlightBox)
 
         SetScale(item:GetScaleX(), item:GetScaleY())

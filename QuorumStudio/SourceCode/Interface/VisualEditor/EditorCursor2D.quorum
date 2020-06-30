@@ -3,6 +3,7 @@ package Libraries.Development.Environment.Studio.Interface.VisualEditor
 use Libraries.Game.Graphics.Drawable
 use Libraries.Containers.Array
 use Libraries.Containers.Iterator
+use Libraries.Game.Item2DDepthComparison
 
 class EditorCursor2D is EditorCursor, Drawable
 
@@ -14,6 +15,9 @@ class EditorCursor2D is EditorCursor, Drawable
     // How many grid units wide or tall the cursor currently is.
     integer gridWidth = 1
     integer gridHeight = 1
+
+    // Used to sort items underneath the cursor.
+    Item2DDepthComparison depthSorter
     
     action Load(EditorLayer2D layer)
         editorLayer = layer
@@ -67,6 +71,8 @@ class EditorCursor2D is EditorCursor, Drawable
                 array:Add(item)
             end
         end
+
+        array:Sort(depthSorter)
 
         return array
     end

@@ -1,0 +1,38 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Containers.Array
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Item
+use Libraries.Game.Layer
+use Libraries.Interface.Item2D
+use Libraries.Interface.Item3D
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+
+class SelectSceneItemBehavior is QuorumStudioBehavior
+
+    action Run(BehaviorEvent event)
+        Layer layer = undefined
+        if event:GetItem() is Item2D
+            Item2D item = cast(Item2D, event:GetItem())
+            layer = item:GetLayer()
+        elseif event:GetItem() is Item3D
+            Item3D item = cast(Item3D, event:GetItem())
+            layer = item:GetLayer()
+        end
+
+        VisualSceneController controller = undefined
+
+        if layer is EditorLayer
+            EditorLayer editorLayer = cast(EditorLayer, layer)
+            controller = editorLayer:GetSceneController()
+        else
+            return now
+        end
+
+        Array<Item> array
+        array:Add(event:GetItem())
+        controller:SetFilteredItems(array, true)        
+    end
+
+end

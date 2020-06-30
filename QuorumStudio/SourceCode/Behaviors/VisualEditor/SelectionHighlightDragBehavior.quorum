@@ -1,0 +1,68 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Events.DragAndDropEvent
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SelectionHighlight2D
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SelectionHighlight3D
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer2D
+use Libraries.Compute.Vector3
+
+class SelectionHighlightDragBehavior is QuorumStudioBehavior
+
+    action Run(BehaviorEvent event)
+        DragAndDropEvent dragEvent = event:GetDragAndDropEvent()
+        if dragEvent = undefined
+            return now
+        end
+
+        if event:GetItem() is SelectionHighlight2D
+            SelectionHighlight2D highlight = cast(SelectionHighlight2D, event:GetItem())
+            EditorLayer2D layer = cast(EditorLayer2D, highlight:GetLayer())
+            
+            number x1 = highlight:GetGlobalX()
+            if layer:IsGridCoordinate(x1) = false
+                x1 = layer:GetPreviousGridCoordinate(x1)
+            end
+
+            number y1 = highlight:GetGlobalY()
+            if layer:IsGridCoordinate(y1) = false
+                y1 = layer:GetPreviousGridCoordinate(y1)
+            end
+
+            number x2 = layer:GetNextGridCoordinate(x1)
+            number y2 = layer:GetNextGridCoordinate(y1)
+            
+            Vector3 worldCoordinates = layer:GetCamera():ScreenToWorldCoordinates(dragEvent:GetX() - layer:GetViewportX(), dragEvent:GetY() - layer:GetViewportY())
+            boolean shouldMove = false
+            number targetX = worldCoordinates:GetX()
+            number targetY = worldCoordinates:GetY()
+            
+            if targetX < x1
+                shouldMove = true
+                targetX = x1
+            elseif targetX >= x2
+                shouldMove = true
+                targetX = x2
+            end
+
+            if targetY < y1
+                shouldMove = true
+                targetY = y1
+            elseif targetY >= y2
+                shouldMove = true
+                targetY = y2
+            end
+
+            if shouldMove
+                highlight:SetPosition(targetX, targetY)
+                output "MOVED"
+            end
+
+            output x1 + ", " + y1 + " -- " + x2 + ", " + y2 + " -- " + targetX + ", " + targetY + " -- shouldMove = " + shouldMove
+
+        elseif event:GetItem() is SelectionHighlight3D
+            // TO-DO
+        end
+    end
+
+end

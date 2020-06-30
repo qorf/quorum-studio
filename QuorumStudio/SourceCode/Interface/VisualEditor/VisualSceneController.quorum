@@ -149,14 +149,28 @@ class VisualSceneController is Control
             EditorCursor cursor = GetSelectedLayer():GetCursor()
             if cursor is EditorCursor2D
                 EditorCursor2D cursor2D = cast(EditorCursor2D, cursor)
-                text value = cast(integer, cursor2D:GetX()) + " " + cast(integer, cursor2D:GetY())
+                text position = cast(integer, cursor2D:GetX()) + " " + cast(integer, cursor2D:GetY())
                 Array<Item> items = cursor2D:GetItemsAtCursor()
-                if items:GetSize() = 1
-                    value = value + " 1 item " + items:Get(0):GetName()
-                elseif items:GetSize() > 0
-                    value = value + " " + items:GetSize() + " items"
+                if items:GetSize() = 0
+                    return position
+                elseif items:GetSize() <= 3
+                    integer counter = items:GetSize()
+                    text names = ""
+                    repeat while counter > 0
+                        counter = counter - 1
+                        names = names + items:Get(counter):GetName() + ", "
+                    end
+                    return names + position + ", press Enter to select items"
+                else
+                    integer counter = items:GetSize()
+                    text names = ""
+                    repeat while counter > items:GetSize() - 3
+                        counter = counter - 1
+                        names = names + items:Get(counter):GetName() + ", "
+                        counter = counter + 1
+                    end
+                    return names + items:GetSize() + " items, " + position + ", press Enter to select items"
                 end
-                return value
             else
                 // Handle the 3D cursor here
             end
@@ -1031,14 +1045,78 @@ class VisualSceneController is Control
         return GetForwardDirection() not= 0 or GetStrafeDirection() not= 0 or GetVerticalDirection() not= 0
     end
 
+    private action SetCursorToItem(InteractableItem item)
+        if item is InteractableItem2D
+            EditorCursor2D cursor = cast(EditorCursor2D, GetCursor())
+            number x = item:GetGlobalX()
+            number y = item:GetGlobalY()
+            if not IsGridCoordinate(x)
+                x = GetSelectedLayer():GetPreviousGridCoordinate(x)
+            end
+            if not IsGridCoordinate(y)
+                y = GetSelectedLayer():GetPreviousGridCoordinate(y)
+            end
+            cursor:SetPosition(x, y)
+        else
+            // TO-DO: 3D items
+        end
+    end
+
+    // Used when moving an InteractableItem into a grid space to give information about what's under the item.
+    // Doesn't include the item itself in the description.
+    private action GetDescriptionAtItemPosition(InteractableItem item) returns text
+        SetCursorToItem(item)
+
+        Item ignoredItem = undefined
+
+        if item is SelectionHighlight
+            SelectionHighlight highlight = cast(SelectionHighlight, item)
+            ignoredItem = highlight:GetItem()
+        end
+
+        EditorCursor cursor = GetCursor()
+        if cursor is EditorCursor2D
+            EditorCursor2D cursor2D = cast(EditorCursor2D, cursor)
+            text position = cast(integer, item:GetGlobalX()) + " " + cast(integer, item:GetGlobalY())
+            Array<Item> items = cursor2D:GetItemsAtCursor()
+            if items:GetSize() = 0
+                return position
+            elseif items:GetSize() <= 3
+                integer counter = items:GetSize()
+                text names = ""
+                repeat while counter > 0
+                    counter = counter - 1
+                    if items:Get(counter):Equals(ignoredItem) = false
+                        names = names + items:Get(counter):GetName() + ", "
+                    end
+                end
+                return names + position
+            else
+                integer counter = items:GetSize()
+                integer used = 0
+                text names = ""
+                repeat while used < 3
+                    counter = counter - 1
+                    if items:Get(counter):Equals(ignoredItem) = false
+                        names = names + items:Get(counter):GetName() + ", "
+                        used = used + 1
+                    end
+                end
+                return names + (items:GetSize() - 1) + " items, " + position
+            end
+        else
+            // Handle the 3D cursor here
+        end
+        return item:GetGlobalX() + " " + item:GetGlobalY()
+    end
+
     action SetSelectionXDirection(integer direction)
         selectionXDirection = direction
 
         if direction = 0
             if manager:GetFocus() is InteractableItem
                 InteractableItem focus = cast(InteractableItem, manager:GetFocus())
-                number x = math:Round(focus:GetGlobalX(), 2)
-                NotifyAccessibility(focus, "x " + x)
+                NotifyAccessibility(focus, GetDescriptionAtItemPosition(focus))
             end
         end
     end
@@ -1053,8 +1131,7 @@ class VisualSceneController is Control
         if direction = 0
             if manager:GetFocus() is InteractableItem
                 InteractableItem focus = cast(InteractableItem, manager:GetFocus())
-                number y = math:Round(focus:GetGlobalY(), 2)
-                NotifyAccessibility(focus, "y " + y)
+                NotifyAccessibility(focus, GetDescriptionAtItemPosition(focus))
             end
         end
     end
@@ -1069,12 +1146,7 @@ class VisualSceneController is Control
         if direction = 0
             if manager:GetFocus() is InteractableItem2D
                 InteractableItem focus = cast(InteractableItem2D, manager:GetFocus())
-                number y = math:Round(focus:GetGlobalY(), 2)
-                NotifyAccessibility(focus, "y " + y)
-            elseif manager:GetFocus() is InteractableItem3D
-                InteractableItem focus = cast(InteractableItem3D, manager:GetFocus())
-                number z = math:Round(focus:GetGlobalZ(), 2)
-                NotifyAccessibility(focus, "z " + z)
+                NotifyAccessibility(focus, GetDescriptionAtItemPosition(focus))
             end
         end
     end
@@ -1180,6 +1252,10 @@ class VisualSceneController is Control
     action IsGridSnapping returns boolean
         EditorLayer layer = GetSelectedLayer()
         return layer:IsGridSnapping()
+    end
+
+    private action IsGridCoordinate(number value) returns boolean
+        return GetSelectedLayer():IsGridCoordinate(value)
     end
 
     action SetSelectedItem(InteractableItem item)
