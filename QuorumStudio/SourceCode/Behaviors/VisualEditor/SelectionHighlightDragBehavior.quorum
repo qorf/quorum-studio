@@ -6,6 +6,11 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.SelectionHig
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SelectionHighlight3D
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer2D
 use Libraries.Compute.Vector3
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SelectionHighlight
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+use Libraries.Game.Layer
+use Libraries.Interface.Item2D
 
 class SelectionHighlightDragBehavior is QuorumStudioBehavior
 
@@ -15,50 +20,83 @@ class SelectionHighlightDragBehavior is QuorumStudioBehavior
             return now
         end
 
-        if event:GetItem() is SelectionHighlight2D
-            SelectionHighlight2D highlight = cast(SelectionHighlight2D, event:GetItem())
-            EditorLayer2D layer = cast(EditorLayer2D, highlight:GetLayer())
+        SelectionHighlight highlight = undefined
+        EditorLayer editorLayer = undefined
+
+        if event:GetItem() is SelectionHighlight
+            highlight = cast(SelectionHighlight, event:GetItem())
+        elseif event:GetItem() not= undefined
+            Layer layer = undefined
+            if event:GetItem() is Item2D
+                Item2D item2D = cast(Item2D, event:GetItem())
+                layer = item2D:GetLayer()
+            else
+                // TO-DO
+            end
+
+            if layer is EditorLayer
+                editorLayer = cast(EditorLayer, layer)
+                VisualSceneController controller = editorLayer:GetSceneController()
+                highlight = controller:GetSelectionHighlight(event:GetItem())
+            end
+        end
+
+        if highlight is SelectionHighlight2D
+            SelectionHighlight2D highlight2D = cast(SelectionHighlight2D, highlight)
             
             number x1 = highlight:GetGlobalX()
-            if layer:IsGridCoordinate(x1) = false
-                x1 = layer:GetPreviousGridCoordinate(x1)
+            if editorLayer:IsGridCoordinate(x1) = false
+                x1 = editorLayer:GetPreviousGridCoordinate(x1)
             end
 
             number y1 = highlight:GetGlobalY()
-            if layer:IsGridCoordinate(y1) = false
-                y1 = layer:GetPreviousGridCoordinate(y1)
+            if editorLayer:IsGridCoordinate(y1) = false
+                y1 = editorLayer:GetPreviousGridCoordinate(y1)
             end
 
-            number x2 = layer:GetNextGridCoordinate(x1)
-            number y2 = layer:GetNextGridCoordinate(y1)
+            number x2 = editorLayer:GetNextGridCoordinate(x1)
+            number y2 = editorLayer:GetNextGridCoordinate(y1)
             
-            Vector3 worldCoordinates = layer:GetCamera():ScreenToWorldCoordinates(dragEvent:GetX() - layer:GetViewportX(), dragEvent:GetY() - layer:GetViewportY())
+            Vector3 worldCoordinates = editorLayer:GetCamera():ScreenToWorldCoordinates(dragEvent:GetX() - editorLayer:GetViewportX(), dragEvent:GetY() - editorLayer:GetViewportY())
             boolean shouldMove = false
-            number targetX = worldCoordinates:GetX()
-            number targetY = worldCoordinates:GetY()
+            number targetX = x1
+            number targetY = y1
             
-            if targetX < x1
+            if worldCoordinates:GetX() < x1
                 shouldMove = true
-                targetX = x1
-            elseif targetX >= x2
+                number newTarget = x1
+                repeat while worldCoordinates:GetX() < newTarget
+                    newTarget = editorLayer:GetPreviousGridCoordinate(newTarget)
+                end
+                targetX = newTarget
+            elseif worldCoordinates:GetX() >= x2
                 shouldMove = true
-                targetX = x2
+                number newTarget = x2
+                repeat while worldCoordinates:GetX() >= newTarget
+                    targetX = newTarget
+                    newTarget = editorLayer:GetNextGridCoordinate(newTarget)
+                end
             end
 
-            if targetY < y1
+            if worldCoordinates:GetY() < y1
                 shouldMove = true
-                targetY = y1
-            elseif targetY >= y2
+                number newTarget = y1
+                repeat while worldCoordinates:GetY() < newTarget
+                    newTarget = editorLayer:GetPreviousGridCoordinate(newTarget)
+                end
+                targetY = newTarget
+            elseif worldCoordinates:GetY() >= y2
                 shouldMove = true
-                targetY = y2
+                number newTarget = y2
+                repeat while worldCoordinates:GetY() >= newTarget
+                    targetY = newTarget
+                    newTarget = editorLayer:GetNextGridCoordinate(newTarget)
+                end
             end
 
             if shouldMove
-                highlight:SetPosition(targetX, targetY)
-                output "MOVED"
+                highlight2D:SetPosition(targetX, targetY)
             end
-
-            output x1 + ", " + y1 + " -- " + x2 + ", " + y2 + " -- " + targetX + ", " + targetY + " -- shouldMove = " + shouldMove
 
         elseif event:GetItem() is SelectionHighlight3D
             // TO-DO

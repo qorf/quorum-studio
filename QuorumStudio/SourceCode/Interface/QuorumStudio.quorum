@@ -102,6 +102,7 @@ use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditorResources
 use Libraries.Development.Environment.Studio.Behaviors.SelectSceneItemBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SelectionHighlightDragBehavior
+use Libraries.Development.Environment.Studio.Behaviors.PaletteItemDropBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 2
@@ -454,6 +455,12 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         table:SetIdentifier("VisualSceneController")
         KeyMap map = resources:GetKeyMap()
 
+        InputSet dropInputSet
+        dropInputSet:SetDropItemInput()
+        dropInputSet:SetInputTrigger(dropInputSet:FINISH)
+        Behavior behavior
+        table:Add(dropInputSet, behavior)
+
         /*
         InputSet rotateLeftStart = map:GetCameraRotateLeftKey()
         InputSet rotateLeftStop = map:GetCameraRotateLeftKey()
@@ -657,16 +664,6 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         table:Add(selectionScaleDownSet, cursorDecreaseSizeBehavior)
 
         AddInputTable(table)
-
-        VisualEditorResources visualResources
-        InputTable sceneItemTable
-        sceneItemTable:SetIdentifier(visualResources:SCENE_ITEM_INPUT_GROUP)
-
-        InputSet selectSceneItemInput = map:GetSelectSceneItemKey()
-        SelectSceneItemBehavior selectSceneItemBehavior = behaviors:GetSelectSceneItemBehavior()
-        sceneItemTable:Add(selectSceneItemInput, selectSceneItemBehavior)
-
-        AddInputTable(sceneItemTable)
 
         InputTable cameraItemTable2D
         cameraItemTable2D:SetIdentifier("CameraItem2D")
@@ -898,6 +895,18 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
         AddInputTable(selectionTable2D)
 
+        VisualEditorResources visualResources
+        InputTable sceneItemTable
+        sceneItemTable:SetIdentifier(visualResources:SCENE_ITEM_INPUT_GROUP)
+
+        InputSet selectSceneItemInput = map:GetSelectSceneItemKey()
+        SelectSceneItemBehavior selectSceneItemBehavior = behaviors:GetSelectSceneItemBehavior()
+        sceneItemTable:Add(selectSceneItemInput, selectSceneItemBehavior)
+
+        sceneItemTable:Add(selectionHighlightDragInput, selectionHighlightDragBehavior)
+
+        AddInputTable(sceneItemTable)
+
         InputTable itemPreviewTable
         itemPreviewTable:SetIdentifier("NewItemPreview3D")
 
@@ -1039,6 +1048,18 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         findTable:Add(closeVisualEditorFindDialogSet2, closeFindBehavior)
 
         AddInputTable(findTable)
+
+        InputTable paletteItemContentTable
+        paletteItemContentTable:SetIdentifier("PaletteItemContent")
+
+        InputSet dragEndSet
+        dragEndSet:SetDragItemInput()
+        dragEndSet:SetInputTrigger(dragEndSet:FINISH)
+
+        PaletteItemDropBehavior paletteItemDropBehavior
+        paletteItemContentTable:Add(dragEndSet, paletteItemDropBehavior)
+
+        AddInputTable(paletteItemContentTable)
     end
 
     action SetupFocus
