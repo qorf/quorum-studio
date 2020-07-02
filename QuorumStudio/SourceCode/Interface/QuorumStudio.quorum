@@ -103,6 +103,8 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditor
 use Libraries.Development.Environment.Studio.Behaviors.SelectSceneItemBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SelectionHighlightDragBehavior
 use Libraries.Development.Environment.Studio.Behaviors.PaletteItemDropBehavior
+use Libraries.Development.Environment.Studio.Behaviors.PaletteItemStartDragBehavior
+use Libraries.Development.Environment.Studio.Behaviors.PaletteItemContinueDragBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 2
@@ -1052,11 +1054,24 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         InputTable paletteItemContentTable
         paletteItemContentTable:SetIdentifier("PaletteItemContent")
 
+        InputSet dragBeginSet
+        dragBeginSet:SetDragItemInput()
+        dragBeginSet:SetInputTrigger(dragBeginSet:BEGIN)
+
+        InputSet dragContinueSet
+        dragContinueSet:SetDragItemInput()
+        dragContinueSet:SetInputTrigger(dragContinueSet:CONTINUE)
+
         InputSet dragEndSet
         dragEndSet:SetDragItemInput()
         dragEndSet:SetInputTrigger(dragEndSet:FINISH)
 
+        PaletteItemStartDragBehavior paletteItemStartDragBehavior
+        PaletteItemContinueDragBehavior paletteItemContinueDragBehavior
         PaletteItemDropBehavior paletteItemDropBehavior
+
+        paletteItemContentTable:Add(dragBeginSet, paletteItemStartDragBehavior)
+        paletteItemContentTable:Add(dragContinueSet, paletteItemContinueDragBehavior)
         paletteItemContentTable:Add(dragEndSet, paletteItemDropBehavior)
 
         AddInputTable(paletteItemContentTable)

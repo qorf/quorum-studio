@@ -25,7 +25,7 @@ class ScenePalette is Palette
 
     // Resources used to handle the visual component of dragging-and-dropping palette items.
     GameStateManager manager
-//    Layer2D draggedItemLayer
+    Layer2D draggedItemLayer = undefined
     boolean dragLayerInUse = false
     Drawable draggedItem = undefined
 
@@ -185,11 +185,39 @@ class ScenePalette is Palette
     end
 
     action SetDraggedItem(Item item)
-        if item = undefined
+        // TO-DO: Handle 3D as well
 
-        else
-            
+        if draggedItemLayer = undefined
+            Layer2D layer
+            layer:SetName("Palette Drag Layer2D")
+            draggedItemLayer = layer
         end
+
+        if draggedItem not= undefined
+            draggedItemLayer:Remove(draggedItem)
+        end
+
+        if item = undefined
+            if dragLayerInUse
+                manager:GetGame():RemoveLayer(draggedItemLayer)
+            end
+
+            dragLayerInUse = false
+        else
+            draggedItemLayer:Add(cast(Item2D, item))
+
+            if dragLayerInUse = false
+                manager:GetGame():AddLayer(draggedItemLayer)
+            end
+
+            dragLayerInUse = true
+        end
+
+        draggedItem = cast(Drawable, item)
+    end
+
+    action GetDraggedItem returns Item
+        return draggedItem
     end
 
 end
