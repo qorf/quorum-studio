@@ -100,11 +100,11 @@ class CodeCompletionMenuItem is MenuItem
 
             SetMenuDirection(parent:MenuItem:DOWN)
 
-            properties:SetHorizontalLayoutMode(parent:MenuItem:menuProperties:FIT_CONTENTS)
+            properties:SetHorizontalLayoutMode(properties:FIT_CONTENTS)
         else
             SetLayout(parent:MenuItem:menuItemLayout)
 
-            properties:SetHorizontalLayoutMode(parent:MenuItem:menuProperties:STANDARD)
+            properties:SetHorizontalLayoutMode(properties:STANDARD)
             properties:SetPercentageWidth(1.0)
 
             SetMenuDirection(parent:MenuItem:RIGHT)
@@ -143,15 +143,13 @@ class CodeCompletionMenuItem is MenuItem
             content2:Initialize(defaultLabelViewBackground, black)
             
         end
-        parent:MenuItem:panelView = content
 
+        parent:MenuItem:panel:SetView2D(content)
 
-        parent:MenuItem:panel:SetView2D(parent:MenuItem:panelView)
-
-        if parent:MenuItem:menuProperties:GetIcon() not= undefined
-            parent:MenuItem:icon:Load(parent:MenuItem:menuProperties:GetIcon())
-            if parent:MenuItem:menuProperties:GetIconColor() not= undefined
-                parent:MenuItem:icon:SetColor(parent:MenuItem:menuProperties:GetIconColor())
+        if properties:GetIcon() not= undefined
+            parent:MenuItem:icon:Load(properties:GetIcon())
+            if properties:GetIconColor() not= undefined
+                parent:MenuItem:icon:SetColor(properties:GetIconColor())
             end
             parent:MenuItem:icon:Show()
         else
@@ -159,8 +157,8 @@ class CodeCompletionMenuItem is MenuItem
             parent:MenuItem:icon:Hide()
         end
 
-        parent:MenuItem:arrow:SetColor(parent:MenuItem:menuProperties:GetFontColor())
-        parent:MenuItem:arrow:LoadFilledTriangle(0, 0, 0, 200, 173, 100, parent:MenuItem:menuProperties:GetFontColor())
+        parent:MenuItem:arrow:SetColor(properties:GetFontColor())
+        parent:MenuItem:arrow:LoadFilledTriangle(0, 0, 0, 200, 173, 100, properties:GetFontColor())
 
         text labelText = properties:GetLabelText()
         if labelText = ""
