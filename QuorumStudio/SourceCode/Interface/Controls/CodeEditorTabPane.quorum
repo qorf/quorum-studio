@@ -67,6 +67,14 @@ class CodeEditorTabPane is TabPane, TabChangeListener
                 openFiles:RemoveKey(path)
                 openTabs:RemoveKey(path)
             end
+        elseif event:GetTab() is VisualEditorTab
+            VisualEditorTab tab = cast(VisualEditorTab, event:GetTab())
+            File file = tab:GetFile()
+            if file not= undefined
+                text path = file:GetAbsolutePath()
+                openFiles:RemoveKey(path)
+                openTabs:RemoveKey(path)
+            end
         end
     end
 
@@ -312,6 +320,10 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         tab:SetInterfaceScale(scale)
         Add(cast(Tab,tab))
         Resize()
+
+        openFiles:Add(file:GetAbsolutePath(), file)
+        openTabs:Add(file:GetAbsolutePath(), tab)
+
         return tab
     end
 
@@ -389,6 +401,10 @@ class CodeEditorTabPane is TabPane, TabChangeListener
                 if et:IsDirty()
                     et:Save()
                 end
+            elseif tab is VisualEditorTab
+                VisualEditorTab visualTab = cast(VisualEditorTab, tab)
+                // TO-DO: Determine if the tab is dirty and only change it if it is.
+                visualTab:Save()
             end
         end
     end

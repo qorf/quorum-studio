@@ -32,6 +32,7 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Item2DPropertiesDialog
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.ScenePalette
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Camera2DPropertiesDialog
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.CameraPreview2D
 
 class VisualEditorTab is Tab, DefaultSceneManager
 
@@ -113,11 +114,18 @@ class VisualEditorTab is Tab, DefaultSceneManager
     */
     private action CustomLoadCameraProperty(Layer layer, Camera camera, text key, JavaScriptObjectNotation json) returns boolean
         SceneProperties properties
-        if key = properties:SIZE
-            if layer is EditorLayer2D
-                EditorLayer2D layer2D = cast(EditorLayer2D, layer)
+        if layer is EditorLayer2D
+            EditorLayer2D layer2D = cast(EditorLayer2D, layer)
+            if key = properties:SIZE        
                 Number32BitArray size = ConvertToNumber32BitArray(json:GetObject(key))
                 layer2D:SetCameraPreviewSize(size:Get(0), size:Get(1))
+                return true
+            elseif key = "EDITOR_" + properties:POSITION
+                Number32BitArray position = ConvertToNumber32BitArray(json:GetObject(key))
+                camera:SetPosition(position:Get(0), position:Get(1), camera:GetPosition():GetZ())
+                return true
+            elseif key = "EDITOR_" + properties:ZOOM
+                camera:SetZoom(json:GetNumber(key))
                 return true
             end
         end
@@ -127,10 +135,27 @@ class VisualEditorTab is Tab, DefaultSceneManager
 
     private action CustomSaveCameraProperty(Layer layer, Camera camera, text key, JavaScriptObjectNotation json) returns boolean
         SceneProperties properties
-        if key = properties:SIZE and layer is EditorLayer2D
+        if layer is EditorLayer2D
             EditorLayer2D layer2D = cast(EditorLayer2D, layer)
-            json:Add(properties:SIZE, NewJsonArray(layer2D:GetCameraPreviewWidth(), layer2D:GetCameraPreviewHeight()))
-            return true
+            if key = properties:SIZE
+                json:Add(properties:SIZE, NewJsonArray(layer2D:GetCameraPreviewWidth(), layer2D:GetCameraPreviewHeight()))
+                return true
+            elseif key = properties:POSITION
+                CameraPreview2D preview = layer2D:GetCameraPreview()
+                number x = preview:GetX() + preview:GetWidth() / 2.0
+                number y = preview:GetY() + preview:GetHeight() / 2.0
+                json:Add(properties:POSITION, NewJsonArray(x, y, camera:GetPosition():GetZ()))
+
+                json:Add("EDITOR_" + properties:POSITION, NewJsonArray(camera:GetPosition():GetX(), camera:GetPosition():GetY()))
+
+                return true
+            elseif key = properties:ZOOM
+                json:Add(properties:ZOOM, 1.0)
+
+                json:Add("EDITOR_" + properties:ZOOM, camera:GetZoom())
+
+                return true
+            end
         end
 
         return false
