@@ -22,6 +22,7 @@ use Libraries.Game.Graphics.Drawable
 use Libraries.Containers.HashTable
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.SceneControllerEditManager
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.DeleteEdit
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.InsertEdit
 
 /*
 A class used to represent the 2D space within a Visual Editor tab.
@@ -892,6 +893,10 @@ class VisualSceneController is Control
                 item2dPropertiesDialog:SetFields(cast(NewItemPreview2D, newItem))
             end
         end
+
+        InsertEdit edit
+        edit:Create(me, resultLayer, result)
+        editManager:Add(edit)
     end
 
     action Add(EditorLayer layer, Item item)
@@ -913,6 +918,10 @@ class VisualSceneController is Control
         SceneChangeEvent event
         event:Set(me, item, undefined, layer, event:ADDED)
         NotifySceneChangeListeners(event)
+
+        InsertEdit edit
+        edit:Create(me, layer, item)
+        editManager:Add(edit)
     end
 
     action AddLayer(EditorLayer layer)
