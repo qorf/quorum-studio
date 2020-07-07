@@ -24,10 +24,20 @@ class EditorLayer3D is Layer3D, EditorLayer
         end
 
         Item item = parent:Layer3D:ProcessMouseEvent(event)
-        if item not= undefined and event:eventType = event:CLICKED_MOUSE
-            output "ProcessMouseEvent: " + item:GetName()
-        end
         return item
+    end
+
+    action Update(number seconds)
+        VisualSceneController controller = GetSceneController()
+        integer x = cast(integer, controller:GetGlobalX())
+        integer y = cast(integer, controller:GetGlobalY())
+        integer width = cast(integer, controller:GetWidth())
+        integer height = cast(integer, controller:GetHeight())
+        if GetViewportX() not= x or GetViewportY() not= y or GetViewportWidth() not= width or GetViewportHeight() not= height
+            SetViewport(x, y, width, height)
+        end
+
+        parent:Layer3D:Update(seconds)
     end
 
     action GetGrid returns GridPlane

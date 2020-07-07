@@ -132,6 +132,20 @@ class EditorLayer2D is Layer2D, EditorLayer
         return grid:GetPreviousGridCoordinate(coordinate)
     end
 
+    action Update(number seconds)
+        VisualSceneController controller = GetSceneController()
+        integer x = cast(integer, controller:GetGlobalX())
+        integer y = cast(integer, controller:GetGlobalY())
+        integer width = cast(integer, controller:GetWidth())
+        integer height = cast(integer, controller:GetHeight())
+        if GetViewportX() not= x or GetViewportY() not= y or GetViewportWidth() not= width or GetViewportHeight() not= height
+            SetViewport(x, y, width, height)
+            UpdateGridSize()            
+        end
+
+        parent:Layer2D:Update(seconds)
+    end
+
     action IsGridCoordinate(number value) returns boolean
         return grid:IsGridCoordinate(value)
     end
