@@ -10,9 +10,9 @@
 ;General
 
     ;Name and file
-    !define PRODUCT_VERSION "2.0.0.0"
+    !define PRODUCT_VERSION "2.0.2.0"
     !define REGISTRY_KEY "Software\QuorumStudio"
-    !define VERSION "2.0"
+    !define VERSION "2.0.2"
 
     VIProductVersion "${PRODUCT_VERSION}"
     VIFileVersion "${PRODUCT_VERSION}"
@@ -23,9 +23,9 @@
     VIAddVersionKey "FileDescription" "Quorum Studio is an integrated development environment and game editor for all users."
 
   Name "Quorum Studio"
-  Caption "Quorum Studio 2.0"
+  Caption "Quorum Studio ${VERSION} Installer"
   Icon "quorum.ico"
-  OutFile "Quorum-Studio-${VERSION}.exe"
+  OutFile "QuorumStudioWindows${VERSION}.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES64\QuorumStudio"
