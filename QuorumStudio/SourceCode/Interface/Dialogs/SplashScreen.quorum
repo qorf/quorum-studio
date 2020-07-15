@@ -17,11 +17,11 @@ use Libraries.Language.Compile.CompilerListener
 use Libraries.Interface.AccessibilityManager
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Compute.Math
+use Libraries.Containers.Array
+use Libraries.Compute.Random
 
 class SplashScreen is Dialog, CompilerListener
     boolean initialized = false
-    //Label loading = undefined
-    //GameStateManager manager
     Icon logo
     Label studio
     Label loading
@@ -30,28 +30,59 @@ class SplashScreen is Dialog, CompilerListener
     number currentPercent = 0
     GameStateManager manager
     Math math
+    Random random
+    Array<text> scanLabels
+    Array<text> parsingLabels
+    Array<text> typeCheckingLabels
+    Array<text> semanticsLabels
+    Array<text> doneLabels
 
     on create
         SetModal(true)
         SetTopBarVisible(false)
+
+        scanLabels:Add("Taking the Upside Down to Prom")
+        scanLabels:Add("Counting to 11")
+
+        parsingLabels:Add("Trolling Internet Trolls")
+        parsingLabels:Add("Leaving Mom's basement")
+
+        typeCheckingLabels:Add("Watching Robots do Standup")
+        typeCheckingLabels:Add("Lowering human defenses")
+        typeCheckingLabels:Add("Starting robot apocalypse")
+
+        semanticsLabels:Add("Harvesting Garden Gnomes")
+        semanticsLabels:Add("?")
+        semanticsLabels:Add("Profit!")
+
+        doneLabels:Add("Ironing Baby Yoda")
+        doneLabels:Add("Resurrecting Palpatine for no reason")
     end
 
     action UpdatePercentageComplete(number percent)
         currentPercent = percent
     end
 
+    action FindRandomPhrase(Array<text> phrases) returns text
+        text result = ""
+        if phrases not= undefined and not phrases:IsEmpty()
+            integer i = random:RandomIntegerBetween(0, phrases:GetSize() - 1)
+            result = phrases:Get(i)
+        end
+        return result
+    end
     action UpdateLabel(text label)
         text result = ""
         if label = "Started Scanning"
-            result = "Taking the Upside Down to Prom"
+            result = FindRandomPhrase(scanLabels)
         elseif label = "Parsing"
-            result = "Trolling Internet Trolls"
+            result = FindRandomPhrase(parsingLabels)
         elseif label = "Type Checking"
-            result = "Watching Robots do Standup"
+            result = FindRandomPhrase(typeCheckingLabels)
         elseif label = "Semantic Analysis"
-            result = "Harvesting Garden Gnomes"
+            result = FindRandomPhrase(semanticsLabels)
         elseif label = "All done!"
-            result = "Ironing Baby Yoda"
+            result = FindRandomPhrase(doneLabels)
         end
         AccessibilityManager access = manager:GetAccessibilityManager()
         if access not= undefined
