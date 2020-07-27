@@ -24,6 +24,7 @@ use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.System.File
 use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Interface.Controls.Tab
+use Libraries.Development.Environment.Studio.Interface.StateCell
 
 class JumpToErrorBehavior is QuorumStudioBehavior
 
@@ -41,25 +42,29 @@ class JumpToErrorBehavior is QuorumStudioBehavior
         if y = 0
             return now
         end
-        Cell lineCell = sheet:GetCell(1, y)
-        Cell fileCell = sheet:GetCell(2, y)
-        
-        integer line = cast(integer, lineCell:GetText())
-        text fileText = fileCell:GetText()
 
-        QuorumStudio studio = GetMainApplication()
-        CodeEditorTabPane editors = studio:GetTabPane()
-        File file
-        file:SetAbsolutePath(fileText)
-        Tab tab1 = editors:OpenNewTab(file)
-        if not (tab1 is EditorTab)
-            return now
-        end
-        EditorTab tab = cast(EditorTab, tab1)
-        TextBox box = tab:GetTextBox()
-
-        if line > 0
-            box:SetCaretPositionToLine(line - 1)
+        check
+            Cell lineCell = sheet:GetCell(1, y)
+            StateCell fileCell = cast(StateCell, sheet:GetCell(2, y))
+            
+            integer line = cast(integer, lineCell:GetText())
+            text fileText = fileCell:GetText()
+    
+            QuorumStudio studio = GetMainApplication()
+            CodeEditorTabPane editors = studio:GetTabPane()
+            File file = cast(File, fileCell:GetObject())
+            Tab tab1 = editors:OpenNewTab(file)
+            if not (tab1 is EditorTab)
+                return now
+            end
+            EditorTab tab = cast(EditorTab, tab1)
+            TextBox box = tab:GetTextBox()
+    
+            if line > 0
+                box:SetCaretPositionToLine(line - 1)
+            end
+        detect e
+            e:OutputStackTrace()
         end
     end
 end

@@ -151,17 +151,21 @@ class ErrorTab is Tab
     action AddError(CompilerError error)
         Cell m
         Cell l
-        Cell f
+        StateCell f
         
+        m:SetName(error:GetErrorMessage())
         m:SetText(error:GetErrorMessage())
+        l:SetName("" + error:GetLineNumber())
         l:SetText("" + error:GetLineNumber())
         if error:GetFile() not= undefined
-            f:SetText("" + error:GetFile():GetAbsolutePath())
+            f:SetName("" + error:GetFile():GetFileName() + ": " + error:GetFile():GetAbsolutePath())
+            f:SetText("" + error:GetFile():GetFileName() + ": " + error:GetFile():GetAbsolutePath())
+            f:SetObject(error:GetFile())
         end
 
         messageColumn:Add(m)
         lineColumn:Add(l)
-        fileColumn:Add(f)
+        fileColumn:Add(cast(Cell, f))
     end
 
     action GetPane returns BreakpointScrollPane
