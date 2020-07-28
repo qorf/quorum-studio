@@ -36,16 +36,16 @@ class JumpToErrorBehavior is QuorumStudioBehavior
         Cell cell = cast(Cell, event:GetItem())
         Spreadsheet sheet = cell:GetSpreadsheet()
         SpreadsheetSelection selection = sheet:GetSelection()
-        integer x = selection:GetX()
-        integer y = selection:GetY()
+        integer row = selection:GetRow()
+        integer column = selection:GetColumn()
         //checks if selection is a header cell
-        if y = 0
+        if row = 0
             return now
         end
 
         check
-            Cell lineCell = sheet:GetCell(y, 1)
-            StateCell fileCell = cast(StateCell, sheet:GetCell(y, 2))
+            Cell lineCell = sheet:GetCell(1, row)
+            StateCell fileCell = cast(StateCell, sheet:GetCell(2, row))
             
             integer line = cast(integer, lineCell:GetText())
             text fileText = fileCell:GetText()
