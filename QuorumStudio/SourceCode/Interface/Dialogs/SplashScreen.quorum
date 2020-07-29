@@ -36,6 +36,8 @@ class SplashScreen is Dialog, CompilerListener
     Array<text> typeCheckingLabels
     Array<text> semanticsLabels
     Array<text> doneLabels
+    boolean playMessage = false
+    text notification = ""
 
     on create
         SetModal(true)
@@ -71,25 +73,20 @@ class SplashScreen is Dialog, CompilerListener
         end
         return result
     end
+
     action UpdateLabel(text label)
-        text result = ""
         if label = "Started Scanning"
-            result = FindRandomPhrase(scanLabels)
+            notification = FindRandomPhrase(scanLabels)
         elseif label = "Parsing"
-            result = FindRandomPhrase(parsingLabels)
+            notification = FindRandomPhrase(parsingLabels)
         elseif label = "Type Checking"
-            result = FindRandomPhrase(typeCheckingLabels)
+            notification = FindRandomPhrase(typeCheckingLabels)
         elseif label = "Semantic Analysis"
-            result = FindRandomPhrase(semanticsLabels)
+            notification = FindRandomPhrase(semanticsLabels)
         elseif label = "All done!"
-            result = FindRandomPhrase(doneLabels)
+            notification = FindRandomPhrase(doneLabels)
         end
-        AccessibilityManager access = manager:GetAccessibilityManager()
-        if access not= undefined
-            access:Notify(manager:GetFocus(), result)
-        end
-        
-        loading:SetText(result)
+        playMessage = true
     end
 
     action Initialize
@@ -100,7 +97,7 @@ class SplashScreen is Dialog, CompilerListener
         initialized = true
 
         QuorumStudio qs = cast(QuorumStudio, manager:GetGame())
-        SetName("Loading " + qs:GetDisplayName())
+        SetName("Loading")
         SetPixelWidth(400)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
 
@@ -150,19 +147,23 @@ class SplashScreen is Dialog, CompilerListener
 
     action OnShow
         progress:Focus()
-        AccessibilityManager access = manager:GetAccessibilityManager()
-        if access not= undefined
-            access:Notify(progress, "Loading Quorum Studio, please wait.")
-        end
     end
 
-    
     action Update(number seconds)
         logo:Rotate(seconds * 90)
         number value = math:RoundToNearestInteger(currentPercent)
         progress:SetValue(value)
         loading:SetX(studio:GetX())
         loading:SetY(studio:GetY() - studio:GetHeight())
+
+        if playMessage
+            AccessibilityManager access = manager:GetAccessibilityManager()
+            if access not= undefined
+                access:Notify(manager:GetFocus(), notification)
+            end
+            loading:SetText(notification)
+            playMessage = false
+        end
     end
 
     action GetLibrary returns Library
