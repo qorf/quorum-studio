@@ -23,6 +23,8 @@ use Libraries.Containers.HashTable
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.SceneControllerEditManager
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.DeleteEdit
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.InsertEdit
+use Libraries.Game.Game
+use Libraries.Interface.Controls.Button
 
 /*
 A class used to represent the 2D space within a Visual Editor tab.
@@ -117,7 +119,6 @@ class VisualSceneController is Control
 
     // Used to forcibly change the focus and send information via the screen reader.
     Item2D dummyItem
-    Item2D dummyItem2
 
     on create
         FlowLayout layout
@@ -140,16 +141,6 @@ class VisualSceneController is Control
         findDialog:Initialize(me)
 
         previewScale:Set(1, 1, 1)
-
-        dummyItem:SetName("Scene Controller Node")
-        dummyItem:SetProperty(visualResources:EDITOR_TAG, undefined)
-        dummyItem:SetFocusable(true)
-        Add(dummyItem)
-
-        dummyItem:SetName("Scene Controller Node")
-        dummyItem:SetProperty(visualResources:EDITOR_TAG, undefined)
-        dummyItem:SetFocusable(true)
-        Add(dummyItem)
     end
 
     action GetDescription returns text
@@ -279,6 +270,13 @@ class VisualSceneController is Control
 
     action GetEditManager returns SceneControllerEditManager
         return editManager
+    end
+
+    action IsFocused returns boolean
+        // Although we can get the focus directly from the manager, we request
+        // it from the Game instead. This allows the Game to do any necessary
+        // additional book-keeping.
+        return parent:Item:IsFocused() or (dummyItem not= undefined and dummyItem:IsFocused())
     end
 
     action Update(number seconds)
@@ -491,13 +489,20 @@ class VisualSceneController is Control
 
                 if moved and isCursor
                     if accessibility not= undefined
-                        accessibility:DescriptionChanged(me)
-                        FocusEvent event
-                        event:Initialize(me, dummyItem)
-                        accessibility:FocusChanged(event)
-                        FocusEvent event2
-                        event2:Initialize(dummyItem, me)
-                        accessibility:FocusChanged(event2)
+                        Item2D newDummy
+                        text describe = GetDescription()
+                        newDummy:SetProperty(visualResources:EDITOR_TAG, undefined)
+                        newDummy:SetFocusable(true)
+                        newDummy:SetAccessibilityCode(dummyItem:parent:Item:ITEM)
+                        newDummy:SetName(describe)
+                        newDummy:SetInputGroup("PassthroughInput")
+
+                        Add(newDummy)
+                        newDummy:Focus()
+                        if dummyItem not= undefined
+                            Remove(dummyItem)
+                        end
+                        dummyItem = newDummy
                     end
                 end
             end

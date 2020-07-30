@@ -1,0 +1,33 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Game.InputTable
+use Libraries.Game.InputSet
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.CodeCompletionMenu
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Interface.Item
+use Libraries.Interface.Item2D
+
+class PassthroughInputTable is InputTable
+
+    on create
+        SetIdentifier("PassthroughInput")
+    end
+
+    action HasKey(InputSet set) returns boolean
+        return parent:InputTable:HasKey(set)
+    end
+
+    action ProcessInput(InputSet set, BehaviorEvent event) returns boolean
+        Item2D item = cast(Item2D, event:GetItem())
+        Item2D mom = item:GetParent()
+        if mom not= undefined
+            InputTable table = mom:GetInputTable()
+            BehaviorEvent ne = event:Copy()
+            ne:SetItem(mom)
+            return table:ProcessInput(set, ne)
+        else
+            return parent:InputTable:ProcessInput(set, event)
+        end
+    end
+end
