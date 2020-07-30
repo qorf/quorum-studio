@@ -498,11 +498,11 @@ class VisualSceneController is Control
                         newDummy:SetInputGroup("PassthroughInput")
 
                         Add(newDummy)
-                        newDummy:Focus()
                         if dummyItem not= undefined
                             Remove(dummyItem)
                         end
                         dummyItem = newDummy
+                        newDummy:Focus()
                     end
                 end
             end
@@ -1338,8 +1338,15 @@ class VisualSceneController is Control
     end
 
     action LostFocus(FocusEvent event)
+        Item item = event:GetNewFocus()
+        integer value = dummyItem:GetHashCode()
+        boolean goingToDummy = false
+        if item not= undefined
+            integer value1 = item:GetHashCode()
+            goingToDummy = value1 = value
+        end
         EditorLayer layer = GetSelectedLayer()
-        if layer not= undefined
+        if layer not= undefined and not goingToDummy
             layer:ShowCursor(false)
         end
     end
