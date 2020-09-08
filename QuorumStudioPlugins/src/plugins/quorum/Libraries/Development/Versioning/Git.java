@@ -557,7 +557,7 @@ public class Git {
                                 resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesDeleted_(
                                     resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesDeleted_() + 1);
                                 
-                                if((previousTag == null) || 
+                                if((previousTag == null && previousRes != null) || 
                                    (previousTag != null && previousRes != null && previousTag != previousTag.DELETE)) {
                                     previousRes.SetHasDeletion(true);
                                 }
