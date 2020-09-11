@@ -32,12 +32,15 @@ class CodeCompletionMenu is PopupMenu
     Icon actionPrivateIcon
     Icon fieldIcon
     Icon defaultIcon
+    Icon packageIcon
     Icon variableIcon
     Icon parentIcon
     Icon classIcon
 
     Array<MenuItem> primitives
     Array<MenuItem> other
+    Array<MenuItem> packages
+    Array<MenuItem> classes
     Array<MenuItem> locals
     Array<MenuItem> fields
     Array<MenuItem> parentFields
@@ -99,6 +102,8 @@ class CodeCompletionMenu is PopupMenu
 
         primitives:Empty()
         other:Empty()
+        packages:Empty()
+        classes:Empty()
         locals:Empty()
         fields:Empty()
         parentFields:Empty()
@@ -125,6 +130,7 @@ class CodeCompletionMenu is PopupMenu
             variableIcon:LoadFilledRectangle(size, size, grey)
             parentIcon:LoadFilledCircle(size, red)
             classIcon:LoadFilledRectangle(size, size, black)
+            packageIcon:LoadFilledRectangle(size, size, orange)
             loadedOnce = true
         end
         Regenerate()
@@ -201,7 +207,7 @@ class CodeCompletionMenu is PopupMenu
                 elseif code:GetType() = code:CLASS
                     item:SetIcon(classIcon)
                     item:SetIconColor(classIcon:GetColor())
-                    other:Add(item)
+                    classes:Add(item)
                 elseif code:GetType() = code:PRIMITIVE
                     item:SetIcon(primitiveIcon)
                     item:SetIconColor(primitiveIcon:GetColor())
@@ -211,9 +217,9 @@ class CodeCompletionMenu is PopupMenu
                     item:SetIconColor(primitiveIcon:GetColor())
                     primitives:Add(item)
                 elseif code:GetType() = code:PACKAGE
-                    item:SetIcon(defaultIcon)
-                    item:SetIconColor(defaultIcon:GetColor())
-                    other:Add(item)
+                    item:SetIcon(packageIcon)
+                    item:SetIconColor(packageIcon:GetColor())
+                    packages:Add(item)
                 elseif code:GetType() = code:PARENT_FIELD_PRIVATE
                     item:SetIcon(parentIcon)
                     item:SetIconColor(parentIcon:GetColor())
@@ -233,8 +239,10 @@ class CodeCompletionMenu is PopupMenu
         AddToResult(locals, compare)
         AddToResult(primitives, compare)
         AddToResult(fields, compare)
+        AddToResult(packages, compare)
         AddToResult(actions, compare)
         AddToResult(parentFields, compare)
+        AddToResult(classes, compare)
         AddToResult(other, compare)
 
         if IsEmpty() = false and GetSelection():IsEmpty() = true
