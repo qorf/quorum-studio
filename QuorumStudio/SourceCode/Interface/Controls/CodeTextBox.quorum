@@ -406,6 +406,34 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
                 end
             end
 
+            Iterator<Variable> fields = clazz:GetVariables()
+            if CheckForJump(fields, table)
+                return now
+            end
+
+            Action constructor = clazz:GetConstructor()
+            if constructor not= undefined
+                if IsInLocation(position, constructor)
+                    //check for local variables
+
+                    Iterator<Variable> variables = constructor:GetAllLocalVariables()
+                    if CheckForJump(variables, table)
+                        return now
+                    end
+                end
+
+                Iterator<ActionCallResolution> calls = constructor:GetActionCalls()
+                repeat while calls:HasNext()
+                    ActionCallResolution call = calls:Next()
+                    if IsInLocation(position, call:location)
+                        Class parentClass = call:resolvedAction:GetParentClass()
+                        if parentClass not= undefined
+                            JumpToClass(parentClass, call:resolvedAction:GetIndex(), call:resolvedAction:GetLineNumber(), pane)
+                            return now
+                        end
+                    end
+                end
+            end
 
             Iterator<Action> actions = clazz:GetActions()
             repeat while actions:HasNext()
@@ -484,15 +512,10 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
                     return false
                 end
             end
-        end
 
-        //perhaps it is a use for a variable.
-        variables:Rewind()
-        repeat while variables:HasNext()
-            Variable var = variables:Next()
             Iterator<Location> locations = var:GetUseLocationIterator(var:GetFile())
             repeat while locations not= undefined and locations:HasNext()
-                Location location = locations:Next()
+                location = locations:Next()
                 if IsInLocation(position, location) 
                     Location loc = var:GetTypeLocation()
                     SetCaretPosition(loc:GetIndex())
