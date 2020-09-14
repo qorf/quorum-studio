@@ -64,6 +64,7 @@ class NewFileDialog is Dialog
     DialogCancelBehavior cancelBehavior
     NewFileOkBehavior okayBehavior
     OpenBrowseFoldersBehavior browseBehavior
+    boolean isFolder = false
 
     on create
         cancelBehavior:SetDialog(me)
@@ -79,7 +80,11 @@ class NewFileDialog is Dialog
 
         initialized = true
 
-        SetName("New File")
+        if IsFolder()
+            SetName("New Folder")
+        else
+            SetName("New File")
+        end
         SetPixelWidth(400)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
 
@@ -145,7 +150,12 @@ class NewFileDialog is Dialog
         fileContainer:Add(fileName)
         
         fileNameField:SetHorizontalLayoutMode(fileNameField:parent:Libraries.Interface.Controls.Control:FILL)
-        fileNameField:SetName("New File Name")
+        if IsFolder()
+            fileNameField:SetName("New Folder Name")
+        else
+            fileNameField:SetName("New File Name")
+        end
+        
         fileNameField:SetText("")
         fileNameField:SetFocusable(true)
         fileNameField:SetNextFocus(locationNameField)
@@ -176,7 +186,6 @@ class NewFileDialog is Dialog
         locationContainer:Add(locationNameField)
 
         browseButton:SetName("Browse...")
-        //locationBrowseButton:SetHorizontalLayoutMode(locationBrowseButton:parent:Libraries.Interface.Controls.Control:FILL)
         browseButton:SetHorizontalLayoutMode(browseButton:parent:Libraries.Interface.Controls.Control:STANDARD)
         browseButton:SetPercentageWidth(0.2)
         browseButton:SetLeftPadding(6)
@@ -277,25 +286,34 @@ class NewFileDialog is Dialog
         
         file:SetAbsolutePath(path)
         
-        if file:GetFileExtension() = ""
-            file:SetAbsolutePath(path + ".quorum")
-        end
+        
 
-        File mom = file:GetParentDirectory()
-        if mom:IsFile()
-            return now
-        end
-        if not mom:Exists()
-            mom:CreateDirectories()
-        end
+        if IsFolder()
+            if not file:Exists()
+                file:CreateDirectories()
+            end
+            AppendToProjectTree(file) 
+        else
+            if file:GetFileExtension() = ""
+                file:SetAbsolutePath(path + ".quorum")
+            end
 
-        file:Write("")
-        file:Close()
-        AppendToProjectTree(file)        
+            File mom = file:GetParentDirectory()
+            if mom:IsFile()
+                return now
+            end
+            if not mom:Exists()
+                mom:CreateDirectories()
+            end
+    
+            file:Write("")
+            file:Close()
+            AppendToProjectTree(file)  
+        end
+              
     end
 
     action AppendToProjectTree(File file) 
-
         QuorumProjectView projectView = cast(QuorumProjectView, project:GetProjectView())
         TreeItem treeItem = projectView:GetLogicalTree()
         CodeEditorTabPane tabPane = studio:GetTabPane()
@@ -325,8 +343,10 @@ class NewFileDialog is Dialog
         projectTree:Add(counter, treeItem)
         
         projectTree:LoadExpandState(expand)
-        Tab tab = tabPane:OpenNewTab(file)
-        tabPane:Select(tab)
+        if not IsFolder()
+            Tab tab = tabPane:OpenNewTab(file)
+            tabPane:Select(tab)
+        end
     end
 
     action GetFileName returns text
@@ -347,5 +367,13 @@ class NewFileDialog is Dialog
 
     action OnShow
         fileNameField:Focus()
+    end
+
+    action IsFolder returns boolean
+        return isFolder
+    end
+
+    action SetIsFolder(boolean isFolder)
+        me:isFolder = isFolder
     end
 end
