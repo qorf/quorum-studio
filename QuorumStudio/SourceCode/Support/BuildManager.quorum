@@ -73,6 +73,7 @@ use Libraries.Development.Versioning.Repository
 use Libraries.Development.Versioning.Git
 use Libraries.Development.Versioning.DiffRequest
 use Libraries.Development.Versioning.DiffResult
+use Libraries.Language.Compile.CodeCompletionItem
 
 class BuildManager is DebuggerListener, ProcessListener, ProjectListener
     Library library
@@ -602,6 +603,12 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         request:lastCompiledResult = goodCompilerResults:GetValue(resultKey)
  
         CodeCompletionResult result = compiler:Request(request)
+
+        //this was probably a garbage request, so send it off, but probably ignore it
+        //the compiler is probably busy.
+        if request:table = undefined
+            result:SetIsValidCodeCompletion(false)
+        end
         return result
     end
 

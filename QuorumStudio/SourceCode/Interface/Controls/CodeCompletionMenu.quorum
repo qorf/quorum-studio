@@ -36,6 +36,8 @@ class CodeCompletionMenu is PopupMenu
     Icon variableIcon
     Icon parentIcon
     Icon classIcon
+    integer resultSize = 0
+    boolean isParsing = false
 
     Array<MenuItem> primitives
     Array<MenuItem> other
@@ -143,9 +145,18 @@ class CodeCompletionMenu is PopupMenu
     end
 
     private action Regenerate
-        Empty()
         CodeCompletionResult result = builder:RequestCodeCompletion()
+        //the system is telling us we're between parses. Just ignore this request
+        if not result:IsValidCodeCompletion()
+            isParsing = true
+            return now
+        else //seems like a valid request
+            isParsing = false
+        end
+        
         Iterator<CodeCompletionItem> iterator = result:GetIterator()
+        Empty()
+        resultSize = 0
         if not iterator:HasNext()
             return now
         end
@@ -156,7 +167,7 @@ class CodeCompletionMenu is PopupMenu
             CodeCompletionItem code = iterator:Next()
             if (code:displayText:StartsWith(result:filter)) or ((not code:displayText:IsEmpty()) and result:filter:IsEmpty())
                 MenuItem item = itemPool:GetNextMenuItem()
-                
+                resultSize = resultSize + 1
                 item:SetName(code:displayText)
                 item:SetShortcut(code:rightDisplayText)
                 item:SetDescription(code:documentationText)
@@ -270,8 +281,25 @@ class CodeCompletionMenu is PopupMenu
             i = i + 1
         end
     end
+
+    action IsCompletionItemsEmpty returns boolean
+        return resultSize = 0
+    end
+
+    action Close
+        parent:PopupMenu:Close()
+    end
+
     action GetBuilder returns BuildManager
         return builder
+    end
+
+    action IsParsing returns boolean
+        return isParsing
+    end
+
+    action SetIsParsing(boolean isParsing)
+        me:isParsing = isParsing
     end
 
 end
