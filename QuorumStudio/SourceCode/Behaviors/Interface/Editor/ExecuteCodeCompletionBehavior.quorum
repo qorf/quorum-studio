@@ -67,9 +67,12 @@ class ExecuteCodeCompletionBehavior is Behavior
 
             //add another dot and popup code completion again.
             if result:IsUsage()
-                if box is CodeTextBox
-                    box:Insert(box:GetCaretPosition(), ".")
-                    DoCodeCompletion(cast(CodeTextBox, box))
+                if completion:GetType() = completion:PACKAGE and
+                   value not= "all"
+                    if box is CodeTextBox
+                        box:Insert(box:GetCaretPosition(), ".")
+                        DoCodeCompletion(cast(CodeTextBox, box))
+                    end
                 end
             end
         end
