@@ -75,7 +75,7 @@ use Libraries.Development.Versioning.DiffRequest
 use Libraries.Development.Versioning.DiffResult
 use Libraries.Language.Compile.CodeCompletionItem
 
-class BuildManager is DebuggerListener, ProcessListener, ProjectListener
+class BuildManager is DebuggerListener, ProcessListener, ProjectListener, AndroidListener
     Library library
     constant text DEFAULT_LIBRARY_PATH = "Library/Standard"
     constant text DEFAULT_LIBRARY_OUTPUT_PATH = "Library/Compiled"
@@ -1356,7 +1356,9 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         text applicationName = project:GetExecutableName()
         File androidLocation
         androidLocation:SetPath("External/Android")
+
         AndroidSupport android
+        android:AddListener(me)
         android:Setup(runDirectory:GetAbsolutePath(), jarName)
 
         if androidPath not= undefined and not androidPath:IsEmpty()
@@ -1388,7 +1390,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         ProcessRunner install = android:GetDebugInstallProcess()
         install:AddListener(android)
         install:Run()
-        out:Append("Android Build Complete")
+        out:Append("Completed Android Process with log at: " + android:GetLogLocation())
 
         //for the signed version
 //        text androidPath = project:GetAndroidPath()
@@ -1397,6 +1399,73 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
 //        text androidKeyAlias = project:GetAndroidKeyAlias()
 //        text androidKeyPassword = project:GetAndroidKeyPassword()
 //        text androidAlternateJDK = project:GetAndroidAlternateJDKPath()
+    end
+
+    action StartingBuild 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("Starting Google's translator to Android")
+    end
+
+    action BuildingArchitecture(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("Compiling architecture: " + message)
+    end
+
+    action BuildingPlatform(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("    Compiling platform: " + message)
+    end
+
+    action BuildingType(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("    Build Type: " + message)
+    end
+
+    action SettingNativeDevelopmentKit(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("    Native Development Kit at: " + message)
+    end
+
+    action Linking(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("Linking Graphics Engine into Architecture.")
+    end
+
+    action FinishedBuild(boolean success, text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        if success
+            out:Append("Success: " + message)
+        else
+            out:Append("Failed: " + message)
+        end
     end
 
     action Debug(BuildInformation info)
