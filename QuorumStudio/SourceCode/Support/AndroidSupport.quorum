@@ -11,6 +11,7 @@ use Libraries.Concurrency.ProcessErrorEvent
 use Libraries.Concurrency.ProcessStoppedEvent
 use Libraries.Concurrency.ProcessStartedEvent
 use Libraries.Development.Environment.Studio.Build.AndroidListener
+use Libraries.Language.Compile.Symbol.Class
 
 class AndroidSupport is ProcessListener
     text FILE_SEPARATOR = "/"
@@ -20,6 +21,8 @@ class AndroidSupport is ProcessListener
     constant text PATH_TO_LAYOUT = PATH_TO_MAIN + "res" + FILE_SEPARATOR + "layout" + FILE_SEPARATOR
     constant text PATH_TO_LAYOUT_XML = PATH_TO_LAYOUT + "activity_main.xml"
     constant text PATH_TO_PACKAGE = PATH_TO_MAIN + "java" + FILE_SEPARATOR
+    constant text PATH_TO_STARTUP_FILE = PATH_TO_MAIN + "java" + FILE_SEPARATOR + "com" + FILE_SEPARATOR
+        + "quorum" + FILE_SEPARATOR + "testapplication" + FILE_SEPARATOR + "MainActivity.java"
     constant text PACKAGES_FOLDER = "packagesfolder"
     constant text FOLDER_NAME = "Android"
     constant text PATH_TO_NATIVE_DEVELOPMENT_KIT = "ndk" + FILE_SEPARATOR + "19.2.5345600"
@@ -128,6 +131,97 @@ class AndroidSupport is ProcessListener
         if properties:IsWindows()
             zipalignPath = zipalignPath + ".exe"
         end
+    end
+
+    action CopyNewMain(Class main)
+        //Write the new startup file with the appropriate Main
+        text value = GetHiddenMain(main)
+        File newMain
+        text pathtemp = pathToBuildAndroidFolder + PATH_TO_STARTUP_FILE
+        newMain:SetAbsolutePath(pathtemp)
+        if not newMain:Exists()
+            newMain:Delete()
+        end
+
+        newMain:Write(value)
+    end
+
+    private action GetHiddenMain(Class main) returns text
+        text newMain = ""
+        newMain = 
+"package com.quorum.testapplication;
+
+import android.app.Activity;
+import android.os.Bundle;
+
+import com.quorum.TestApplication.R;
+
+import quorum.Libraries.Game.AndroidApplication;
+import plugins.quorum.Libraries.Game.GameStateManager;
+"
++
+
+"import " + "quorum." + main:GetStaticKey() + ";"
++
+"
+
+public class MainActivity extends Activity {
+
+    private static boolean initialized = false;
+    private static "+ main:GetName() +" main;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        plugins.quorum.Libraries.Game.AndroidApplication.SetActivity(this);
+
+        if (savedInstanceState == null)
+        {
+            main = new " + main:GetName() + "();
+            main.Main();
+        }
+        else
+        {
+            main.StartAndroidGame();
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus)
+    {
+        super.onWindowFocusChanged(hasFocus);
+
+        if (initialized)
+            ((AndroidApplication)GameStateManager.application).plugin_.onWindowFocusChanged(hasFocus);
+    }
+
+    @Override
+    protected void onPause()
+    {
+        // Call AndroidApplication
+        super.onPause();
+    }
+
+    @Override 
+    protected void onResume()
+    {
+        if (initialized)
+            ((AndroidApplication)GameStateManager.application).plugin_.onResume();
+
+        super.onResume();
+    }
+
+    @Override
+    protected void onDestroy()
+    {
+        // Call AndroidApplication
+        super.onDestroy();
+    }
+}
+"
+        return newMain
     end
 
     action HasKeystoreInfo returns boolean

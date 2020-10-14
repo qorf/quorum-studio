@@ -1335,6 +1335,19 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
             return now
         end
 
+        //now get the main, so we can write a new template file
+        File main = project:GetMain()
+        if main = undefined
+            out:Append("Main not found. Ending Android Compilation")
+            return now
+        end
+
+        Class mainClazz = table:GetClassInFile(main:GetAbsolutePath())
+        if mainClazz = undefined
+            out:Append("Main not found. Ending Android Compilation")
+            return now
+        end
+
         text run = project:GetLocation():GetAbsolutePath() + "/Run"
         
         File runDirectory
@@ -1371,6 +1384,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
         android:CopyAndRename(androidLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName, androidAlternateJDK)
         out:Append("Copying Information")
         android:CopyLibraries()
+        android:CopyNewMain(mainClazz)
         
 
         text mobileAssetPath = project:GetMobileAssetsPath()
