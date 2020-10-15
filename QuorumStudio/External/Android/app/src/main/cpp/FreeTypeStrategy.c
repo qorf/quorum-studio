@@ -90,9 +90,11 @@ JNIEXPORT jobject JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_Free
     if (size < 0)
         size = -size;
     size *= glyph->bitmap.rows;
-    
-    // (*env)-> ?
-    return (*env)->NewDirectByteBuffer(env, glyph->bitmap.buffer, size);
+	
+	if (glyph->bitmap.buffer)
+		return (*env)->NewDirectByteBuffer(env, glyph->bitmap.buffer, size);
+	else
+		return 0;
 }
 
 JNIEXPORT jlong JNICALL Java_plugins_quorum_Libraries_Game_Graphics_Fonts_FreeTypeStrategy_GetLineHeightNative(JNIEnv * env, jobject jobj, jlong faceHandle)
