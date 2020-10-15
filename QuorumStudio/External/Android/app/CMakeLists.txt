@@ -39,6 +39,8 @@ add_library( # Sets the name of the library.
              src/main/cpp/PixelMap.cpp
              src/main/cpp/PixelMap.h
              src/main/cpp/stb_image.h
+             src/main/cpp/FreeTypeStrategy.c
+	     src/main/cpp/FreeTypeStrategy.h
 	     ${PUBLIC_HEADERS}
   ${PUBLIC_CONFIG_HEADERS}
   ${PRIVATE_HEADERS}
