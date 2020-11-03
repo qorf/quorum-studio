@@ -63,7 +63,8 @@ class Behaviors
     constant text STOP = "Stop"
     constant text TOGGLE_BREAKPOINT = "Toggle Breakpoint"
     constant text ADD_INPUT_TO_PROCESS = "Add Input To Process"
-    constant text ANDROID_DEBUG_BEHAVIOR = "Add Input To Process"
+    constant text ANDROID_DEBUG_BEHAVIOR = "Send to Android Debug"
+    constant text IOS_BEHAVIOR = "Send to IOS"
     constant text SET_PROGRAM_START = "Set Program Start"
     constant text BOOTSTRAP = "Bootstrap"
 
@@ -82,6 +83,7 @@ class Behaviors
     ToggleBreakpointBehavior toggleBreakpointBehavior
     InputBehavior inputBehavior
     SendToAndroidDebugModeBehavior androidDebugBehavior
+    SendToIOSBehavior sendToIOSBehavior
     BootstrapBehavior bootstrapBehavior
     SetProgramStartBehavior setProgramStartBehavior
 
@@ -137,6 +139,7 @@ class Behaviors
     ThreadedBehavior threadedPause
     ThreadedBehavior threadedContinue
     ThreadedBehavior threadedSendToAndroidDebug
+    ThreadedBehavior threadedSendToIOSBehavior
     ThreadedBehavior threadedBootstrapBehavior
     ScanLibraryBehavior scanner
 
@@ -441,6 +444,7 @@ class Behaviors
         scanner:SetBuildManager(builder)
         toggleBreakpointBehavior:SetBuildManager(builder)
         inputBehavior:SetBuildManager(builder)
+        sendToIOSBehavior:SetBuildManager(builder)
         androidDebugBehavior:SetBuildManager(builder)
         codeCompletionBehavior:SetBuildManager(builder)
         bootstrapBehavior:SetBuildManager(builder)
@@ -473,6 +477,8 @@ class Behaviors
         threadedContinue:SetThreadRunner(buildSystemRunner)
         threadedSendToAndroidDebug:SetNestedBehavior(androidDebugBehavior)
         threadedSendToAndroidDebug:SetThreadRunner(buildSystemRunner)
+        threadedSendToIOSBehavior:SetNestedBehavior(sendToIOSBehavior)
+        threadedSendToIOSBehavior:SetThreadRunner(buildSystemRunner)
         threadedBootstrapBehavior:SetNestedBehavior(bootstrapBehavior)
         threadedBootstrapBehavior:SetThreadRunner(buildSystemRunner)
 
@@ -503,6 +509,7 @@ class Behaviors
         behaviors:Add(SET_PROGRAM_START, setProgramStartBehavior)
         behaviors:Add(ADD_INPUT_TO_PROCESS, inputBehavior) //
         behaviors:Add(ANDROID_DEBUG_BEHAVIOR, threadedSendToAndroidDebug)
+        behaviors:Add(IOS_BEHAVIOR, threadedSendToIOSBehavior)
         behaviors:Add(BOOTSTRAP, threadedBootstrapBehavior)
 
         behaviors:Add(FOCUS_BREAKPOINTS_WINDOW, focusBreakpointsBehavior)
@@ -844,6 +851,14 @@ class Behaviors
 
     action GetThreadedSendToAndroidDebugModeBehavior returns ThreadedBehavior
         return threadedSendToAndroidDebug
+    end
+
+    action GetSendToIOSBehavior returns SendToIOSBehavior
+        return sendToIOSBehavior
+    end
+
+    action GetThreadedSendToIOSBehavior returns ThreadedBehavior
+        return threadedSendToIOSBehavior
     end
 
     action GetThreadedContinueBehavior returns ThreadedBehavior
