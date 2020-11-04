@@ -1373,6 +1373,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
         IOSSupport ios
         //ios:AddListener(me)
         ios:Setup(runDirectory:GetAbsolutePath(), jarName)
+        
 
         if path not= undefined and iosLocation:Exists()
             //android:SetAndroidPath(androidPath)
@@ -1383,7 +1384,8 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
         out:Append("Generating Template iOS Project")
         ios:CopyAndRename(iosLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName)
         out:Append("Copying Information")
-        ios:CopyLibraries()        
+        ios:CopyLibraries() 
+        ios:RewriteConfig(info)       
 
         text mobileAssetPath = project:GetMobileAssetsPath()
         if mediaDirectory not= undefined and mediaDirectory:Exists() and mobileAssetPath not= undefined

@@ -12,13 +12,21 @@ use Libraries.Concurrency.ProcessStoppedEvent
 use Libraries.Concurrency.ProcessStartedEvent
 use Libraries.Development.Environment.Studio.Build.AndroidListener
 use Libraries.Language.Compile.Symbol.Class
+use Libraries.Development.Environment.Studio.Build.BuildInformation
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 
 class IOSSupport is ProcessListener
     text FILE_SEPARATOR = "/"
-    constant text PATH_TO_MAIN = FILE_SEPARATOR + "app" + FILE_SEPARATOR + "src" + FILE_SEPARATOR + "main" + FILE_SEPARATOR
-    constant text PATH_TO_APP_BUILD_GRADLE = FILE_SEPARATOR + "app" + FILE_SEPARATOR  + "build.gradle"
+    constant text PATH_TO_MAIN = FILE_SEPARATOR + "ios" + FILE_SEPARATOR + "src" + FILE_SEPARATOR + "main" + FILE_SEPARATOR
+    constant text PATH_TO_APP_BUILD_GRADLE = FILE_SEPARATOR + "ios" + FILE_SEPARATOR  + "build.gradle"
+    constant text PATH_TO_APP_BUILD_ROBOVM_PROPERTIES = 
+        FILE_SEPARATOR + "ios" + FILE_SEPARATOR  + "robovm.properties"
+    constant text PATH_TO_APP_BUILD_ROBOVM_XML = 
+        FILE_SEPARATOR + "ios" + FILE_SEPARATOR  + "robovm.xml"
     constant text PATH_TO_MAIN_XML = PATH_TO_MAIN + "AndroidManifest.xml"
-    text PATH_TO_LIBS = FILE_SEPARATOR + "app" + FILE_SEPARATOR + "libs"
+    constant text JAR_FOLDER_NAME = "jars"
+    constant text NATIVE_FOLDER_NAME = "natives"
+    text PATH_TO_LIBS = FILE_SEPARATOR + "ios" + FILE_SEPARATOR + JAR_FOLDER_NAME
     constant text FOLDER_NAME = "Mac"
     text pathToRunFolder = ""
     text pathToBuildFolder = ""
@@ -27,6 +35,7 @@ class IOSSupport is ProcessListener
 
     action Setup(text pathToRunFolder, text jarName)
         me:pathToRunFolder = pathToRunFolder
+        me:pathToBuildFolder = pathToRunFolder + FILE_SEPARATOR + FOLDER_NAME
 
         librarySources:Add(FILE_SEPARATOR + jarName)
         librarySources:Add(FILE_SEPARATOR + "QuorumStandardLibrary.jar")
@@ -38,18 +47,104 @@ class IOSSupport is ProcessListener
     end
 
     action CopyAndRename(text templateLocation, text pathToRunFolder, text applicationName)
-        text pathToBuildFolder = pathToRunFolder + FILE_SEPARATOR + FOLDER_NAME
 
         // Copy project into new folder with appropriate name
         CopyFolder(templateLocation, pathToBuildFolder)
         
         // Change Application Name
-        ChangeApplicationName(pathToBuildFolder, applicationName)
+//        ChangeApplicationName(pathToBuildFolder, applicationName)
 //    
 //        // Clean the generated files that might conflict with the renamings
         CleanGeneratedFiles(pathToBuildFolder)
     end
 
+    action RewriteConfig(BuildInformation info)
+        text gradle = GetBuildGradle(info)
+        File gradleFile
+        gradleFile:SetAbsolutePath(pathToBuildFolder + PATH_TO_APP_BUILD_GRADLE)
+        gradleFile:Write(gradle)
+
+        text robovmProp = GetRoboVMProperties(info)
+        File robovmPropFile
+        robovmPropFile:SetAbsolutePath(pathToBuildFolder + PATH_TO_APP_BUILD_ROBOVM_PROPERTIES)
+        robovmPropFile:Write(robovmProp)
+
+        text robovmXML = GetRoboVMXML(info)
+        File robovmXMLFile
+        robovmXMLFile:SetAbsolutePath(pathToBuildFolder + PATH_TO_APP_BUILD_ROBOVM_XML)
+        robovmXMLFile:Write(robovmXML)
+    end
+
+    private action GetRoboVMXML(BuildInformation info) returns text
+        QuorumProject project = info:project
+        text name = project:GetExecutableName()
+        text result = 
+"
+<config>
+  <mainJar>"+JAR_FOLDER_NAME+"/"+name+".jar</mainJar>
+  <os>ios</os>
+  <arch>thumbv7</arch>
+  <target>ios</target>
+  <classpath>
+    <classpathentry>"+JAR_FOLDER_NAME+"/"+name+".jar</classpathentry>
+    <classpathentry>"+JAR_FOLDER_NAME+"/QuorumStandardLibrary.jar</classpathentry>
+    <classpathentry>"+JAR_FOLDER_NAME+"/QuorumStandardPlugins.jar</classpathentry>
+  </classpath>
+  <libs>
+    <lib>"+NATIVE_FOLDER_NAME+"/libfreetype.a</lib>
+    <lib>"+NATIVE_FOLDER_NAME+"/libGameEngineCPlugins.a</lib>
+  </libs>
+  <weakFrameworks>
+    <framework>OpenGLES</framework>
+    <framework>UIKit</framework>
+    <framework>QuartzCore</framework>
+    <framework>CoreGraphics</framework>
+    <framework>OpenAL</framework>
+    <framework>AudioToolbox</framework>
+    <framework>AVFoundation</framework>
+  </weakFrameworks>
+  <iosInfoPList>Info.plist.xml</iosInfoPList>
+</config>
+"
+        return result
+    end
+
+    private action GetRoboVMProperties(BuildInformation info) returns text
+        QuorumProject project = info:project
+        text name = project:GetExecutableName()
+        
+//this app.id might need change
+text result = 
+"
+app.version=1.0
+app.id=org.quorumlanguage
+app.build=1
+app.name="+name+"
+
+"
+        return result
+    end
+
+    private action GetBuildGradle(BuildInformation info) returns text
+        QuorumProject project = info:project
+        text name = project:GetExecutableName()
+        text result = 
+"
+sourceCompatibility = '1.8'
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+robovm {
+}
+
+dependencies {
+testImplementation 'junit:junit:4.12'
+    api files('" + JAR_FOLDER_NAME + "/" + name + ".jar')
+    api files('" + JAR_FOLDER_NAME + "/QuorumStandardLibrary.jar')
+    api files('" + JAR_FOLDER_NAME + "/QuorumStandardPlugins.jar')
+}
+"
+        return result
+    end
     action CopyLibraries 
         CopyLibraries(librarySources, libraryDestinations)
     end
@@ -190,13 +285,13 @@ class IOSSupport is ProcessListener
         end
     end
 
-    action ChangeApplicationName(text projectPath, text applicationName)
-        text pathToMain = projectPath + PATH_TO_MAIN_XML
-        text dq = pathToMain:GetDoubleQuote()
-
-        text pathToBuild = projectPath + PATH_TO_APP_BUILD_GRADLE
-        ReplaceLineTextInFile(pathToBuild, "api files('libs/Default.jar')", "    api files('libs/"+applicationName+".jar')")
-    end
+//    action ChangeApplicationName(text projectPath, text applicationName)
+//        text pathToMain = projectPath + PATH_TO_MAIN_XML
+//        text dq = pathToMain:GetDoubleQuote()
+//
+//        text pathToBuild = projectPath + PATH_TO_APP_BUILD_GRADLE
+//        ReplaceLineTextInFile(pathToBuild, "api files('libs/Default.jar')", "    api files('libs/"+applicationName+".jar')")
+//    end
 
     action ReplaceLineTextInFile(text filePath, text toReplace, text newString)
         File file
