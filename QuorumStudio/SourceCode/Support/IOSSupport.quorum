@@ -1,0 +1,235 @@
+package Libraries.Development.Environment.Studio.Android
+
+use Libraries.System.Properties
+use Libraries.System.File
+use Libraries.Containers.List
+use Libraries.Containers.Array
+use Libraries.Concurrency.ProcessRunner
+use Libraries.Concurrency.ProcessListener
+use Libraries.Concurrency.ProcessOutputEvent
+use Libraries.Concurrency.ProcessErrorEvent
+use Libraries.Concurrency.ProcessStoppedEvent
+use Libraries.Concurrency.ProcessStartedEvent
+use Libraries.Development.Environment.Studio.Build.AndroidListener
+use Libraries.Language.Compile.Symbol.Class
+
+class IOSSupport is ProcessListener
+    text FILE_SEPARATOR = "/"
+    constant text PATH_TO_MAIN = FILE_SEPARATOR + "app" + FILE_SEPARATOR + "src" + FILE_SEPARATOR + "main" + FILE_SEPARATOR
+    constant text PATH_TO_APP_BUILD_GRADLE = FILE_SEPARATOR + "app" + FILE_SEPARATOR  + "build.gradle"
+    constant text PATH_TO_MAIN_XML = PATH_TO_MAIN + "AndroidManifest.xml"
+    text PATH_TO_LIBS = FILE_SEPARATOR + "app" + FILE_SEPARATOR + "libs"
+    constant text FOLDER_NAME = "Mac"
+    text pathToRunFolder = ""
+    text pathToBuildFolder = ""
+    Array<text> librarySources 
+    Array<text> libraryDestinations
+
+    action Setup(text pathToRunFolder, text jarName)
+        me:pathToRunFolder = pathToRunFolder
+
+        librarySources:Add(FILE_SEPARATOR + jarName)
+        librarySources:Add(FILE_SEPARATOR + "QuorumStandardLibrary.jar")
+        librarySources:Add(FILE_SEPARATOR + "QuorumStandardPlugins.jar")
+
+        libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + jarName)
+        libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardLibrary.jar")
+        libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardPlugins.jar")
+    end
+
+    action CopyAndRename(text templateLocation, text pathToRunFolder, text applicationName)
+        text pathToBuildFolder = pathToRunFolder + FILE_SEPARATOR + FOLDER_NAME
+
+        // Copy project into new folder with appropriate name
+        CopyFolder(templateLocation, pathToBuildFolder)
+        
+        // Change Application Name
+        ChangeApplicationName(pathToBuildFolder, applicationName)
+//    
+//        // Clean the generated files that might conflict with the renamings
+        CleanGeneratedFiles(pathToBuildFolder)
+    end
+
+    action CopyLibraries 
+        CopyLibraries(librarySources, libraryDestinations)
+    end
+
+    action CopyLibraries(Array<text> sourcePaths, Array<text> destinationPaths)
+        File libFolder
+        libFolder:SetAbsolutePath(pathToBuildFolder + PATH_TO_LIBS)
+
+        if not libFolder:Exists()
+            libFolder:CreateDirectories()
+        end
+
+        i = 0
+        repeat while i < sourcePaths:GetSize()
+            File from
+            File to
+            from:SetAbsolutePath(pathToRunFolder + sourcePaths:Get(i))
+            to:SetAbsolutePath(destinationPaths:Get(i))
+            from:Copy(to)
+            i = i + 1
+        end
+    end
+        
+
+    action GetBuildForSimulatorProcess returns ProcessRunner
+        Properties properties
+        ProcessRunner process
+        File directory
+        directory:SetAbsolutePath(pathToBuildFolder)
+        process:SetDirectory(directory)
+        //This likely needs to change because it isn't going to work on Windows
+        //given limitations on Mac
+        if properties:IsWindows()
+            Array<text> params = BuildForSimulatorWindows()
+            process:SetProcessName("cmd")
+            process:SetParameters(params)
+        elseif properties:IsMac()
+            File file
+            file:SetAbsolutePath(pathToBuildFolder + "/gradlew")
+            if file:Exists()
+                file:SetExecutable(true)
+            end
+            process:SetProcessName("./gradlew")
+            Array<text> params = BuildForSimulator()
+            process:SetParameters(params)
+        else
+            process:SetProcessName("./gradlew")
+            Array<text> params = BuildForSimulator()
+            process:SetParameters(params)
+        end
+
+        return process
+    end
+
+    private action BuildForSimulatorWindows returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+        Array<text> params
+        params:Add("/C")
+        params:Add(dq + dq)
+        params:Add(pathToBuildFolder+"\\gradlew.bat")
+        params:Add("-p")  
+        params:Add(pathToBuildFolder)
+        params:Add("ios:launchIPhoneSimulator")
+        params:Add("&")
+        params:Add("exit")
+        return params
+    end
+
+    private action BuildForSimulator returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+        Array<text> params
+        params:Add("-p")  
+        params:Add(pathToBuildFolder)
+        params:Add("ios:launchIPhoneSimulator")
+        return params
+    end
+
+    action CopyAssets(File mediaFolder, text value)
+        if not mediaFolder:Exists() or value = undefined
+            return now
+        end //bail if it isn't there
+
+        File assetsFolder
+        text pathtemp = pathToBuildFolder + FILE_SEPARATOR + "app" + FILE_SEPARATOR + "src" + FILE_SEPARATOR + "main" + FILE_SEPARATOR + "assets" + FILE_SEPARATOR + value
+        assetsFolder:SetAbsolutePath(pathtemp)
+        if not assetsFolder:Exists()
+            assetsFolder:CreateDirectories()
+        end
+
+        mediaFolder:Copy(assetsFolder, true)
+    end
+
+    action CleanGeneratedFiles(text projectPath)
+        Properties properties
+        ProcessRunner process
+        Array<text> parameters
+        process:SetParameters(parameters)
+        if properties:IsWindows()
+            File directory
+            directory:SetAbsolutePath(projectPath)
+            process:SetDirectory(directory)
+            process:SetProcessName("cmd")
+
+            parameters:Add("/C")
+            parameters:Add("./gradlew.bat")
+            parameters:Add("-p")
+            parameters:Add(projectPath)
+            parameters:Add(" clean")
+            process:SetParameters(parameters)
+            process:AddListener(me)
+            process:Run()
+        elseif properties:IsMac()
+            File file
+            file:SetAbsolutePath(projectPath + "/gradlew")
+            if file:Exists()
+                file:SetExecutable(true)
+            end
+
+            File value = file:GetParentDirectory()
+            process:SetDirectory(value)
+            process:SetProcessName("./gradlew")
+            parameters:Add("-p")
+            parameters:Add(projectPath)
+            parameters:Add(" clean")
+            process:Run()
+        else
+            File file
+            file:SetAbsolutePath(projectPath + "/gradlew")
+
+            process:SetDirectory(file:GetParentDirectory())
+            process:SetProcessName("/gradlew")
+            parameters:Add("-p")
+            parameters:Add(projectPath)
+            parameters:Add(" clean")
+            process:Run()
+        end
+    end
+
+    action ChangeApplicationName(text projectPath, text applicationName)
+        text pathToMain = projectPath + PATH_TO_MAIN_XML
+        text dq = pathToMain:GetDoubleQuote()
+
+        text pathToBuild = projectPath + PATH_TO_APP_BUILD_GRADLE
+        ReplaceLineTextInFile(pathToBuild, "api files('libs/Default.jar')", "    api files('libs/"+applicationName+".jar')")
+    end
+
+    action ReplaceLineTextInFile(text filePath, text toReplace, text newString)
+        File file
+        file:SetAbsolutePath(filePath)
+        text value = file:Read()
+        Array<text> lines = value:SplitIntoLines()
+
+        text finalValue = ""
+        i = 0
+        repeat while i < lines:GetSize()
+            text line = lines:Get(i)
+            if line:Contains(toReplace)
+                lines:Set(i, newString)
+            end
+
+            finalValue = finalValue + lines:Get(i) + finalValue:GetLineFeed()
+            i = i + 1
+        end
+        file:Write(finalValue)
+    end
+
+    //This isn't clean, but we need to get it working before refactoring and cleaning up.
+    private action CopyFolder(text from, text to)
+        File toFile
+        File fromFile
+
+        toFile:SetAbsolutePath(to)
+        fromFile:SetAbsolutePath(from)
+
+        if toFile:Exists()
+            toFile:Delete(true)
+        end
+
+        fromFile:Copy(toFile, true)
+    end
+end

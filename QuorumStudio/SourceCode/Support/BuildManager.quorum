@@ -74,6 +74,7 @@ use Libraries.Development.Versioning.Git
 use Libraries.Development.Versioning.DiffRequest
 use Libraries.Development.Versioning.DiffResult
 use Libraries.Language.Compile.CodeCompletionItem
+use Libraries.Development.Environment.Studio.Android.IOSSupport
 
 class BuildManager is DebuggerListener, ProcessListener, ProjectListener, AndroidListener
     Library library
@@ -1310,7 +1311,92 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
     end
 
     action SendToIOS(BuildInformation info)
-        output "Outputting to IOS"
+        QuorumProject project = info:project
+        OutputTab out = info:outputTab
+        if project:IsLegoType()
+            out:Append("The project is currently in LEGO mode. I cannot send a LEGO project to an Android Device. Please compile in Standard mode.")
+            return now
+        end
+
+        if project:IsServerType()
+            out:Append("The project is currently in Server mode. I cannot send a Server project to an Android Device. Please compile in Standard mode.")
+            return now
+        end
+
+        if project:IsJavascriptType()
+            out:Append("The project is currently in Web Client mode. I cannot send a Web client project to an Android Device. Please compile in Standard mode.")
+            return now
+        end
+        Build(info)
+
+        CompilerResult result = info:result
+        SymbolTable table = result:symbolTable
+        CompilerErrorManager errors = result:compilerErrorManager
+        if not errors:IsCompilationErrorFree()
+            return now
+        end
+
+        //now get the main, so we can write a new template file
+        File main = project:GetMain()
+        if main = undefined
+            out:Append("Main not found. Ending iOS Compilation")
+            return now
+        end
+
+        Class mainClazz = table:GetClassInFile(main:GetAbsolutePath())
+        if mainClazz = undefined
+            out:Append("Main not found. Ending iOS Compilation")
+            return now
+        end
+
+        text run = project:GetLocation():GetAbsolutePath() + "/Run"
+        
+        File runDirectory
+        runDirectory:SetAbsolutePath(run)
+        File parentDirectory = runDirectory:GetParentDirectory()
+
+        File mediaDirectory
+        text mediaPathFromProject = project:GetMobileAssetsPath()
+        if mediaPathFromProject not= undefined
+            text media = parentDirectory:GetAbsolutePath() + "/" + mediaPathFromProject
+
+            mediaDirectory:SetAbsolutePath(media)
+        end
+
+        //Get the custom iOS properties, if any.
+        text path = ""
+        text jarName = project:GetExecutableName() + ".jar"
+        text applicationName = project:GetExecutableName()
+        File iosLocation
+        iosLocation:SetPath("External/Mac")
+
+        IOSSupport ios
+        //ios:AddListener(me)
+        ios:Setup(runDirectory:GetAbsolutePath(), jarName)
+
+        if path not= undefined and iosLocation:Exists()
+            //android:SetAndroidPath(androidPath)
+        end
+
+        out:Append("")
+        out:Append("Starting iOS Generator")
+        out:Append("Generating Template iOS Project")
+        ios:CopyAndRename(iosLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName)
+        out:Append("Copying Information")
+        ios:CopyLibraries()        
+
+        text mobileAssetPath = project:GetMobileAssetsPath()
+        if mediaDirectory not= undefined and mediaDirectory:Exists() and mobileAssetPath not= undefined
+            out:Append("Copying Assets")
+            ios:CopyAssets(mediaDirectory, mobileAssetPath)
+        else
+            out:Append("No assets requested for copying")
+        end
+
+        out:Append("Requesting build from iOS System. This can take a few minutes. Please wait.")
+        //ProcessRunner build = ios:GetBuildForSimulatorProcess()
+        //build:AddListener(android)
+        //build:Run()
     end
 
     action SendToAndroidDebugMode(BuildInformation info)
