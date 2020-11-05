@@ -78,8 +78,13 @@ class IOSSupport is ProcessListener
 
         QuorumProject project = info:project
         text version = project:GetIOSVersionKey()   
-        text nativePath = me:pathToBuildFolder     
-        if version = project:IOS_14_1
+        text nativePath = me:pathToBuildFolder  
+        //if there isn't one set, set the default, so it shows up as this next time.  
+        if version = undefined
+            nativePath = nativePath + FILE_SEPARATOR + "builds" + 
+                FILE_SEPARATOR + "ios14"
+            project:SetIOSVersionKey(project:IOS_14_1)
+        elseif version = project:IOS_14_1
             nativePath = nativePath + FILE_SEPARATOR + "builds" + 
                 FILE_SEPARATOR + "ios14"
         elseif version = project:IOS_13
@@ -97,6 +102,11 @@ class IOSSupport is ProcessListener
         File to
         to:SetWorkingDirectory(pathToBuildFolder + PATH_TO_NATIVES)
         to:SetPath(freetype)
+
+        File mom = to:GetParentDirectory()
+        if not mom:Exists()
+            mom:CreateDirectory()
+        end
         file:Copy(to)
 
         file:SetPath(games)
@@ -259,7 +269,7 @@ testImplementation 'junit:junit:4.12'
         end //bail if it isn't there
 
         File assetsFolder
-        text pathtemp = pathToBuildFolder + FILE_SEPARATOR + "app" + FILE_SEPARATOR + "src" + FILE_SEPARATOR + "main" + FILE_SEPARATOR + "assets" + FILE_SEPARATOR + value
+        text pathtemp = pathToBuildFolder + FILE_SEPARATOR + "ios" + FILE_SEPARATOR + "media" + FILE_SEPARATOR + value
         assetsFolder:SetAbsolutePath(pathtemp)
         if not assetsFolder:Exists()
             assetsFolder:CreateDirectories()
