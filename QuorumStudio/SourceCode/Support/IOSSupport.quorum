@@ -26,7 +26,9 @@ class IOSSupport is ProcessListener
     constant text PATH_TO_MAIN_XML = PATH_TO_MAIN + "AndroidManifest.xml"
     constant text JAR_FOLDER_NAME = "jars"
     constant text NATIVE_FOLDER_NAME = "natives"
-    text PATH_TO_LIBS = FILE_SEPARATOR + "ios" + FILE_SEPARATOR + JAR_FOLDER_NAME
+    constant text PATH_TO_LIBS = FILE_SEPARATOR + "ios" + FILE_SEPARATOR + JAR_FOLDER_NAME
+    constant text PATH_TO_NATIVES = FILE_SEPARATOR + "ios" + 
+        FILE_SEPARATOR + NATIVE_FOLDER_NAME
     constant text FOLDER_NAME = "Mac"
     text pathToRunFolder = ""
     text pathToBuildFolder = ""
@@ -73,6 +75,33 @@ class IOSSupport is ProcessListener
         File robovmXMLFile
         robovmXMLFile:SetAbsolutePath(pathToBuildFolder + PATH_TO_APP_BUILD_ROBOVM_XML)
         robovmXMLFile:Write(robovmXML)
+
+        QuorumProject project = info:project
+        text version = project:GetIOSVersionKey()   
+        text nativePath = me:pathToBuildFolder     
+        if version = project:IOS_14_1
+            nativePath = nativePath + FILE_SEPARATOR + "builds" + 
+                FILE_SEPARATOR + "ios14"
+        elseif version = project:IOS_13
+            nativePath = nativePath + FILE_SEPARATOR + "builds" + 
+                FILE_SEPARATOR + "ios13"
+        end
+
+        text freetype = "libfreetype.a"
+        text games = "libGameEngineCPlugins.a"
+        //copy the correct files over for the requested architecture
+        File file
+        file:SetWorkingDirectory(nativePath)
+        file:SetPath(freetype)
+        
+        File to
+        to:SetWorkingDirectory(pathToBuildFolder + PATH_TO_NATIVES)
+        to:SetPath(freetype)
+        file:Copy(to)
+
+        file:SetPath(games)
+        to:SetPath(games)
+        file:Copy(to)
     end
 
     private action GetRoboVMXML(BuildInformation info) returns text
