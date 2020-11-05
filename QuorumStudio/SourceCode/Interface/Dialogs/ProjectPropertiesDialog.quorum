@@ -115,6 +115,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     TextField keyAliasField
     TextField keyPasswordField
     TextField jdkField
+    RadioButton ios13Button
+    RadioButton ios14Button
     TabPane tabPane
 
     //variables for the Teams tab
@@ -312,6 +314,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         ProjectProperty androidKeyAliasProperty = project:GetProperty(project:ANDROID_KEY_ALIAS)
         ProjectProperty androidKeyPasswordProperty = project:GetProperty(project:ANDROID_KEY_PASSWORD)
         ProjectProperty androidJDKProperty = project:GetProperty(project:ANDROID_ALTERNATE_JDK_PATH)
+        ProjectProperty iosProperty = project:GetProperty(project:IOS_VERSION)
 
         if androidLibraryProperty not= undefined
             androidLibraryField:SetText(project:GetAndroidPath())
@@ -354,6 +357,19 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             jdkField:Empty()
         end
         jdkField:HideCaret()
+
+        if iosProperty not= undefined
+            text value = iosProperty:GetFirstValue()
+            if value = project:IOS_14_1
+                ios14Button:SetToggleState(true)
+            elseif value = project:IOS_13
+                ios13Button:SetToggleState(true)
+            else
+                ios14Button:SetToggleState(true)
+            end
+        else
+            ios14Button:SetToggleState(true)
+        end
 
         if project:HasGitSupport() 
             Credentials credentials = options:GetPassword(project:GetLocation():GetAbsolutePath())
@@ -541,6 +557,12 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         if not jdkField:GetText():Equals("")
             project:SetAndroidAlternateJDKPath(jdkField:GetText())
             mobileFlag = true
+        end
+
+        if ios14Button:GetToggleState()
+            project:SetIOSVersionKey(project:IOS_14_1)
+        else
+            project:SetIOSVersionKey(project:IOS_13)
         end
 
         text mobileAssetsPath = mobileResourcesField:GetText():Trim()
@@ -1374,6 +1396,36 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         jdkField:SetLeftPadding(10)
         jdkField:SetTopPadding(10)
         panel:Add(jdkField)
+
+        Label iosLabel
+        iosLabel:SetSize(20)
+        iosLabel:SetText("iOS")
+        iosLabel:SetLeftPadding(10)
+        iosLabel:SetTopPadding(20)
+        panel:Add(iosLabel)
+
+        Control control
+        
+        ButtonGroup iosVersionRadios
+        iosVersionRadios:SetTopPadding(20)
+        iosVersionRadios:SetName("iosVersion")
+        iosVersionRadios:SetFocusable(true)
+        iosVersionRadios:SetHorizontalLayoutMode(control:STANDARD)
+        iosVersionRadios:SetPercentageWidth(1.0)
+
+        ios13Button:SetName("iOS 13")
+        ios13Button:SetFontSize(14)
+        ios13Button:SetRightPadding(83)
+        ios13Button:SetPercentageWidth(0.5)
+        iosVersionRadios:Add(ios13Button)
+
+        ios14Button:SetName("iOS 14.1")
+        ios14Button:SetFontSize(14)
+        ios14Button:SetRightPadding(83)
+        ios14Button:SetPercentageWidth(0.5)
+        ios14Button:SetToggleState(true)
+        iosVersionRadios:Add(ios14Button)
+        panel:Add(iosVersionRadios)
 
         Control confirmArea
         FlowLayout confirmLayout

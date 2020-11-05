@@ -89,6 +89,9 @@ class QuorumProject is Project
     public constant text ANDROID_KEY_ALIAS = "AndroidKeyAlias"
     public constant text ANDROID_KEY_PASSWORD = "AndroidKeyPassword"
     public constant text MOBILE_ASSETS_DEFAULT_FOLDER = "media"
+    public constant text IOS_VERSION = "iosVersion"
+    public constant text IOS_13 = "ios13"
+    public constant text IOS_14_1 = "ios14.1"
 
     /* This property checks if this is the Quorum compiler. If it is, the project
         Can be boostrapped and extra menu options appear.
@@ -309,6 +312,18 @@ class QuorumProject is Project
     /* This action sets the android key password. */
     action SetAndroidKeyPassword (text path)
         SetPropertyValue(ANDROID_KEY_PASSWORD, path)
+    end
+
+    /* This gets the IOS version to build to. */
+    action GetIOSVersionKey returns text
+        ProjectProperty property = GetProperty(IOS_VERSION)
+        text value = property:GetFirstValue()
+        return value
+    end
+
+    /* This action sets the version to build to on IOS. */
+    action SetIOSVersionKey(text path)
+        SetPropertyValue(IOS_VERSION, path)
     end
 
     /* This action returns the build path for image sheets. */
@@ -925,6 +940,19 @@ class QuorumProject is Project
                 return now
             end
             SetExecutableName(object:GetText())
+        elseif key = IOS_VERSION
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            text ios = object:GetText()
+            if ios = IOS_13
+                SetIOSVersionKey(ios)
+            elseif ios = IOS_14_1
+                SetIOSVersionKey(ios)
+            else 
+                SetIOSVersionKey(IOS_14_1)
+            end
         elseif key = PROJECT_MAIN
             if not object:IsText()
                 logger:Log(textMessage)
