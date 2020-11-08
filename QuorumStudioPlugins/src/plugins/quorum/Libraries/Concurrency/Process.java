@@ -25,16 +25,16 @@ import quorum.Libraries.System.File_;
  *
  * @author stefika
  */
-public class ProcessRunner {
+public class Process {
     public java.lang.Object me_ = null;
-    private quorum.Libraries.Concurrency.ProcessRunner myProcess = null;
+    private quorum.Libraries.Concurrency.Process myProcess = null;
     private File_ directory = null;
     public boolean cancelled = false;
     QuorumProcessWatcher watch = null;
-    Process process = null;
+    java.lang.Process process = null;
     
     public void Run(String name, Array_ flags) {
-        myProcess = (quorum.Libraries.Concurrency.ProcessRunner) me_;
+        myProcess = (quorum.Libraries.Concurrency.Process) me_;
         ProcessBuilder builder;
         ArrayList<String> list = new ArrayList<>();
         list.add(name);
@@ -44,28 +44,36 @@ public class ProcessRunner {
             String text = t.GetValue();
             list.add(text);
         }
-        builder = new ProcessBuilder(list);
-        builder.directory(new File(directory.GetAbsolutePath()));
         try {
+            builder = new ProcessBuilder(list);
+            builder.directory(new File(directory.GetAbsolutePath()));
             myProcess.FireProcessStartedEvent();
             process = builder.start();
-            watch = new QuorumProcessWatcher(process.getInputStream());
+            watch = new QuorumProcessWatcher(process.getInputStream(), process.getErrorStream());
             OutputStream outputStream = process.getOutputStream();
             watch.setStream(outputStream);
             watch.start();
-            boolean alive = process.isAlive();
-            process.waitFor();
+            
+            int exit = process.waitFor();
             watch.wasDestroyed = true;
             cancelled = true;
+            
             watch.flush();
             process.destroy();
-            myProcess.FireProcessStoppedEvent();
+            myProcess.FireProcessStoppedEvent(exit);
             watch = null;
         } catch (IOException ex) {
             myProcess.FireProcessErrorEvent(ex.getMessage());
         } catch (InterruptedException ex) {
             myProcess.FireProcessErrorEvent(ex.getMessage());
         }
+    }
+    
+    public boolean IsAlive() {
+        if(process != null) {
+            return process.isAlive();
+        }
+        return false;
     }
     
     public void SetDirectory(File_ folder) {
@@ -88,17 +96,21 @@ public class ProcessRunner {
     
     protected class QuorumProcessWatcher implements Runnable {
         private BufferedReader bufferedReader = null;
+        private BufferedReader bufferedErrorReader = null;
         private OutputStream outputStream;
         private InputStream inputStream;
+        private InputStream errorStream;
         BufferedWriter bufferedWriter;
         private Thread blinker = null;
         public boolean running = false;
-        
         public boolean wasDestroyed = false;
 
-        public QuorumProcessWatcher(InputStream in) {
+        public QuorumProcessWatcher(InputStream in, InputStream errors) {
             inputStream = in;
             bufferedReader = new BufferedReader(new InputStreamReader(in));
+            
+            errorStream = errors;
+            bufferedErrorReader = new BufferedReader(new InputStreamReader(errors));
         }
 
         public void SendInput(String value) {
@@ -108,7 +120,7 @@ public class ProcessRunner {
                     bufferedWriter.newLine();
                     bufferedWriter.flush();
                 } catch (IOException ex) {
-                    Logger.getLogger(ProcessRunner.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(Process.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         }
@@ -118,44 +130,13 @@ public class ProcessRunner {
                 blinker.setName("Quorum Process Watcher");
                 blinker.start();
                 
-                Thread thread = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-//                        Reader in = io.getIn();
-//                        BufferedReader br = new BufferedReader(in);
-//                        
-//                        while (!cancelled) {
-//                            try {
-//                                if(br.ready()) {
-//                                    String line = br.readLine();
-//                                    if(bufferedWriter != null) {
-//                                    try {
-//                                            bufferedWriter.write(line);
-//                                            bufferedWriter.newLine();
-//                                            bufferedWriter.flush();
-//                                        } catch (IOException ex) {
-//                                            ex.printStackTrace();
-//                                        }
-//                                    }
-//                                }
-//                                Thread.sleep(20);
-//                            } catch (IOException ex) {
-//                                ex.printStackTrace();
-//                            } catch (InterruptedException ex) {
-//                                ex.printStackTrace();
-//                            }
-//                        }
-//                        try {
-//                            br.close();
-//                            in.close();
-//                            bufferedWriter.close();
-//                        } catch (IOException ex) {
-//                            ex.printStackTrace();
-//                        }
-                    }
-                });
-                thread.setName("IDE Input");
-                thread.start();
+//                Thread thread = new Thread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                    }
+//                });
+//                thread.setName("IDE Input");
+//                thread.start();
             }
         }
 
@@ -186,6 +167,13 @@ public class ProcessRunner {
                         final String line = bufferedReader.readLine();
                         if(myProcess != null) {
                             myProcess.FireProcessOutputEvent(line);
+                        }
+                    }
+                    
+                    if (bufferedErrorReader.ready()) {
+                        final String line = bufferedErrorReader.readLine();
+                        if(myProcess != null) {
+                            myProcess.FireProcessErrorEvent(line);
                         }
                     }
                     Thread.sleep(50);
