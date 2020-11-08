@@ -38,11 +38,22 @@ class IOSSupport is ProcessListener
 //    Array<AndroidListener> listeners
 
     action Run(ProcessStartedEvent event)
-        output "Starting IOS"
+        output "Starting IOS "
+        Process process = event:GetProcess()
+        File directory = process:GetDirectory()
+        output "Directory: " + directory:GetAbsolutePath()
+        output "Name: " + process:GetProcessName()
+        output "Parameters"
+        Array<text> params = process:GetParameters()
+        i = 0
+        repeat while i < params:GetSize()
+            output (i + 1) + ": " + params:Get(i)
+            i = i + 1
+        end
     end
 
     action Run(ProcessStoppedEvent event)
-        output "Ending IOS"
+        output "Ending IOS with code " + event:GetExit()
         File file
         file:SetAbsolutePath(GetLogLocation())
 
@@ -96,7 +107,7 @@ class IOSSupport is ProcessListener
 //        ChangeApplicationName(pathToBuildFolder, applicationName)
 //    
 //        // Clean the generated files that might conflict with the renamings
-        CleanGeneratedFiles(pathToBuildFolder)
+        
     end
 
     action RewriteConfig(BuildInformation info)
@@ -151,6 +162,9 @@ class IOSSupport is ProcessListener
         file:SetPath(games)
         to:SetPath(games)
         file:Copy(to)
+
+        text dq = pathToBuildFolder:GetDoubleQuote()
+        CleanGeneratedFiles(pathToBuildFolder)
     end
 
     private action GetRoboVMXML(BuildInformation info) returns text
