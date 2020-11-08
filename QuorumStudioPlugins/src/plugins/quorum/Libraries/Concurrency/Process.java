@@ -129,14 +129,6 @@ public class Process {
                 blinker = new Thread(this);
                 blinker.setName("Quorum Process Watcher");
                 blinker.start();
-                
-//                Thread thread = new Thread(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                    }
-//                });
-//                thread.setName("IDE Input");
-//                thread.start();
             }
         }
 
@@ -152,7 +144,12 @@ public class Process {
                         myProcess.FireProcessOutputEvent(line);
                     }
                 }
-
+                while (bufferedErrorReader.ready()) {
+                    final String line = bufferedErrorReader.readLine();
+                    if(myProcess != null) {
+                        myProcess.FireProcessErrorEvent(line);
+                    }
+                }
             } catch (IOException ex) {
             }
         }
