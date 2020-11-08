@@ -4,7 +4,7 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Configuration.Options
 use Libraries.System.File
-use Libraries.Concurrency.ProcessRunner
+use Libraries.Concurrency.Process
 use Libraries.Concurrency.ProcessListener
 use Libraries.Concurrency.ProcessStartedEvent
 use Libraries.Concurrency.ProcessStoppedEvent
@@ -39,7 +39,7 @@ class RunProcessBehavior is QuorumStudioBehavior, ProcessListener
         //On Windows, we have tto run in elevated mode.
         //Run the bundled .bat file to do this
         if properties:IsWindows()
-            ProcessRunner runner
+            Process runner
             runner:AddListener(me)
             runner:SetDirectory(folder)
 
@@ -60,7 +60,7 @@ class RunProcessBehavior is QuorumStudioBehavior, ProcessListener
             runner:SetProcessName(newUAC:GetAbsolutePath())
             runner:Run()
         else 
-            ProcessRunner runner
+            Process runner
             runner:AddListener(me)
             runner:SetDirectory(folder)
             Array<text> parameters = runner:GetParameters()

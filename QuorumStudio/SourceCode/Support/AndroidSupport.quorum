@@ -4,7 +4,7 @@ use Libraries.System.Properties
 use Libraries.System.File
 use Libraries.Containers.List
 use Libraries.Containers.Array
-use Libraries.Concurrency.ProcessRunner
+use Libraries.Concurrency.Process
 use Libraries.Concurrency.ProcessListener
 use Libraries.Concurrency.ProcessOutputEvent
 use Libraries.Concurrency.ProcessErrorEvent
@@ -273,9 +273,9 @@ public class MainActivity extends Activity {
         end
     end
 
-    action GetAPKDebugBuildProcess returns ProcessRunner
+    action GetAPKDebugBuildProcess returns Process
         Properties properties
-        ProcessRunner process
+        Process process
         File directory
         directory:SetAbsolutePath(pathToBuildAndroidFolder)
         process:SetDirectory(directory)
@@ -326,9 +326,9 @@ public class MainActivity extends Activity {
         return params
     end
 
-    action GetDebugInstallProcess returns ProcessRunner
+    action GetDebugInstallProcess returns Process
         Properties properties
-        ProcessRunner process
+        Process process
         File directory
         directory:SetAbsolutePath(pathToBuildAndroidFolder)
         process:SetDirectory(directory)
@@ -374,9 +374,9 @@ public class MainActivity extends Activity {
         return params
     end
 
-    action GetZipAlignProcess returns ProcessRunner
+    action GetZipAlignProcess returns Process
         Properties properties
-        ProcessRunner process
+        Process process
         if properties:IsWindows()
             Array<text> params = BuildZipAlignCommandWindows()
             process:SetProcessName(params:Get(0))
@@ -486,7 +486,7 @@ public class MainActivity extends Activity {
 
     action CleanGeneratedFiles(text projectPath)
         Properties properties
-        ProcessRunner process
+        Process process
         Array<text> parameters
         process:SetParameters(parameters)
         if properties:IsWindows()

@@ -10,7 +10,7 @@ use Libraries.Language.Compile.CompilerResult
 use Libraries.Development.Environment.Studio.Interface.OutputTab
 use Libraries.Containers.Iterator
 use Libraries.Language.Compile.CompilerError
-use Libraries.Concurrency.ProcessRunner
+use Libraries.Concurrency.Process
 use Libraries.System.Properties
 use Libraries.Language.Debug.Debugger
 use Libraries.Language.Debug.DebuggerListener
@@ -87,7 +87,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
     BuildInformation debuggingProgram = undefined
     CodeEditorTabPane editors = undefined
     OutputEditorTabPane outputTabs = undefined
-    HashTable<text, ProcessRunner> processes
+    HashTable<text, Process> processes
     ProjectManager projectManager = undefined
 
     //for the parsing and indexing procedures
@@ -1052,7 +1052,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
     private action RunCompilerProcess(
         OutputTab out, File copyFolder, File location, File sourceCodeFolder, 
         Array<File> sourceFiles, text compilerName)
-        ProcessRunner runner
+        Process runner
         runner:SetOutputTab(out)
 
         runner:AddListener(me)
@@ -1066,7 +1066,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
 
         text value = location:GetAbsolutePath()
         if processes:HasKey(value) //kill it, if you have to
-            ProcessRunner old = processes:RemoveKey(value)
+            Process old = processes:RemoveKey(value)
             old:Cancel()
         end
 
@@ -1396,9 +1396,9 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
         end
 
         out:Append("Requesting build from iOS System. This can take a few minutes. Please wait.")
-        //ProcessRunner build = ios:GetBuildForSimulatorProcess()
-        //build:AddListener(android)
-        //build:Run()
+        Process build = ios:GetBuildForSimulatorProcess()
+        build:AddListener(ios)
+        build:Run()
     end
 
     action SendToAndroidDebugMode(BuildInformation info)
@@ -1488,12 +1488,12 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
         end
 
         out:Append("Requesting build from Android System. This can take a few minutes. Please wait.")
-        ProcessRunner build = android:GetAPKDebugBuildProcess()
+        Process build = android:GetAPKDebugBuildProcess()
         build:AddListener(android)
         build:Run()
 
         out:Append("Installing program (if device is found)")
-        ProcessRunner install = android:GetDebugInstallProcess()
+        Process install = android:GetDebugInstallProcess()
         install:AddListener(android)
         install:Run()
         out:Append("Completed Android Process with log at: " + android:GetLogLocation())
@@ -1654,7 +1654,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
         CompilerErrorManager errors = result:compilerErrorManager
         if errors:IsCompilationErrorFree()
             out:Append("Running " + project:GetName())
-            ProcessRunner runner
+            Process runner
             runner:SetOutputTab(out)
 
             runner:AddListener(me)
@@ -1666,7 +1666,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
             end
             text value = project:GetLocation():GetAbsolutePath()
             if processes:HasKey(value) //kill it, if you have to
-                ProcessRunner old = processes:RemoveKey(value)
+                Process old = processes:RemoveKey(value)
                 old:Cancel()
             end
 
@@ -1713,7 +1713,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
         QuorumProject project = info:project
         text path = project:GetLocation():GetAbsolutePath()
         if processes:HasKey(path) //kill it, if you have to
-            ProcessRunner process = processes:GetValue(path) //I think we can toss it
+            Process process = processes:GetValue(path) //I think we can toss it
             process:SendInput(value)
         end
 
@@ -1726,7 +1726,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
         Iterator<text> iterator = processes:GetKeyIterator()
         repeat while iterator:HasNext()
             text key = iterator:Next()
-            ProcessRunner process = processes:GetValue(key)
+            Process process = processes:GetValue(key)
             process:Cancel()
         end
         if debuggingProgram not= undefined
@@ -1748,7 +1748,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
     end
 
     action Run(ProcessStoppedEvent event)
-        ProcessRunner process = event:GetProcess()
+        Process process = event:GetProcess()
         File file = process:GetDirectory()
         if processes:HasKey(file:GetAbsolutePath()) //kill it, if you have to
             processes:RemoveKey(file:GetAbsolutePath()) //I think we can toss it
@@ -1762,7 +1762,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
     end
 
     action Run(ProcessOutputEvent event)
-        ProcessRunner process = event:GetProcess()
+        Process process = event:GetProcess()
         OutputTab out = process:GetOutputTab()
         out:Append(event:GetOutput())
     end

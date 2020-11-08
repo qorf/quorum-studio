@@ -4,7 +4,7 @@ use Libraries.System.Properties
 use Libraries.System.File
 use Libraries.Containers.List
 use Libraries.Containers.Array
-use Libraries.Concurrency.ProcessRunner
+use Libraries.Concurrency.Process
 use Libraries.Concurrency.ProcessListener
 use Libraries.Concurrency.ProcessOutputEvent
 use Libraries.Concurrency.ProcessErrorEvent
@@ -34,6 +34,45 @@ class IOSSupport is ProcessListener
     text pathToBuildFolder = ""
     Array<text> librarySources 
     Array<text> libraryDestinations
+    text log = ""
+//    Array<AndroidListener> listeners
+
+    action Run(ProcessStartedEvent event)
+        output "Starting IOS"
+    end
+
+    action Run(ProcessStoppedEvent event)
+        output "Ending IOS"
+        File file
+        file:SetAbsolutePath(GetLogLocation())
+
+        if file:Exists()
+            file:Delete()
+        end
+        file:Write(log)
+        log = ""
+    end
+
+    action GetLogLocation returns text
+        return pathToBuildFolder + "\log.txt"
+    end
+
+    action Run(ProcessErrorEvent event)
+        text current = event:GetOutput()
+        log = log + current + current:GetLineFeed()
+        output current
+    end
+
+    action Run(ProcessOutputEvent event)
+        text current = event:GetOutput()
+        log = log + current + current:GetLineFeed()
+        output current
+        //SendMessageToListeners(current)
+    end
+
+//    action AddListener(AndroidListener listener)
+//        listeners:Add(listener)
+//    end
 
     action Setup(text pathToRunFolder, text jarName)
         me:pathToRunFolder = pathToRunFolder
@@ -208,9 +247,9 @@ testImplementation 'junit:junit:4.12'
     end
         
 
-    action GetBuildForSimulatorProcess returns ProcessRunner
+    action GetBuildForSimulatorProcess returns Process
         Properties properties
-        ProcessRunner process
+        Process process
         File directory
         directory:SetAbsolutePath(pathToBuildFolder)
         process:SetDirectory(directory)
@@ -258,7 +297,8 @@ testImplementation 'junit:junit:4.12'
         text dq = value:GetDoubleQuote()
         Array<text> params
         params:Add("-p")  
-        params:Add(pathToBuildFolder)
+        output pathToBuildFolder
+        params:Add("'" + pathToBuildFolder + "'")
         params:Add("ios:launchIPhoneSimulator")
         return params
     end
@@ -280,7 +320,7 @@ testImplementation 'junit:junit:4.12'
 
     action CleanGeneratedFiles(text projectPath)
         Properties properties
-        ProcessRunner process
+        Process process
         Array<text> parameters
         process:SetParameters(parameters)
         if properties:IsWindows()

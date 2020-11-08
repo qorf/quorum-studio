@@ -3,7 +3,7 @@ use Libraries.Containers.Array
 use Libraries.System.File
 use Libraries.Development.Environment.Studio.Interface.OutputTab
 
-class ProcessRunner 
+class Process
     Array<ProcessListener> listeners
     text name = ""
     Array<text> flags
@@ -38,7 +38,7 @@ class ProcessRunner
         end
     end
 
-    action FireProcessStoppedEvent
+    action FireProcessStoppedEvent(integer exit)
         i = 0
         repeat while i < listeners:GetSize()
             ProcessListener listener = listeners:Get(i)
@@ -46,6 +46,7 @@ class ProcessRunner
             event:SetName(name)
             event:SetParameters(flags)
             event:SetProcess(me)
+            event:SetExit(exit)
             listener:Run(event)
             i = i + 1
         end
@@ -98,6 +99,8 @@ class ProcessRunner
     action Run
         Run(name, flags)
     end
+
+    system action IsAlive returns boolean
 
     private system action Run(text name, Array<text> flags)
 
