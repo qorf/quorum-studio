@@ -10,7 +10,7 @@ use Libraries.Concurrency.ProcessOutputEvent
 use Libraries.Concurrency.ProcessErrorEvent
 use Libraries.Concurrency.ProcessStoppedEvent
 use Libraries.Concurrency.ProcessStartedEvent
-use Libraries.Development.Environment.Studio.Build.AndroidListener
+use Libraries.Development.Environment.Studio.Build.MobileListener
 use Libraries.Language.Compile.Symbol.Class
 use Libraries.Development.Environment.Studio.Build.BuildInformation
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
@@ -35,25 +35,16 @@ class IOSSupport is ProcessListener
     Array<text> librarySources 
     Array<text> libraryDestinations
     text log = ""
-//    Array<AndroidListener> listeners
+    Array<MobileListener> listeners
+
+    action AddListener(MobileListener listener)
+        listeners:Add(listener)
+    end
 
     action Run(ProcessStartedEvent event)
-        output "Starting IOS "
-        Process process = event:GetProcess()
-        File directory = process:GetDirectory()
-        output "Directory: " + directory:GetAbsolutePath()
-        output "Name: " + process:GetProcessName()
-        output "Parameters"
-        Array<text> params = process:GetParameters()
-        i = 0
-        repeat while i < params:GetSize()
-            output (i + 1) + ": " + params:Get(i)
-            i = i + 1
-        end
     end
 
     action Run(ProcessStoppedEvent event)
-        output "Ending IOS with code " + event:GetExit()
         File file
         file:SetAbsolutePath(GetLogLocation())
 
@@ -71,19 +62,40 @@ class IOSSupport is ProcessListener
     action Run(ProcessErrorEvent event)
         text current = event:GetOutput()
         log = log + current + current:GetLineFeed()
-        //output current
+        i = 0
+        repeat while i < listeners:GetSize()
+            MobileListener listener = listeners:Get(i)
+            listener:Error(current)
+            i = i + 1
+        end
     end
 
     action Run(ProcessOutputEvent event)
         text current = event:GetOutput()
         log = log + current + current:GetLineFeed()
-        //output current
-        //SendMessageToListeners(current)
+        SendMessageToListeners(current)
     end
 
-//    action AddListener(AndroidListener listener)
-//        listeners:Add(listener)
-//    end
+    private action SendMessageToListeners(text message)
+        i = 0
+        repeat while i < listeners:GetSize()
+            MobileListener listener = listeners:Get(i)
+            if message:Contains("Starting Build")
+                listener:StartingBuild()
+            elseif message:Contains("Building RoboVM app") //version
+                listener:BuildingArchitecture(message)
+            elseif message:Contains("Compiling classes using")
+                listener:BuildingPlatform(message)
+            elseif message:Contains("Building ios binary")
+                listener:Linking(message)
+            elseif message:Contains("Compile RoboVM app completed")
+                listener:FinishedBuild(true, message)
+            elseif message:Contains("Booting simulator")
+                listener:BootingSimulator(message)
+            end
+            i = i + 1
+        end
+    end
 
     action Setup(text pathToRunFolder, text jarName)
         me:pathToRunFolder = pathToRunFolder
@@ -310,7 +322,6 @@ testImplementation 'junit:junit:4.12'
         text dq = value:GetDoubleQuote()
         Array<text> params
         params:Add("-p")  
-        output pathToBuildFolder
         params:Add(pathToBuildFolder)
         params:Add("ios:launchIPhoneSimulator")
         params:Add("--info")
@@ -380,14 +391,6 @@ testImplementation 'junit:junit:4.12'
             process:Run()
         end
     end
-
-//    action ChangeApplicationName(text projectPath, text applicationName)
-//        text pathToMain = projectPath + PATH_TO_MAIN_XML
-//        text dq = pathToMain:GetDoubleQuote()
-//
-//        text pathToBuild = projectPath + PATH_TO_APP_BUILD_GRADLE
-//        ReplaceLineTextInFile(pathToBuild, "api files('libs/Default.jar')", "    api files('libs/"+applicationName+".jar')")
-//    end
 
     action ReplaceLineTextInFile(text filePath, text toReplace, text newString)
         File file

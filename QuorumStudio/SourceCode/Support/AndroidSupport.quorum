@@ -10,7 +10,7 @@ use Libraries.Concurrency.ProcessOutputEvent
 use Libraries.Concurrency.ProcessErrorEvent
 use Libraries.Concurrency.ProcessStoppedEvent
 use Libraries.Concurrency.ProcessStartedEvent
-use Libraries.Development.Environment.Studio.Build.AndroidListener
+use Libraries.Development.Environment.Studio.Build.MobileListener
 use Libraries.Language.Compile.Symbol.Class
 
 class AndroidSupport is ProcessListener
@@ -49,13 +49,13 @@ class AndroidSupport is ProcessListener
     Array<text> librarySources 
     Array<text> libraryDestinations
     text log = ""
-    Array<AndroidListener> listeners
+    Array<MobileListener> listeners
     
     on create
         androidSDKPath = GetDefaultAndroidSDKPath()
     end
 
-    action AddListener(AndroidListener listener)
+    action AddListener(MobileListener listener)
         listeners:Add(listener)
     end
 
@@ -80,13 +80,20 @@ class AndroidSupport is ProcessListener
     end
 
     action Run(ProcessErrorEvent event)
-        //output "Stopping " + event:GetName()
+        text current = event:GetOutput()
+        log = log + current + current:GetLineFeed()
+        i = 0
+        repeat while i < listeners:GetSize()
+            MobileListener listener = listeners:Get(i)
+            listener:Error(current)
+            i = i + 1
+        end
     end
 
     private action SendMessageToListeners(text message)
         i = 0
         repeat while i < listeners:GetSize()
-            AndroidListener listener = listeners:Get(i)
+            MobileListener listener = listeners:Get(i)
             if message:Contains(":app:preBuild")
                 listener:StartingBuild()
             elseif message:Contains("-DANDROID_ABI") //version

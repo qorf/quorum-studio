@@ -76,7 +76,7 @@ use Libraries.Development.Versioning.DiffResult
 use Libraries.Language.Compile.CodeCompletionItem
 use Libraries.Development.Environment.Studio.Android.IOSSupport
 
-class BuildManager is DebuggerListener, ProcessListener, ProjectListener, AndroidListener
+class BuildManager is DebuggerListener, ProcessListener, ProjectListener, MobileListener
     Library library
     constant text DEFAULT_LIBRARY_PATH = "Library/Standard"
     constant text DEFAULT_LIBRARY_OUTPUT_PATH = "Library/Compiled"
@@ -454,7 +454,6 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
     end
 
     action Run(DebuggerErrorEvent event)
-        a = 5
     end
 
     action Run(DebuggerOutputEvent event)
@@ -1371,7 +1370,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
         iosLocation:SetPath("External/Mac")
 
         IOSSupport ios
-        //ios:AddListener(me)
+        ios:AddListener(me)
         ios:Setup(runDirectory:GetAbsolutePath(), jarName)
         
 
@@ -1562,6 +1561,24 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Androi
         out:Append("Linking Graphics Engine into Architecture.")
     end
 
+    action BootingSimulator(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("Booting Simulator")
+    end
+
+    action Error(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append(message)
+    end
+    
     action FinishedBuild(boolean success, text message) 
         OutputTab out = outputTabs:GetOutputTab()
         if out = undefined
