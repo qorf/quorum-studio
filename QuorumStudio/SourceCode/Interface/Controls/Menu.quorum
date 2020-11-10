@@ -20,6 +20,7 @@ use Libraries.Interface.Events.SelectionListener
 use Libraries.Interface.Events.SelectionEvent
 use Libraries.Development.Environment.Studio.Behaviors.CheckForUpdatesBehavior
 use Libraries.Development.Environment.Studio.Behaviors.AboutBoxBehavior
+use Libraries.System.Properties
 
 class Menu is MenuBar, SelectionListener
     KeyboardEvent keys
@@ -480,11 +481,15 @@ class Menu is MenuBar, SelectionListener
         sendToAndroidDebugMode:SetBehavior(behaviors:GetThreadedSendToAndroidDebugModeBehavior())
         runItems:Add(sendToAndroidDebugMode)
 
-        MenuItem sendToiOSMode
-        sendToiOSMode:SetName("Send to iOS")
-        sendToiOSMode:SetShortcut(keyMap:GetSendToIOSKey())
-        sendToiOSMode:SetBehavior(behaviors:GetThreadedSendToIOSBehavior())
-        runItems:Add(sendToiOSMode)
+        //Only make IOS deployment available if you are on a Mac.
+        Properties properties
+        if properties:IsMac()
+            MenuItem sendToiOSMode
+            sendToiOSMode:SetName("Send to iOS")
+            sendToiOSMode:SetShortcut(keyMap:GetSendToIOSKey())
+            sendToiOSMode:SetBehavior(behaviors:GetThreadedSendToIOSBehavior())
+            runItems:Add(sendToiOSMode)
+        end
 
         runMenu:SetName("Run")
         runMenu:Add(runItems)
