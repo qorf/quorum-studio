@@ -1,4 +1,4 @@
-package Libraries.Development.Environment.Studio.Android
+package Libraries.Development.Environment.Studio.Mobile
 
 use Libraries.System.Properties
 use Libraries.System.File
@@ -36,6 +36,11 @@ class IOSSupport is ProcessListener
     Array<text> libraryDestinations
     text log = ""
     Array<MobileListener> listeners
+    Array<AppleDevice> availableDevices = undefined
+
+    on create
+        availableDevices = RunAvailableDevicesProcess()
+    end
 
     action AddListener(MobileListener listener)
         listeners:Add(listener)
@@ -108,6 +113,11 @@ class IOSSupport is ProcessListener
         libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + jarName)
         libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardLibrary.jar")
         libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardPlugins.jar")
+
+        //Run a script to generate the xcode project, similar to
+        //`/Applications/CMake.app/Contents/bin/cmake -G Xcode ./freetype-2.5.5/CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=/path/ios_cmake/iOS.cmake -B.`
+         
+
     end
 
     action CopyAndRename(text templateLocation, text pathToRunFolder, text applicationName)
@@ -143,19 +153,17 @@ class IOSSupport is ProcessListener
         text nativePath = me:pathToBuildFolder  
         //if there isn't one set, set the default, so it shows up as this next time.  
         if version = undefined
-            nativePath = nativePath + FILE_SEPARATOR + "builds" + 
-                FILE_SEPARATOR + "ios14"
+            nativePath = nativePath + FILE_SEPARATOR + "Debug-iphonesimulator"
             project:SetIOSVersionKey(project:IOS_14_1)
         elseif version = project:IOS_14_1
-            nativePath = nativePath + FILE_SEPARATOR + "builds" + 
-                FILE_SEPARATOR + "ios14"
+            nativePath = nativePath + FILE_SEPARATOR + "Debug-iphonesimulator"
         elseif version = project:IOS_13
-            nativePath = nativePath + FILE_SEPARATOR + "builds" + 
-                FILE_SEPARATOR + "ios13"
+            nativePath = nativePath + FILE_SEPARATOR + "Debug-iphonesimulator"
+        else
+            nativePath = nativePath + FILE_SEPARATOR + "Debug-iphonesimulator"
         end
 
-        text freetype = "libfreetype.a"
-        text games = "libGameEngineCPlugins.a"
+        text freetype = "liballnatives.a"
         //copy the correct files over for the requested architecture
         File file
         file:SetWorkingDirectory(nativePath)
@@ -171,16 +179,24 @@ class IOSSupport is ProcessListener
         end
         file:Copy(to)
 
-        file:SetPath(games)
-        to:SetPath(games)
-        file:Copy(to)
-
         CleanGeneratedFiles(pathToBuildFolder)
+    end
+
+    private action SanitizeMediaFolder(text value) returns text
+        text result = value
+        if result not= undefined and result:GetSize() > 1 and result:GetCharacter(0) = "/"
+            result = result:GetSubtext(1)
+        end
+        return result
     end
 
     private action GetRoboVMXML(BuildInformation info) returns text
         QuorumProject project = info:project
+        
         text name = project:GetExecutableName()
+        text media = SanitizeMediaFolder(project:GetMobileAssetsPath())
+
+        
         text result = 
 "
 <config>
@@ -188,14 +204,19 @@ class IOSSupport is ProcessListener
   <os>ios</os>
   <arch>thumbv7</arch>
   <target>ios</target>
+  <resources>
+    <resource>
+      <directory>"+media+"</directory>
+      <targetPath>"+media+"</targetPath>
+    </resource>
+  </resources>
   <classpath>
     <classpathentry>"+JAR_FOLDER_NAME+"/"+name+".jar</classpathentry>
     <classpathentry>"+JAR_FOLDER_NAME+"/QuorumStandardLibrary.jar</classpathentry>
     <classpathentry>"+JAR_FOLDER_NAME+"/QuorumStandardPlugins.jar</classpathentry>
   </classpath>
   <libs>
-    <lib>"+NATIVE_FOLDER_NAME+"/libfreetype.a</lib>
-    <lib>"+NATIVE_FOLDER_NAME+"/libGameEngineCPlugins.a</lib>
+    <lib>"+NATIVE_FOLDER_NAME+"/liballnatives.a</lib>
   </libs>
   <weakFrameworks>
     <framework>OpenGLES</framework>
@@ -271,6 +292,88 @@ testImplementation 'junit:junit:4.12'
         end
     end
         
+    action RunAvailableDevicesProcess returns Array<AppleDevice>
+        Properties properties
+        Process process
+        File directory
+        directory:SetPath("")
+        directory = directory:GetParentDirectory()
+        process:SetDirectory(directory)
+        if properties:IsMac()
+            process:SetProcessName("xcrun")
+            Array<text> params
+            params:Add("xctrace")
+            params:Add("list")
+            params:Add("devices")
+            process:SetParameters(params)
+        end
+
+        AppleDeviceParser parser
+        process:AddListener(parser)
+        process:Run()
+        return parser:GetDevices()
+    end
+
+    action GetGenerateXCodeProjectProcess returns Process
+        Properties properties
+        Process process
+        File directory
+        directory:SetAbsolutePath(pathToBuildFolder)
+        process:SetDirectory(directory)
+        //This likely needs to change because it isn't going to work on Windows
+        //given limitations on Mac
+        if properties:IsMac()
+            process:SetProcessName("/Applications/CMake.app/Contents/bin/cmake")
+            Array<text> params = GetCMakeParameters()
+            process:SetParameters(params)
+        end
+
+        return process
+    end
+
+    action GetBuildXCodeProjectProcess returns Process
+        Properties properties
+        Process process
+        File directory
+        directory:SetAbsolutePath(pathToBuildFolder)
+        process:SetDirectory(directory)
+        if properties:IsMac()
+            process:SetProcessName("xcodebuild")
+            Array<text> params = GetBuildXCodeProjectParameters()
+            process:SetParameters(params)
+        end
+
+        return process
+    end
+
+    private action GetBuildXCodeProjectParameters returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+        Array<text> params
+        params:Add("-project")
+        params:Add("allnativesv2.xcodeproj")
+        params:Add("-target")
+        params:Add("ALL_BUILD")
+        params:Add("-sdk")
+        params:Add("iphonesimulator")
+        params:Add("-destination")
+        params:Add("platform=iOS Simulator,name=iPhone 8,OS=9.1")
+
+        return params
+    end
+
+    private action GetCMakeParameters returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+        Array<text> params
+        params:Add("-G")
+        params:Add("Xcode")
+        params:Add("./Source/freetype-2.5.5/CMakeLists.txt")
+        text source = pathToBuildFolder + "/Source/ios_cmake/iOS.cmake" 
+        params:Add("-DCMAKE_TOOLCHAIN_FILE='" + source + "'")
+        params:Add("-B.")
+        return params
+    end
 
     action GetBuildForSimulatorProcess returns Process
         Properties properties
@@ -337,7 +440,7 @@ testImplementation 'junit:junit:4.12'
         end //bail if it isn't there
 
         File assetsFolder
-        text pathtemp = pathToBuildFolder + FILE_SEPARATOR + "ios" + FILE_SEPARATOR + "media" + FILE_SEPARATOR + value
+        text pathtemp = pathToBuildFolder + FILE_SEPARATOR + "ios" + FILE_SEPARATOR + value
         assetsFolder:SetAbsolutePath(pathtemp)
         if not assetsFolder:Exists()
             assetsFolder:CreateDirectories()
@@ -426,4 +529,8 @@ testImplementation 'junit:junit:4.12'
 
         fromFile:Copy(toFile, true)
     end
+    action GetAvailableDevices returns Array
+        return availableDevices
+    end
+
 end

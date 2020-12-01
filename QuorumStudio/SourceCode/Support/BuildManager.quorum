@@ -74,7 +74,7 @@ use Libraries.Development.Versioning.Git
 use Libraries.Development.Versioning.DiffRequest
 use Libraries.Development.Versioning.DiffResult
 use Libraries.Language.Compile.CodeCompletionItem
-use Libraries.Development.Environment.Studio.Android.IOSSupport
+use Libraries.Development.Environment.Studio.Mobile.IOSSupport
 
 class BuildManager is DebuggerListener, ProcessListener, ProjectListener, MobileListener
     Library library
@@ -1361,7 +1361,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
 
             mediaDirectory:SetAbsolutePath(media)
         end
-
+        
         //Get the custom iOS properties, if any.
         text path = ""
         text jarName = project:GetExecutableName() + ".jar"
@@ -1384,6 +1384,20 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         ios:CopyAndRename(iosLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName)
         out:Append("Copying Information")
         ios:CopyLibraries() 
+
+        out:Append("")
+        out:Append("Creating XCode Project")
+        Process createXCodeProcess = ios:GetGenerateXCodeProjectProcess()
+        //createXCodeProcess:AddListener(me)
+        createXCodeProcess:Run()
+        out:Append("Building Natives")
+
+        Process xcodeBuildProcess = ios:GetBuildXCodeProjectProcess()
+        //xcodeBuildProcess:AddListener(me)
+        xcodeBuildProcess:Run()
+
+        out:Append("Natives completed")
+        out:Append("Writing configuration files")
         ios:RewriteConfig(info)       
 
         text mobileAssetPath = project:GetMobileAssetsPath()
@@ -1394,7 +1408,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             out:Append("No assets requested for copying")
         end
 
-        out:Append("Requesting build from iOS System. This can take a few minutes. Please wait.")
+        out:Append("Running iOS program")
         Process build = ios:GetBuildForSimulatorProcess()
         build:AddListener(ios)
         build:Run()
@@ -1776,11 +1790,15 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
 
     action Run(ProcessErrorEvent event)
         //output "Error  " + event:GetName()
+        //output event:GetOutput()
     end
 
     action Run(ProcessOutputEvent event)
         Process process = event:GetProcess()
         OutputTab out = process:GetOutputTab()
-        out:Append(event:GetOutput())
+        if out not= undefined and event not= undefined
+            out:Append(event:GetOutput())
+        end
+        //output event:GetOutput()
     end
 end

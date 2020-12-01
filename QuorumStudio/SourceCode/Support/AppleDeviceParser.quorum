@@ -1,0 +1,55 @@
+package Libraries.Development.Environment.Studio.Mobile
+use Libraries.Containers.Array
+use Libraries.Concurrency.ProcessListener
+use Libraries.Concurrency.ProcessOutputEvent
+use Libraries.Concurrency.ProcessStartedEvent
+use Libraries.Concurrency.ProcessStoppedEvent
+use Libraries.Concurrency.ProcessErrorEvent
+
+class AppleDeviceParser is ProcessListener
+    boolean isDevice = false
+    boolean isSimulator = false
+
+    Array<AppleDevice> devices
+
+    action Run(ProcessStartedEvent event)
+
+    end
+
+    action Run(ProcessStoppedEvent event)
+    end
+
+    action Run(ProcessErrorEvent event)
+        ProcessLine(event:GetOutput())
+    end
+
+    action Run(ProcessOutputEvent event)
+        ProcessLine(event:GetOutput())
+    end
+
+    action ProcessLine(text line)
+        text value = line
+        if value = "== Devices =="
+            isDevice = true
+            isSimulator = false
+        elseif value = "== Simulators =="
+            isDevice = false
+            isSimulator = true
+        else
+            AppleDevice device
+            if isDevice
+                device:ParseDevice(line)
+            elseif isSimulator
+                device:ParseSimulator(line)
+            end
+            
+            if device not= undefined and device:IsParsed()
+                devices:Add(device)
+            end
+        end
+    end
+
+    action GetDevices returns Array
+        return devices
+    end
+end
