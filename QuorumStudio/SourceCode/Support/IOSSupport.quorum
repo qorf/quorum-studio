@@ -36,11 +36,9 @@ class IOSSupport is ProcessListener
     Array<text> libraryDestinations
     text log = ""
     Array<MobileListener> listeners
-    Array<AppleDevice> availableDevices = undefined
+    
 
-    on create
-        availableDevices = RunAvailableDevicesProcess()
-    end
+    
 
     action AddListener(MobileListener listener)
         listeners:Add(listener)
@@ -291,27 +289,10 @@ testImplementation 'junit:junit:4.12'
             i = i + 1
         end
     end
-        
-    action RunAvailableDevicesProcess returns Array<AppleDevice>
-        Properties properties
-        Process process
-        File directory
-        directory:SetPath("")
-        directory = directory:GetParentDirectory()
-        process:SetDirectory(directory)
-        if properties:IsMac()
-            process:SetProcessName("xcrun")
-            Array<text> params
-            params:Add("xctrace")
-            params:Add("list")
-            params:Add("devices")
-            process:SetParameters(params)
-        end
 
-        AppleDeviceParser parser
-        process:AddListener(parser)
-        process:Run()
-        return parser:GetDevices()
+    action GetAvailableDevices returns Array<AppleDevice>
+        AppleDevicesReader reader
+        return reader:GetAvailableDevices()
     end
 
     action GetGenerateXCodeProjectProcess returns Process
@@ -529,8 +510,5 @@ testImplementation 'junit:junit:4.12'
 
         fromFile:Copy(toFile, true)
     end
-    action GetAvailableDevices returns Array
-        return availableDevices
-    end
-
+    
 end
