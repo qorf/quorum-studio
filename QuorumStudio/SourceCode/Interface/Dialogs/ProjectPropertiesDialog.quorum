@@ -317,7 +317,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         ProjectProperty androidKeyAliasProperty = project:GetProperty(project:ANDROID_KEY_ALIAS)
         ProjectProperty androidKeyPasswordProperty = project:GetProperty(project:ANDROID_KEY_PASSWORD)
         ProjectProperty androidJDKProperty = project:GetProperty(project:ANDROID_ALTERNATE_JDK_PATH)
-        ProjectProperty iosProperty = project:GetProperty(project:IOS_VERSION)
+        ProjectProperty iosVersion = project:GetProperty(project:IOS_VERSION)
+        ProjectProperty iosDeviceProperty = project:GetProperty(project:IOS_DEVICE)
 
         if androidLibraryProperty not= undefined
             androidLibraryField:SetText(project:GetAndroidPath())
@@ -361,9 +362,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         end
         jdkField:HideCaret()
 
-        if iosProperty not= undefined
-            text value = iosProperty:GetFirstValue()
-            if value = project:IOS_14_1
+        if iosVersion not= undefined
+            text value = iosVersion:GetFirstValue()
+            if value = project:IOS_14_2
                 ios14Button:SetToggleState(true)
             elseif value = project:IOS_13
                 ios13Button:SetToggleState(true)
@@ -372,6 +373,20 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             end
         else
             ios14Button:SetToggleState(true)
+        end
+
+        if iosDeviceProperty not= undefined
+            text value = iosDeviceProperty:GetFirstValue()
+            boolean done = false
+            i = 0
+            repeat while i < availableDevicesList:GetSize() and not done
+                text item = availableDevicesList:Get(i)
+                if value = item
+                    availableDevicesList:Select(i)
+                    done = true
+                end
+                i = i + 1
+            end
         end
 
         if project:HasGitSupport() 
@@ -575,6 +590,11 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             project:SetMobileAssetsPath("/" + mobileAssetsPath)
         end
 
+        ListSelection selection = availableDevicesList:GetSelection()
+        if selection not= undefined
+            text name = selection:GetDisplayName()
+            project:SetIOSDevice(name)
+        end
         project:Save()
 
         if project:HasGitSupport() 
@@ -1420,7 +1440,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         ios13Button:SetPercentageWidth(0.5)
         iosVersionRadios:Add(ios13Button)
 
-        ios14Button:SetName("iOS 14.1")
+        ios14Button:SetName("iOS 14.2")
         ios14Button:SetFontSize(14)
         ios14Button:SetRightPadding(83)
         ios14Button:SetPercentageWidth(0.5)
@@ -1449,6 +1469,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         appleDevicesScrollPane:Add(availableDevicesList)
         panel:Add(appleDevicesScrollPane)
 
+        integer selection = -1
         AppleDevicesReader reader
         Array<AppleDevice> devices = reader:GetAvailableDevices()
         i = 0
@@ -1456,9 +1477,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             AppleDevice device = devices:Get(i)
             availableDevicesList:Add(device:GetName())
             i = i + 1
-        end
-        //availableDevicesList:SetPercentageWidth(1.0)
-        //panel:Add(availableDevicesList)
+        end     
 
         Control confirmArea
         FlowLayout confirmLayout

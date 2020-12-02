@@ -82,6 +82,7 @@ class QuorumProject is Project
     public constant text MOBILE_ASSETS = "MobileAssets"
     public constant text IPHONE_PROVISIONING_KEY = "IphoneProvisioningKey"
     public constant text IPHONE_SIGNING_IDENTITY = "IphoneSigningIdentity"
+    public constant text IOS_DEVICE = "IOS_DEVICE"
     public constant text ANDROID_PATH = "AndroidPath"
     public constant text ANDROID_ALTERNATE_JDK_PATH = "AndroidAlternateJDKPath"
     public constant text ANDROID_KEYSTORE_PATH = "AndroidKeystorePath"
@@ -90,8 +91,10 @@ class QuorumProject is Project
     public constant text ANDROID_KEY_PASSWORD = "AndroidKeyPassword"
     public constant text MOBILE_ASSETS_DEFAULT_FOLDER = "media"
     public constant text IOS_VERSION = "iosVersion"
+    public constant text IOS_DEFAULT_DEVICE = "media"
     public constant text IOS_13 = "ios13"
     public constant text IOS_14_1 = "ios14.1"
+    public constant text IOS_14_2 = "ios14.2"
 
     /* This property checks if this is the Quorum compiler. If it is, the project
         Can be boostrapped and extra menu options appear.
@@ -122,6 +125,8 @@ class QuorumProject is Project
         view:SetProject(me)
         //set a default assets folder. The user's project properties may override this.
         SetMobileAssetsPath(MOBILE_ASSETS_DEFAULT_FOLDER)
+        SetIOSVersionKey(IOS_14_2)
+        SetIOSDevice("iPhone 8")
     end
 
 
@@ -322,6 +327,20 @@ class QuorumProject is Project
         end
         text value = property:GetFirstValue()
         return value
+    end
+
+    /* Get IOS Device */
+    action GetIOSDevice returns text
+        ProjectProperty property = GetProperty(IOS_DEVICE)
+        if property = undefined
+            return undefined
+        end
+        text value = property:GetFirstValue()
+        return value
+    end
+
+    action SetIOSDevice(text value)
+        SetPropertyValue(IOS_DEVICE, value)
     end
 
     /* This action sets the version to build to on IOS. */
@@ -1010,6 +1029,12 @@ class QuorumProject is Project
             end
             AddProperty(key, object:GetText())
         elseif key = IPHONE_PROVISIONING_KEY
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = IOS_DEVICE
             if not object:IsText()
                 logger:Log(textMessage)
                 return now

@@ -106,6 +106,7 @@ use Libraries.Development.Environment.Studio.Behaviors.PaletteItemDropBehavior
 use Libraries.Development.Environment.Studio.Behaviors.PaletteItemStartDragBehavior
 use Libraries.Development.Environment.Studio.Behaviors.PaletteItemContinueDragBehavior
 use Libraries.Development.Environment.Studio.Behaviors.PassthroughInputTable
+use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 2
@@ -365,7 +366,9 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         return undefined
     end
 
+    /* When Scanning starts, because it is in another thread anyway, check for available devices on bootup. */
     action Started
+        AppleDevicesReader reader
     end
 
     action Stopped
