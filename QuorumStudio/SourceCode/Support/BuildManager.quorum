@@ -1390,9 +1390,13 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         Process createXCodeProcess = ios:GetGenerateXCodeProjectProcess()
         //createXCodeProcess:AddListener(me)
         createXCodeProcess:Run()
-        out:Append("Building Natives")
+        
+        text device = project:GetIOSDevice()
+        text version = project:GetIOSVersionKey()
+        out:Append("Building Natives for " + device + ", ios version " + version + 
+            ". This process can take several minutes, depending on project settings.")
 
-        Process xcodeBuildProcess = ios:GetBuildXCodeProjectProcess()
+        Process xcodeBuildProcess = ios:GetBuildXCodeProjectProcess(project)
         //xcodeBuildProcess:AddListener(me)
         xcodeBuildProcess:Run()
 
@@ -1409,7 +1413,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         end
 
         out:Append("Running iOS program")
-        Process build = ios:GetBuildForSimulatorProcess()
+        Process build = ios:GetBuildForSimulatorProcess(project)
         build:AddListener(ios)
         build:Run()
     end

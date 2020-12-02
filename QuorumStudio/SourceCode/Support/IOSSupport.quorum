@@ -312,7 +312,7 @@ testImplementation 'junit:junit:4.12'
         return process
     end
 
-    action GetBuildXCodeProjectProcess returns Process
+    action GetBuildXCodeProjectProcess(QuorumProject project) returns Process
         Properties properties
         Process process
         File directory
@@ -320,16 +320,19 @@ testImplementation 'junit:junit:4.12'
         process:SetDirectory(directory)
         if properties:IsMac()
             process:SetProcessName("xcodebuild")
-            Array<text> params = GetBuildXCodeProjectParameters()
+            Array<text> params = GetBuildXCodeProjectParameters(project)
             process:SetParameters(params)
         end
 
         return process
     end
 
-    private action GetBuildXCodeProjectParameters returns Array<text>
+    private action GetBuildXCodeProjectParameters(QuorumProject project) returns Array<text>
         text value = ""
         text dq = value:GetDoubleQuote()
+        text device = project:GetIOSDevice()
+        text version = project:GetIOSVersionKey()
+       
         Array<text> params
         params:Add("-project")
         params:Add("allnativesv2.xcodeproj")
@@ -338,7 +341,7 @@ testImplementation 'junit:junit:4.12'
         params:Add("-sdk")
         params:Add("iphonesimulator")
         params:Add("-destination")
-        params:Add("platform=iOS Simulator,name=iPhone 8,OS=9.1")
+        params:Add("platform=iOS Simulator,name="+device+",OS="+version+"")
 
         return params
     end
@@ -356,7 +359,7 @@ testImplementation 'junit:junit:4.12'
         return params
     end
 
-    action GetBuildForSimulatorProcess returns Process
+    action GetBuildForSimulatorProcess(QuorumProject project) returns Process
         Properties properties
         Process process
         File directory
@@ -364,50 +367,30 @@ testImplementation 'junit:junit:4.12'
         process:SetDirectory(directory)
         //This likely needs to change because it isn't going to work on Windows
         //given limitations on Mac
-        if properties:IsWindows()
-            Array<text> params = BuildForSimulatorWindows()
-            process:SetProcessName("cmd")
-            process:SetParameters(params)
-        elseif properties:IsMac()
+        if properties:IsMac()
             File file
             file:SetAbsolutePath(pathToBuildFolder + "/gradlew")
             if file:Exists()
                 file:SetExecutable(true)
             end
             process:SetProcessName("./gradlew")
-            Array<text> params = BuildForSimulator()
-            process:SetParameters(params)
-        else
-            process:SetProcessName("./gradlew")
-            Array<text> params = BuildForSimulator()
+            Array<text> params = BuildForSimulator(project)
             process:SetParameters(params)
         end
 
         return process
     end
 
-    private action BuildForSimulatorWindows returns Array<text>
+    private action BuildForSimulator(QuorumProject project) returns Array<text>
         text value = ""
         text dq = value:GetDoubleQuote()
-        Array<text> params
-        params:Add("/C")
-        params:Add(dq + dq)
-        params:Add(pathToBuildFolder+"\\gradlew.bat")
-        params:Add("-p")  
-        params:Add(pathToBuildFolder)
-        params:Add("ios:launchIPhoneSimulator")
-        params:Add("&")
-        params:Add("exit")
-        return params
-    end
 
-    private action BuildForSimulator returns Array<text>
-        text value = ""
-        text dq = value:GetDoubleQuote()
+        text device = project:GetIOSDevice()
         Array<text> params
         params:Add("-p")  
         params:Add(pathToBuildFolder)
         params:Add("ios:launchIPhoneSimulator")
+        params:Add("-Probovm.device.name=" + device)
         params:Add("--info")
         //params:Add("--stacktrace")
         //params:Add("--scan")
