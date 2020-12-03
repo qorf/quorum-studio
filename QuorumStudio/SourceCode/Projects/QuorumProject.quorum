@@ -91,11 +91,15 @@ class QuorumProject is Project
     public constant text ANDROID_KEY_PASSWORD = "AndroidKeyPassword"
     public constant text MOBILE_ASSETS_DEFAULT_FOLDER = "media"
     public constant text IOS_VERSION = "iosVersion"
+    public constant text IOS_BUNDLE = "IOS_BUNDLE"
     public constant text IOS_DEFAULT_DEVICE = "iPhone 12"
+    public constant text IOS_PHYSICAL_DEVICE = "IOS_PHYSICAL_DEVICE"
     public constant text IOS_13 = "13.0"
     public constant text IOS_14_1 = "14.1"
     public constant text IOS_14_2 = "14.2"
     public constant text IOS_DEFAULT_VERSION = IOS_14_2
+    public constant text IOS_DEFAULT_BUNDLE = "org.quorumlanguage"
+    
 
     /* This property checks if this is the Quorum compiler. If it is, the project
         Can be boostrapped and extra menu options appear.
@@ -128,6 +132,8 @@ class QuorumProject is Project
         SetMobileAssetsPath(MOBILE_ASSETS_DEFAULT_FOLDER)
         SetIOSVersionKey(IOS_14_2)
         SetIOSDevice(IOS_DEFAULT_DEVICE)
+        SetIOSBundle(IOS_DEFAULT_BUNDLE)
+        
     end
 
 
@@ -342,6 +348,41 @@ class QuorumProject is Project
 
     action SetIOSDevice(text value)
         SetPropertyValue(IOS_DEVICE, value)
+    end
+
+    action GetIOSBundle returns text
+        ProjectProperty property = GetProperty(IOS_BUNDLE)
+        if property = undefined
+            return undefined
+        end
+        text value = property:GetFirstValue()
+        return value
+    end
+
+    action SetIOSBundle(text value)
+        SetPropertyValue(IOS_BUNDLE, value)
+    end
+
+    
+    action IsIOSPhysicalDevice returns boolean
+        ProjectProperty property = GetProperty(IOS_PHYSICAL_DEVICE)
+        if property = undefined
+            return false
+        end
+        text value = property:GetFirstValue()
+        if value = "true"
+            return true
+        else
+            return false
+        end
+    end
+
+    action SetIOSPhysicalDevice(boolean value)
+        if value
+            SetPropertyValue(IOS_PHYSICAL_DEVICE, "true")
+        else
+            SetPropertyValue(IOS_PHYSICAL_DEVICE, "false")
+        end
     end
 
     /* This action sets the version to build to on IOS. */
@@ -976,6 +1017,27 @@ class QuorumProject is Project
             else 
                 SetIOSVersionKey(IOS_14_1)
             end
+        elseif key = IOS_DEVICE
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            text ios = object:GetText()
+            SetIOSDevice(ios)
+        elseif key = IOS_BUNDLE
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            text ios = object:GetText()
+            SetIOSBundle(ios)
+        elseif key = IOS_PHYSICAL_DEVICE
+            if not object:IsBoolean()
+                logger:Log(textMessage)
+                return now
+            end
+            boolean ios = object:GetBoolean()
+            SetIOSPhysicalDevice(ios)
         elseif key = PROJECT_MAIN
             if not object:IsText()
                 logger:Log(textMessage)

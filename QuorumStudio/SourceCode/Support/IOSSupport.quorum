@@ -149,16 +149,21 @@ class IOSSupport is ProcessListener
         QuorumProject project = info:project
         text version = project:GetIOSVersionKey()   
         text nativePath = me:pathToBuildFolder  
+        boolean physical = project:IsIOSPhysicalDevice()
+        text folderName = "Debug-iphonesimulator"
+        if physical
+            folderName = "Debug-iphoneos"
+        end
         //if there isn't one set, set the default, so it shows up as this next time.  
         if version = undefined
-            nativePath = nativePath + FILE_SEPARATOR + "Debug-iphonesimulator"
+            nativePath = nativePath + FILE_SEPARATOR + folderName
             project:SetIOSVersionKey(project:IOS_14_1)
         elseif version = project:IOS_14_1
-            nativePath = nativePath + FILE_SEPARATOR + "Debug-iphonesimulator"
+            nativePath = nativePath + FILE_SEPARATOR + folderName
         elseif version = project:IOS_13
-            nativePath = nativePath + FILE_SEPARATOR + "Debug-iphonesimulator"
+            nativePath = nativePath + FILE_SEPARATOR + folderName
         else
-            nativePath = nativePath + FILE_SEPARATOR + "Debug-iphonesimulator"
+            nativePath = nativePath + FILE_SEPARATOR + folderName
         end
 
         text freetype = "liballnatives.a"
@@ -234,12 +239,12 @@ class IOSSupport is ProcessListener
     private action GetRoboVMProperties(BuildInformation info) returns text
         QuorumProject project = info:project
         text name = project:GetExecutableName()
-        
+        text bundle = project:GetIOSBundle()
 //this app.id might need change
 text result = 
 "
 app.version=1.0
-app.id=org.quorumlanguage
+app.id="+bundle+"
 app.build=1
 app.name="+name+"
 
@@ -332,17 +337,25 @@ testImplementation 'junit:junit:4.12'
         text dq = value:GetDoubleQuote()
         text device = project:GetIOSDevice()
         text version = project:GetIOSVersionKey()
-       
+        boolean physical = project:IsIOSPhysicalDevice()       
         Array<text> params
         params:Add("-project")
         params:Add("allnativesv2.xcodeproj")
         params:Add("-target")
         params:Add("ALL_BUILD")
-        params:Add("-sdk")
-        params:Add("iphonesimulator")
-        params:Add("-destination")
-        params:Add("platform=iOS Simulator,name="+device+",OS="+version+"")
+        
+        if not physical
+            params:Add("-sdk")
+            params:Add("iphonesimulator")
+        end
 
+        params:Add("-destination")
+
+        if physical
+            params:Add("platform=iOS,name="+device+",OS="+version+"")
+        else
+            params:Add("platform=iOS Simulator,name="+device+",OS="+version+"")
+        end
         return params
     end
 
@@ -386,10 +399,15 @@ testImplementation 'junit:junit:4.12'
         text dq = value:GetDoubleQuote()
 
         text device = project:GetIOSDevice()
+        boolean physical = project:IsIOSPhysicalDevice()
         Array<text> params
         params:Add("-p")  
         params:Add(pathToBuildFolder)
-        params:Add("ios:launchIPhoneSimulator")
+        if physical
+            params:Add("ios:launchIOSDevice")
+        else
+            params:Add("ios:launchIPhoneSimulator")
+        end
         params:Add("-Probovm.device.name=" + device)
         params:Add("--info")
         //params:Add("--stacktrace")

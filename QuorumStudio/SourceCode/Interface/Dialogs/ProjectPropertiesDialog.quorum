@@ -320,6 +320,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         ProjectProperty androidJDKProperty = project:GetProperty(project:ANDROID_ALTERNATE_JDK_PATH)
         ProjectProperty iosVersion = project:GetProperty(project:IOS_VERSION)
         ProjectProperty iosDeviceProperty = project:GetProperty(project:IOS_DEVICE)
+        ProjectProperty iosBundleProperty = project:GetProperty(project:IOS_BUNDLE)
 
         if androidLibraryProperty not= undefined
             androidLibraryField:SetText(project:GetAndroidPath())
@@ -388,6 +389,12 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
                 end
                 i = i + 1
             end
+        end
+
+        //
+        if iosBundleProperty not= undefined
+            text value = iosBundleProperty:GetFirstValue()
+            bundleIdentifierField:SetText(value)
         end
 
         if project:HasGitSupport() 
@@ -579,7 +586,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         end
 
         if ios14Button:GetToggleState()
-            project:SetIOSVersionKey(project:IOS_14_1)
+            project:SetIOSVersionKey(project:IOS_14_2)
         else
             project:SetIOSVersionKey(project:IOS_13)
         end
@@ -590,12 +597,23 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         else
             project:SetMobileAssetsPath("/" + mobileAssetsPath)
         end
-
+    
+        //Save IOS Properties
         ListSelection selection = availableDevicesList:GetSelection()
         if selection not= undefined
             text name = selection:GetDisplayName()
+            integer index = selection:GetIndex()
+            AppleDevicesReader reader
+            Array<AppleDevice> devices = reader:GetAvailableDevices()
+            AppleDevice device = devices:Get(index)
+            //tell the project to try and load a particular device.
+            project:SetIOSPhysicalDevice(device:IsDevice())
             project:SetIOSDevice(name)
         end
+
+        text bundle = bundleIdentifierField:GetText()
+        project:SetIOSBundle(bundle)
+
         project:Save()
 
         if project:HasGitSupport() 
