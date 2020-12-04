@@ -1395,9 +1395,10 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         text device = project:GetIOSDevice()
         text version = project:GetIOSVersionKey()
         out:Append("Building Natives for " + device + ", ios version " + version + 
-            ". This process can take several minutes, depending on project settings.")
+            ". This process can take several minutes.")
 
         AppleNativeCompileListener nativeListener
+        nativeListener:SetOutputTab(out)
         Process xcodeBuildProcess = ios:GetBuildXCodeProjectProcess(project)
         xcodeBuildProcess:AddListener(nativeListener)
         xcodeBuildProcess:Run()

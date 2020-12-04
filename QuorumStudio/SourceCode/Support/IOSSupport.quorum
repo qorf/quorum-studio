@@ -336,6 +336,7 @@ testImplementation 'junit:junit:4.12'
         text value = ""
         text dq = value:GetDoubleQuote()
         text device = project:GetIOSDevice()
+        text signature = project:GetIOSDeviceSignature()
         text version = project:GetIOSVersionKey()
         boolean physical = project:IsIOSPhysicalDevice()       
         Array<text> params
@@ -352,9 +353,9 @@ testImplementation 'junit:junit:4.12'
         params:Add("-destination")
 
         if physical
-            params:Add("platform=iOS,name="+device+",OS="+version+"")
+            params:Add("platform=iOS,id="+signature+",OS="+version+"")
         else
-            params:Add("platform=iOS Simulator,name="+device+",OS="+version+"")
+            params:Add("platform=iOS Simulator,id="+signature+",OS="+version+"")
         end
         return params
     end

@@ -13,6 +13,9 @@ use Libraries.Containers.Support.ArrayIterator
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Versioning.Git
 use Libraries.Development.Versioning.Repository
+use Libraries.System.Properties
+use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
+use Libraries.Development.Environment.Studio.Mobile.AppleDevice
 
 /*
     This class loads a Quorum project into the Integrated Development Environment.
@@ -99,6 +102,8 @@ class QuorumProject is Project
     public constant text IOS_14_2 = "14.2"
     public constant text IOS_DEFAULT_VERSION = IOS_14_2
     public constant text IOS_DEFAULT_BUNDLE = "org.quorumlanguage"
+    //this can be set, but should never be stored.
+    private text iosDeviceUniqueID = ""
     
 
     /* This property checks if this is the Quorum compiler. If it is, the project
@@ -346,8 +351,31 @@ class QuorumProject is Project
         return value
     end
 
+    action HasIOSDeviceSignature returns boolean
+        if me:iosDeviceUniqueID not= undefined and not me:iosDeviceUniqueID:IsEmpty()
+            return true
+        end
+        return false
+    end
     action SetIOSDevice(text value)
         SetPropertyValue(IOS_DEVICE, value)
+
+        //once we have the value, if we are on mac
+        //get the UUID for the device
+        Properties properties
+        if properties:IsMac()
+            AppleDevicesReader reader
+            Array<AppleDevice> devices = reader:GetAvailableDevices()
+            i = 0
+            repeat while i < devices:GetSize()
+                AppleDevice device = devices:Get(i)
+                if device:GetName() = value
+                    me:iosDeviceUniqueID = device:GetSignature()
+                    i = devices:GetSize()
+                end
+                i = i + 1
+            end
+        end
     end
 
     action GetIOSBundle returns text
@@ -1325,5 +1353,12 @@ class QuorumProject is Project
         end
         result = result + "}"
         file:Write(result)
+    end
+
+    /* If a unique device name has been set, this action returns its signature (called UUID). 
+        This varies by physical machine and is thus not stored in the project properties.
+    */
+    action GetIOSDeviceSignature returns text
+        return iosDeviceUniqueID
     end
 end
