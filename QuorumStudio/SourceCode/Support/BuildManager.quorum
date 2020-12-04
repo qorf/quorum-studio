@@ -75,6 +75,7 @@ use Libraries.Development.Versioning.DiffRequest
 use Libraries.Development.Versioning.DiffResult
 use Libraries.Language.Compile.CodeCompletionItem
 use Libraries.Development.Environment.Studio.Mobile.IOSSupport
+use Libraries.Development.Environment.Studio.Mobile.AppleNativeCompileListener
 
 class BuildManager is DebuggerListener, ProcessListener, ProjectListener, MobileListener
     Library library
@@ -1396,8 +1397,9 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         out:Append("Building Natives for " + device + ", ios version " + version + 
             ". This process can take several minutes, depending on project settings.")
 
+        AppleNativeCompileListener nativeListener
         Process xcodeBuildProcess = ios:GetBuildXCodeProjectProcess(project)
-        //xcodeBuildProcess:AddListener(me)
+        xcodeBuildProcess:AddListener(nativeListener)
         xcodeBuildProcess:Run()
 
         out:Append("Natives completed")

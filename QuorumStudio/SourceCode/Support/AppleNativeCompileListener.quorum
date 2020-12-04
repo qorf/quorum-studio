@@ -1,0 +1,29 @@
+package Libraries.Development.Environment.Studio.Mobile
+
+use Libraries.Concurrency.ProcessListener
+use Libraries.Concurrency.ProcessStartedEvent
+use Libraries.Concurrency.ProcessStoppedEvent
+use Libraries.Concurrency.ProcessErrorEvent
+use Libraries.Concurrency.ProcessOutputEvent
+
+class AppleNativeCompileListener is ProcessListener
+    integer lines = 0
+
+    action Run(ProcessStartedEvent event)
+        lines = 0
+    end
+
+    action Run(ProcessStoppedEvent event)
+        output "Total Lines " + lines
+    end
+
+    action Run(ProcessErrorEvent event)
+        
+        output "Error " + lines
+    end
+
+    action Run(ProcessOutputEvent event)
+        lines = lines + 1
+        output "Output " + lines
+    end
+end
