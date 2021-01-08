@@ -1,0 +1,96 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+use Libraries.Game.Graphics.Camera
+use Libraries.Game.Graphics.PerspectiveCamera
+use Libraries.Compute.Vector3
+
+class CameraItem3D is CameraItem, InteractableItem3D
+
+    on create
+        SetInputGroup("CameraItem3D")
+    end
+
+    action Load(Camera camera, VisualSceneController controller)
+        SetCamera(camera)
+        SetController(controller)
+
+        SetPosition(camera:GetPosition():GetX(), camera:GetPosition():GetY(), camera:GetPosition():GetZ())
+    end
+
+    action SetRotation(number yaw, number pitch, number roll)
+        Camera camera = GetCamera()
+        camera:SetYawPitchRoll(yaw, pitch, roll)
+    end
+
+    action GetRotation returns Vector3
+        Vector3 vector
+        vector:Set(GetYaw(), GetPitch(), GetRoll())
+        return vector
+    end
+
+    action MoveX(number x)
+        parent:Item3D:MoveX(x)
+        UpdateCameraPosition()
+    end
+
+    action MoveY(number y)
+        parent:Item3D:MoveY(y)
+        UpdateCameraPosition()
+    end
+
+    action MoveZ(number z)
+        parent:Item3D:MoveZ(z)
+        UpdateCameraPosition()
+    end
+
+    action Move(number x, number y, number z)
+        parent:Item3D:Move(x, y, z)
+        UpdateCameraPosition()
+    end
+
+    action SetX(number x)
+        parent:Item3D:SetX(x)
+        UpdateCameraPosition()
+    end
+
+    action SetY(number y)
+        parent:Item3D:SetY(y)
+        UpdateCameraPosition()
+    end
+
+    action SetZ(number z)
+        parent:Item3D:SetZ(z)
+        UpdateCameraPosition()
+    end
+
+    action SetPosition(number x, number y, number z)
+        parent:Item3D:SetPosition(x, y, z)
+        UpdateCameraPosition()
+    end
+
+    private action UpdateCameraPosition
+        Camera camera = GetCamera()
+
+        camera:SetPosition(GetX(), GetY(), GetZ())
+        camera:Update()
+
+        if GetLayer() is EditorLayer3D
+            EditorLayer3D layer = cast(EditorLayer3D, GetLayer())
+//            layer:UpdateGridPosition()
+        end
+    end
+
+    action SetZoom(number zoom)
+        PerspectiveCamera camera = cast(PerspectiveCamera, GetCamera())
+        camera:SetZoom(zoom)
+        if GetLayer() is EditorLayer3D
+            EditorLayer3D layer = cast(EditorLayer3D, GetLayer())
+//            layer:UpdateGridSize()
+        end
+    end
+
+    action GetZoom returns number
+        PerspectiveCamera camera = cast(PerspectiveCamera, GetCamera())
+        return camera:GetZoom()
+    end
+
+end

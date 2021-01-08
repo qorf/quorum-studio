@@ -5,6 +5,7 @@ use Libraries.Game.Graphics.Color
 use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Compute.Matrix4
 use Libraries.Compute.Vector3
+use Libraries.Game.Scenes.SceneProperties
 
 class NewItemPreview3D is NewItemPreview, InteractableItem3D
 
@@ -12,146 +13,64 @@ class NewItemPreview3D is NewItemPreview, InteractableItem3D
         SetInputGroup("NewItemPreview3D")
     end
 
-    Color color = undefined
-
-    /*
-    An index into an array of model presets. Currently, this is:
-        0. Box
-        1. Sphere
-        2. Cylinder
-    */
-    integer modelPreset = 0
-
-    /*
-    An index into an array of color presets. Currently, this is:
-        0. Red
-        1. Green
-        2. Blue
-        3. White
-    */
-    integer colorPreset = 0
-
     action GetAccessibleParent returns Item
         return parent:InteractableItem:GetAccessibleParent()
     end
 
-    action Load(VisualSceneController controller)
+    action Load(VisualSceneController controller, ModelBlueprint schematic)
         SetController(controller)
-        Color colorPreview = controller:GetColorPreview()
+        SetItemBlueprint(schematic)
 
-        Vector3 scale = controller:GetPreviewScale()
-        parent:InteractableItem3D:scaleX = scale:GetX()
-        parent:InteractableItem3D:scaleY = scale:GetY()
-        parent:InteractableItem3D:scaleZ = scale:GetZ()
+        Color color = schematic:GetColor():Copy()
+        color:SetAlpha(color:GetAlpha() * 0.75)
+        integer modelType = schematic:GetModelType()
+        SceneProperties properties
 
-        if colorPreview not= undefined
-            color = colorPreview
-        else
-            Color transparentRed
-            transparentRed:SetColor(1, 0, 0, 0.5)
-            color = transparentRed
-        end
-        modelPreset = controller:GetModelPresetPreview()
-        colorPreset = controller:GetColorPresetPreview()
+        SetName(schematic:GetName() + controller:GetNextNamePostfix(schematic:GetName()))
+        SetDescription(schematic:GetDescription())
 
-        SetName(controller:GetDefaultItemName(modelPreset))
-
-        if modelPreset = 0
-            LoadBox(1, 1, 1, color)
-        elseif modelPreset = 1
-            LoadSphere(1, 1, 1, color)
-        elseif modelPreset = 2
-            LoadCylinder(1, 1, 1, color)
-        else
-            LoadBox(1, 1, 1, color)
+        if modelType = properties:BOX
+            LoadBox(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        elseif modelType = properties:SPHERE
+            LoadSphere(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        elseif modelType = properties:CYLINDER
+            LoadCylinder(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
         end
 
-        if controller:GetPreviewTransform() not= undefined
-            Matrix4 transform = controller:GetPreviewTransform()
-            Matrix4 mine = GetTransform()
-            mine:row0column0 = transform:row0column0
-            mine:row0column1 = transform:row0column1
-            mine:row0column2 = transform:row0column2
-            mine:row0column3 = transform:row0column3
-            mine:row1column0 = transform:row1column0
-            mine:row1column1 = transform:row1column1
-            mine:row1column2 = transform:row1column2
-            mine:row1column3 = transform:row1column3
-            mine:row2column0 = transform:row2column0
-            mine:row2column1 = transform:row2column1
-            mine:row2column2 = transform:row2column2
-            mine:row2column3 = transform:row2column3
-            mine:row3column0 = transform:row3column0
-            mine:row3column1 = transform:row3column1
-            mine:row3column2 = transform:row3column2
-            mine:row3column3 = transform:row3column3
-        end
-    end
+        SetScale(schematic:GetScaleX(), schematic:GetScaleY(), schematic:GetScaleZ())
+        SetRotation(schematic:GetYaw(), schematic:GetPitch(), schematic:GetRoll())
 
-    action CyclePresetModel
-        VisualSceneController controller = GetController()
-        boolean usingDefaultName = (controller:GetDefaultItemName(modelPreset) = GetName())
-
-        modelPreset = (modelPreset + 1) mod 3
-
-        GetNodes():Empty()
-        GetMaterials():Empty()
-
-        if usingDefaultName
-            text newName = controller:GetDefaultItemName(modelPreset)
-            SetName(newName)
-            GetController():GetProperties3DDialog():SetNameField(newName)
+        if schematic:IsPhysicsEnabled()
+            SetEditorPhysicsEnabled(true)
+            if schematic:GetResponsiveness() >= 0
+                SetEditorResponsiveness(schematic:GetResponsiveness())
+            end
         end
 
-        if modelPreset = 0
-            LoadBox(1, 1, 1, color)
-            NotifyAccessibility("Box")
-        elseif modelPreset = 1
-            LoadSphere(1, 1, 1, color)
-            NotifyAccessibility("Sphere")
-        elseif modelPreset = 2
-            LoadCylinder(1, 1, 1, color)
-            NotifyAccessibility("Cylinder")
+        EditorCursor cursor = controller:GetCursor()
+        if cursor is EditorCursor3D
+            EditorCursor3D cursor3D = cast(EditorCursor3D, cursor)
+            SetPosition(cursor3D:GetX(), cursor3D:GetY(), cursor:GetZ())
         end
-        GetController():SetModelPresetPreview(modelPreset)
-    end
-
-    action CyclePresetColor
-        colorPreset = (colorPreset + 1) mod 4
-
-        if colorPreset = 0
-            color:SetColor(1, 0, 0, 0.5)
-            NotifyAccessibility("Red")
-        elseif colorPreset = 1
-            color:SetColor(0, 1, 0, 0.5)
-            NotifyAccessibility("Green")
-        elseif colorPreset = 2
-            color:SetColor(0, 0, 1, 0.5)
-            NotifyAccessibility("Blue")
-        elseif colorPreset = 3
-            color:SetColor(1, 1, 1, 0.5)
-            NotifyAccessibility("White")
-        end
-
-        SetDiffuseColor(color)
-        GetController():SetColorPreview(color)
-        GetController():SetColorPresetPreview(modelPreset)
-    end
-
-    action GetModelPresetCode returns integer
-        return modelPreset
-    end
-
-    action GetColorPresetCode returns integer
-        return colorPreset
     end
 
     action ConvertToModel returns Model
         Model model
         model:SetName(GetName())
 
-        Color modelColor
-        modelColor:SetColor(color:GetRed(), color:GetGreen(), color:GetBlue(), 1)
+        ModelBlueprint schematic = cast(ModelBlueprint, GetItemBlueprint())
+        Color color = schematic:GetColor():Copy()
+        integer modelType = schematic:GetModelType()
+        SceneProperties properties
+
+        if modelType = properties:BOX
+            model:LoadBox(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        elseif modelType = properties:SPHERE
+            model:LoadSphere(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        elseif modelType = properties:CYLINDER
+            model:LoadCylinder(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        end
+
         //add a property with its color for now
         JavaScriptObjectNotation jsonColor
         jsonColor:SetKey("Color")
@@ -159,23 +78,11 @@ class NewItemPreview3D is NewItemPreview, InteractableItem3D
         jsonColor:Add(color:GetRed())
         jsonColor:Add(color:GetGreen())
         jsonColor:Add(color:GetBlue())
-        jsonColor:Add(modelColor:GetAlpha())
+        jsonColor:Add(color:GetAlpha())
         model:SetProperty(jsonColor:GetKey(), jsonColor)
 
         JavaScriptObjectNotation jsonType
         jsonType:SetKey("Type")
-        
-        if modelPreset = 0
-            model:LoadBox(1, 1, 1, modelColor)
-            jsonType:SetText("Cube")
-        elseif modelPreset = 1
-            model:LoadSphere(1, 1, 1, modelColor)
-            jsonType:SetText("Sphere")
-        elseif modelPreset = 2
-            model:LoadCylinder(1, 1, 1, modelColor)
-            jsonType:SetText("Cylinder")
-        end
-        model:SetProperty(jsonType:GetKey(), jsonType)
 
         // Although the transform holds onto the position as it'll be rendered
         // to the screen, we need to also manually set the position in order to
@@ -186,4 +93,5 @@ class NewItemPreview3D is NewItemPreview, InteractableItem3D
 
         return model
     end
+
 end
