@@ -258,6 +258,7 @@ class VisualSceneController is Control
 
         Camera camera = GetSelectedLayer():GetCamera()
         boolean moved = false
+        boolean isCursor = false
 
         if GetSelectedLayer() is EditorLayer3D
 
@@ -331,6 +332,7 @@ class VisualSceneController is Control
                 else
                     if selectionXDirection not= 0 or selectionYDirection not= 0 or selectionZDirection not= 0
                         if gridMoveTimer <= 0
+                            moved = true
                             gridMoveTimer = gridMoveTimerMax
     
                             number x = focus:GetGlobalX()
@@ -403,7 +405,6 @@ class VisualSceneController is Control
     
             if IsFocused() or manager:GetFocus() is InteractableItem2D
                 moved = false
-                boolean isCursor = false
                 workVector2:Set(0, 0)
 
                 Item2D target = undefined
@@ -466,27 +467,26 @@ class VisualSceneController is Control
                     angle = angle + (seconds * selectionRollDirection * SELECTION_ROTATIONAL_SPEED_2D)
                     target:SetRotation(angle)
                 end
-
-                if moved and isCursor
-                    if accessibility not= undefined
-                        Item2D newDummy
-                        text describe = GetDescription()
-                        newDummy:SetProperty(visualResources:EDITOR_TAG, undefined)
-                        newDummy:SetFocusable(true)
-                        newDummy:SetAccessibilityCode(dummyItem:parent:Item:ITEM)
-                        newDummy:SetName(describe)
-                        newDummy:SetInputGroup("PassthroughInput")
-
-                        Add(newDummy)
-                        if dummyItem not= undefined
-                            Remove(dummyItem)
-                        end
-                        dummyItem = newDummy
-                        newDummy:Focus()
-                    end
-                end
             end
+        end
 
+        if moved and isCursor
+            if accessibility not= undefined
+                Item2D newDummy
+                text describe = GetDescription()
+                newDummy:SetProperty(visualResources:EDITOR_TAG, undefined)
+                newDummy:SetFocusable(true)
+                newDummy:SetAccessibilityCode(dummyItem:parent:Item:ITEM)
+                newDummy:SetName(describe)
+                newDummy:SetInputGroup("PassthroughInput")
+
+                Add(newDummy)
+                if dummyItem not= undefined
+                    Remove(dummyItem)
+                end
+                dummyItem = newDummy
+                newDummy:Focus()
+            end
         end
     end
 
@@ -515,7 +515,7 @@ class VisualSceneController is Control
             repeat while counter < filteredItems:GetSize()
                 Item3D item = cast(Item3D, filteredItems:Get(counter))
                 SelectionHighlight3D highlight
-                highlight:Load(item, me)
+                highlight:Load(cast(EditorModel, item), me)
                 filterHighlights:Add(highlight)
                 layer:Add(highlight)
     

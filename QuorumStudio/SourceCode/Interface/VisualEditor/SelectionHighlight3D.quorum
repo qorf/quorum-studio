@@ -10,7 +10,7 @@ use Libraries.Data.Formats.JavaScriptObjectNotation
 
 class SelectionHighlight3D is InteractableItem3D, SelectionHighlight
     
-    Item3D item = undefined
+    EditorModel item = undefined
 
     on create
         SetInputGroup("SelectionHighlight3D")
@@ -20,7 +20,7 @@ class SelectionHighlight3D is InteractableItem3D, SelectionHighlight
         return parent:InteractableItem:GetAccessibleParent()
     end
 
-    action Load(Item3D item, VisualSceneController controller)
+    action Load(EditorModel item, VisualSceneController controller)
         Color color = undefined
         VisualEditorResources resources = GetResources()
 
@@ -94,11 +94,25 @@ class SelectionHighlight3D is InteractableItem3D, SelectionHighlight
     end
 
     action GainedSelection
-        SetDiffuseColor(GetResources():SELECTION_HIGHLIGHT_SELECTED_COLOR)
+        parent:EditorModel:SetDiffuseColor(GetResources():SELECTION_HIGHLIGHT_SELECTED_COLOR)
     end
 
     action LostSelection
-        SetDiffuseColor(GetResources():SELECTION_HIGHLIGHT_UNSELECTED_COLOR)
+        parent:EditorModel:SetDiffuseColor(GetResources():SELECTION_HIGHLIGHT_UNSELECTED_COLOR)
+    end
+
+    action GetDiffuseColor returns Color
+        if item not= undefined
+            return item:GetDiffuseColor()
+        else
+            return undefined
+        end
+    end
+
+    action SetDiffuseColor(Color color)
+        if item not= undefined
+            item:SetDiffuseColor(color)
+        end
     end
 
     action Scale(Vector3 vector)

@@ -36,6 +36,9 @@ class Item3DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
     TextField rotationYawField = undefined
     TextField rotationPitchField = undefined
     TextField rotationRollField = undefined
+    TextField colorRedField = undefined
+    TextField colorGreenField = undefined
+    TextField colorBlueField = undefined
     Checkbox physicsEnabledCheckbox = undefined
     ButtonGroup responsivenessGroup = undefined
     TextField massField = undefined
@@ -259,7 +262,7 @@ class Item3DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
         rotationContainer:SetLayout(rotationLayout)
         rotationContainer:SetPercentageWidth(1.0)
         rotationContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
-        rotationContainer:SetLeftPadding(10)
+        rotationContainer:SetLeftPadding(20)
         rotationContainer:SetTopPadding(10)
         rotationContainer:SetRightPadding(30)
         rotationContainer:SetBottomPadding(10)
@@ -307,6 +310,71 @@ class Item3DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
 
         rotationContainer:Add(rotationFieldContainer)
         panel:Add(rotationContainer)
+
+        Label colorLabel
+        
+        TextField colorRedField
+        me:colorRedField = colorRedField
+
+        TextField colorGreenField
+        me:colorGreenField = colorGreenField
+
+        TextField colorBlueField
+        me:colorBlueField = colorBlueField
+
+        FlowLayout colorLayout
+        Control colorContainer
+        colorContainer:SetLayout(colorLayout)
+        colorContainer:SetPercentageWidth(1.0)
+        colorContainer:SetVerticalLayoutMode(positionContainer:FIT_CONTENTS)
+        colorContainer:SetLeftPadding(20)
+        colorContainer:SetTopPadding(10)
+        colorContainer:SetRightPadding(30)
+        colorContainer:SetBottomPadding(10)
+
+        colorLabel:SetText("Color (RGB):")
+        colorLabel:SetRightPadding(10)
+        colorContainer:Add(colorLabel)
+        
+        FlowLayout colorFieldLayout
+        Control colorFieldContainer
+        colorFieldContainer:SetLayout(colorFieldLayout)
+
+        colorFieldContainer:SetHorizontalLayoutMode(colorFieldContainer:FILL)
+        colorFieldContainer:SetName("Color Fields")
+        colorRedField:SetName("Red")
+        colorRedField:SetText("")
+        colorRedField:SetFocusable(true)
+        colorRedField:AddTextChangeListener(me)
+        colorRedField:SetRightPadding(8)
+        colorRedField:SetPercentageWidth(0.33)
+        colorRedField:SetPixelWidth(-8)
+        colorFieldContainer:Add(colorRedField)
+
+        colorGreenField:SetName("Green")
+        colorGreenField:SetText("")
+        colorGreenField:SetFocusable(true)
+        colorGreenField:AddTextChangeListener(me)
+        colorGreenField:SetRightPadding(8)
+        colorGreenField:SetPercentageWidth(0.33)
+        colorGreenField:SetPixelWidth(-8)
+        colorFieldContainer:Add(colorGreenField)
+
+        colorBlueField:SetName("Blue")
+        colorBlueField:SetText("")
+        colorBlueField:SetFocusable(true)
+        colorBlueField:AddTextChangeListener(me)
+        colorBlueField:SetRightPadding(8)
+        colorBlueField:SetPercentageWidth(0.33)
+        colorBlueField:SetPixelWidth(-8)
+        colorFieldContainer:Add(colorBlueField)
+
+        focusArray:Add(colorRedField)
+        focusArray:Add(colorGreenField)
+        focusArray:Add(colorBlueField)
+
+        colorContainer:Add(colorFieldContainer)
+        panel:Add(colorContainer)
 
         Label physicsLabel
         physicsLabel:SetSize(18)
@@ -536,6 +604,12 @@ class Item3DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
         rotationYawField:SetText("" + item:GetYaw())
         rotationPitchField:SetText("" + item:GetPitch())
         rotationRollField:SetText("" + item:GetRoll())
+        
+        Color color = item:GetDiffuseColor()
+        colorRedField:SetText("" + color:GetRed())
+        colorGreenField:SetText("" + color:GetGreen())
+        colorBlueField:SetText("" + color:GetBlue())
+
         physicsEnabledCheckbox:SetToggleState(item:IsEditorPhysicsEnabled())
         
         integer responsive = item:GetEditorResponsiveness()
@@ -650,6 +724,39 @@ class Item3DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
 
                 if value not= currentItem:GetRoll()
                     currentItem:SetRotation(currentItem:GetYaw(), currentItem:GetPitch(), value)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(colorRedField)
+            check
+                number value = colorRedField:GetText():ParseNumber()
+                Color color = currentItem:GetDiffuseColor()
+                if value not= color:GetRed()
+                    color:SetRed(value)
+                    currentItem:SetDiffuseColor(color)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(colorGreenField)
+            check
+                number value = colorGreenField:GetText():ParseNumber()
+                Color color = currentItem:GetDiffuseColor()
+                if value not= color:GetGreen()
+                    color:SetGreen(value)
+                    currentItem:SetDiffuseColor(color)
+                end
+            detect e is Error
+                // Do nothing.
+            end
+        elseif control:Equals(colorBlueField)
+            check
+                number value = colorBlueField:GetText():ParseNumber()
+                Color color = currentItem:GetDiffuseColor()
+                if value not= color:GetBlue()
+                    color:SetBlue(value)
+                    currentItem:SetDiffuseColor(color)
                 end
             detect e is Error
                 // Do nothing.
