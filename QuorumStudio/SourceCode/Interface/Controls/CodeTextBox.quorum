@@ -19,7 +19,7 @@ use Libraries.Language.Debug.BreakpointEvent
 use Libraries.Language.Debug.Breakpoint
 use Libraries.Language.Compile.Lexer
 use Libraries.Containers.Array
-use Libraries.Language.Compile.Token
+use Libraries.Language.Compile.Parsing.Token
 use Libraries.Containers.MultipleLineText
 use Libraries.Interface.Controls.LineNumberGutter
 use Libraries.Game.Graphics.Font
@@ -540,6 +540,9 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     */
     action GetTopHintAtLine(integer line) returns Hint
         Iterator<Hint> iterator = GetHintsAtLine(line)
+        if iterator = undefined
+            return undefined
+        end
         repeat while iterator:HasNext()
             Hint hint = iterator:Next()
             return hint
@@ -965,11 +968,11 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             return -1
         end
 
-        if index < lexer:Get(0):GetStartIndex()
+        if index < lexer:Get(0):startIndex
             return 0
         end
 
-        if index > lexer:Get(lexer:GetSize() - 1):GetStopIndex()
+        if index > lexer:Get(lexer:GetSize() - 1):endIndex
             return lexer:GetSize() - 1
         end
 
@@ -990,9 +993,9 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             end
 
             //we found the token
-            if index >= token:GetStartIndex() and index < next:GetStartIndex()
+            if index >= token:startIndex and index < next:startIndex
                 return mid
-            elseif index >= token:GetStopIndex()
+            elseif index >= token:endIndex
                 low = mid
                 mid = ((high - low) / 2) + mid
                 i = mid
@@ -1045,7 +1048,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         repeat while i >= 0
             Token previous = lexer:Get(i)
             if IsSignificantToken(previous)
-                NavigateToIndex(previous:GetStartIndex())
+                NavigateToIndex(previous:startIndex)
                 AnnounceCurrentLine()
                 return now
             end
@@ -1077,7 +1080,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         repeat while i < size
             Token next = lexer:Get(i)
             if IsSignificantToken(next)
-                NavigateToIndex(next:GetStartIndex())
+                NavigateToIndex(next:startIndex)
                 AnnounceCurrentLine()
                 return now
             end
