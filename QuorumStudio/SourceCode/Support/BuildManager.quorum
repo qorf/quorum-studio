@@ -443,6 +443,12 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             File newFileToOpen = undefined
             SymbolTable table = result:symbolTable
             Class clazz = table:GetClass(event:GetClassName())
+            if clazz = undefined
+                table = library:GetSymbolTable()
+                if table not= undefined
+                    clazz = table:GetClass(event:GetClassName())
+                end
+            end
             if clazz not= undefined
                 File file = clazz:GetFile()
                 if file not= undefined and editors not= undefined
