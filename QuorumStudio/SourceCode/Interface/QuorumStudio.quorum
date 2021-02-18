@@ -107,6 +107,8 @@ use Libraries.Development.Environment.Studio.Behaviors.PaletteItemStartDragBehav
 use Libraries.Development.Environment.Studio.Behaviors.PaletteItemContinueDragBehavior
 use Libraries.Development.Environment.Studio.Behaviors.PassthroughInputTable
 use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
+use Libraries.System.Logger
+use Libraries.System.DateTime
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 2
@@ -153,6 +155,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     SplashScreen splashScreen = undefined
     boolean splashScreenHide = false
     integer exitStatus = SAVE_CHANGES
+    Logger logger
 
     action GetDisplayName returns text
         return NAME
@@ -191,6 +194,9 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     end
 
     action Start
+        DateTime time
+        
+        logger:Log("Starting Quorum Studio at " + time:GetEpochTime())
         DesktopConfiguration config = GetDesktopConfiguration()
         config:title = NAME
         StartGame()
@@ -245,6 +251,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         if exitStatus = SAVE_CHANGES
             Save()
         end
+
+        logger:Close()
         return true
     end
 

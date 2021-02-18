@@ -5,9 +5,10 @@ use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Build.BuildManager
 use Libraries.System.SystemHelper
 use Libraries.System.DateTime
+use Libraries.System.Logger
 
 class BuildLoop is Behavior
-
+    Logger logger
     on create
         SetRunOnUpdate(true)
     end
@@ -46,7 +47,8 @@ class BuildLoop is Behavior
                 integer delay = cast(integer, value * 100)
                 help:Sleep(delay)
             detect e
-                e:OutputStackTrace()
+                text value = e:GetStackTraceMessage()
+                logger:Log(value)
             end
         end
     end
