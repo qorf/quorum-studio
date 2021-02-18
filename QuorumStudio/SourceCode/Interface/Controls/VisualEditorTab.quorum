@@ -33,6 +33,7 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.Item2DProper
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.ScenePalette
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Camera2DPropertiesDialog
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.CameraPreview2D
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorModel
 
 class VisualEditorTab is Tab, DefaultSceneManager
 
@@ -44,6 +45,9 @@ class VisualEditorTab is Tab, DefaultSceneManager
     Item2DPropertiesDialog item2dPropertiesDialog
     Item3DPropertiesDialog item3dPropertiesDialog
     Camera2DPropertiesDialog camera2dPropertiesDialog
+
+    // Additional properties used for custom scene loading for the tab's editor area.
+    text EULER_ANGLES = "Euler Angles"
 
     action GetFile returns File
         return file
@@ -172,7 +176,17 @@ class VisualEditorTab is Tab, DefaultSceneManager
             return undefined
         end
 
-        return parent:DefaultSceneManager:SaveItem3D(item)
+        JavaScriptObjectNotation json = parent:DefaultSceneManager:SaveItem3D(item)
+
+        if item is EditorModel
+            SceneProperties properties
+
+            EditorModel model = cast(EditorModel, item)
+            json:Add(EULER_ANGLES, NewJsonArray(model:GetYaw(), model:GetPitch(), model:GetRoll()))
+            json:Add(properties:SCALE, NewJsonArray(model:GetScaleX(), model:GetScaleY(), model:GetScaleZ()))
+        end
+
+        return json
     end
 
     private action SaveItem2D(Item2D item) returns JavaScriptObjectNotation
@@ -183,6 +197,15 @@ class VisualEditorTab is Tab, DefaultSceneManager
         end
 
         return parent:DefaultSceneManager:SaveItem2D(item)
+    end
+
+    private action CreateItem3D(text type) returns Item3D
+        if type = "Model"
+            EditorModel model
+            return model
+        end
+
+        return parent:DefaultSceneManager:CreateItem3D(type)
     end
 
     private action CustomLoadProperty3D(Item3D item, text key, JavaScriptObjectNotation json) returns boolean
@@ -240,6 +263,34 @@ class VisualEditorTab is Tab, DefaultSceneManager
                 json:Add(key, value)
                 return true
             end
+        elseif key = properties:SCALE
+            if not (item is EditorModel)
+                return false
+            end
+            EditorModel model = cast(EditorModel, item)
+
+            JavaScriptObjectNotation scale
+            scale:SetArray()
+            scale:Add(model:GetScaleX())
+            scale:Add(model:GetScaleY())
+            scale:Add(model:GetScaleZ())
+    
+            json:Add(key, scale)
+            return true
+        elseif key = EULER_ANGLES
+            if not (item is EditorModel)
+                return false
+            end
+            EditorModel model = cast(EditorModel, item)
+
+            JavaScriptObjectNotation angles
+            angles:SetArray()
+            angles:Add(model:GetYaw())
+            angles:Add(model:GetPitch())
+            angles:Add(model:GetRoll())
+    
+            json:Add(key, angles)
+            return true
         end
         return false
     end

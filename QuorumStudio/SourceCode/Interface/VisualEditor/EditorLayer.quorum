@@ -32,8 +32,6 @@ class EditorLayer is Layer
 
     blueprint action GetCursor returns EditorCursor
 
-    blueprint action ShowCursor(boolean visible)
-
     action SetSceneController(VisualSceneController controller)
         me:controller = controller
     end
@@ -48,6 +46,15 @@ class EditorLayer is Layer
 
     action LostSelection
         ShowEditorComponents(false)
+    end
+
+    action ShowCursor(boolean visible)
+        EditorCursor cursor = GetCursor()
+        if visible
+            cursor:Show()
+        else
+            cursor:Hide()
+        end
     end
 
     action SetCameraYaw(number yaw)

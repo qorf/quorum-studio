@@ -93,10 +93,6 @@ class VisualSceneController is Control
     */
     Array<SelectionHighlight> filterHighlights
 
-    Color colorPreview = undefined
-    integer modelPresetPreview = 0
-    integer colorPresetPreview = 0
-
     /*
     Tracks how many times each name has been used from the palette.
     Used to add numbers to the end of the names of duplicate items.
@@ -114,8 +110,6 @@ class VisualSceneController is Control
 
     // A reference to the find dialog for this controller.
     VisualEditorFindDialog findDialog
-
-    Vector3 previewScale
 
     // Used to forcibly change the focus and send information via the screen reader.
     Item2D dummyItem
@@ -139,67 +133,45 @@ class VisualSceneController is Control
 
         selection:Initialize(me)
         findDialog:Initialize(me)
-
-        previewScale:Set(1, 1, 1)
     end
 
     action GetDescription returns text
         if GetSelectedLayer() not= undefined
             EditorCursor cursor = GetSelectedLayer():GetCursor()
+            text position = ""
+
             if cursor is EditorCursor2D
                 EditorCursor2D cursor2D = cast(EditorCursor2D, cursor)
-                text position = cast(integer, cursor2D:GetX()) + " " + cast(integer, cursor2D:GetY())
-                Array<Item> items = cursor2D:GetItemsAtCursor()
-                if items:GetSize() = 0
-                    return position
-                elseif items:GetSize() <= 3
-                    integer counter = items:GetSize()
-                    text names = ""
-                    repeat while counter > 0
-                        counter = counter - 1
-                        names = names + items:Get(counter):GetName() + ", "
-                    end
-                    return names + position + ", press Enter to select items"
-                else
-                    integer counter = items:GetSize()
-                    text names = ""
-                    repeat while counter > items:GetSize() - 3
-                        counter = counter - 1
-                        names = names + items:Get(counter):GetName() + ", "
-                        counter = counter + 1
-                    end
-                    return names + items:GetSize() + " items, " + position + ", press Enter to select items"
+                position = cast(integer, cursor2D:GetX()) + " " + cast(integer, cursor2D:GetY())
+            elseif cursor is EditorCursor3D
+                EditorCursor3D cursor3D = cast(EditorCursor3D, cursor)
+                position = cast(integer, cursor3D:GetX()) + " " + cast(integer, cursor3D:GetY()) + " " + cast(integer, cursor3D:GetZ())
+            end
+
+            Array<Item> items = cursor:GetItemsAtCursor()
+            if items:GetSize() = 0
+                return position
+            elseif items:GetSize() <= 3
+                integer counter = items:GetSize()
+                text names = ""
+                repeat while counter > 0
+                    counter = counter - 1
+                    names = names + items:Get(counter):GetName() + ", "
                 end
+                return names + position + ", press Enter to select items"
             else
-                // Handle the 3D cursor here
+                integer counter = items:GetSize()
+                text names = ""
+                repeat while counter > items:GetSize() - 3
+                    counter = counter - 1
+                    names = names + items:Get(counter):GetName() + ", "
+                    counter = counter + 1
+                end
+                return names + items:GetSize() + " items, " + position + ", press Enter to select items"
             end
         end
 
         return parent:Item:GetDescription()
-    end
-
-    action GetColorPreview returns Color
-        return colorPreview
-    end
-
-    action SetColorPreview(Color color)
-        colorPreview = color
-    end
-
-    action GetModelPresetPreview returns integer
-        return modelPresetPreview
-    end
-
-    action GetColorPresetPreview returns integer
-        return colorPresetPreview
-    end
-
-    action SetModelPresetPreview(integer preset)
-        modelPresetPreview = preset
-    end
-
-    action SetColorPresetPreview(integer preset)
-        colorPresetPreview = preset
     end
 
     action Resize
@@ -286,6 +258,7 @@ class VisualSceneController is Control
 
         Camera camera = GetSelectedLayer():GetCamera()
         boolean moved = false
+        boolean isCursor = false
 
         if GetSelectedLayer() is EditorLayer3D
 
@@ -322,10 +295,18 @@ class VisualSceneController is Control
                 camera:Move(workVector3)
             end
     
-            if manager:GetFocus() is InteractableItem3D
+            if IsFocused() or manager:GetFocus() is InteractableItem3D
                 moved = false
                 workVector3:Set(0, 0, 0)
-                InteractableItem3D focus = cast(InteractableItem3D, manager:GetFocus())
+
+                InteractableItem3D focus = undefined
+
+                if IsFocused()
+                    isCursor = true
+                    focus = cast(InteractableItem3D, cast(Object, layer:GetCursor()))
+                else
+                    focus = cast(InteractableItem3D, manager:GetFocus())
+                end
     
                 boolean gridSnapEnabled = IsGridSnapping()
     
@@ -351,6 +332,7 @@ class VisualSceneController is Control
                 else
                     if selectionXDirection not= 0 or selectionYDirection not= 0 or selectionZDirection not= 0
                         if gridMoveTimer <= 0
+                            moved = true
                             gridMoveTimer = gridMoveTimerMax
     
                             number x = focus:GetGlobalX()
@@ -423,7 +405,6 @@ class VisualSceneController is Control
     
             if IsFocused() or manager:GetFocus() is InteractableItem2D
                 moved = false
-                boolean isCursor = false
                 workVector2:Set(0, 0)
 
                 Item2D target = undefined
@@ -486,27 +467,26 @@ class VisualSceneController is Control
                     angle = angle + (seconds * selectionRollDirection * SELECTION_ROTATIONAL_SPEED_2D)
                     target:SetRotation(angle)
                 end
-
-                if moved and isCursor
-                    if accessibility not= undefined
-                        Item2D newDummy
-                        text describe = GetDescription()
-                        newDummy:SetProperty(visualResources:EDITOR_TAG, undefined)
-                        newDummy:SetFocusable(true)
-                        newDummy:SetAccessibilityCode(dummyItem:parent:Item:ITEM)
-                        newDummy:SetName(describe)
-                        newDummy:SetInputGroup("PassthroughInput")
-
-                        Add(newDummy)
-                        if dummyItem not= undefined
-                            Remove(dummyItem)
-                        end
-                        dummyItem = newDummy
-                        newDummy:Focus()
-                    end
-                end
             end
+        end
 
+        if moved and isCursor
+            if accessibility not= undefined
+                Item2D newDummy
+                text describe = GetDescription()
+                newDummy:SetProperty(visualResources:EDITOR_TAG, undefined)
+                newDummy:SetFocusable(true)
+                newDummy:SetAccessibilityCode(dummyItem:parent:Item:ITEM)
+                newDummy:SetName(describe)
+                newDummy:SetInputGroup("PassthroughInput")
+
+                Add(newDummy)
+                if dummyItem not= undefined
+                    Remove(dummyItem)
+                end
+                dummyItem = newDummy
+                newDummy:Focus()
+            end
         end
     end
 
@@ -535,7 +515,7 @@ class VisualSceneController is Control
             repeat while counter < filteredItems:GetSize()
                 Item3D item = cast(Item3D, filteredItems:Get(counter))
                 SelectionHighlight3D highlight
-                highlight:Load(item, me)
+                highlight:Load(cast(EditorModel, item), me)
                 filterHighlights:Add(highlight)
                 layer:Add(highlight)
     
@@ -734,21 +714,6 @@ class VisualSceneController is Control
     end
 
     action CreateNewItemPreview(ItemBlueprint schematic)
-
-        // TO-DO: Old-style item creation. Will be replaced soon.
-        if schematic = undefined
-            if GetSelectedLayer() is EditorLayer3D
-                NewItemPreview3D preview
-                preview:Load(me)
-                EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
-                layer:Add(preview)
-                preview:Focus()
-            else
-                // TO-DO
-            end
-                return now
-        end
-
         if schematic is DrawableBlueprint
             DrawableBlueprint drawableBlueprint = cast(DrawableBlueprint, schematic)
             if not (GetSelectedLayer() is EditorLayer2D)
@@ -783,6 +748,36 @@ class VisualSceneController is Control
 
             layer:Add(preview)
             preview:Focus()
+        elseif schematic is ModelBlueprint
+            ModelBlueprint modelBlueprint = cast(ModelBlueprint, schematic)
+
+            if not (GetSelectedLayer() is EditorLayer3D)
+                integer counter = 0
+                boolean found = false
+                repeat while counter < layers:GetSize()
+                    EditorLayer layer = layers:Get(counter)
+                    if layer is EditorLayer3D
+                        SetSelectedLayer(layer)
+                        counter = layers:GetSize()
+                        found = true
+                    end
+                    counter = counter + 1
+                end
+
+                if not found
+                    return now
+                end
+            end
+
+            EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
+
+            // TO-DO: Consider modifying grid size for 3D objects here, same as with 2D objects above.
+
+            NewItemPreview3D preview
+            preview:Load(me, modelBlueprint)
+
+            layer:Add(preview)
+            preview:Focus()
         end
     end
 
@@ -791,8 +786,6 @@ class VisualSceneController is Control
             NewItemPreview3D preview3D = cast(NewItemPreview3D, preview)
             EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
             layer:Remove(preview3D)
-
-            previewScale = preview3D:GetScale()
         else
             NewItemPreview2D preview2D = cast(NewItemPreview2D, preview)
             EditorLayer2D layer = cast(EditorLayer2D, GetSelectedLayer())
@@ -810,7 +803,13 @@ class VisualSceneController is Control
 
             item:Focus()
         elseif layer is EditorLayer3D
-            // TO-DO
+            EditorLayer3D layer3D = cast(EditorLayer3D, layer)
+            CameraItem3D item
+            item:Load(layer:GetCamera(), me)
+            layer3D:Add(item)
+            SetSelection(layer3D, item)
+
+            item:Focus()
         end
     end
 
@@ -856,25 +855,6 @@ class VisualSceneController is Control
             EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
             resultLayer = layer
             layer:Add(model)
-
-            integer type = preview:GetModelPresetCode()
-
-            boolean usingDefaultName = (GetDefaultItemName(type) = model:GetName())
-
-            if usingDefaultName
-//                if type = 0
-//                    cubeCounter = cubeCounter + 1
-//                elseif type = 1
-//                    sphereCounter = sphereCounter + 1
-//                elseif type = 2
-//                    cylinderCounter = cylinderCounter + 1
-//                end
-
-                preview:SetName(GetDefaultItemName(type))
-                SetSelectedItem(preview)
-            end
-
-            previewScale = preview:GetScale()
         elseif newItem is NewItemPreview2D
             NewItemPreview2D preview = cast(NewItemPreview2D, newItem)
             Drawable drawable = preview:ConvertToDrawable()
@@ -1349,10 +1329,6 @@ class VisualSceneController is Control
         if layer not= undefined and not goingToDummy
             layer:ShowCursor(false)
         end
-    end
-
-    action GetPreviewScale returns Vector3
-        return previewScale
     end
 
     /*

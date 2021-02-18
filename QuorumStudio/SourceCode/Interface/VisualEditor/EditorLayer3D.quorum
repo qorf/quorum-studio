@@ -9,11 +9,14 @@ class EditorLayer3D is Layer3D, EditorLayer
     GridPlane grid
     boolean gridSnapEnabled = true
 
-    // TO-DO: This should be an EditorCursor3D.
-    EditorCursor cursor = undefined
+    EditorCursor3D cursor
 
     on create
         Add(grid)
+
+        cursor:Load(me)
+        Add(cursor)
+
         ShowEditorComponents(false)
     end
 
@@ -87,11 +90,7 @@ class EditorLayer3D is Layer3D, EditorLayer
     end
 
     action GetCursor returns EditorCursor
-        return undefined
-    end
-
-    action ShowCursor(boolean visible)
-        // TO-DO
+        return cursor
     end
 
     action ShowEditorComponents(boolean shouldShow)
@@ -100,6 +99,7 @@ class EditorLayer3D is Layer3D, EditorLayer
                 grid:Show()
             end
         else
+            cursor:Hide()
             grid:Hide()
         end
     end
