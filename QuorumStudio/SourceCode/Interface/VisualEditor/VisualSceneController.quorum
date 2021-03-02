@@ -1060,7 +1060,11 @@ class VisualSceneController is Control
             end
             cursor:SetPosition(x, y)
         else
-            // TO-DO: 3D items
+            EditorCursor3D cursor = cast(EditorCursor3D, GetCursor())
+            number x = item:GetGlobalX()
+            number y = item:GetGlobalY()
+            number z = item:GetGlobalZ()
+            cursor:SetPosition(x, y, z)
         end
     end
 
@@ -1107,7 +1111,56 @@ class VisualSceneController is Control
                 return names + (items:GetSize() - 1) + " items, " + position
             end
         else
-            // Handle the 3D cursor here
+            EditorCursor3D cursor3D = cast(EditorCursor3D, cursor)
+            text position = ""
+            if cursor:GetGlobalX() = cast(integer, cursor:GetGlobalX())
+                position = position + cast(integer, cursor:GetGlobalX())
+            else
+                position = position + cursor:GetGlobalX()
+            end
+
+            position = position + " "
+
+            if cursor:GetGlobalY() = cast(integer, cursor:GetGlobalY())
+                position = position + cast(integer, cursor:GetGlobalY())
+            else
+                position = position + cursor:GetGlobalY()
+            end
+
+            position = position + " "
+
+            if cursor:GetGlobalZ() = cast(integer, cursor:GetGlobalZ())
+                position = position + cast(integer, cursor:GetGlobalZ())
+            else
+                position = position + cursor:GetGlobalZ()
+            end
+
+            Array<Item> items = cursor3D:GetItemsAtCursor()
+            if items:GetSize() = 0
+                return position
+            elseif items:GetSize() <= 3
+                integer counter = items:GetSize()
+                text names = ""
+                repeat while counter > 0
+                    counter = counter - 1
+                    if ignoredItem = undefined or items:Get(counter):Equals(ignoredItem) = false
+                        names = names + items:Get(counter):GetName() + ", "
+                    end
+                end
+                return names + position
+            else
+                integer counter = items:GetSize()
+                integer used = 0
+                text names = ""
+                repeat while used < 3
+                    counter = counter - 1
+                    if ignoredItem = undefined or items:Get(counter):Equals(ignoredItem) = false
+                        names = names + items:Get(counter):GetName() + ", "
+                        used = used + 1
+                    end
+                end
+                return names + (items:GetSize() - 1) + " items, " + position
+            end
         end
         return item:GetGlobalX() + " " + item:GetGlobalY()
     end
@@ -1146,8 +1199,8 @@ class VisualSceneController is Control
         selectionZDirection = direction
 
         if direction = 0
-            if manager:GetFocus() is InteractableItem2D
-                InteractableItem focus = cast(InteractableItem2D, manager:GetFocus())
+            if manager:GetFocus() is InteractableItem
+                InteractableItem focus = cast(InteractableItem, manager:GetFocus())
                 NotifyAccessibility(focus, GetDescriptionAtItemPosition(focus))
             end
         end
