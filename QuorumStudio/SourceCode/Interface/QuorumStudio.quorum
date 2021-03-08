@@ -409,7 +409,13 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
         Layer2D layer = me:GetCurrentLayer2D()
         layer:SetAutomaticResizing(true)
-        
+
+        BuildManager builds = behaviors:GetBuildManager()
+        builds:SetOptions(options)
+        builds:SetCodeEditorTabPane(codeTabs)
+        builds:SetOutputEditorTabPane(outputWindow)
+        builds:SetProjectManager(manager)
+
         Load()
         SetupInterface()
         integer width = options:GetWidth()
@@ -431,11 +437,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         SetupInterfaceScaling()
         SetupInputTables()
         
-        BuildManager builds = behaviors:GetBuildManager()
-        builds:SetOptions(options)
-        builds:SetCodeEditorTabPane(codeTabs)
-        builds:SetOutputEditorTabPane(outputWindow)
-        builds:SetProjectManager(manager)
+        
 
         //now that we're all setup, tell the library scanner to run
         ScanLibraryBehavior scanner = behaviors:GetScanLibraryBehavior()

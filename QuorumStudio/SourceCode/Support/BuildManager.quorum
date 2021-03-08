@@ -76,9 +76,12 @@ use Libraries.Development.Versioning.DiffResult
 use Libraries.Language.Compile.CodeCompletionItem
 use Libraries.Development.Environment.Studio.Mobile.IOSSupport
 use Libraries.Development.Environment.Studio.Mobile.AppleNativeCompileListener
+use Libraries.System.Logger
+use Libraries.Development.Environment.Projects.Project
 
 class BuildManager is DebuggerListener, ProcessListener, ProjectListener, MobileListener
     Library library
+    Logger logger
     constant text DEFAULT_LIBRARY_PATH = "Library/Standard"
     constant text DEFAULT_LIBRARY_OUTPUT_PATH = "Library/Compiled"
     Debugger debugger
@@ -380,6 +383,10 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             event:SetIsAdded(true)
         end
 
+        if debugger not= undefined
+            ToggleBreakpointInDebugger(point, undefined)
+        end
+
         FireBreakpointEvent(event)
     end
 
@@ -409,6 +416,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
     end
 
     action Run(DebuggerStartEvent event)
+        logger:Log("Starting Debugger")
         QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
         Toolbar toolbar = studio:GetToolbar()
         Button debugButton = toolbar:GetButton("Debug")
@@ -417,6 +425,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
     end
 
     action Run(DebuggerStopEvent event)
+        logger:Log("Stopping Debugger")
         debugger:Stop()
         debuggingProgram = undefined
         if debuggerLineTextBox not= undefined
@@ -439,6 +448,10 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
 
     action Run(DebuggerStepEvent event)
         if debuggingProgram not= undefined
+            text name = event:GetClassName()
+            integer line = event:GetLine()
+
+            logger:Log("Debugger: " + name + ", " + line)
             CompilerResult result = debuggingProgram:result
             File newFileToOpen = undefined
             SymbolTable table = result:symbolTable
@@ -485,10 +498,14 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
 
         Class value = table:GetClass(bp:GetDotName())
         if value = undefined
-            return now
+            //check the standard library
+            table = library:GetSymbolTable()
+            value = table:GetClass(bp:GetDotName())
+            if value = undefined return now end
         end
         File file = value:GetFile()
         integer line = bp:GetLine()
+        logger:Log("Breakpoint: " + file:GetPath() + ":" + line)
         UpdateDebugger(file, line)
     end
 
@@ -518,11 +535,11 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         CallStackTab call = outputTabs:GetCallStackTab()
 
         UpdateCallStackBehavior behavior
-        behavior:SetBuildInformation(debuggingProgram)
-        behavior:SetCallStackTab(call)
-        behavior:SetOutputEditorTabPane(outputTabs)
-        behavior:SetDebugger(debugger)
-        call:AddBehavior(behavior)
+//        behavior:SetBuildInformation(debuggingProgram)
+//        behavior:SetCallStackTab(call)
+//        behavior:SetOutputEditorTabPane(outputTabs)
+//        behavior:SetDebugger(debugger)
+//        call:AddBehavior(behavior)
     end
 
     action Scan
@@ -1645,21 +1662,51 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         Iterator<Breakpoint> iterator = GetBreakpointIterator()
         repeat while iterator:HasNext()
             Breakpoint bp = iterator:Next()
-            //calculate its dot location from the build information
-            Class clazz = table:GetClassInFile(bp:GetFile():GetAbsolutePath())
-            if clazz not= undefined
-                text key = clazz:GetStaticKey()
-                bp:SetDotName(key)
-                debugger:Add(bp)
-            end
+            ToggleBreakpointInDebugger(bp, table)
         end
         debuggingProgram = info
         debugger:Start()
         debugger:Continue()
     end
 
+    private action ToggleBreakpointInDebugger(Breakpoint bp, SymbolTable table)
+        SymbolTable libraryTable = library:GetSymbolTable()
+        Class clazz = libraryTable:GetClassInFile(bp:GetFile():GetAbsolutePath())
+        File file = bp:GetFile()
+
+        //Is it in the passed in symbol table?
+        if clazz = undefined and table not= undefined
+            clazz = table:GetClassInFile(file:GetAbsolutePath())
+        end
+
+        //it's not in the standard library, so see if the current
+        //file is in a project somewhere. If not, ignore this request.
+        if clazz = undefined
+            if projectManager = undefined
+                return now
+            end
+            
+            Project proj = projectManager:IsProjectSourceFile(file) 
+            if proj not= undefined
+                CompilerResult result = goodCompilerResults:GetValue(proj:GetLocation():GetAbsolutePath())
+                if result not= undefined
+                    table = result:symbolTable
+                    if table not= undefined
+                        clazz = table:GetClassInFile(file:GetAbsolutePath())
+                    end
+                end
+            end           
+        end
+
+        if clazz not= undefined
+            text key = clazz:GetStaticKey()
+            bp:SetDotName(key)
+            debugger:Toggle(bp)
+        end
+    end
+
     private action FindJava returns text
-        //first check if there's a JRE underneat quorum studio
+        //first check if there's a JRE underneath quorum studio
         File file
         text local = file:GetAbsolutePath() + "/jre/bin" + "/" + "java"
         //You can't reliably know the file extension, so check the existence
