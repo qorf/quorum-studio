@@ -534,7 +534,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         //update the callstack
         CallStackTab call = outputTabs:GetCallStackTab()
 
-        UpdateCallStackBehavior behavior
+//        UpdateCallStackBehavior behavior
 //        behavior:SetBuildInformation(debuggingProgram)
 //        behavior:SetCallStackTab(call)
 //        behavior:SetOutputEditorTabPane(outputTabs)
@@ -1664,7 +1664,8 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             Breakpoint bp = iterator:Next()
             ToggleBreakpointInDebugger(bp, table)
         end
-        debuggingProgram = info
+        debuggingProgram = info:Copy()
+        debuggingProgram:result = result:CopyToBareResult()
         debugger:Start()
         debugger:Continue()
     end
