@@ -152,16 +152,18 @@ class UpdateVariablesBehavior is Behavior
 
             VariablesModel model = debugger:GetVariablesModel()
             Array<Variable> value = model:GetRoot()
-            i = 0
-            repeat while i < value:GetSize()
-                Variable variable = value:Get(i)
-                VariableRow row
-                row:SetVariable(variable)
-                row:SetVariablesModel(model)
-                variablesTable:Add(row)
-                i = i + 1
+            if value not= undefined
+                i = 0
+                repeat while i < value:GetSize()
+                    Variable variable = value:Get(i)
+                    VariableRow row
+                    row:SetVariable(variable)
+                    row:SetVariablesModel(model)
+                    variablesTable:Add(row)
+                    i = i + 1
+                end
+                variablesTable:Resize()
             end
-            variablesTable:Resize()
         end
 
         finished = true
