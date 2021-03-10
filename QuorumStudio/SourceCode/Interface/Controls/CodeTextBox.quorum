@@ -62,6 +62,7 @@ use Libraries.Development.Versioning.DiffResult
 use Libraries.Development.Versioning.DiffEdit
 use Libraries.Language.Compile.CompilerError
 use Libraries.Development.Versioning.GitConstants
+use Libraries.Language.Compile.Library
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener, AccessibleControl
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -381,17 +382,23 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
                     ActuallyNavigateToDeclaration(result, file)
                 end
             else //is this file in the standard library
-                BuildManager build = studio:GetBuildManager()
-                
+                ActuallyNavigateToDeclaration(undefined, file)
             end
             
         end
     end
 
     private action ActuallyNavigateToDeclaration(CompilerResult result, File file)
-        SymbolTable table = result:symbolTable
         QuorumStudio qs = cast(QuorumStudio, gameStateManager:GetGame())
         CodeEditorTabPane pane = qs:GetTabPane()
+        SymbolTable table = undefined
+        if result not= undefined
+            table = result:symbolTable
+        else
+            BuildManager build = qs:GetBuildManager()
+            Library library = build:GetLibrary()
+            table = library:GetSymbolTable()
+        end
 
         if table not= undefined
             Class clazz = table:GetClassInFile(file:GetAbsolutePath())
