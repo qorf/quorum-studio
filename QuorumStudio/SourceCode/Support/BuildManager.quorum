@@ -702,10 +702,38 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             //updater:SetBuildInformation(info)
             updater:SetBuildManager(me)
             updater:SetProjectKey(SINGLE_FILE_COMPILE_KEY)
+
+            QuorumProject proj = GetQuorumProject()
+            //if there is a compiler project open, compare the file to that one
+            if proj not= undefined
+                boolean hasGit = proj:HasGitSupport()
+                if hasGit //if it has Git support, do a diff on the file and update accordingly
+                    Repository repository = proj:GetGitRepository()
+                    Git git = proj:GetGit()
+                    DiffRequest req
+                    req:SetFile(libraryFile)
+                    text currentText = box:GetText()
+                    req:SetCurrentText(currentText)
+                    DiffResult res = git:RequestDiff(repository, req)
+                    updater:SetDiffResult(res)
+                end
+            end
             //updater:SetCompilerResult(result)
             updater:SetPath(libraryFile)
             box:AddBehavior(updater)
         end
+    end
+
+    private action GetQuorumProject returns QuorumProject
+        Iterator<QuorumProject> iterator = projectManager:GetIterator()
+        repeat while iterator:HasNext()
+            QuorumProject project = iterator:Next()
+            if project:IsCompilerProject()
+                return project
+            end
+        end
+
+        return undefined
     end
 
     private action GetIndexOf(text path) returns integer
