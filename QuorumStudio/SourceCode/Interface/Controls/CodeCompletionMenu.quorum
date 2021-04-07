@@ -148,8 +148,12 @@ class CodeCompletionMenu is PopupMenu
 
     private action Regenerate
         CodeCompletionResult result = builder:RequestCodeCompletion()
+        
         //the system is telling us we're between parses. Just ignore this request
-        if not result:IsValidCodeCompletion()
+        if result = undefined
+            isParsing = true
+            return now
+        elseif not result:IsValidCodeCompletion()
             isParsing = true
             return now
         else //seems like a valid request

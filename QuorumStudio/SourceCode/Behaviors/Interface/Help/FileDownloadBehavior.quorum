@@ -20,6 +20,7 @@ use Libraries.Development.Environment.Studio.Interface.OutputTab
 use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Interface.AccessibilityManager
 use Libraries.Compute.Math
+use Libraries.System.Logger
 
 class FileDownloadBehavior is QuorumStudioBehavior, NetworkRequestListener
     QuorumStudio studio = undefined
@@ -31,6 +32,7 @@ class FileDownloadBehavior is QuorumStudioBehavior, NetworkRequestListener
     OutputEditorTabPane pane = undefined
     OutputTab out = undefined
     CheckForUpdatesDialog dialog = undefined
+    Logger logger
 
     action SetMainApplication(QuorumStudio studio)
         me:studio = studio
@@ -79,7 +81,7 @@ Update Found. Downloading " + fileDownloadToRequest
         check
             http:SendRequest(request)
         detect e
-            output e:GetStackTraceMessage()
+            logger:Log(e:GetStackTraceMessage())
         end      
     end
 
