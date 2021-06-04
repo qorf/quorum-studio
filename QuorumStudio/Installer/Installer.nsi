@@ -10,9 +10,9 @@
 ;General
 
     ;Name and file
-    !define PRODUCT_VERSION "2.5.0.0"
+    !define PRODUCT_VERSION "2.8.1.0"
     !define REGISTRY_KEY "Software\QuorumStudio"
-    !define VERSION "2.5.0"
+    !define VERSION "2.8.1"
 
     VIProductVersion "${PRODUCT_VERSION}"
     VIFileVersion "${PRODUCT_VERSION}"
@@ -91,6 +91,9 @@ Section "Core" SecDummy
 
   SetOutPath "$INSTDIR"
   
+  ;Delete the old standard library so it can be copied in.
+  RMDir /r $INSTDIR\Library
+  
   ;ADD YOUR OWN FILES HERE...
   File QuorumStudio.exe
   File quorum.ico
@@ -118,6 +121,7 @@ Section "Core" SecDummy
 
   ;Create uninstaller
   WriteUninstaller "$INSTDIR\Uninstall.exe"
+  
   
   ;;${unregisterExtension} ".qp" "Quorum Project File"
 
