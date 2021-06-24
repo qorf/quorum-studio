@@ -55,7 +55,7 @@ use Libraries.Language.Compile.Symbol.Type
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Language.Compile.Symbol.ActionCallResolution
 use Libraries.Language.Compile.QualifiedName
-use Libraries.Interface.AccessibilityManager
+use Libraries.Interface.Accessibility
 use Libraries.Interface.Controls.Tab
 use Libraries.Containers.HashTable
 use Libraries.Development.Versioning.DiffResult
@@ -63,6 +63,7 @@ use Libraries.Development.Versioning.DiffEdit
 use Libraries.Language.Compile.CompilerError
 use Libraries.Development.Versioning.GitConstants
 use Libraries.Language.Compile.Library
+use Libraries.Interface.Accessibility
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener, AccessibleControl
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -838,18 +839,18 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     end
 
     private action AnnounceWhereAmI
-        AccessibilityManager accessibility = gameStateManager:GetAccessibilityManager()
+        Accessibility accessibility = gameStateManager:GetAccessibility()
         if accessibility not= undefined
-            accessibility:Notify(me, GetWhereAmI(), accessibility:OTHER_NOTIFICATION)
+            //accessibility:Notify(me, GetWhereAmI(), accessibility:OTHER_NOTIFICATION)
         end
     end
 
     // Used to announce the current line. Useful after moving the caret to an
     // arbitrary line, e.g. using smart navigation or go to.
     private action AnnounceCurrentLine
-        AccessibilityManager accessibility = gameStateManager:GetAccessibilityManager()
+        Accessibility accessibility = gameStateManager:GetAccessibility()
         if accessibility not= undefined
-            accessibility:Notify(me, GetCurrentLineText(), accessibility:OTHER_NOTIFICATION)
+            //accessibility:Notify(me, GetCurrentLineText(), accessibility:OTHER_NOTIFICATION)
         end
     end
 
