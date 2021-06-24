@@ -107,6 +107,7 @@ class VisualSceneController is Control
     Item3DPropertiesDialog item3dPropertiesDialog = undefined
     Item2DPropertiesDialog item2dPropertiesDialog = undefined
     Camera2DPropertiesDialog camera2dPropertiesDialog = undefined
+    Camera3DPropertiesDialog camera3dPropertiesDialog = undefined
 
     // A reference to the find dialog for this controller.
     VisualEditorFindDialog findDialog
@@ -220,6 +221,14 @@ class VisualSceneController is Control
         return camera2dPropertiesDialog
     end
 
+    action SetCameraProperties3DDialog(Camera3DPropertiesDialog dialog)
+        camera3dPropertiesDialog = dialog
+    end
+
+    action GetCameraProperties3DDialog returns Camera3DPropertiesDialog
+        return camera3dPropertiesDialog
+    end
+
     action GetProperties2DDialog returns Item2DPropertiesDialog
         return item2dPropertiesDialog
     end
@@ -232,7 +241,11 @@ class VisualSceneController is Control
                 item2dPropertiesDialog:FocusField()
             end
         elseif GetSelectedLayer() is EditorLayer3D
-            item3dPropertiesDialog:FocusField()
+            if GetSelectedItem() is CameraItem3D
+                camera3dPropertiesDialog:FocusField()
+            else
+                item3dPropertiesDialog:FocusField()
+            end
         end
     end
 
@@ -1359,10 +1372,7 @@ class VisualSceneController is Control
 
     action GainedFocus(FocusEvent event)
         SetSelectedItem(undefined)
-        EditorLayer layer = GetSelectedLayer()
-        if layer not= undefined
-            layer:ShowCursor(true)
-        end
+        UpdateCursorVisibility()
 
         if accessibility not= undefined
             // Update the description for the controller in accessibility.
@@ -1376,7 +1386,7 @@ class VisualSceneController is Control
         boolean goingToDummy = false
         if item not= undefined
             integer value1 = item:GetHashCode()
-            goingToDummy = value1 = value
+            goingToDummy = (value1 = value)
         end
         EditorLayer layer = GetSelectedLayer()
         if layer not= undefined and not goingToDummy
@@ -1399,6 +1409,25 @@ class VisualSceneController is Control
         end
 
         return undefined
+    end
+
+    /*
+    This action sets the cursor to either be visible or hidden, as is appropriate
+    based on the current editor context. For example, if a layer is active and no
+    items are selected, it will show the cursor, or hide it if there are already
+    selected items.
+
+    This is called automatically by the VisualEditorSelection when the selection
+    changes.
+    */
+    action UpdateCursorVisibility
+        EditorLayer layer = selection:GetSelectedLayer()
+        if layer = undefined
+            return now
+        end
+
+        // If an item is selected, hide the cursor. Otherwise, show it.
+        layer:ShowCursor(selection:GetSelectedItem() = undefined)
     end
 
     action GetNameCount(text name) returns integer

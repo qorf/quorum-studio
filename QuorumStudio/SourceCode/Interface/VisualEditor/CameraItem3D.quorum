@@ -16,7 +16,22 @@ class CameraItem3D is CameraItem, InteractableItem3D
         SetPosition(camera:GetPosition():GetX(), camera:GetPosition():GetY(), camera:GetPosition():GetZ())
     end
 
+    action SetYaw(number yaw)
+        SetRotation(yaw, GetPitch(), GetRoll())
+    end
+
+    action SetPitch(number pitch)
+        SetRotation(GetYaw(), pitch, GetRoll())
+    end
+
+    action SetRoll(number roll)
+        SetRotation(GetYaw(), GetPitch(), roll)
+    end
+
     action SetRotation(number yaw, number pitch, number roll)
+        parent:EditorModel:yaw = yaw
+        parent:EditorModel:pitch = pitch
+        parent:EditorModel:roll = roll
         Camera camera = GetCamera()
         camera:SetYawPitchRoll(yaw, pitch, roll)
     end

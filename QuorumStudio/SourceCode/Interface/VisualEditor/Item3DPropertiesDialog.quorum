@@ -577,10 +577,14 @@ class Item3DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
                     Hide()
                 end
             else
-                if selection:GetSelectedItem() is InteractableItem3D
+                if selection:GetSelectedItem() is InteractableItem3D and not (selection:GetSelectedItem() is CameraItem)
                     SetFields(cast(InteractableItem3D, selection:GetSelectedItem()))
                     if not IsShowing()
                         Show()
+                    end
+                else
+                    if IsShowing()
+                        Hide()
                     end
                 end
             end
@@ -588,7 +592,14 @@ class Item3DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
             ButtonGroupSelection selection = cast(ButtonGroupSelection, event:GetSelection())
             InteractableItem item = controller:GetSelectedItem()
             if item not= undefined
-                item:SetEditorResponsiveness(selection:GetIndex())
+                integer index = selection:GetIndex()
+                item:SetEditorResponsiveness(index)
+
+                // If the item is responsive, adjust the default mass to be non-zero
+                if index = 2 and item:GetEditorMass() = 0
+                    item:SetEditorMass(1)
+                    massField:SetText("" + item:GetEditorMass())
+                end
             end
         end
     end
