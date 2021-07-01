@@ -1,0 +1,86 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Scenes.SceneProperties
+use Libraries.Data.Formats.JavaScriptObjectNotation
+
+class NewModelPreview is NewItemPreview3D
+
+    action Load(VisualSceneController controller, ModelBlueprint schematic)
+        SetController(controller)
+        SetItemBlueprint(schematic)
+
+        Color color = schematic:GetColor():Copy()
+        color:SetAlpha(color:GetAlpha() * 0.75)
+        integer modelType = schematic:GetModelType()
+        SceneProperties properties
+
+        SetName(schematic:GetName() + controller:GetNextNamePostfix(schematic:GetName()))
+        SetDescription(schematic:GetDescription())
+
+        if modelType = properties:BOX
+            LoadBox(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        elseif modelType = properties:SPHERE
+            LoadSphere(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        elseif modelType = properties:CYLINDER
+            LoadCylinder(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        end
+
+        SetScale(schematic:GetScaleX(), schematic:GetScaleY(), schematic:GetScaleZ())
+        SetRotation(schematic:GetYaw(), schematic:GetPitch(), schematic:GetRoll())
+
+        if schematic:IsPhysicsEnabled()
+            SetEditorPhysicsEnabled(true)
+            if schematic:GetResponsiveness() >= 0
+                SetEditorResponsiveness(schematic:GetResponsiveness())
+            end
+        end
+
+        EditorCursor cursor = controller:GetCursor()
+        if cursor is EditorCursor3D
+            EditorCursor3D cursor3D = cast(EditorCursor3D, cursor)
+            SetPosition(cursor3D:GetX(), cursor3D:GetY(), cursor:GetZ())
+        end
+    end
+
+    action ConvertToModel returns Model
+        ModelBlueprint schematic = cast(ModelBlueprint, GetItemBlueprint())
+
+        EditorModel model
+        model:SetName(GetName())
+        
+        Color color = GetDiffuseColor():Copy()
+        color:SetAlpha(1.0)
+        integer modelType = schematic:GetModelType()
+        SceneProperties properties
+
+        if modelType = properties:BOX
+            model:LoadBox(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        elseif modelType = properties:SPHERE
+            model:LoadSphere(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        elseif modelType = properties:CYLINDER
+            model:LoadCylinder(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        end
+
+        //add a property with its color for now
+        JavaScriptObjectNotation jsonColor
+        jsonColor:SetKey("Color")
+        jsonColor:SetArray()
+        jsonColor:Add(color:GetRed())
+        jsonColor:Add(color:GetGreen())
+        jsonColor:Add(color:GetBlue())
+        jsonColor:Add(color:GetAlpha())
+        model:SetProperty(jsonColor:GetKey(), jsonColor)
+
+        JavaScriptObjectNotation jsonType
+        jsonType:SetKey("Type")
+
+        model:SetPosition(GetPosition())
+        model:SetScale(GetScaleX(), GetScaleY(), GetScaleZ())
+        model:SetYawPitchRoll(GetYaw(), GetPitch(), GetRoll())
+        model:SetShape(GetShape())
+
+        return model
+    end
+
+end

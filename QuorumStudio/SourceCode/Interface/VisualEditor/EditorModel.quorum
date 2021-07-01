@@ -12,9 +12,6 @@ use Libraries.Game.Scenes.SceneProperties
 
 class EditorModel is Model
 
-    number scaleX = 1
-    number scaleY = 1
-    number scaleZ = 1
     number yaw = 0
     number pitch = 0
     number roll = 0
@@ -65,87 +62,11 @@ class EditorModel is Model
         end
     end
 
-    action Scale(Vector3 vector)
-//        number yaw = me:yaw
-//        number pitch = me:pitch
-//        number roll = me:roll
-//        SetRotation(0, 0, 0)
-
-        scaleX = scaleX * vector:GetX()
-        scaleY = scaleY * vector:GetY()
-        scaleZ = scaleZ * vector:GetZ()
-        parent:Model:Scale(vector)
-
-//        SetRotation(yaw, pitch, roll)
-    end
-
-    action SetScaleX(number scale)
-//        number yaw = me:yaw
-//        number pitch = me:pitch
-//        number roll = me:roll
-//        SetRotation(0, 0, 0)
-
-        number modify = (1.0 /  scaleX) * scale
-        scaleX = scale
-        parent:Model:Scale(modify, 1, 1)
-
-//        SetRotation(yaw, pitch, roll)
-    end
-
-    action SetScaleY(number scale)
-//        number yaw = me:yaw
-//        number pitch = me:pitch
-//        number roll = me:roll
-//        SetRotation(0, 0, 0)
-
-        number modify = (1.0 /  scaleY) * scale
-        scaleY = scale
-        parent:Model:Scale(1, modify, 1)
-
-//        SetRotation(yaw, pitch, roll)
-    end
-
-    action SetScaleZ(number scale)
-//        number yaw = me:yaw
-//        number pitch = me:pitch
-//        number roll = me:roll
-//        SetRotation(0, 0, 0)
-
-        number modify = (1.0 /  scaleZ) * scale
-        scaleZ = scale
-        parent:Model:Scale(1, 1, modify)
-
-//        SetRotation(yaw, pitch, roll)
-    end
-
-    action SetScale(number x, number y, number z)
-//        number yaw = me:yaw
-//        number pitch = me:pitch
-//        number roll = me:roll
-//        SetRotation(0, 0, 0)
-
-        number modifyX = (1.0 /  scaleX) * x
-        scaleX = x
-        number modifyY = (1.0 /  scaleY) * y
-        scaleY = y
-        number modifyZ = (1.0 /  scaleZ) * z
-        scaleZ = z
-
-        parent:Model:Scale(modifyX, modifyY, modifyZ)
-
-//        SetRotation(yaw, pitch, roll)
-    end
-
     action SetRotation(Vector3 rotation)
         SetRotation(rotation:GetX(), rotation:GetY(), rotation:GetZ())
     end
 
     action SetRotation(number newYaw, number newPitch, number newRoll)
-        number scaleX = me:scaleX
-        number scaleY = me:scaleY
-        number scaleZ = me:scaleZ
-
-        SetScale(1, 1, 1)
 
         if roll not= 0
             Rotate(0, 0, 1, -roll)
@@ -170,8 +91,6 @@ class EditorModel is Model
         if roll not= 0
             Rotate(0, 0, 1, roll)
         end
-
-        SetScale(scaleX, scaleY, scaleZ)
     end
 
     action GetYaw returns number
@@ -187,27 +106,13 @@ class EditorModel is Model
     end
 
     action ResetScale
-        Vector3 vector
-        vector:Set(1.0 / scaleX, 1.0 / scaleY, 1.0 / scaleZ)
-        Scale(vector)
+        SetScale(1, 1, 1)
     end
 
     action GetScale returns Vector3
         Vector3 vector
-        vector:Set(scaleX, scaleY, scaleZ)
+        vector:Set(GetScaleX(), GetScaleY(), GetScaleZ())
         return vector
-    end
-
-    action GetScaleX returns number
-        return scaleX
-    end
-
-    action GetScaleY returns number
-        return scaleY
-    end
-
-    action GetScaleZ returns number
-        return scaleZ
     end
 
 end

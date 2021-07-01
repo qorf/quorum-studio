@@ -18,12 +18,8 @@ use Libraries.Interface.Selections.ButtonGroupSelection
 use Libraries.Interface.Controls.ButtonGroup
 use Libraries.Interface.Controls.RadioButton
 
-class Item2DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
+class Item2DPropertiesDialog is PropertiesDialog
     
-    boolean initialized = false
-
-    VisualSceneController controller = undefined
-
     // Controls used on the dialog itself
     Label nameLabel = undefined
     TextField nameField = undefined
@@ -39,22 +35,7 @@ class Item2DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
     TextField frictionField = undefined
     TextField restitutionField = undefined
 
-    action Initialize(VisualSceneController controller)
-        if initialized
-            return now
-        end
-
-        SetInputGroup("PropertiesDialog")
-
-        initialized = true
-
-        // Used to set focus order at the end of this action.
-        Array<Control> focusArray
-
-        me:controller = controller
-        controller:SetProperties2DDialog(me)
-        controller:AddSelectionListener(me)
-
+    private action CreateInterface(Control panel, Array<Control> focusArray)
         Label label
         nameLabel = label
         
@@ -62,24 +43,6 @@ class Item2DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
         nameField = field
 
         SetName("Object Properties")
-
-        SetPixelWidth(300)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-
-        LabelBoxView view
-        Color color
-        view:SetBorderThickness(1)
-        view:SetBorderStyle(view:ALL - view:TOP)
-        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
-        
-        Control panel
-        FlowLayout propertiesLayout
-        panel:SetLayout(propertiesLayout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-        panel:SetBorderColor(color:Black())
-        panel:SetBorderThickness(1)
-        panel:SetView2D(view)
 
         Label basicPropertiesLabel
         basicPropertiesLabel:SetSize(18)
@@ -418,34 +381,6 @@ class Item2DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
 
         focusArray:Add(restitutionField)
         panel:Add(restitutionContainer)
-
-        Add(panel)
-
-        // Set up focus targets.
-        focusArray:Get(0):SetPreviousFocus(focusArray:Get(focusArray:GetSize() - 1))
-        focusArray:Get(0):SetNextFocus(focusArray:Get(1))
-
-        integer i = 1
-        repeat while i < focusArray:GetSize()
-            Control control = focusArray:Get(i)
-            control:SetPreviousFocus(focusArray:Get(i - 1))
-            control:SetNextFocus(focusArray:Get((i + 1) mod focusArray:GetSize()))
-            i = i + 1
-        end
-    end
-
-    action Show
-        if controller not= undefined
-            LayoutProperties properties = GetDefaultLayoutProperties()
-            properties:SetPercentageX(0)
-            properties:SetPercentageY(0)
-            properties:SetPercentageOriginX(1)
-            //properties:SetPercentageOriginY(1)
-            properties:SetPixelX(controller:GetGlobalX() + controller:GetWidth() - 5)
-//            properties:SetPixelY(controller:GetGlobalY() + controller:GetHeight())
-            properties:SetPixelY(controller:GetGlobalY())
-        end
-        parent:Dialog:Show()
     end
 
     action SelectionChanged(SelectionEvent event)
@@ -470,7 +405,7 @@ class Item2DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
             end
         elseif event:GetSelection() is ButtonGroupSelection
             ButtonGroupSelection selection = cast(ButtonGroupSelection, event:GetSelection())
-            InteractableItem item = controller:GetSelectedItem()
+            InteractableItem item = GetSceneController():GetSelectedItem()
             if item not= undefined
                 item:SetEditorResponsiveness(selection:GetIndex())
             end
@@ -496,7 +431,7 @@ class Item2DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
     end
 
     action TextChanged(TextChangeEvent event)
-        InteractableItem2D currentItem = cast(InteractableItem2D, controller:GetSelectedItem())
+        InteractableItem2D currentItem = cast(InteractableItem2D, GetSceneController():GetSelectedItem())
         Control control = event:GetControl()
 
         if currentItem = undefined
@@ -604,7 +539,7 @@ class Item2DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
     end
 
     action SetPhysicsEnabled(boolean enabled)
-        InteractableItem item = controller:GetSelectedItem()
+        InteractableItem item = GetSceneController():GetSelectedItem()
         if item not= undefined and item:IsEditorPhysicsEnabled() not= enabled
             item:SetEditorPhysicsEnabled(enabled)
         end
@@ -618,10 +553,6 @@ class Item2DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
     action FocusField
         nameField:Focus()
         nameField:Select(0, nameField:GetSize(), true)
-    end
-
-    action GetSceneController returns VisualSceneController
-        return controller
     end
 
     action SetNameField(text name)

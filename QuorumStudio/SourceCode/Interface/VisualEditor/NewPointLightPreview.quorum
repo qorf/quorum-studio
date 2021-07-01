@@ -1,0 +1,60 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.Material
+use Libraries.Game.Graphics.ColorAttribute
+
+class NewPointLightPreview is NewItemPreview3D
+
+    number intensity = 0
+
+    action Load(VisualSceneController controller, PointLightBlueprint schematic)
+        SetController(controller)
+        SetItemBlueprint(schematic)
+
+        Color color
+        color:SetColor(schematic:GetRed(), schematic:GetGreen(), schematic:GetBlue(), 0.75)
+        
+        SetName(schematic:GetName() + controller:GetNextNamePostfix(schematic:GetName()))
+        SetDescription(schematic:GetDescription())
+
+        LoadBox(0.5, 0.5, 0.5, schematic:GetModelTexture())
+    
+        // We need to add a diffuse color attribute to the model so that the textured box also supports color.
+        Material material = GetMaterials():Get(0)
+        ColorAttribute attribute
+        attribute:SetAttribute(attribute:GetDiffuseValue(), color)
+        material:Add(attribute)
+        
+        intensity = schematic:GetIntensity()
+
+        EditorCursor cursor = controller:GetCursor()
+        if cursor is EditorCursor3D
+            EditorCursor3D cursor3D = cast(EditorCursor3D, cursor)
+            SetPosition(cursor3D:GetX(), cursor3D:GetY(), cursor:GetZ())
+        end
+    end
+
+    action ConvertToModel returns Model
+        EditorPointLight light
+        light:SetName(GetName())
+        light:SetDescription(GetDescription())
+        
+        PointLightBlueprint schematic = cast(PointLightBlueprint, GetItemBlueprint())
+        Color color = GetDiffuseColor():Copy()
+        color:SetAlpha(1.0)
+
+        light:SetLight(color, GetPosition(), GetIntensity())
+
+        return light
+    end
+
+    action SetIntensity(number intensity)
+        me:intensity = intensity
+    end
+
+    action GetIntensity returns number
+        return intensity
+    end
+
+end

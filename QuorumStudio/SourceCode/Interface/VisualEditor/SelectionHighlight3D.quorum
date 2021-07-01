@@ -7,6 +7,7 @@ use Libraries.Game.Graphics.Color
 use Libraries.Compute.Vector3
 use Libraries.Game.BoundingBox
 use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Compute.Matrix4
 
 class SelectionHighlight3D is InteractableItem3D, SelectionHighlight
     
@@ -34,54 +35,32 @@ class SelectionHighlight3D is InteractableItem3D, SelectionHighlight
 
         SceneProperties properties
 
-        if item:HasProperty(properties:SCALE)
-            JavaScriptObjectNotation json = item:GetProperty(properties:SCALE)
-            parent:EditorModel:scaleX = json:Get(0):GetNumber()
-            parent:EditorModel:scaleY = json:Get(1):GetNumber()
-            parent:EditorModel:scaleZ = json:Get(2):GetNumber()
-        end
-
-        number scaleX = parent:EditorModel:scaleX
-        number scaleY = parent:EditorModel:scaleY
-        number scaleZ = parent:EditorModel:scaleZ
+        SetScale(item:GetScaleX(), item:GetScaleY(), item:GetScaleZ())
 
         boolean loadedShape = false
         if item is Model
             Model model = cast(Model, item)
             integer type = model:GetModelType()
             if type = properties:BOX
-                LoadBox(item:GetWidth() * scaleX + padding, item:GetHeight() * scaleY + padding, item:GetDepth() * scaleZ + padding, color)
+                LoadBox(item:GetWidth() + padding, item:GetHeight() + padding, item:GetDepth() + padding, color)
                 loadedShape = true
             elseif type = properties:SPHERE
-                LoadSphere(item:GetWidth() * scaleX + padding, item:GetHeight() * scaleY + padding, item:GetDepth() * scaleZ + padding, color)
+                LoadSphere(item:GetWidth() + padding, item:GetHeight() + padding, item:GetDepth() + padding, color)
                 loadedShape = true
             elseif type = properties:CYLINDER
-                LoadCylinder(item:GetWidth() * scaleX + padding, item:GetHeight() * scaleY + padding, item:GetDepth() * scaleZ + padding, color)
+                LoadCylinder(item:GetWidth() + padding, item:GetHeight() + padding, item:GetDepth() + padding, color)
                 loadedShape = true
             elseif type = properties:PLANE
-                LoadBox(item:GetWidth() * scaleX + padding, padding, item:GetDepth() * scaleZ + padding, color)
+                LoadBox(item:GetWidth() + padding, padding, item:GetDepth() + padding, color)
                 loadedShape = true
             end
         end
 
         if loadedShape = false
-            LoadBox(item:GetWidth() * scaleX + padding, item:GetHeight() * scaleY + padding, item:GetDepth() * scaleZ + padding, color)
+            LoadBox(item:GetWidth() + padding, item:GetHeight() + padding, item:GetDepth() + padding, color)
         end
 
-        if item:HasProperty(properties:ROTATION)
-            JavaScriptObjectNotation json = item:GetProperty(properties:ROTATION)
-            number yaw = json:Get(0):GetNumber()
-            number pitch = json:Get(1):GetNumber()
-            number roll = json:Get(2):GetNumber()
-
-            Rotate(0, 1, 0, yaw)
-            Rotate(1, 0, 0, pitch)
-            Rotate(0, 0, 1, roll)
-
-            parent:EditorModel:yaw = yaw
-            parent:EditorModel:pitch = pitch
-            parent:EditorModel:roll = roll
-        end
+        SetRotationTransform(item:GetRotationTransform())
 
         SetPosition(item:GetGlobalPosition())
 
@@ -101,136 +80,7 @@ class SelectionHighlight3D is InteractableItem3D, SelectionHighlight
         parent:EditorModel:SetDiffuseColor(GetResources():SELECTION_HIGHLIGHT_UNSELECTED_COLOR)
     end
 
-    action GetDiffuseColor returns Color
-        if item not= undefined
-            return item:GetDiffuseColor()
-        else
-            return undefined
-        end
-    end
-
-    action SetDiffuseColor(Color color)
-        if item not= undefined
-            item:SetDiffuseColor(color)
-        end
-    end
-
-    action Scale(Vector3 vector)
-        parent:Model:Scale(vector)
-        if item not= undefined
-            item:Scale(vector)
-            UpdateScaleProperty()
-        end
-    end
-
-    action Scale(number x, number y, number z)
-        parent:Model:Scale(x, y, z)
-        if item not= undefined
-            item:Scale(x, y, z)
-            UpdateScaleProperty()
-        end
-    end
-
-    action SetScaleX(number scale)
-        number modify = (1.0 /  GetScaleX()) * scale
-        parent:InteractableItem3D:SetScaleX(scale)
-        if item not= undefined
-            item:Scale(modify, 1, 1)
-            UpdateScaleProperty()
-        end
-    end
-
-    action SetScaleY(number scale)
-        number modify = (1.0 /  GetScaleY()) * scale
-        parent:InteractableItem3D:SetScaleY(scale)
-        if item not= undefined
-            item:Scale(1, modify, 1)
-            UpdateScaleProperty()
-        end
-    end
-
-    action SetScaleZ(number scale)
-        number modify = (1.0 /  GetScaleZ()) * scale
-        parent:InteractableItem3D:SetScaleZ(scale)
-        if item not= undefined
-            item:Scale(1, 1, modify)
-            UpdateScaleProperty()
-        end
-    end
-
-    private action UpdateScaleProperty
-        SceneProperties properties
-        JavaScriptObjectNotation json = undefined
-        if item:HasProperty(properties:SCALE)
-            json = item:GetProperty(properties:SCALE)
-        else
-            JavaScriptObjectNotation newJson
-            json = newJson
-            json:SetArray()
-            json:Add(1.0)
-            json:Add(1.0)
-            json:Add(1.0)
-            item:SetProperty(properties:SCALE, json)
-        end
-
-        JavaScriptObjectNotation temp = json:Get(0)
-        temp:SetNumber(GetScaleX())
-        temp = json:Get(1)
-        temp:SetNumber(GetScaleY())
-        temp = json:Get(2)
-        temp:SetNumber(GetScaleZ())
-    end
-
-    action SetRotation(number newYaw, number newPitch, number newRoll)
-        number yaw = parent:EditorModel:yaw
-        number pitch = parent:EditorModel:pitch
-        number roll = parent:EditorModel:roll
-
-        if item not= undefined
-            if roll not= 0
-                item:Rotate(0, 0, 1, -roll)
-            end
-            if pitch not= 0
-                item:Rotate(1, 0, 0, -pitch)
-            end
-            if yaw not= 0
-                item:Rotate(0, 1, 0, -yaw)
-            end
-    
-            if newYaw not= 0
-                item:Rotate(0, 1, 0, newYaw)
-            end
-            if newPitch not= 0
-                item:Rotate(1, 0, 0, newPitch)
-            end
-            if newRoll not= 0
-                item:Rotate(0, 0, 1, newRoll)
-            end
-
-            SceneProperties properties
-            JavaScriptObjectNotation json = undefined
-            if item:HasProperty(properties:ROTATION)
-                json = item:GetProperty(properties:ROTATION)
-            else
-                JavaScriptObjectNotation newJson
-                json = newJson
-                json:SetArray()
-                json:Add(0.0)
-                json:Add(0.0)
-                json:Add(0.0)
-                item:SetProperty(properties:ROTATION, json)
-            end
-    
-            JavaScriptObjectNotation temp = json:Get(0)
-            temp:SetNumber(newYaw)
-            temp = json:Get(1)
-            temp:SetNumber(newPitch)
-            temp = json:Get(2)
-            temp:SetNumber(newRoll)
-        end
-
-        parent:InteractableItem3D:SetRotation(newYaw, newPitch, newRoll)
-    end
+    // Overriding the Move calls below also overrides the SetX/Y/Z/Position calls, which use Move in their implementation.
 
     action MoveX(number x)
         parent:Model:MoveX(x)

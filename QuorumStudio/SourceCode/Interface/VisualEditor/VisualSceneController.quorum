@@ -103,11 +103,15 @@ class VisualSceneController is Control
     number gridMoveTimer = 0
     number gridMoveTimerMax = 0.5
 
-    // A reference to the property dialogs for this controller. Provided from the tab.
-    Item3DPropertiesDialog item3dPropertiesDialog = undefined
-    Item2DPropertiesDialog item2dPropertiesDialog = undefined
-    Camera2DPropertiesDialog camera2dPropertiesDialog = undefined
-    Camera3DPropertiesDialog camera3dPropertiesDialog = undefined
+    // A reference to the property dialogs for this controller.
+    Item3DPropertiesDialog item3dPropertiesDialog
+    Item2DPropertiesDialog item2dPropertiesDialog
+    Camera2DPropertiesDialog camera2dPropertiesDialog
+    Camera3DPropertiesDialog camera3dPropertiesDialog
+    PointLightPropertiesDialog pointLightPropertiesDialog
+
+    // An array containing the different property dialogs.
+    Array<PropertiesDialog> propertiesDialogs
 
     // A reference to the find dialog for this controller.
     VisualEditorFindDialog findDialog
@@ -134,6 +138,18 @@ class VisualSceneController is Control
 
         selection:Initialize(me)
         findDialog:Initialize(me)
+
+        propertiesDialogs:Add(item2dPropertiesDialog)
+        propertiesDialogs:Add(item3dPropertiesDialog)
+        propertiesDialogs:Add(camera2dPropertiesDialog)
+        propertiesDialogs:Add(camera3dPropertiesDialog)
+        propertiesDialogs:Add(pointLightPropertiesDialog)
+
+        integer counter = 0
+        repeat while counter < propertiesDialogs:GetSize()
+            propertiesDialogs:Get(counter):Initialize(me)
+            counter = counter + 1
+        end
     end
 
     action GetDescription returns text
@@ -193,6 +209,14 @@ class VisualSceneController is Control
         end
     end
 
+    action HideDialogs
+        integer counter = 0
+        repeat while counter < propertiesDialogs:GetSize()
+            propertiesDialogs:Get(counter):Hide()
+            counter = counter + 1
+        end
+    end
+
     action GetEditorTag returns text
         return visualResources:EDITOR_TAG
     end
@@ -233,19 +257,23 @@ class VisualSceneController is Control
         return item2dPropertiesDialog
     end
 
+    action GetPointLightPropertiesDialog returns PointLightPropertiesDialog
+        return pointLightPropertiesDialog
+    end
+
+    action SetPointLightPropertiesDialog(PointLightPropertiesDialog pointLightPropertiesDialog)
+        me:pointLightPropertiesDialog = pointLightPropertiesDialog
+    end
+
     action FocusItemProperties
-        if GetSelectedLayer() is EditorLayer2D
-            if GetSelectedItem() is CameraItem2D
-                camera2dPropertiesDialog:FocusField()
-            else
-                item2dPropertiesDialog:FocusField()
+        integer counter = 0
+        repeat while counter < propertiesDialogs:GetSize()
+            PropertiesDialog dialog = propertiesDialogs:Get(counter)
+            if dialog:IsShowing()
+                dialog:FocusField()
+                return now
             end
-        elseif GetSelectedLayer() is EditorLayer3D
-            if GetSelectedItem() is CameraItem3D
-                camera3dPropertiesDialog:FocusField()
-            else
-                item3dPropertiesDialog:FocusField()
-            end
+            counter = counter + 1
         end
     end
 
@@ -527,7 +555,14 @@ class VisualSceneController is Control
             integer counter = 0
             repeat while counter < filteredItems:GetSize()
                 Item3D item = cast(Item3D, filteredItems:Get(counter))
-                SelectionHighlight3D highlight
+                SelectionHighlight3D highlight = undefined
+                if item is EditorPointLight
+                    PointLightSelectionHighlight light
+                    highlight = light
+                else
+                    ModelSelectionHighlight model
+                    highlight = model
+                end
                 highlight:Load(cast(EditorModel, item), me)
                 filterHighlights:Add(highlight)
                 layer:Add(highlight)
@@ -761,9 +796,8 @@ class VisualSceneController is Control
 
             layer:Add(preview)
             preview:Focus()
-        elseif schematic is ModelBlueprint
-            ModelBlueprint modelBlueprint = cast(ModelBlueprint, schematic)
-
+        elseif schematic is ModelBlueprint or schematic is PointLightBlueprint
+            
             if not (GetSelectedLayer() is EditorLayer3D)
                 integer counter = 0
                 boolean found = false
@@ -786,8 +820,18 @@ class VisualSceneController is Control
 
             // TO-DO: Consider modifying grid size for 3D objects here, same as with 2D objects above.
 
-            NewItemPreview3D preview
-            preview:Load(me, modelBlueprint)
+            NewItemPreview3D preview = undefined
+            if schematic is ModelBlueprint
+                NewModelPreview modelPreview
+                preview = modelPreview
+                ModelBlueprint modelBlueprint = cast(ModelBlueprint, schematic)
+                modelPreview:Load(me, modelBlueprint)
+            else
+                NewPointLightPreview lightPreview
+                preview = lightPreview
+                PointLightBlueprint lightBlueprint = cast(PointLightBlueprint, schematic)
+                lightPreview:Load(me, lightBlueprint)
+            end
 
             layer:Add(preview)
             preview:Focus()
@@ -892,8 +936,10 @@ class VisualSceneController is Control
         if newItem:GetItemBlueprint() not= undefined
             text name = newItem:GetItemBlueprint():GetName()
             newItem:SetName(name + GetNextNamePostfix(name))
-            if newItem is NewItemPreview3D
+            if newItem is NewModelPreview
                 item3dPropertiesDialog:SetFields(cast(NewItemPreview3D, newItem))
+            elseif newItem is NewPointLightPreview
+                pointLightPropertiesDialog:SetFields(cast(NewItemPreview3D, newItem))
             elseif newItem is NewItemPreview2D
                 item2dPropertiesDialog:SetFields(cast(NewItemPreview2D, newItem))
             end
@@ -1469,4 +1515,5 @@ class VisualSceneController is Control
             i = i + 1
         end
     end
+
 end

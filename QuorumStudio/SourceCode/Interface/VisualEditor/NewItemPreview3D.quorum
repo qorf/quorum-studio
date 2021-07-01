@@ -6,6 +6,8 @@ use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Compute.Matrix4
 use Libraries.Compute.Vector3
 use Libraries.Game.Scenes.SceneProperties
+use Libraries.Game.Graphics.Material
+use Libraries.Game.Graphics.ColorAttribute
 
 class NewItemPreview3D is NewItemPreview, InteractableItem3D
 
@@ -17,82 +19,6 @@ class NewItemPreview3D is NewItemPreview, InteractableItem3D
         return parent:InteractableItem:GetAccessibleParent()
     end
 
-    action Load(VisualSceneController controller, ModelBlueprint schematic)
-        SetController(controller)
-        SetItemBlueprint(schematic)
-
-        Color color = schematic:GetColor():Copy()
-        color:SetAlpha(color:GetAlpha() * 0.75)
-        integer modelType = schematic:GetModelType()
-        SceneProperties properties
-
-        SetName(schematic:GetName() + controller:GetNextNamePostfix(schematic:GetName()))
-        SetDescription(schematic:GetDescription())
-
-        if modelType = properties:BOX
-            LoadBox(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
-        elseif modelType = properties:SPHERE
-            LoadSphere(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
-        elseif modelType = properties:CYLINDER
-            LoadCylinder(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
-        end
-
-        SetScale(schematic:GetScaleX(), schematic:GetScaleY(), schematic:GetScaleZ())
-        SetRotation(schematic:GetYaw(), schematic:GetPitch(), schematic:GetRoll())
-
-        if schematic:IsPhysicsEnabled()
-            SetEditorPhysicsEnabled(true)
-            if schematic:GetResponsiveness() >= 0
-                SetEditorResponsiveness(schematic:GetResponsiveness())
-            end
-        end
-
-        EditorCursor cursor = controller:GetCursor()
-        if cursor is EditorCursor3D
-            EditorCursor3D cursor3D = cast(EditorCursor3D, cursor)
-            SetPosition(cursor3D:GetX(), cursor3D:GetY(), cursor:GetZ())
-        end
-    end
-
-    action ConvertToModel returns Model
-        EditorModel model
-        model:SetName(GetName())
-
-        ModelBlueprint schematic = cast(ModelBlueprint, GetItemBlueprint())
-        Color color = GetDiffuseColor():Copy()
-        color:SetAlpha(1.0)
-        integer modelType = schematic:GetModelType()
-        SceneProperties properties
-
-        if modelType = properties:BOX
-            model:LoadBox(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
-        elseif modelType = properties:SPHERE
-            model:LoadSphere(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
-        elseif modelType = properties:CYLINDER
-            model:LoadCylinder(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
-        end
-
-        //add a property with its color for now
-        JavaScriptObjectNotation jsonColor
-        jsonColor:SetKey("Color")
-        jsonColor:SetArray()
-        jsonColor:Add(color:GetRed())
-        jsonColor:Add(color:GetGreen())
-        jsonColor:Add(color:GetBlue())
-        jsonColor:Add(color:GetAlpha())
-        model:SetProperty(jsonColor:GetKey(), jsonColor)
-
-        JavaScriptObjectNotation jsonType
-        jsonType:SetKey("Type")
-
-        // Although the transform holds onto the position as it'll be rendered
-        // to the screen, we need to also manually set the position in order to
-        // properly set the x, y, z fields of the new model.
-        model:SetPosition(GetPosition())
-        model:GetTransform():Set(GetTransform())
-        model:SetShape(GetShape())
-
-        return model
-    end
+    blueprint action ConvertToModel returns Model
 
 end

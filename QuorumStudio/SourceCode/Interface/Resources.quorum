@@ -46,11 +46,20 @@ class Resources
     public constant text STEP_OUT = TOOLBAR + "/" + "StepOut.png"
 
     // Visual Editor textures and other resources
-    public constant text GRID_TEXTURE = INTERFACE + "/" + "GridSquare.png"
-    public constant text PRIMITIVES_3D_THUMBNAILS = GRAPHICS + "/" + "Primitives3D"
+    public constant text SCENE_RESOURCES = GRAPHICS + "/" + "SceneEditor"
+    public constant text SCENE_INTERFACE = SCENE_RESOURCES + "/" + "Interface"
+    public constant text PRIMITIVES_3D_THUMBNAILS = SCENE_RESOURCES + "/" + "Primitives3D"
+    public constant text SCENE_AUDIO = SCENE_RESOURCES + "/" + "Audio"
+    public constant text SCENE_LIGHTING = SCENE_RESOURCES + "/" + "Lighting"
+
+    public constant text GRID_TEXTURE = SCENE_INTERFACE + "/" + "GridSquare.png"
     public constant text CUBE_THUMBNAIL = PRIMITIVES_3D_THUMBNAILS + "/" + "CubeThumbnail.png"
     public constant text SPHERE_THUMBNAIL = PRIMITIVES_3D_THUMBNAILS + "/" + "SphereThumbnail.png"
     public constant text CYLINDER_THUMBNAIL = PRIMITIVES_3D_THUMBNAILS + "/" + "CylinderThumbnail.png"
+    public constant text AUDIO_THUMBNAIL = SCENE_AUDIO + "/" + "AudioIcon.png"
+    public constant text AUDIO_TEXTURE = SCENE_AUDIO + "/" + "Audio.png"
+    public constant text LIGHT_THUMBNAIL = SCENE_LIGHTING + "/" + "LightbulbIcon.png"
+    public constant text LIGHT_TEXTURE = SCENE_LIGHTING + "/" + "Lightbulb.png"
 
     Texture projectLogo
     Texture quorumFile
@@ -79,6 +88,7 @@ class Resources
     Texture stepOut
 
     Texture gridTexture
+    Texture lightTexture = undefined
 
     //colors
     Color backgroundColor
@@ -276,4 +286,15 @@ class Resources
     action GetGridTexture returns Texture
         return gridTexture
     end
+
+    action GetLightTexture returns Texture
+        if lightTexture = undefined
+            Texture texture
+            lightTexture = texture
+            lightTexture:LoadModelTexture(LIGHT_TEXTURE)
+        end
+
+        return lightTexture
+    end
+
 end

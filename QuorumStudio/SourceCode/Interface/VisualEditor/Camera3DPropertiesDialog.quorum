@@ -15,11 +15,7 @@ use Libraries.Game.Graphics.PerspectiveCamera
 use Libraries.Interface.Events.TextChangeEvent
 use Libraries.Interface.Events.SelectionEvent
 
-class Camera3DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
-
-    boolean initialized = false
-
-    VisualSceneController controller = undefined
+class Camera3DPropertiesDialog is PropertiesDialog
 
     // Controls used on the dialog itself
     TextField positionXField = undefined
@@ -31,41 +27,8 @@ class Camera3DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
     TextField zoomField = undefined
     TextField fovField = undefined
 
-    action Initialize(VisualSceneController controller)
-        if initialized
-            return now
-        end
-
-        SetInputGroup("PropertiesDialog")
-
-        initialized = true
-
-        // Used to set focus order at the end of this action.
-        Array<Control> focusArray
-
-        me:controller = controller
-        controller:SetCameraProperties3DDialog(me)
-        controller:AddSelectionListener(me)
-
+    private action CreateInterface(Control panel, Array<Control> focusArray)
         SetName("Camera Properties")
-
-        SetPixelWidth(300)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-
-        LabelBoxView view
-        Color color
-        view:SetBorderThickness(1)
-        view:SetBorderStyle(view:ALL - view:TOP)
-        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
-        
-        Control panel
-        FlowLayout propertiesLayout
-        panel:SetLayout(propertiesLayout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-        panel:SetBorderColor(color:Black())
-        panel:SetBorderThickness(1)
-        panel:SetView2D(view)
 
         Label basicPropertiesLabel
         basicPropertiesLabel:SetSize(18)
@@ -286,35 +249,6 @@ class Camera3DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
 
         fovContainer:Add(fovFieldContainer)
         panel:Add(fovContainer)
-
-
-        Add(panel)
-
-        // Set up focus targets.
-        focusArray:Get(0):SetPreviousFocus(focusArray:Get(focusArray:GetSize() - 1))
-        focusArray:Get(0):SetNextFocus(focusArray:Get(1))
-
-        integer i = 1
-        repeat while i < focusArray:GetSize()
-            Control control = focusArray:Get(i)
-            control:SetPreviousFocus(focusArray:Get(i - 1))
-            control:SetNextFocus(focusArray:Get((i + 1) mod focusArray:GetSize()))
-            i = i + 1
-        end
-    end
-
-    action Show
-        if controller not= undefined
-            LayoutProperties properties = GetDefaultLayoutProperties()
-            properties:SetPercentageX(0)
-            properties:SetPercentageY(0)
-            properties:SetPercentageOriginX(1)
-            properties:SetPercentageOriginY(1)
-            properties:SetPixelX(controller:GetGlobalX() + controller:GetWidth() - 5)
-            properties:SetPixelY(controller:GetGlobalY() + controller:GetHeight())
-            //properties:SetPixelY(controller:GetGlobalY())
-        end
-        parent:Dialog:Show()
     end
 
     action SelectionChanged(SelectionEvent event)
@@ -353,7 +287,7 @@ class Camera3DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
     end
 
     action TextChanged(TextChangeEvent event)
-        CameraItem3D currentItem = cast(CameraItem3D, controller:GetSelectedItem())
+        CameraItem3D currentItem = cast(CameraItem3D, GetSceneController():GetSelectedItem())
         PerspectiveCamera camera = cast(PerspectiveCamera, currentItem:GetCamera())
         Control control = event:GetControl()
 
@@ -452,10 +386,6 @@ class Camera3DPropertiesDialog is Dialog, SelectionListener, TextChangeListener
     action FocusField
         positionXField:Focus()
         positionXField:Select(0, positionXField:GetSize(), true)
-    end
-
-    action GetSceneController returns VisualSceneController
-        return controller
     end
 
 end

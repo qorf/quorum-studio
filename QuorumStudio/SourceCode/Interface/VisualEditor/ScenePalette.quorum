@@ -13,6 +13,7 @@ use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Game.Scenes.SceneProperties
 use Libraries.Development.Environment.Resources
+use Libraries.Game.Graphics.Texture
 
 class ScenePalette is Palette
     ItemBlueprintComparison itemComparison
@@ -108,6 +109,23 @@ class ScenePalette is Palette
             primitives3D:Add(cylinder)
 
             LoadAssetPack(primitives3D)
+
+            
+            AssetPack lighting
+            lighting:SetName("Lighting")
+
+            PointLightBlueprint pointLight
+            pointLight:SetName("Point Light")
+            pointLight:SetDescription("A light at a point that shines in a sphere all around it.")
+            Drawable pointLightIcon
+            pointLightIcon:Load(resources:LIGHT_THUMBNAIL)
+            pointLight:SetPaletteIcon(pointLightIcon)
+            Texture pointLightTexture
+            pointLightTexture:LoadFromFile(resources:LIGHT_TEXTURE)
+            pointLight:SetModelTexture(pointLightTexture)
+            lighting:Add(pointLight)
+
+            LoadAssetPack(lighting)
         end
 
         AssetPack primitives2D
@@ -209,27 +227,6 @@ class ScenePalette is Palette
             items:Sort(itemComparison)
             AddItemsToTreeItem(root, items)
         end
-//        Iterator<text> iterator = pack:GetKeyIterator()
-//        Array<text> array
-//
-//        repeat while iterator:HasNext()
-//            array:Add(iterator:Next())
-//        end
-//
-//        array:Sort()
-//
-//        integer counter = 0
-//        repeat while counter < array:GetSize()
-//            ItemBlueprint itemBlueprint = pack:GetBlueprint(array:Get(counter))    
-//
-//            ScenePaletteItem item
-//            item:SetItemBlueprint(itemBlueprint)
-//            item:SetName(itemBlueprint:GetName())
-//            item:SetBehavior(paletteActivationBehavior)
-//            
-//            root:Add(cast(TreeItem, item))
-//            counter = counter + 1
-//        end
 
         Add(root)
     end

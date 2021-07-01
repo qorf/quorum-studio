@@ -35,6 +35,8 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.Camera2DProp
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.CameraPreview2D
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorModel
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Camera3DPropertiesDialog
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorPointLight
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.PointLightPropertiesDialog
 
 class VisualEditorTab is Tab, DefaultSceneManager
 
@@ -42,14 +44,6 @@ class VisualEditorTab is Tab, DefaultSceneManager
     File projectLocation = undefined
     VisualSceneController controller = undefined
     GameStateManager manager
-
-    Item2DPropertiesDialog item2dPropertiesDialog
-    Item3DPropertiesDialog item3dPropertiesDialog
-    Camera2DPropertiesDialog camera2dPropertiesDialog
-    Camera3DPropertiesDialog camera3dPropertiesDialog
-
-    // Additional properties used for custom scene loading for the tab's editor area.
-    text EULER_ANGLES = "Euler Angles"
 
     action GetFile returns File
         return file
@@ -78,11 +72,6 @@ class VisualEditorTab is Tab, DefaultSceneManager
         SetFocusTarget(controller)
 
         Load(scene)
-
-        item3dPropertiesDialog:Initialize(controller)
-        item2dPropertiesDialog:Initialize(controller)
-        camera2dPropertiesDialog:Initialize(controller)
-        camera3dPropertiesDialog:Initialize(controller)
     end
 
     /* 
@@ -181,14 +170,6 @@ class VisualEditorTab is Tab, DefaultSceneManager
 
         JavaScriptObjectNotation json = parent:DefaultSceneManager:SaveItem3D(item)
 
-        if item is EditorModel
-            SceneProperties properties
-
-            EditorModel model = cast(EditorModel, item)
-            json:Add(EULER_ANGLES, NewJsonArray(model:GetYaw(), model:GetPitch(), model:GetRoll()))
-            json:Add(properties:SCALE, NewJsonArray(model:GetScaleX(), model:GetScaleY(), model:GetScaleZ()))
-        end
-
         return json
     end
 
@@ -206,6 +187,9 @@ class VisualEditorTab is Tab, DefaultSceneManager
         if type = "Model"
             EditorModel model
             return model
+        elseif type = "PointLight"
+            EditorPointLight light
+            return light
         end
 
         return parent:DefaultSceneManager:CreateItem3D(type)
@@ -213,6 +197,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
 
     private action CustomLoadProperty3D(Item3D item, text key, JavaScriptObjectNotation json) returns boolean
         SceneProperties properties
+        VisualEditorResources resources
         if key = properties:PHYSICS_ENABLED
             JavaScriptObjectNotation newJson
             boolean value = json:GetBoolean(key)
@@ -241,6 +226,8 @@ class VisualEditorTab is Tab, DefaultSceneManager
                 // An error occurs if there was no value to get. In that case we return silently.
                 return false
             end
+        elseif key = resources:EULER_ANGLES
+            
         end
 
         return false
@@ -248,7 +235,15 @@ class VisualEditorTab is Tab, DefaultSceneManager
 
     private action CustomSaveProperty3D(Item3D item, text key, JavaScriptObjectNotation json) returns boolean
         SceneProperties properties
-        if key = properties:PHYSICS_ENABLED
+        VisualEditorResources resources
+        if key = properties:CLASS
+            if item is EditorPointLight
+                json:Add(key, "PointLight")
+                return true
+            else
+                return false
+            end
+        elseif key = properties:PHYSICS_ENABLED
             if item:HasProperty(key)
                 boolean value = item:GetProperty(key):GetBoolean()
                 json:Add(key, value)
@@ -266,21 +261,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
                 json:Add(key, value)
                 return true
             end
-        elseif key = properties:SCALE
-            if not (item is EditorModel)
-                return false
-            end
-            EditorModel model = cast(EditorModel, item)
-
-            JavaScriptObjectNotation scale
-            scale:SetArray()
-            scale:Add(model:GetScaleX())
-            scale:Add(model:GetScaleY())
-            scale:Add(model:GetScaleZ())
-    
-            json:Add(key, scale)
-            return true
-        elseif key = EULER_ANGLES
+        elseif key = resources:EULER_ANGLES
             if not (item is EditorModel)
                 return false
             end
@@ -394,7 +375,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
             counter = counter + 1
         end
 
-        item3dPropertiesDialog:Hide()
+        controller:HideDialogs()
     end
 
     action ShowLayers
@@ -407,7 +388,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
             counter = counter + 1
         end
 
-        item3dPropertiesDialog:Hide()
+        controller:HideDialogs()
     end
 
     action OnClose
