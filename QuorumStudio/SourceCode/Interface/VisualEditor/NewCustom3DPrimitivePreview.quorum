@@ -47,9 +47,7 @@ class NewCustom3DPrimitivePreview is NewItemPreview3D
         // We need to add a diffuse color attribute to the model so that the textured box also supports color,
         // and a blending attribute so that the preview supports transparency.
         Material material = GetMaterials():Get(0)
-        ColorAttribute attribute
-        attribute:SetAttribute(attribute:GetDiffuseValue(), color)
-        material:Add(attribute)
+        SetColor(color)
         BlendingAttribute blend
         blend:opacity = color:GetAlpha()
         material:Add(blend)
@@ -77,7 +75,7 @@ class NewCustom3DPrimitivePreview is NewItemPreview3D
         EditorModel model
         model:SetName(GetName())
         
-        Color color = GetDiffuseColor():Copy()
+        Color color = GetColor():Copy()
         color:SetAlpha(1.0)
         integer modelType = schematic:GetModelType()
         SceneProperties properties
@@ -91,10 +89,7 @@ class NewCustom3DPrimitivePreview is NewItemPreview3D
         end
 
         // We need to add a diffuse color attribute to the model so that the textured box also supports color.
-        Material material = GetMaterials():Get(0)
-        ColorAttribute attribute
-        attribute:SetAttribute(attribute:GetDiffuseValue(), color)
-        material:Add(attribute)
+        model:SetColor(color)
 
         //add a property with its color for now
         JavaScriptObjectNotation jsonColor

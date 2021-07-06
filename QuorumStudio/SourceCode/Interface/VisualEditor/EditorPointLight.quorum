@@ -13,7 +13,7 @@ class EditorPointLight is EditorModel, PointLight
 
     action SetColor(Color color)
         parent:PointLight:SetColor(color)
-        SetDiffuseColor(color)
+        parent:Model:SetColor(color)
     end
 
     action GetColor returns Color
@@ -35,10 +35,7 @@ class EditorPointLight is EditorModel, PointLight
         LoadBox(0.5, 0.5, 0.5, resources:GetLightTexture())
             
         // We need to add a diffuse color attribute to the model so that the textured box also supports color.
-        Material material = GetMaterials():Get(0)
-        ColorAttribute attribute
-        attribute:SetAttribute(attribute:GetDiffuseValue(), color)
-        material:Add(attribute)
+        SetColor(color)
     end
 
     action SetIntensity(number intensity)

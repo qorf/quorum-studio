@@ -328,6 +328,18 @@ class VisualEditorTab is Tab, DefaultSceneManager
         end
     end
 
+    /*
+    This action can be used to determine what working directory
+    to use for file loading. This can be used to open model resources that
+    exist in a different project, for example.
+    */
+    private action ConvertToProjectFile(text path) returns File
+        File file
+        file:SetWorkingDirectory(projectLocation:GetAbsolutePath())
+        file:SetPath(path)
+        return file
+    end
+
     private action CustomLoadProperty3D(Item3D item, text key, JavaScriptObjectNotation json) returns boolean
         VisualEditorResources resources
         if key = properties:PHYSICS_ENABLED

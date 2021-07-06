@@ -2,7 +2,16 @@ package Libraries.Development.Environment.Studio.Interface.VisualEditor
 
 use Libraries.System.File
 
-class Custom3DPrimitiveBlueprint is CustomItemBlueprint, ModelBlueprint
+class CustomModelBlueprint is CustomItemBlueprint, ModelBlueprint
+
+    action SetFile(File file)
+        parent:CustomItemBlueprint:SetFile(file)
+        parent:ModelBlueprint:SetModelFile(file)
+    end
+
+    action SetModelFile(File file)
+        SetFile(file)
+    end
 
     /*
     Returns true if the given file is of a valid file type
@@ -14,7 +23,7 @@ class Custom3DPrimitiveBlueprint is CustomItemBlueprint, ModelBlueprint
         end
 
         text extension = file:GetFileExtension()
-        return extension:EqualsIgnoringCase("jpg") or extension:EqualsIgnoringCase("png") or extension:EqualsIgnoringCase("jpeg")
+        return extension:EqualsIgnoringCase("obj") or extension:EqualsIgnoringCase("g3db")
     end
 
 end

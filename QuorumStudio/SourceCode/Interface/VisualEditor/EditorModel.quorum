@@ -16,52 +16,6 @@ class EditorModel is Model
     number pitch = 0
     number roll = 0
 
-    action SetDiffuseColor(Color color)
-        integer counter = 0
-        Array<Material> materials = GetMaterials()
-        repeat materials:GetSize() times
-            Material material = materials:Get(counter)
-            ColorAttribute attribute
-            if material:HasAttribute(attribute:GetDiffuseValue())
-                attribute = cast(ColorAttribute, material:GetAttribute(attribute:GetDiffuseValue()))
-                attribute:SetAttribute(attribute:GetDiffuseValue(), color)
-            end
-            counter = counter + 1
-        end
-
-        JavaScriptObjectNotation colorJson
-        colorJson:SetKey("Color")
-        colorJson:SetArray()
-        colorJson:Add(color:GetRed())
-        colorJson:Add(color:GetGreen())
-        colorJson:Add(color:GetBlue())
-        colorJson:Add(color:GetAlpha())
-        SetProperty("Color", colorJson)
-    end
-
-    action GetDiffuseColor returns Color
-        if HasProperty("Color")
-            Color color
-            JavaScriptObjectNotation colorJson = GetProperty("Color")
-            color:SetColor(colorJson:Get(0):GetNumber(), colorJson:Get(1):GetNumber(), colorJson:Get(2):GetNumber(), colorJson:Get(3):GetNumber())
-            return color
-        else
-            integer counter = 0
-            Array<Material> materials = GetMaterials()
-            repeat materials:GetSize() times
-                Material material = materials:Get(counter)
-                ColorAttribute attribute
-                if material:HasAttribute(attribute:GetDiffuseValue())
-                    attribute = cast(ColorAttribute, material:GetAttribute(attribute:GetDiffuseValue()))
-                    SetDiffuseColor(attribute:color)
-                    return attribute:color
-                end
-                counter = counter + 1
-            end
-            return undefined
-        end
-    end
-
     action SetRotation(Vector3 rotation)
         SetRotation(rotation:GetX(), rotation:GetY(), rotation:GetZ())
     end

@@ -3,8 +3,13 @@ package Libraries.Development.Environment.Studio.Interface.VisualEditor
 use Libraries.Game.Graphics.Color
 use Libraries.Game.Scenes.SceneProperties
 use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Game.Graphics.Material
+use Libraries.Game.Graphics.BlendingAttribute
+use Libraries.System.File
 
 class NewModelPreview is NewItemPreview3D
+
+    File modelFile = undefined
 
     action Load(VisualSceneController controller, ModelBlueprint schematic)
         SetController(controller)
@@ -24,6 +29,17 @@ class NewModelPreview is NewItemPreview3D
             LoadSphere(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
         elseif modelType = properties:CYLINDER
             LoadCylinder(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        elseif modelType = properties:CUSTOM
+            modelFile = schematic:GetModelFile()
+
+            Load(modelFile)
+            SetColor(color)
+
+            // We need to add blending to the custom material in order to support transparency on the preview
+            Material material = GetMaterials():Get(0)
+            BlendingAttribute blend
+            blend:opacity = color:GetAlpha()
+            material:Add(blend)
         end
 
         SetScale(schematic:GetScaleX(), schematic:GetScaleY(), schematic:GetScaleZ())
@@ -49,7 +65,7 @@ class NewModelPreview is NewItemPreview3D
         EditorModel model
         model:SetName(GetName())
         
-        Color color = GetDiffuseColor():Copy()
+        Color color = GetColor():Copy()
         color:SetAlpha(1.0)
         integer modelType = schematic:GetModelType()
         SceneProperties properties
@@ -60,20 +76,23 @@ class NewModelPreview is NewItemPreview3D
             model:LoadSphere(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
         elseif modelType = properties:CYLINDER
             model:LoadCylinder(schematic:GetWidth(), schematic:GetHeight(), schematic:GetDepth(), color)
+        elseif modelType = properties:CUSTOM
+            model:Load(modelFile)
+            SetColor(color)
         end
 
         //add a property with its color for now
-        JavaScriptObjectNotation jsonColor
-        jsonColor:SetKey("Color")
-        jsonColor:SetArray()
-        jsonColor:Add(color:GetRed())
-        jsonColor:Add(color:GetGreen())
-        jsonColor:Add(color:GetBlue())
-        jsonColor:Add(color:GetAlpha())
-        model:SetProperty(jsonColor:GetKey(), jsonColor)
-
-        JavaScriptObjectNotation jsonType
-        jsonType:SetKey("Type")
+//        JavaScriptObjectNotation jsonColor
+//        jsonColor:SetKey("Color")
+//        jsonColor:SetArray()
+//        jsonColor:Add(color:GetRed())
+//        jsonColor:Add(color:GetGreen())
+//        jsonColor:Add(color:GetBlue())
+//        jsonColor:Add(color:GetAlpha())
+//        model:SetProperty(jsonColor:GetKey(), jsonColor)
+//
+//        JavaScriptObjectNotation jsonType
+//        jsonType:SetKey("Type")
 
         model:SetPosition(GetPosition())
         model:SetScale(GetScaleX(), GetScaleY(), GetScaleZ())

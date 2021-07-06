@@ -25,10 +25,15 @@ class PaletteCreatePreviewBehavior is QuorumStudioBehavior
                 VisualEditorTab tab = controller:GetVisualEditorTab()
                 File project = tab:GetProjectLocation()
                 File file = chooser:OpenFileDialog(project)
+                text relativePath = tab:GetProjectPathToFile(file)
+
+                File result
+                result:SetWorkingDirectory(project:GetAbsolutePath())
+                result:SetPath(relativePath)
 
                 CustomItemBlueprint custom = cast(CustomItemBlueprint, schematic)
-                if custom:IsFileValid(file)
-                    controller:CreateNewItemPreview(custom, file)
+                if custom:IsFileValid(result)
+                    controller:CreateNewItemPreview(custom, result)
                 end
             else
                 controller:CreateNewItemPreview(item:GetItemBlueprint())
