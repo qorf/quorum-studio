@@ -14,6 +14,7 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Game.Scenes.SceneProperties
 use Libraries.Development.Environment.Resources
 use Libraries.Game.Graphics.Texture
+use Libraries.System.Logger
 
 class ScenePalette is Palette
     ItemBlueprintComparison itemComparison
@@ -32,6 +33,7 @@ class ScenePalette is Palette
     Layer2D draggedItemLayer = undefined
     boolean dragLayerInUse = false
     Drawable draggedItem = undefined
+    Logger logger
 
     on create
         SetName("Scene Palette")
@@ -193,6 +195,30 @@ class ScenePalette is Palette
             custom3D:Add(customCylinder)
 
             LoadAssetPack(custom3D)
+
+
+            //now load any assets from the tilesets folder
+            File tilesetFolder
+            tilesetFolder:SetPath("Resources/Tilesets3D")
+            Array<File> files = tilesetFolder:GetDirectoryListing()
+            i = 0
+            repeat while files not= undefined and i < files:GetSize()
+                File file = files:Get(i)
+                text ext = file:GetFileExtension()
+                if ext = "json"
+                    //if loading a user tileset fails, just don't load it.
+                    check
+                        AssetPack tileset
+                        tileset:SetTileset3DFolder(tilesetFolder)
+                        tileset:LoadTileset3D(file)
+                        LoadAssetPack(tileset)
+                    detect e
+                        text message = e:GetStackTraceMessage()
+                        logger:Log(message)
+                    end
+                end
+                i = i + 1
+            end
         end
 
         AssetPack primitives2D
@@ -227,6 +253,8 @@ class ScenePalette is Palette
                     tileset:LoadTileset(file)
                     LoadAssetPack(tileset)
                 detect e
+                    text message = e:GetStackTraceMessage()
+                    logger:Log(message)
                 end
             end
             i = i + 1
