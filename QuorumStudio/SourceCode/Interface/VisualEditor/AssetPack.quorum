@@ -107,7 +107,7 @@ class AssetPack
         Color color
         SceneProperties properties
     
-        text path = GetTileset3DFolder():GetAbsolutePath()
+        text path = GetTileset3DFolder():GetPath()
         JavaScriptObjectNotation tiles = json:GetObject("Tiles")
         Iterator<JavaScriptObjectNotation> iterator = tiles:GetIterator()
         repeat while iterator:HasNext()
@@ -121,8 +121,7 @@ class AssetPack
             model:SetRotation(0, 0, 0)
             
             File modelFile
-            modelFile:SetWorkingDirectory(path)
-            modelFile:SetPath(tile:GetValue("Model"))
+            modelFile:SetPath(path + "/" + tile:GetValue("Model"))
             model:SetModelFile(modelFile)
             Drawable icon
             text res = tile:GetValue("Image")
