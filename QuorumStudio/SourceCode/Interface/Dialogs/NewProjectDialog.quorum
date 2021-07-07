@@ -69,6 +69,7 @@ class NewProjectDialog is Dialog, SelectionListener
 
     TreeItem scenesParent
     TreeItem blankScene
+    TreeItem scene3D
 
     TreeItem legoParent
     TreeItem lego
@@ -117,13 +118,18 @@ will draw in. Auditory games may also be built using
 the same framework."
 
     text blankSceneDescription = 
-"
-This project creates a default scene file, along with 
+"This project creates a default scene file, along with 
 adding code into the main game to load the scene. This 
 ensures that all physics properties, graphics, sounds, 
 and other attributes created with the visual editor are 
 automatically loaded and placed into the game.
 "
+    text scene3DDescription =
+"This project creates a default scene and game file
+designed for 3D applications. The project includes
+the default 3D assets, as well as code to automatically
+load the scene file and enable 3D physics and gravity."
+
     text legoDescription = 
 "This project creates a default Lego Quorum 
 application. In this case, if a Lego robot is 
@@ -447,8 +453,11 @@ Glassfish)."
         scenesParent:SetName("Scenes")
         scenesParent:SetDescription("")
         scenesParent:Add(blankScene)
+        scenesParent:Add(scene3D)
         blankScene:SetName("Blank Scene")
         blankScene:SetDescription(blankSceneDescription)
+        scene3D:SetName("3D Scene")
+        scene3D:SetDescription(scene3DDescription)
         
 
         applicationsTree:Add(legoParent)
@@ -505,6 +514,7 @@ Glassfish)."
         descriptions:Add(sineWaves, sineWavesDescription)
         descriptions:Add(skybox, skyboxDescription)
         descriptions:Add(blankScene, blankSceneDescription)
+        descriptions:Add(scene3D, scene3DDescription)
     end
 
     private action SetupIconsList()
@@ -594,6 +604,7 @@ Glassfish)."
 
         //scenes
         iconsList:Add(blankScene, gameIcon)
+        iconsList:Add(scene3D, gameIcon)
     end
 
     action SetCurrentDescription(TreeItem item)        
@@ -620,6 +631,7 @@ Glassfish)."
         templates:Add(userInterface, "Templates/Other/UserInterface")
         templates:Add(webServer, "Templates/Other/WebServer") 
         templates:Add(blankScene, "Templates/Scenes/Blank")
+        templates:Add(scene3D, "Templates/Scenes/Scene3D")
     end
 
     private action SetCurrentProjectIcon(TreeItem item)
@@ -688,6 +700,7 @@ Glassfish)."
 
         //scenes
         blankScene:SetBehavior(listBehavior)
+        scene3D:SetBehavior(listBehavior)
     end
 
     action GetLocation returns text

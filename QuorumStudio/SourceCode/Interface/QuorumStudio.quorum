@@ -108,6 +108,7 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneControl
 use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
 use Libraries.System.Logger
 use Libraries.System.DateTime
+use Libraries.Development.Environment.Studio.Behaviors.FocusCameraBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 2
@@ -600,6 +601,12 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         table:Add(selectionScaleUpSet, cursorIncreaseSizeBehavior)
         table:Add(selectionScaleDownSet, cursorDecreaseSizeBehavior)
 
+
+        InputSet focusCameraSet = map:GetCameraFocusKey()
+        FocusCameraBehavior focusCameraBehavior = behaviors:GetFocusCameraBehavior()
+
+        table:Add(focusCameraSet, focusCameraBehavior)
+
         AddInputTable(table)
 
         InputTable cameraItemTable2D
@@ -627,6 +634,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         FocusPropertiesBehavior focusPropertiesBehavior = behaviors:GetFocusPropertiesBehavior()
         cameraItemTable2D:Add(focusPropertiesSet, focusPropertiesBehavior)
 
+        InputSet selectionCancelSet = map:GetSelectionCancelKey()
+        SelectionCancelBehavior selectionCancelBehavior = behaviors:GetSelectionCancelBehavior()
+        cameraItemTable2D:Add(selectionCancelSet, selectionCancelBehavior)
+
         AddInputTable(cameraItemTable2D)
 
         InputTable cameraItemTable3D
@@ -648,6 +659,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         cameraItemTable3D:Add(selectionMoveForward3DStop, selectionMoveZStopBehavior)
         cameraItemTable3D:Add(selectionMoveBackward3DStart, selectionMoveBackwardStartBehavior)
         cameraItemTable3D:Add(selectionMoveBackward3DStop, selectionMoveZStopBehavior)
+
+        cameraItemTable3D:Add(selectionCancelSet, selectionCancelBehavior)
 
         cameraItemTable3D:Add(focusPropertiesSet, focusPropertiesBehavior)
 
@@ -753,10 +766,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
         InputSet selectionDeleteSet = map:GetSelectionDeleteKey()
         InputSet selectionDeleteSet2 = map:GetSelectionDeleteKey2()
-        InputSet selectionCancelSet = map:GetSelectionCancelKey()
 
         SelectionDeleteBehavior selectionDeleteBehavior = behaviors:GetSelectionDeleteBehavior()
-        SelectionCancelBehavior selectionCancelBehavior = behaviors:GetSelectionCancelBehavior()
 
         selectionTable:Add(selectionDeleteSet, selectionDeleteBehavior)
         selectionTable:Add(selectionDeleteSet2, selectionDeleteBehavior)
@@ -773,6 +784,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         InputSet resetScaleSet = map:GetSelectionResetScaleKey()
         SelectionResetScaleBehavior resetScaleBehavior = behaviors:GetSelectionResetScaleBehavior()
         selectionTable:Add(resetScaleSet, resetScaleBehavior)
+
+        selectionTable:Add(focusCameraSet, focusCameraBehavior)
 
         AddInputTable(selectionTable)
 
@@ -829,6 +842,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         InputSet selectionHighlightDragInput = map:GetSelectionHighlightDragKey()
         SelectionHighlightDragBehavior selectionHighlightDragBehavior = behaviors:GetSelectionHighlightDragBehavior()
         selectionTable2D:Add(selectionHighlightDragInput, selectionHighlightDragBehavior)
+
+        selectionTable2D:Add(focusCameraSet, focusCameraBehavior)
 
         AddInputTable(selectionTable2D)
 
@@ -904,6 +919,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
         itemPreviewTable:Add(resetScaleSet, resetScaleBehavior)
 
+        itemPreviewTable:Add(focusCameraSet, focusCameraBehavior)
+
         AddInputTable(itemPreviewTable)
 
         InputTable itemPreviewTable2D
@@ -946,6 +963,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
         itemPreviewTable2D:Add(resetScaleSet, resetScaleBehavior)
 
+        itemPreviewTable2D:Add(focusCameraSet, focusCameraBehavior)
+
         AddInputTable(itemPreviewTable2D)
 
         InputTable propertiesDialogTable
@@ -959,6 +978,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         propertiesDialogTable:Add(unfocusPropertiesSet2, unfocusPropertiesBehavior)
 
         propertiesDialogTable:Add(openEditorFindDialogInput, openEditorFindDialogBehavior)
+
+        propertiesDialogTable:Add(focusCameraSet, focusCameraBehavior)
 
         AddInputTable(propertiesDialogTable)
 
