@@ -9,6 +9,7 @@ use Libraries.Interface.Controls.Icon
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Game.Graphics.TextureRegion
 use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.ItemBlueprint
 
 class PaletteItemContent is TreeItemContent
 
@@ -42,10 +43,15 @@ class PaletteItemContent is TreeItemContent
         SetInputGroup("PaletteItemContent")
     end
 
-    action Load(TextureRegion texture)
+    action Load(ItemBlueprint itemBlueprint)
+        TextureRegion texture = itemBlueprint:GetPaletteIcon()
+        number scale = itemBlueprint:GetPaletteScale()
+        number crop = itemBlueprint:GetPaletteCrop()
+
+        texture:SetRegion(crop, crop, 1.0 - crop, 1.0 - crop)
         icon:Load(texture)
-        icon:SetPixelWidth(icon:GetWidth())
-        icon:SetPixelHeight(icon:GetHeight())
+        icon:SetPixelWidth(icon:GetWidth() * scale)
+        icon:SetPixelHeight(icon:GetHeight() * scale)
         RequestLayout()
     end
 
