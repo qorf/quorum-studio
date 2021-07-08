@@ -209,6 +209,14 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
             SceneTreeItem treeItem = cast(SceneTreeItem, treeItems:Next())
             if treeItem:GetSceneLayer() = layer
                 layerTreeItem = treeItem
+                Iterator<TreeItem> subTree = treeItem:GetTreeItems()
+                repeat while subTree:HasNext() and finished = false
+                    SceneTreeItem candidate = cast(SceneTreeItem, subTree:Next())
+                    if candidate:GetName() = "Items"
+                        layerTreeItem = candidate
+                        finished = true
+                    end
+                end
                 finished = true
             end
         end

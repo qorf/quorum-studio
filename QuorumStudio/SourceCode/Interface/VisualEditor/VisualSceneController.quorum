@@ -290,6 +290,18 @@ class VisualSceneController is Control
         end
     end
 
+    action UpdateActivePropertiesDialog(InteractableItem item)
+        integer counter = 0
+        repeat while counter < propertiesDialogs:GetSize()
+            PropertiesDialog dialog = propertiesDialogs:Get(counter)
+            if dialog:IsShowing()
+                dialog:SetFields(item)
+                return now
+            end
+            counter = counter + 1
+        end
+    end
+
     action GetFindDialog returns VisualEditorFindDialog
         return findDialog
     end
@@ -313,6 +325,7 @@ class VisualSceneController is Control
         Camera camera = GetSelectedLayer():GetCamera()
         boolean moved = false
         boolean isCursor = false
+        Item movedItem = undefined
 
         if GetSelectedLayer() is EditorLayer3D
 
@@ -424,6 +437,10 @@ class VisualSceneController is Control
                     end
                 end
 
+                if moved
+                    movedItem = focus
+                end
+
                 if IsSelectionRotating()
                     workVector3:Set(focus:GetYaw(), focus:GetPitch(), focus:GetRoll())
                     workVector3:Add(seconds * selectionYawDirection * SELECTION_ROTATIONAL_SPEED_3D, seconds * selectionPitchDirection * SELECTION_ROTATIONAL_SPEED_3D, seconds * selectionRollDirection * SELECTION_ROTATIONAL_SPEED_3D)
@@ -516,6 +533,10 @@ class VisualSceneController is Control
                     end
                 end
 
+                if moved
+                    movedItem = target
+                end
+
                 if GetSelectionRollDirection() not= 0 and isCursor = false
                     number angle = target:GetRotation()
                     angle = angle + (seconds * selectionRollDirection * SELECTION_ROTATIONAL_SPEED_2D)
@@ -524,22 +545,28 @@ class VisualSceneController is Control
             end
         end
 
-        if moved and isCursor
-            if accessibility not= undefined
-                Item2D newDummy
-                text describe = GetDescription()
-                newDummy:SetProperty(visualResources:EDITOR_TAG, undefined)
-                newDummy:SetFocusable(true)
-                newDummy:SetAccessibilityCode(dummyItem:parent:Item:ITEM)
-                newDummy:SetName(describe)
-                newDummy:SetInputGroup("PassthroughInput")
+        if moved
+            if movedItem not= undefined and movedItem is InteractableItem
+                UpdateActivePropertiesDialog(cast(InteractableItem, movedItem))
+            end
 
-                Add(newDummy)
-                if dummyItem not= undefined
-                    Remove(dummyItem)
+            if isCursor
+                if accessibility not= undefined
+                    Item2D newDummy
+                    text describe = GetDescription()
+                    newDummy:SetProperty(visualResources:EDITOR_TAG, undefined)
+                    newDummy:SetFocusable(true)
+                    newDummy:SetAccessibilityCode(dummyItem:parent:Item:ITEM)
+                    newDummy:SetName(describe)
+                    newDummy:SetInputGroup("PassthroughInput")
+    
+                    Add(newDummy)
+                    if dummyItem not= undefined
+                        Remove(dummyItem)
+                    end
+                    dummyItem = newDummy
+                    newDummy:Focus()
                 end
-                dummyItem = newDummy
-                newDummy:Focus()
             end
         end
     end
@@ -983,13 +1010,13 @@ class VisualSceneController is Control
             text name = newItem:GetItemBlueprint():GetName()
             newItem:SetName(name + GetNextNamePostfix(name))
             if newItem is NewModelPreview
-                item3dPropertiesDialog:SetFields(cast(NewItemPreview3D, newItem))
+                item3dPropertiesDialog:SetFields(newItem)
             elseif newItem is NewPointLightPreview
-                pointLightPropertiesDialog:SetFields(cast(NewItemPreview3D, newItem))
+                pointLightPropertiesDialog:SetFields(newItem)
             elseif newItem is NewAudio3DPreview
-                audio3DPropertiesDialog:SetFields(cast(NewAudio3DPreview, newItem))
+                audio3DPropertiesDialog:SetFields(newItem)
             elseif newItem is NewItemPreview2D
-                item2dPropertiesDialog:SetFields(cast(NewItemPreview2D, newItem))
+                item2dPropertiesDialog:SetFields(newItem)
             end
         end
 
