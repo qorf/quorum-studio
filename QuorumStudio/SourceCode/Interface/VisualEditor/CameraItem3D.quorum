@@ -2,6 +2,8 @@ package Libraries.Development.Environment.Studio.Interface.VisualEditor
 use Libraries.Game.Graphics.Camera
 use Libraries.Game.Graphics.PerspectiveCamera
 use Libraries.Compute.Vector3
+use Libraries.Compute.Matrix4
+use Libraries.Compute.Quaternion
 
 class CameraItem3D is CameraItem, InteractableItem3D
 
@@ -9,31 +11,21 @@ class CameraItem3D is CameraItem, InteractableItem3D
         SetInputGroup("CameraItem3D")
     end
 
-    action Load(Camera camera, VisualSceneController controller)
+    action Load(EditorCamera3D camera, VisualSceneController controller)
         SetCamera(camera)
         SetController(controller)
 
         SetPosition(camera:GetPosition():GetX(), camera:GetPosition():GetY(), camera:GetPosition():GetZ())
     end
 
-    action SetYaw(number yaw)
-        SetRotation(yaw, GetPitch(), GetRoll())
-    end
-
-    action SetPitch(number pitch)
-        SetRotation(GetYaw(), pitch, GetRoll())
-    end
-
-    action SetRoll(number roll)
-        SetRotation(GetYaw(), GetPitch(), roll)
+    action GetEditorCamera returns EditorCamera3D
+        return cast(EditorCamera3D, GetCamera())
     end
 
     action SetRotation(number yaw, number pitch, number roll)
-        parent:EditorModel:yaw = yaw
-        parent:EditorModel:pitch = pitch
-        parent:EditorModel:roll = roll
-        Camera camera = GetCamera()
-        camera:SetYawPitchRoll(yaw, pitch, roll)
+        EditorCamera3D camera = GetEditorCamera()
+        camera:SetRotation(yaw, pitch, roll)
+        SetPosition(camera:GetPosition())
     end
 
     action GetRotation returns Vector3
@@ -42,56 +34,44 @@ class CameraItem3D is CameraItem, InteractableItem3D
         return vector
     end
 
-    action MoveX(number x)
-        parent:Item3D:MoveX(x)
-        UpdateCameraPosition()
+    action GetYaw returns number
+        return GetEditorCamera():GetYaw()
     end
 
-    action MoveY(number y)
-        parent:Item3D:MoveY(y)
-        UpdateCameraPosition()
+    action GetPitch returns number
+        return GetEditorCamera():GetPitch()
     end
 
-    action MoveZ(number z)
-        parent:Item3D:MoveZ(z)
-        UpdateCameraPosition()
+    action GetRoll returns number
+        return GetEditorCamera():GetRoll()
     end
 
-    action Move(number x, number y, number z)
-        parent:Item3D:Move(x, y, z)
-        UpdateCameraPosition()
+    action SetYaw(number yaw)
+        EditorCamera3D camera = GetEditorCamera()
+        camera:SetYaw(yaw)
+        SetPosition(camera:GetPosition())
     end
 
-    action SetX(number x)
-        parent:Item3D:SetX(x)
-        UpdateCameraPosition()
+    action SetPitch(number pitch)
+        EditorCamera3D camera = GetEditorCamera()
+        camera:SetPitch(pitch)
+        SetPosition(camera:GetPosition())
     end
 
-    action SetY(number y)
-        parent:Item3D:SetY(y)
-        UpdateCameraPosition()
+    action SetRoll(number roll)
+        EditorCamera3D camera = GetEditorCamera()
+        camera:SetRoll(roll)
+        SetPosition(camera:GetPosition())
     end
 
-    action SetZ(number z)
-        parent:Item3D:SetZ(z)
-        UpdateCameraPosition()
+    action SetDistance(number distance)
+        EditorCamera3D camera = GetEditorCamera()
+        camera:SetDistance(distance)
+        SetPosition(camera:GetPosition())
     end
 
-    action SetPosition(number x, number y, number z)
-        parent:Item3D:SetPosition(x, y, z)
-        UpdateCameraPosition()
-    end
-
-    private action UpdateCameraPosition
-        Camera camera = GetCamera()
-
-        camera:SetPosition(GetX(), GetY(), GetZ())
-        camera:Update()
-
-        if GetLayer() is EditorLayer3D
-            EditorLayer3D layer = cast(EditorLayer3D, GetLayer())
-//            layer:UpdateGridPosition()
-        end
+    action GetDistance returns number
+        return GetEditorCamera():GetDistance()
     end
 
     action SetZoom(number zoom)

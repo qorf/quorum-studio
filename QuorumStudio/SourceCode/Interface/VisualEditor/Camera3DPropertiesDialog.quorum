@@ -18,12 +18,9 @@ use Libraries.Interface.Events.SelectionEvent
 class Camera3DPropertiesDialog is PropertiesDialog
 
     // Controls used on the dialog itself
-    TextField positionXField = undefined
-    TextField positionYField = undefined
-    TextField positionZField = undefined
+    TextField distanceField = undefined
     TextField yawField = undefined
     TextField pitchField = undefined
-    TextField rollField = undefined
     TextField zoomField = undefined
     TextField fovField = undefined
 
@@ -39,14 +36,8 @@ class Camera3DPropertiesDialog is PropertiesDialog
 
         Label positionLabel
         
-        TextField positionXField
-        me:positionXField = positionXField
-
-        TextField positionYField
-        me:positionYField = positionYField
-
-        TextField positionZField
-        me:positionZField = positionZField
+        TextField distanceField
+        me:distanceField = distanceField
 
         FlowLayout positionLayout
         Control positionContainer
@@ -58,7 +49,7 @@ class Camera3DPropertiesDialog is PropertiesDialog
         positionContainer:SetRightPadding(30)
         positionContainer:SetBottomPadding(10)
 
-        positionLabel:SetText("Position")
+        positionLabel:SetText("Distance")
         positionLabel:SetHorizontalLayoutMode(positionLabel:parent:Control:STANDARD)
         positionLabel:SetPercentageWidth(0.3)
         positionContainer:Add(positionLabel)
@@ -68,37 +59,17 @@ class Camera3DPropertiesDialog is PropertiesDialog
         positionFieldContainer:SetLayout(positionFieldLayout)
 
         positionFieldContainer:SetHorizontalLayoutMode(positionFieldContainer:FILL)
-        positionFieldContainer:SetName("Position Fields")
-        positionXField:SetName("X")
-        positionXField:SetText("")
-        positionXField:SetFocusable(true)
-        positionXField:AddTextChangeListener(me)
-        positionXField:SetRightPadding(8)
-        positionXField:SetPercentageWidth(0.33)
-        positionXField:SetPixelWidth(-8)
-        positionFieldContainer:Add(positionXField)
+        positionFieldContainer:SetName("Distance Field")
+        distanceField:SetName("Distance")
+        distanceField:SetText("")
+        distanceField:SetFocusable(true)
+        distanceField:AddTextChangeListener(me)
+        distanceField:SetRightPadding(8)
+        distanceField:SetPercentageWidth(1.0)
+        distanceField:SetPixelWidth(-8)
+        positionFieldContainer:Add(distanceField)
 
-        positionYField:SetName("Y")
-        positionYField:SetText("")
-        positionYField:SetFocusable(true)
-        positionYField:AddTextChangeListener(me)
-        positionYField:SetRightPadding(8)
-        positionYField:SetPercentageWidth(0.33)
-        positionYField:SetPixelWidth(-8)
-        positionFieldContainer:Add(positionYField)
-
-        positionZField:SetName("Z")
-        positionZField:SetText("")
-        positionZField:SetFocusable(true)
-        positionZField:AddTextChangeListener(me)
-        positionZField:SetRightPadding(8)
-        positionZField:SetPercentageWidth(0.33)
-        positionZField:SetPixelWidth(-8)
-        positionFieldContainer:Add(positionZField)
-
-        focusArray:Add(positionXField)
-        focusArray:Add(positionYField)
-        focusArray:Add(positionZField)
+        focusArray:Add(distanceField)
 
         positionContainer:Add(positionFieldContainer)
         panel:Add(positionContainer)
@@ -112,8 +83,6 @@ class Camera3DPropertiesDialog is PropertiesDialog
         TextField pitchField
         me:pitchField = pitchField
 
-        TextField rollField
-        me:rollField = rollField
 
         FlowLayout directionLayout
         Control directionContainer
@@ -141,7 +110,7 @@ class Camera3DPropertiesDialog is PropertiesDialog
         yawField:SetFocusable(true)
         yawField:AddTextChangeListener(me)
         yawField:SetRightPadding(8)
-        yawField:SetPercentageWidth(0.33)
+        yawField:SetPercentageWidth(0.5)
         yawField:SetPixelWidth(-8)
         directionFieldContainer:Add(yawField)
 
@@ -150,22 +119,12 @@ class Camera3DPropertiesDialog is PropertiesDialog
         pitchField:SetFocusable(true)
         pitchField:AddTextChangeListener(me)
         pitchField:SetRightPadding(8)
-        pitchField:SetPercentageWidth(0.33)
+        pitchField:SetPercentageWidth(0.5)
         pitchField:SetPixelWidth(-8)
         directionFieldContainer:Add(pitchField)
 
-        rollField:SetName("Roll")
-        rollField:SetText("")
-        rollField:SetFocusable(true)
-        rollField:AddTextChangeListener(me)
-        rollField:SetRightPadding(8)
-        rollField:SetPercentageWidth(0.33)
-        rollField:SetPixelWidth(-8)
-        directionFieldContainer:Add(rollField)
-
         focusArray:Add(yawField)
         focusArray:Add(pitchField)
-        focusArray:Add(rollField)
 
         directionContainer:Add(directionFieldContainer)
         panel:Add(directionContainer)
@@ -283,49 +242,28 @@ class Camera3DPropertiesDialog is PropertiesDialog
     end
 
     action SetFields(CameraItem3D cameraItem)
-        PerspectiveCamera camera = cast(PerspectiveCamera, cameraItem:GetCamera())
-        positionXField:SetText("" + camera:GetPosition():GetX())
-        positionYField:SetText("" + camera:GetPosition():GetY())
-        positionZField:SetText("" + camera:GetPosition():GetZ())
+        EditorCamera3D camera = cameraItem:GetEditorCamera()
+        distanceField:SetText("" + camera:GetDistance())
         yawField:SetText("" + cameraItem:GetYaw())
         pitchField:SetText("" + cameraItem:GetPitch())
-        rollField:SetText("" + cameraItem:GetRoll())
         zoomField:SetText("" + camera:GetZoom())
         fovField:SetText("" + camera:GetFieldOfView())
     end
 
     action TextChanged(TextChangeEvent event)
         CameraItem3D currentItem = cast(CameraItem3D, GetSceneController():GetSelectedItem())
-        PerspectiveCamera camera = cast(PerspectiveCamera, currentItem:GetCamera())
+        EditorCamera3D camera = currentItem:GetEditorCamera()
         Control control = event:GetControl()
 
         if currentItem = undefined
             return now
         end
 
-        if control:Equals(positionXField)
+        if control:Equals(distanceField)
             check
-                number value = positionXField:GetText():ParseNumber()
-                if value not= currentItem:GetX()
-                    currentItem:SetX(value)
-                end
-            detect e is Error
-                // Do nothing.
-            end
-        elseif control:Equals(positionYField)
-            check
-                number value = positionYField:GetText():ParseNumber()
-                if value not= currentItem:GetY()
-                    currentItem:SetY(value)
-                end
-            detect e is Error
-                // Do nothing.
-            end
-        elseif control:Equals(positionZField)
-            check
-                number value = positionZField:GetText():ParseNumber()
-                if value not= currentItem:GetZ()
-                    currentItem:SetZ(value)
+                number value = distanceField:GetText():ParseNumber()
+                if value not= currentItem:GetDistance()
+                    currentItem:SetDistance(value)
                 end
             detect e is Error
                 // Do nothing.
@@ -344,15 +282,6 @@ class Camera3DPropertiesDialog is PropertiesDialog
                 number value = pitchField:GetText():ParseNumber()
                 if value not= currentItem:GetPitch()
                     currentItem:SetPitch(value)
-                end
-            detect e is Error
-                // Do nothing.
-            end
-        elseif control:Equals(rollField)
-            check
-                number value = rollField:GetText():ParseNumber()
-                if value not= currentItem:GetRoll()
-                    currentItem:SetRoll(value)
                 end
             detect e is Error
                 // Do nothing.
@@ -392,8 +321,8 @@ class Camera3DPropertiesDialog is PropertiesDialog
     changed to a different field, possibly context sensitive.
     */
     action FocusField
-        positionXField:Focus()
-        positionXField:Select(0, positionXField:GetSize(), true)
+        distanceField:Focus()
+        distanceField:Select(0, distanceField:GetSize(), true)
     end
 
 end
