@@ -13,6 +13,8 @@ use Libraries.Interface.Events.SelectionEvent
 use Libraries.Interface.Selections.TreeSelection
 use Libraries.Development.Environment.Studio.Behaviors.SceneTreeItemActivationBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SceneTreeEditorCameraBehavior
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
 
 class SceneTree is Tree, SelectionListener, SceneChangeListener
 
@@ -90,6 +92,10 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
             itemContainerItem:SetBehavior(itemActivationBehavior)
             layerTreeItem:Add(cast(TreeItem, itemContainerItem))    
 
+            // Used to check if 3D scenes are enabled. Development feature only.
+            GameStateManager manager
+            QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+
             if current is EditorLayer2D
                 EditorLayer2D layer = cast(EditorLayer2D, current)
 
@@ -103,21 +109,21 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
                 end
 
                 // Do any other special setup for Layer2D here, e.g. set up specific context menu or properties
-            elseif current is EditorLayer3D
-//                EditorLayer3D layer = cast(EditorLayer3D, current)
-//
-//                Iterator<Item3D> iterator = layer:GetIterator()
-//                repeat while iterator:HasNext()
-//                    Item3D item = iterator:Next()
-//                    if item:HasProperty(resources:EDITOR_TAG) = false
-//                        TreeItem treeItem = ItemToTreeItems(item, layer)
-//                        itemContainerItem:Add(treeItem)
-//                    end
-//                end
+            elseif current is EditorLayer3D and studio:enabledScenes3D
+                EditorLayer3D layer = cast(EditorLayer3D, current)
 
-                layerTreeItem = undefined
+                Iterator<Item3D> iterator = layer:GetIterator()
+                repeat while iterator:HasNext()
+                    Item3D item = iterator:Next()
+                    if item:HasProperty(resources:EDITOR_TAG) = false
+                        TreeItem treeItem = ItemToTreeItems(item, layer)
+                        itemContainerItem:Add(treeItem)
+                    end
+                end
 
                 // Do any other special setup for Layer3D here, e.g. set up specific context menu or properties
+            else
+                layerTreeItem = undefined
             end
 
             if layerTreeItem not= undefined
@@ -203,6 +209,14 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
             SceneTreeItem treeItem = cast(SceneTreeItem, treeItems:Next())
             if treeItem:GetSceneLayer() = layer
                 layerTreeItem = treeItem
+                Iterator<TreeItem> subTree = treeItem:GetTreeItems()
+                repeat while subTree:HasNext() and finished = false
+                    SceneTreeItem candidate = cast(SceneTreeItem, subTree:Next())
+                    if candidate:GetName() = "Items"
+                        layerTreeItem = candidate
+                        finished = true
+                    end
+                end
                 finished = true
             end
         end

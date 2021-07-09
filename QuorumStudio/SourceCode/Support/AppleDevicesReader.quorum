@@ -1,0 +1,40 @@
+package Libraries.Development.Environment.Studio.Mobile
+use Libraries.Containers.Array
+use Libraries.System.Properties
+use Libraries.Concurrency.Process
+use Libraries.System.File
+
+shared class AppleDevicesReader
+    Array<AppleDevice> availableDevices = undefined
+    on create
+        availableDevices = RunAvailableDevicesProcess()
+    end
+
+    action GetAvailableDevices returns Array<AppleDevice>
+        return availableDevices
+    end
+
+    action RunAvailableDevicesProcess returns Array<AppleDevice>
+        Properties properties
+        Process process
+        File directory
+        directory:SetPath("")
+        directory = directory:GetParentDirectory()
+        process:SetDirectory(directory)
+        if properties:IsMac()
+            process:SetProcessName("xcrun")
+            Array<text> params
+            params:Add("xctrace")
+            params:Add("list")
+            params:Add("devices")
+            process:SetParameters(params)
+            AppleDeviceParser parser
+            process:AddListener(parser)
+            process:Run()
+            return parser:GetDevices()
+        end
+
+        Array<AppleDevice> blank
+        return blank
+    end
+end

@@ -6,6 +6,8 @@ use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Language.Compile.CodeCompletionItem
 use Libraries.Interface.Controls.TextBox
 use Libraries.Language.Compile.CodeCompletionResult
+use Libraries.Development.Environment.Studio.Interface.CodeCompletionMenu
+use Libraries.Development.Environment.Studio.Build.BuildManager
 
 class ExecuteCodeCompletionBehavior is Behavior
 
@@ -16,6 +18,7 @@ class ExecuteCodeCompletionBehavior is Behavior
     CodeCompletionItem completion = undefined
     TextBox box = undefined
     CodeCompletionResult result = undefined
+    CodeCompletionMenu menu = undefined
 
     action GetTextBox returns TextBox
         return box
@@ -52,7 +55,8 @@ class ExecuteCodeCompletionBehavior is Behavior
             end
             if value not= undefined and value:GetSize() > size
                 value = value:GetSubtext(size)
-            elseif value not= undefined and value:GetSize() = size
+            elseif (value not= undefined and value:GetSize() = size)
+                or (value not= undefined and (value + "(") = filter)
                 value = "" //the user already typed it, so just add parens if blank
             end
             integer position = box:GetCaretPosition()
@@ -61,6 +65,35 @@ class ExecuteCodeCompletionBehavior is Behavior
                 value = value + "()"
             end
             box:Insert(position, value)
+
+            //add another dot and popup code completion again.
+            if result:IsUsage()
+                if completion:GetType() = completion:PACKAGE and
+                   value not= "all"
+                    if box is CodeTextBox
+                        box:Insert(box:GetCaretPosition(), ".")
+                        DoCodeCompletion(cast(CodeTextBox, box))
+                    end
+                end
+            end
         end
     end
+
+    private action DoCodeCompletion(CodeTextBox box)
+        BuildManager builder = menu:GetBuilder()
+
+        menu:SetTextBox(box)
+        menu:Generate(builder)
+
+        box:ShowCaret()
+    end
+
+    action GetMenu returns CodeCompletionMenu
+        return menu
+    end
+
+    action SetMenu(CodeCompletionMenu menu)
+        me:menu = menu
+    end
+
 end

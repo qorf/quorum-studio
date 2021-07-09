@@ -32,12 +32,17 @@ class CodeCompletionMenu is PopupMenu
     Icon actionPrivateIcon
     Icon fieldIcon
     Icon defaultIcon
+    Icon packageIcon
     Icon variableIcon
     Icon parentIcon
     Icon classIcon
+    integer resultSize = 0
+    boolean isParsing = false
 
     Array<MenuItem> primitives
     Array<MenuItem> other
+    Array<MenuItem> packages
+    Array<MenuItem> classes
     Array<MenuItem> locals
     Array<MenuItem> fields
     Array<MenuItem> parentFields
@@ -83,9 +88,11 @@ class CodeCompletionMenu is PopupMenu
 
         Filter(undefined)
 
-        number x = textBox:GetCaretGlobalX()
-        number y = textBox:GetCaretGlobalY()
-        OpenAt(x, y)
+        if IsEmpty() = false
+            number x = textBox:GetCaretGlobalX()
+            number y = textBox:GetCaretGlobalY()
+            OpenAt(x, y)
+        end
     end
 
     
@@ -99,6 +106,8 @@ class CodeCompletionMenu is PopupMenu
 
         primitives:Empty()
         other:Empty()
+        packages:Empty()
+        classes:Empty()
         locals:Empty()
         fields:Empty()
         parentFields:Empty()
@@ -119,12 +128,13 @@ class CodeCompletionMenu is PopupMenu
             Color grey = primaryColor:LightGray()
             primitiveIcon:LoadFilledCircle(size, orange)
             fieldIcon:LoadFilledRectangle(size, size, green)
-            actionIcon:LoadFilledTriangle(0,0,size/2, size, size, 0, olive)
+            actionIcon:LoadFilledTriangle(0,0,size/2, size, size, 0, blue)
             actionPrivateIcon:LoadFilledTriangle(0,size,size/2, 0, size, size, magenta)
             defaultIcon:LoadFilledCircle(size, black)
             variableIcon:LoadFilledRectangle(size, size, grey)
             parentIcon:LoadFilledCircle(size, red)
             classIcon:LoadFilledRectangle(size, size, black)
+            packageIcon:LoadFilledRectangle(size, size, orange)
             loadedOnce = true
         end
         Regenerate()
@@ -137,9 +147,22 @@ class CodeCompletionMenu is PopupMenu
     end
 
     private action Regenerate
-        Empty()
         CodeCompletionResult result = builder:RequestCodeCompletion()
+        
+        //the system is telling us we're between parses. Just ignore this request
+        if result = undefined
+            isParsing = true
+            return now
+        elseif not result:IsValidCodeCompletion()
+            isParsing = true
+            return now
+        else //seems like a valid request
+            isParsing = false
+        end
+        
         Iterator<CodeCompletionItem> iterator = result:GetIterator()
+        Empty()
+        resultSize = 0
         if not iterator:HasNext()
             return now
         end
@@ -148,14 +171,15 @@ class CodeCompletionMenu is PopupMenu
         
         repeat while iterator:HasNext()
             CodeCompletionItem code = iterator:Next()
-            if code:displayText:StartsWith(result:filter)
+            if (code:displayText:StartsWith(result:filter)) or (((not code:displayText:IsEmpty()) and result:filter:IsEmpty()))
                 MenuItem item = itemPool:GetNextMenuItem()
-                
+                resultSize = resultSize + 1
                 item:SetName(code:displayText)
                 item:SetShortcut(code:rightDisplayText)
-
+                item:SetDescription(code:documentationText)
 
                 ExecuteCodeCompletionBehavior behave
+                behave:SetMenu(me)
                 behave:SetTextBox(textBox)
                 behave:SetCodeCompletionItem(code)
                 behave:SetCodeCompletionResult(result)
@@ -178,16 +202,16 @@ class CodeCompletionMenu is PopupMenu
                     item:SetIconColor(fieldIcon:GetColor())
                     fields:Add(item)
                 elseif code:GetType() = code:PRIVATE_ACTION
-                    item:SetIcon(actionIcon)
-                    item:SetIconColor(actionIcon:GetColor())
+                    item:SetIcon(actionPrivateIcon)
+                    item:SetIconColor(actionPrivateIcon:GetColor())
                     actions:Add(item)
                 elseif code:GetType() = code:PUBLIC_ACTION
                     item:SetIcon(actionIcon)
                     item:SetIconColor(actionIcon:GetColor())
                     actions:Add(item)
                 elseif code:GetType() = code:PRIVATE_SYSTEM_ACTION
-                    item:SetIcon(actionIcon)
-                    item:SetIconColor(actionIcon:GetColor())
+                    item:SetIcon(actionPrivateIcon)
+                    item:SetIconColor(actionPrivateIcon:GetColor())
                     actions:Add(item)
                 elseif code:GetType() = code:PUBLIC_SYSTEM_ACTION
                     item:SetIcon(actionIcon)
@@ -200,7 +224,7 @@ class CodeCompletionMenu is PopupMenu
                 elseif code:GetType() = code:CLASS
                     item:SetIcon(classIcon)
                     item:SetIconColor(classIcon:GetColor())
-                    other:Add(item)
+                    classes:Add(item)
                 elseif code:GetType() = code:PRIMITIVE
                     item:SetIcon(primitiveIcon)
                     item:SetIconColor(primitiveIcon:GetColor())
@@ -210,9 +234,9 @@ class CodeCompletionMenu is PopupMenu
                     item:SetIconColor(primitiveIcon:GetColor())
                     primitives:Add(item)
                 elseif code:GetType() = code:PACKAGE
-                    item:SetIcon(defaultIcon)
-                    item:SetIconColor(defaultIcon:GetColor())
-                    other:Add(item)
+                    item:SetIcon(packageIcon)
+                    item:SetIconColor(packageIcon:GetColor())
+                    packages:Add(item)
                 elseif code:GetType() = code:PARENT_FIELD_PRIVATE
                     item:SetIcon(parentIcon)
                     item:SetIconColor(parentIcon:GetColor())
@@ -230,10 +254,12 @@ class CodeCompletionMenu is PopupMenu
 
         MenuItemComparison compare
         AddToResult(locals, compare)
-        AddToResult(primitives, compare)
         AddToResult(fields, compare)
         AddToResult(actions, compare)
+        AddToResult(primitives, compare)
         AddToResult(parentFields, compare)
+        AddToResult(packages, compare)
+        AddToResult(classes, compare)
         AddToResult(other, compare)
 
         if IsEmpty() = false and GetSelection():IsEmpty() = true
@@ -261,4 +287,25 @@ class CodeCompletionMenu is PopupMenu
             i = i + 1
         end
     end
+
+    action IsCompletionItemsEmpty returns boolean
+        return resultSize = 0
+    end
+
+    action Close
+        parent:PopupMenu:Close()
+    end
+
+    action GetBuilder returns BuildManager
+        return builder
+    end
+
+    action IsParsing returns boolean
+        return isParsing
+    end
+
+    action SetIsParsing(boolean isParsing)
+        me:isParsing = isParsing
+    end
+
 end

@@ -63,7 +63,8 @@ class Behaviors
     constant text STOP = "Stop"
     constant text TOGGLE_BREAKPOINT = "Toggle Breakpoint"
     constant text ADD_INPUT_TO_PROCESS = "Add Input To Process"
-    constant text ANDROID_DEBUG_BEHAVIOR = "Add Input To Process"
+    constant text ANDROID_DEBUG_BEHAVIOR = "Send to Android Debug"
+    constant text IOS_BEHAVIOR = "Send to IOS"
     constant text SET_PROGRAM_START = "Set Program Start"
     constant text BOOTSTRAP = "Bootstrap"
 
@@ -82,6 +83,7 @@ class Behaviors
     ToggleBreakpointBehavior toggleBreakpointBehavior
     InputBehavior inputBehavior
     SendToAndroidDebugModeBehavior androidDebugBehavior
+    SendToIOSBehavior sendToIOSBehavior
     BootstrapBehavior bootstrapBehavior
     SetProgramStartBehavior setProgramStartBehavior
 
@@ -120,6 +122,7 @@ class Behaviors
     BuildManager builder
     ThreadRunner indexThread
     ThreadRunner buildSystemRunner
+    ThreadRunner debuggerRunner
     ThreadRunner networkThreadRunner
     QuorumLoginBehavior quorumLoginBehavior
     ThreadedBehavior threadedQuorumLoginBehavior
@@ -137,6 +140,7 @@ class Behaviors
     ThreadedBehavior threadedPause
     ThreadedBehavior threadedContinue
     ThreadedBehavior threadedSendToAndroidDebug
+    ThreadedBehavior threadedSendToIOSBehavior
     ThreadedBehavior threadedBootstrapBehavior
     ScanLibraryBehavior scanner
 
@@ -263,6 +267,7 @@ class Behaviors
     constant text CAMERA_START_MOVING_DOWN = "Camera Start Moving Down"
     constant text CAMERA_STOP_MOVING_VERTICALLY = "Camera Stop Moving Vertically"
     constant text CAMERA_ITEMS_IN_VIEW = "Camera Items In View"
+    constant text CAMERA_FOCUS = "Camera Focus"
     constant text SELECTION_START_MOVING_LEFT = "Selection Start Moving Left"
     constant text SELECTION_START_MOVING_RIGHT = "Selection Start Moving Right"
     constant text SELECTION_STOP_MOVING_X = "Selection Stop Moving X"
@@ -329,6 +334,7 @@ class Behaviors
     CameraVerticalDirectionBehavior cameraStartMoveDownBehavior
     CameraVerticalDirectionBehavior cameraStopVerticalDirectionBehavior
     CameraItemsInViewBehavior cameraItemsInViewBehavior
+    FocusCameraBehavior focusCameraBehavior
     SelectionXDirectionBehavior selectionStartMovingLeftBehavior
     SelectionXDirectionBehavior selectionStartMovingRightBehavior
     SelectionXDirectionBehavior selectionStopMovingXBehavior
@@ -357,8 +363,6 @@ class Behaviors
     SelectionScaleBehavior selectionScaleZDownBehavior
     SelectionDeleteBehavior selectionDeleteBehavior
     SelectionCancelBehavior selectionCancelBehavior
-    NewItemCycleModelBehavior newItemCycleModelBehavior
-    NewItemCycleColorBehavior newItemCycleColorBehavior
     NewItemCreatePreviewBehavior newItemCreatePreviewBehavior
     NewItemCancelBehavior newItemCancelBehavior
     NewItemConfirmBehavior newItemConfirmBehavior
@@ -441,6 +445,7 @@ class Behaviors
         scanner:SetBuildManager(builder)
         toggleBreakpointBehavior:SetBuildManager(builder)
         inputBehavior:SetBuildManager(builder)
+        sendToIOSBehavior:SetBuildManager(builder)
         androidDebugBehavior:SetBuildManager(builder)
         codeCompletionBehavior:SetBuildManager(builder)
         bootstrapBehavior:SetBuildManager(builder)
@@ -457,22 +462,24 @@ class Behaviors
         threadedRun:SetNestedBehavior(runProjectBehavior)
         threadedRun:SetThreadRunner(buildSystemRunner)
         threadedRunToCursor:SetNestedBehavior(runToCursorBehavior)
-        threadedRunToCursor:SetThreadRunner(buildSystemRunner)
+        threadedRunToCursor:SetThreadRunner(debuggerRunner)
         threadedStepInto:SetNestedBehavior(stepIntoBehavior)
-        threadedStepInto:SetThreadRunner(buildSystemRunner)
+        threadedStepInto:SetThreadRunner(debuggerRunner)
         threadedStepOut:SetNestedBehavior(stepOutBehavior)
-        threadedStepOut:SetThreadRunner(buildSystemRunner)
+        threadedStepOut:SetThreadRunner(debuggerRunner)
         threadedStepOver:SetNestedBehavior(stepOverBehavior)
-        threadedStepOver:SetThreadRunner(buildSystemRunner)
+        threadedStepOver:SetThreadRunner(debuggerRunner)
         threadedStop:SetNestedBehavior(stopBehavior)
-        threadedStop:SetThreadRunner(buildSystemRunner)
+        threadedStop:SetThreadRunner(debuggerRunner)
         threadedStop:SetKillingBehaviors(true)
         threadedPause:SetNestedBehavior(pauseBehavior)
-        threadedPause:SetThreadRunner(buildSystemRunner)
+        threadedPause:SetThreadRunner(debuggerRunner)
         threadedContinue:SetNestedBehavior(continueBehavior)
-        threadedContinue:SetThreadRunner(buildSystemRunner)
+        threadedContinue:SetThreadRunner(debuggerRunner)
         threadedSendToAndroidDebug:SetNestedBehavior(androidDebugBehavior)
         threadedSendToAndroidDebug:SetThreadRunner(buildSystemRunner)
+        threadedSendToIOSBehavior:SetNestedBehavior(sendToIOSBehavior)
+        threadedSendToIOSBehavior:SetThreadRunner(buildSystemRunner)
         threadedBootstrapBehavior:SetNestedBehavior(bootstrapBehavior)
         threadedBootstrapBehavior:SetThreadRunner(buildSystemRunner)
 
@@ -503,6 +510,7 @@ class Behaviors
         behaviors:Add(SET_PROGRAM_START, setProgramStartBehavior)
         behaviors:Add(ADD_INPUT_TO_PROCESS, inputBehavior) //
         behaviors:Add(ANDROID_DEBUG_BEHAVIOR, threadedSendToAndroidDebug)
+        behaviors:Add(IOS_BEHAVIOR, threadedSendToIOSBehavior)
         behaviors:Add(BOOTSTRAP, threadedBootstrapBehavior)
 
         behaviors:Add(FOCUS_BREAKPOINTS_WINDOW, focusBreakpointsBehavior)
@@ -622,6 +630,7 @@ class Behaviors
         behaviors:Add(CAMERA_START_MOVING_DOWN, cameraStartMoveDownBehavior)
         behaviors:Add(CAMERA_STOP_MOVING_VERTICALLY, cameraStopVerticalDirectionBehavior)
         behaviors:Add(CAMERA_ITEMS_IN_VIEW, cameraItemsInViewBehavior)
+        behaviors:Add(CAMERA_FOCUS,focusCameraBehavior)
         behaviors:Add(SELECTION_START_MOVING_LEFT, selectionStartMovingLeftBehavior)
         behaviors:Add(SELECTION_START_MOVING_RIGHT, selectionStartMovingRightBehavior)
         behaviors:Add(SELECTION_STOP_MOVING_X, selectionStopMovingXBehavior)
@@ -644,8 +653,6 @@ class Behaviors
         behaviors:Add(SELECTION_SCALE_Z_DOWN, selectionScaleZDownBehavior)
         behaviors:Add(SELECTION_DELETE, selectionDeleteBehavior)
         behaviors:Add(SELECTION_CANCEL, selectionCancelBehavior)
-        behaviors:Add(NEW_ITEM_CYCLE_MODEL, newItemCycleModelBehavior)
-        behaviors:Add(NEW_ITEM_CYCLE_COLOR, newItemCycleColorBehavior)
         behaviors:Add(NEW_ITEM_CREATE_PREVIEW, newItemCreatePreviewBehavior)
         behaviors:Add(NEW_ITEM_CANCEL, newItemCancelBehavior)
         behaviors:Add(NEW_ITEM_CONFIRM, newItemConfirmBehavior)
@@ -714,6 +721,10 @@ class Behaviors
 
     action GetBuildThreadRunner returns ThreadRunner
         return buildSystemRunner
+    end
+
+    action GetDebuggerRunner returns ThreadRunner
+        return debuggerRunner
     end
 
     action GetBuildIndexingThread returns ThreadRunner
@@ -844,6 +855,14 @@ class Behaviors
 
     action GetThreadedSendToAndroidDebugModeBehavior returns ThreadedBehavior
         return threadedSendToAndroidDebug
+    end
+
+    action GetSendToIOSBehavior returns SendToIOSBehavior
+        return sendToIOSBehavior
+    end
+
+    action GetThreadedSendToIOSBehavior returns ThreadedBehavior
+        return threadedSendToIOSBehavior
     end
 
     action GetThreadedContinueBehavior returns ThreadedBehavior
@@ -1178,6 +1197,10 @@ class Behaviors
         return cameraItemsInViewBehavior
     end
 
+    action GetFocusCameraBehavior returns FocusCameraBehavior
+        return focusCameraBehavior
+    end
+
     action GetSelectionStartMovingLeftBehavior returns SelectionXDirectionBehavior
         return selectionStartMovingLeftBehavior
     end
@@ -1288,14 +1311,6 @@ class Behaviors
 
     action GetSelectionCancelBehavior returns SelectionCancelBehavior
         return selectionCancelBehavior
-    end
-
-    action GetNewItemCycleColorBehavior returns NewItemCycleColorBehavior
-        return newItemCycleColorBehavior
-    end
-
-    action GetNewItemCycleModelBehavior returns NewItemCycleModelBehavior
-        return newItemCycleModelBehavior
     end
 
     action GetNewItemCreatePreviewBehavior returns NewItemCreatePreviewBehavior

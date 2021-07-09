@@ -11,6 +11,8 @@ import com.github.difflib.text.DiffRowGenerator;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -140,9 +142,19 @@ public class Git {
             String repo = request.GetRemoteRepositoryLocation();
             String local = request.GetSaveLocation();
             
-            Path path = Paths.get(repo). getFileName();
+            if(repo == null || repo.length() == 0) {
+                result.SetIsSuccessful(false);
+                result.SetMessage("The remote location you are attempting to clone is empty or does not exist.");
+                return result;
+            }
             
-            String name = path.toString();
+            if(local == null || local.length() == 0) {
+                result.SetIsSuccessful(false);
+                result.SetMessage("The location on disk you are attempting to clone to is empty or does not exist.");
+                return result;
+            }
+            URI uri = URI.create(repo);
+            String name = new File(uri.getPath()).getName();
             String[] split = name.split("\\.");
             if(split == null || split.length == 0) {
                 return result;
@@ -158,7 +170,7 @@ public class Git {
             }
                 
             CloneCommand clone = org.eclipse.jgit.api.Git.cloneRepository();
-            clone.setURI( repo );
+            clone.setURI( uri.toString() );
             
             if(monitor != null) {
                 QuorumProgressMonitor qpm = new QuorumProgressMonitor();
@@ -177,7 +189,7 @@ public class Git {
         } catch (GitAPIException ex) {
             String message = ex.getMessage();
             result.SetMessage(message);
-        }
+        } 
         return result;
     }
     
@@ -545,7 +557,7 @@ public class Git {
                                 resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesDeleted_(
                                     resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesDeleted_() + 1);
                                 
-                                if((previousTag == null) || 
+                                if((previousTag == null && previousRes != null) || 
                                    (previousTag != null && previousRes != null && previousTag != previousTag.DELETE)) {
                                     previousRes.SetHasDeletion(true);
                                 }

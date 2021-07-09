@@ -82,10 +82,12 @@ class QuorumProjectView is ProjectView
         close:SetBehavior(behaviors:GetCloseProjectBehavior())
         menu:Add(close)
 
+        //Keep this around in case I'm wrong, but I think
+        //this can be removed, as bootstrapping is no longer relevant.
         boolean bootstrap = project:IsCompilerProject()
         if bootstrap
             MenuItem bootstrapItem
-            bootstrapItem:SetName("Bootstrap")
+            bootstrapItem:SetName("Copy to Quorum Studio")
             bootstrapItem:SetBehavior(behaviors:GetThreadedBootstrapBehavior())
             menu:Add(bootstrapItem)
         end
@@ -121,7 +123,6 @@ class QuorumProjectView is ProjectView
             if (sub:IsDirectory() and name not= "Project"
                 and name not= "Run"
                 and name not= "Build")
-
                 ProjectTreeItem folder = GetItem(sub)
                 folders:Add(folder)
             end
@@ -161,6 +162,8 @@ class QuorumProjectView is ProjectView
             if file:IsDirectory()
                 ProjectTreeItem directory = GetItem(file)
                 items:Add(directory)
+            elseif file:IsHidden()
+                //for now do nothing if the file is hidden
             else
                 ProjectTreeItem item
                 item:SetFile(file)

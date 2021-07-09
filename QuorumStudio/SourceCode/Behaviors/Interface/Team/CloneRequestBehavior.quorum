@@ -47,6 +47,8 @@ class CloneRequestBehavior is QuorumStudioBehavior, VersionProgressMonitor
         GameStateManager manager
         Game game = manager:GetGame()
         studio = cast(QuorumStudio, game)
+        Options options = studio:GetOptions()
+        
         OutputEditorTabPane outPane = studio:GetOutputPane()
         out = outPane:GetOutputTab()
         out:Empty()
@@ -58,7 +60,21 @@ class CloneRequestBehavior is QuorumStudioBehavior, VersionProgressMonitor
         request:SetSaveLocation(GetSaveLocation())
         request:SetProgressMonitor(me)
 
+        text remote = GetRemoteRepositoryLocation()
         text value = GetSaveLocation()
+        if remote = undefined or remote:IsEmpty()
+            out:Append("Remote Location is empty.")
+        end
+        if value = undefined or value:IsEmpty()
+            File folder = studio:GetProjectsFolder()
+            if folder = undefined
+                out:Append("Save Location is empty.")
+            else
+                text path = folder:GetAbsolutePath()
+                request:SetSaveLocation(path)
+                value = path
+            end
+        end
         File file
         file:SetAbsolutePath(value)
 

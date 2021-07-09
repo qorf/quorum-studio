@@ -9,12 +9,18 @@ class EditorLayer3D is Layer3D, EditorLayer
     GridPlane grid
     boolean gridSnapEnabled = true
 
-    // TO-DO: This should be an EditorCursor3D.
-    EditorCursor cursor = undefined
+    EditorCursor3D cursor
 
     on create
         Add(grid)
+
+        cursor:Load(me)
+        Add(cursor)
+
         ShowEditorComponents(false)
+
+        EditorCamera3D camera
+        SetCamera(camera)
     end
 
     action ProcessMouseEvent(MouseEvent event) returns Item
@@ -87,11 +93,7 @@ class EditorLayer3D is Layer3D, EditorLayer
     end
 
     action GetCursor returns EditorCursor
-        return undefined
-    end
-
-    action ShowCursor(boolean visible)
-        // TO-DO
+        return cursor
     end
 
     action ShowEditorComponents(boolean shouldShow)
@@ -100,8 +102,12 @@ class EditorLayer3D is Layer3D, EditorLayer
                 grid:Show()
             end
         else
+            cursor:Hide()
             grid:Hide()
         end
     end
 
+    action GetEditorCamera returns EditorCamera3D
+        return cast(EditorCamera3D, GetCamera())
+    end
 end

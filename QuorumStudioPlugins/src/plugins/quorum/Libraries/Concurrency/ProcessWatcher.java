@@ -23,6 +23,9 @@ public class ProcessWatcher implements Runnable {
     private BufferedReader bufferedReader = null;
     private OutputStream outputStream;
     private InputStream inputStream;
+    private BufferedReader bufferedErrorReader = null;
+    private InputStream errorStream;
+    
     BufferedWriter bufferedWriter;
     private Thread blinker = null;
     public boolean running = false;
@@ -47,9 +50,12 @@ public class ProcessWatcher implements Runnable {
         cancelled = cancel;
     }
     
-    public ProcessWatcher(InputStream in) {
+    public ProcessWatcher(InputStream in, InputStream errors) {
         inputStream = in;
         bufferedReader = new BufferedReader(new InputStreamReader(in));
+        
+        errorStream = errors;
+        bufferedErrorReader = new BufferedReader(new InputStreamReader(errors));
     }
 
     public void SendInput(String value) {
@@ -59,7 +65,7 @@ public class ProcessWatcher implements Runnable {
                 bufferedWriter.newLine();
                 bufferedWriter.flush();
             } catch (IOException ex) {
-                Logger.getLogger(ProcessRunner.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(Process.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
     }
@@ -96,6 +102,13 @@ public class ProcessWatcher implements Runnable {
             try {
                 if (bufferedReader.ready()) {
                     final String line = bufferedReader.readLine();
+                    if(coordinator != null) {
+                        coordinator.SendOutput(line);
+                    }
+                }
+                
+                if (bufferedErrorReader.ready()) {
+                    final String line = bufferedErrorReader.readLine();
                     if(coordinator != null) {
                         coordinator.SendOutput(line);
                     }

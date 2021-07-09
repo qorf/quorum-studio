@@ -10,7 +10,7 @@ use Libraries.Language.Compile.CompilerResult
 use Libraries.Development.Environment.Studio.Interface.OutputTab
 use Libraries.Containers.Iterator
 use Libraries.Language.Compile.CompilerError
-use Libraries.Concurrency.ProcessRunner
+use Libraries.Concurrency.Process
 use Libraries.System.Properties
 use Libraries.Language.Debug.Debugger
 use Libraries.Language.Debug.DebuggerListener
@@ -73,9 +73,15 @@ use Libraries.Development.Versioning.Repository
 use Libraries.Development.Versioning.Git
 use Libraries.Development.Versioning.DiffRequest
 use Libraries.Development.Versioning.DiffResult
+use Libraries.Language.Compile.CodeCompletionItem
+use Libraries.Development.Environment.Studio.Mobile.IOSSupport
+use Libraries.Development.Environment.Studio.Mobile.AppleNativeCompileListener
+use Libraries.System.Logger
+use Libraries.Development.Environment.Projects.Project
 
-class BuildManager is DebuggerListener, ProcessListener, ProjectListener
+class BuildManager is DebuggerListener, ProcessListener, ProjectListener, MobileListener
     Library library
+    Logger logger
     constant text DEFAULT_LIBRARY_PATH = "Library/Standard"
     constant text DEFAULT_LIBRARY_OUTPUT_PATH = "Library/Compiled"
     Debugger debugger
@@ -85,7 +91,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
     BuildInformation debuggingProgram = undefined
     CodeEditorTabPane editors = undefined
     OutputEditorTabPane outputTabs = undefined
-    HashTable<text, ProcessRunner> processes
+    HashTable<text, Process> processes
     ProjectManager projectManager = undefined
 
     //for the parsing and indexing procedures
@@ -313,6 +319,9 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         tab:SetIsParseDirty(false)
         QuorumProject project = cast(QuorumProject, projectManager:IsProjectSourceFile(file))
         CodeTextBox box = tab:GetTextBox()
+        if box = undefined
+            return false
+        end
         text source = box:GetText()
 
         //it's in the standard library, has a lexer, and is a valid file
@@ -374,6 +383,10 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
             event:SetIsAdded(true)
         end
 
+        if debugger not= undefined
+            ToggleBreakpointInDebugger(point, undefined)
+        end
+
         FireBreakpointEvent(event)
     end
 
@@ -403,6 +416,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
     end
 
     action Run(DebuggerStartEvent event)
+        logger:Log("Starting Debugger")
         QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
         Toolbar toolbar = studio:GetToolbar()
         Button debugButton = toolbar:GetButton("Debug")
@@ -411,6 +425,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
     end
 
     action Run(DebuggerStopEvent event)
+        logger:Log("Stopping Debugger")
         debugger:Stop()
         debuggingProgram = undefined
         if debuggerLineTextBox not= undefined
@@ -433,10 +448,20 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
 
     action Run(DebuggerStepEvent event)
         if debuggingProgram not= undefined
+            text name = event:GetClassName()
+            integer line = event:GetLine()
+
+            logger:Log("Debugger: " + name + ", " + line)
             CompilerResult result = debuggingProgram:result
             File newFileToOpen = undefined
             SymbolTable table = result:symbolTable
             Class clazz = table:GetClass(event:GetClassName())
+            if clazz = undefined
+                table = library:GetSymbolTable()
+                if table not= undefined
+                    clazz = table:GetClass(event:GetClassName())
+                end
+            end
             if clazz not= undefined
                 File file = clazz:GetFile()
                 if file not= undefined and editors not= undefined
@@ -449,7 +474,6 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
     end
 
     action Run(DebuggerErrorEvent event)
-        a = 5
     end
 
     action Run(DebuggerOutputEvent event)
@@ -474,10 +498,14 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
 
         Class value = table:GetClass(bp:GetDotName())
         if value = undefined
-            return now
+            //check the standard library
+            table = library:GetSymbolTable()
+            value = table:GetClass(bp:GetDotName())
+            if value = undefined return now end
         end
         File file = value:GetFile()
         integer line = bp:GetLine()
+        logger:Log("Breakpoint: " + file:GetPath() + ":" + line)
         UpdateDebugger(file, line)
     end
 
@@ -592,13 +620,25 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
             request:fileKey = libraryClass:GetFile():GetAbsolutePath()
         end
 
+        request:library = library
         request:source = source
         request:caretLocation = index
         request:result = recentCompilerResults:GetValue(resultKey)
         request:lastCompiledResult = goodCompilerResults:GetValue(resultKey)
  
-        CodeCompletionResult result = compiler:Request(request)
-        return result
+        check
+            CodeCompletionResult result = compiler:Request(request)
+    
+            //this was probably a garbage request, so send it off, but probably ignore it
+            //the compiler is probably busy.
+            if request:table = undefined
+                result:SetIsValidCodeCompletion(false)
+            end
+            return result
+        detect e
+            logger:Log(e:GetStackTraceMessage())
+        end
+        return undefined
     end
 
     private action ChangeErrorLocations(CompilerErrorManager errors, text key, text libraryKey)
@@ -667,10 +707,38 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
             //updater:SetBuildInformation(info)
             updater:SetBuildManager(me)
             updater:SetProjectKey(SINGLE_FILE_COMPILE_KEY)
+
+            QuorumProject proj = GetQuorumProject()
+            //if there is a compiler project open, compare the file to that one
+            if proj not= undefined
+                boolean hasGit = proj:HasGitSupport()
+                if hasGit //if it has Git support, do a diff on the file and update accordingly
+                    Repository repository = proj:GetGitRepository()
+                    Git git = proj:GetGit()
+                    DiffRequest req
+                    req:SetFile(libraryFile)
+                    text currentText = box:GetText()
+                    req:SetCurrentText(currentText)
+                    DiffResult res = git:RequestDiff(repository, req)
+                    updater:SetDiffResult(res)
+                end
+            end
             //updater:SetCompilerResult(result)
             updater:SetPath(libraryFile)
             box:AddBehavior(updater)
         end
+    end
+
+    private action GetQuorumProject returns QuorumProject
+        Iterator<QuorumProject> iterator = projectManager:GetIterator()
+        repeat while iterator:HasNext()
+            QuorumProject project = iterator:Next()
+            if project:IsCompilerProject()
+                return project
+            end
+        end
+
+        return undefined
     end
 
     private action GetIndexOf(text path) returns integer
@@ -835,16 +903,16 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         OutputTab out = info:outputTab
         out:Empty()
 
-        out:Append("Starting to Bootstrap")
-        out:Append("Compiling Library.quorum")
-        //now we run it and check for errors
-        project:SetMain("SourceCode/Library.quorum")
-        Run(info)
-        
-        out:Append("Compiling Main.quorum")
-        //Now we rebuild with main.quorum
-        project:SetMain("SourceCode/main.quorum")
-        Build(info)
+        //out:Append("Bootstrapping")
+//        out:Append("Compiling Library.quorum")
+//        //now we run it and check for errors
+//        project:SetMain("SourceCode/Library.quorum")
+//        Run(info)
+//        
+//        out:Append("Compiling Main.quorum")
+//        //Now we rebuild with main.quorum
+//        project:SetMain("SourceCode/main.quorum")
+//        Build(info)
 
         //Now we do the equivalent of the old sh/bat script
         BootstrapCopy(info)
@@ -855,7 +923,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         number start = date:GetEpochTime()
         QuorumProject project = info:project
         OutputTab out = info:outputTab
-        out:Append("Starting Copy Scripts")
+        out:Append("Copying Standard Library")
 
         
         File location = project:GetLocation()
@@ -866,181 +934,181 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         text sourceCodeFolderName = "SourceCode"
         
 
-        File sodbeansReleaseFolder
-        sodbeansReleaseFolder:SetAbsolutePath(location:GetAbsolutePath())
-        sodbeansReleaseFolder = sodbeansReleaseFolder:GetParentDirectory():GetParentDirectory()
-        sodbeansReleaseFolder:SetPath("sodbeans/Sodbeans/Quorum/release/")
-
-        File sodbeansExtFolder
-        sodbeansExtFolder = sodbeansReleaseFolder:GetParentDirectory():GetParentDirectory()
-        sodbeansExtFolder:SetPath("Quorum/release/modules/ext/")
-
-        File sodbeansLibraryFolder
-        sodbeansLibraryFolder = sodbeansReleaseFolder:GetParentDirectory():GetParentDirectory()
-        sodbeansLibraryFolder:SetPath("Quorum/release/modules/Library")
+//        File sodbeansReleaseFolder
+//        sodbeansReleaseFolder:SetAbsolutePath(location:GetAbsolutePath())
+//        sodbeansReleaseFolder = sodbeansReleaseFolder:GetParentDirectory():GetParentDirectory()
+//        sodbeansReleaseFolder:SetPath("sodbeans/Sodbeans/Quorum/release/")
+//
+//        File sodbeansExtFolder
+//        sodbeansExtFolder = sodbeansReleaseFolder:GetParentDirectory():GetParentDirectory()
+//        sodbeansExtFolder:SetPath("Quorum/release/modules/ext/")
+//
+//        File sodbeansLibraryFolder
+//        sodbeansLibraryFolder = sodbeansReleaseFolder:GetParentDirectory():GetParentDirectory()
+//        sodbeansLibraryFolder:SetPath("Quorum/release/modules/Library")
 
         File quorumStudioLibraryFolder
         quorumStudioLibraryFolder:SetAbsolutePath(location:GetAbsolutePath())
         quorumStudioLibraryFolder = quorumStudioLibraryFolder:GetParentDirectory():GetParentDirectory()
         quorumStudioLibraryFolder:SetPath("quorumstudio/QuorumStudio/Library")
 
-        File copyFolder
-        copyFolder:SetWorkingDirectory(location:GetAbsolutePath())
-        copyFolder:SetPath(copyFolderName)
-
-        File runFolder
-        runFolder:SetWorkingDirectory(location:GetAbsolutePath())
-        runFolder:SetPath(runFolderName)
+//        File copyFolder
+//        copyFolder:SetWorkingDirectory(location:GetAbsolutePath())
+//        copyFolder:SetPath(copyFolderName)
+//
+//        File runFolder
+//        runFolder:SetWorkingDirectory(location:GetAbsolutePath())
+//        runFolder:SetPath(runFolderName)
 
         File libraryFolder
         libraryFolder:SetWorkingDirectory(location:GetAbsolutePath())
         libraryFolder:SetPath(libraryFolderName)
 
-        File sourceCodeFolder
-        sourceCodeFolder:SetWorkingDirectory(location:GetAbsolutePath())
-        sourceCodeFolder:SetPath(sourceCodeFolderName)
+//        File sourceCodeFolder
+//        sourceCodeFolder:SetWorkingDirectory(location:GetAbsolutePath())
+//        sourceCodeFolder:SetPath(sourceCodeFolderName)
+//        
+//        File newLibraryFolder
+//        newLibraryFolder:SetWorkingDirectory(copyFolder:GetAbsolutePath())
+//        newLibraryFolder:SetPath(libraryFolderName)
+//        
+//        if copyFolder:Exists()
+//            copyFolder:Delete(true)
+//        end
         
-        File newLibraryFolder
-        newLibraryFolder:SetWorkingDirectory(copyFolder:GetAbsolutePath())
-        newLibraryFolder:SetPath(libraryFolderName)
         
-        if copyFolder:Exists()
-            copyFolder:Delete(true)
-        end
-        
-        
-        copyFolder:CreateDirectories()
-
-        runFolder:Copy(copyFolder, true)
-        libraryFolder:Copy(newLibraryFolder, true)
-        sourceCodeFolder:Copy(copyFolder, true)
-
-        Array<File> sourceFiles = project:GetSources()
-
-        //now setup a process that will compile the compiler
-        out:Append("Compiling Quorum Next in Quorum")
-        RunCompilerProcess(out, copyFolder, location, sourceCodeFolder, sourceFiles, 
-            "/Default.jar")
-        
-        //now recursively copy the folder in Run up a folder
-        File newRunFolder
-        newRunFolder:SetWorkingDirectory(copyFolder:GetAbsolutePath())
-        newRunFolder:SetPath(runFolderName)
-        newRunFolder:Copy(copyFolder, true)
-        newRunFolder:Delete(true)
-
-        out:Append("Recompiling Quorum Next in Quorum next")
-        RunCompilerProcess(out, copyFolder, location, sourceCodeFolder, sourceFiles, 
-            "/Quorum.jar")
-
-        out:Append("Copying to Development Environments")
-
-        constant text quorumJarName = "Quorum.jar"
-        constant text quorumStandardLibraryJarName = "QuorumStandardLibrary.jar"
-        constant text quorumStandardPluginsJarName = "QuorumStandardPlugins.jar"
-        constant text quorumStandardLibraryJavascriptName = "QuorumStandardLibrary.js"
+//        copyFolder:CreateDirectories()
+//
+//        runFolder:Copy(copyFolder, true)
+//        libraryFolder:Copy(newLibraryFolder, true)
+//        sourceCodeFolder:Copy(copyFolder, true)
+//
+//        Array<File> sourceFiles = project:GetSources()
+//
+//        //now setup a process that will compile the compiler
+//        out:Append("Compiling Quorum Next in Quorum")
+//        RunCompilerProcess(out, copyFolder, location, sourceCodeFolder, sourceFiles, 
+//            "/Default.jar")
+//        
+//        //now recursively copy the folder in Run up a folder
+//        File newRunFolder
+//        newRunFolder:SetWorkingDirectory(copyFolder:GetAbsolutePath())
+//        newRunFolder:SetPath(runFolderName)
+//        newRunFolder:Copy(copyFolder, true)
+//        newRunFolder:Delete(true)
+//
+//        out:Append("Recompiling Quorum Next in Quorum next")
+//        RunCompilerProcess(out, copyFolder, location, sourceCodeFolder, sourceFiles, 
+//            "/Quorum.jar")
+//
+//        out:Append("Copying to Development Environments")
+//
+//        constant text quorumJarName = "Quorum.jar"
+//        constant text quorumStandardLibraryJarName = "QuorumStandardLibrary.jar"
+//        constant text quorumStandardPluginsJarName = "QuorumStandardPlugins.jar"
+//        constant text quorumStandardLibraryJavascriptName = "QuorumStandardLibrary.js"
 
         //first copy in the compiler and the standard library
 
-        File compiledQuorumJar
-        compiledQuorumJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
-        compiledQuorumJar:SetPath(quorumJarName)
+//        File compiledQuorumJar
+//        compiledQuorumJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
+//        compiledQuorumJar:SetPath(quorumJarName)
+//
+//        File compiledStandardLibraryJar
+//        compiledStandardLibraryJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
+//        compiledStandardLibraryJar:SetPath(quorumStandardLibraryJarName)
+//
+//        File compiledStandardPluginsJar
+//        compiledStandardPluginsJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
+//        compiledStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
+//
+//        File compiledStandardLibraryJavaScript
+//        compiledStandardLibraryJavaScript:SetWorkingDirectory(copyFolder:GetAbsolutePath())
+//        compiledStandardLibraryJavaScript:SetPath(quorumStandardLibraryJavascriptName)
 
-        File compiledStandardLibraryJar
-        compiledStandardLibraryJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
-        compiledStandardLibraryJar:SetPath(quorumStandardLibraryJarName)
-
-        File compiledStandardPluginsJar
-        compiledStandardPluginsJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
-        compiledStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
-
-        File compiledStandardLibraryJavaScript
-        compiledStandardLibraryJavaScript:SetWorkingDirectory(copyFolder:GetAbsolutePath())
-        compiledStandardLibraryJavaScript:SetPath(quorumStandardLibraryJavascriptName)
-
-        File sodbeansQuorumJar
-        sodbeansQuorumJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
-        sodbeansQuorumJar:SetPath(quorumJarName)
-
-        File sodbeansStandardLibraryJar
-        sodbeansStandardLibraryJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
-        sodbeansStandardLibraryJar:SetPath(quorumStandardLibraryJarName)
-
-        File sodbeansStandardPluginsJar
-        sodbeansStandardPluginsJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
-        sodbeansStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
-
-        File sodbeansStandardLibraryJavaScript
-        sodbeansStandardLibraryJavaScript:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
-        sodbeansStandardLibraryJavaScript:SetPath(quorumStandardLibraryJavascriptName)
+//        File sodbeansQuorumJar
+//        sodbeansQuorumJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
+//        sodbeansQuorumJar:SetPath(quorumJarName)
+//
+//        File sodbeansStandardLibraryJar
+//        sodbeansStandardLibraryJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
+//        sodbeansStandardLibraryJar:SetPath(quorumStandardLibraryJarName)
+//
+//        File sodbeansStandardPluginsJar
+//        sodbeansStandardPluginsJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
+//        sodbeansStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
+//
+//        File sodbeansStandardLibraryJavaScript
+//        sodbeansStandardLibraryJavaScript:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
+//        sodbeansStandardLibraryJavaScript:SetPath(quorumStandardLibraryJavascriptName)
 
         //copy the jar files
-        compiledQuorumJar:Copy(sodbeansQuorumJar)
-        compiledStandardLibraryJar:Copy(sodbeansStandardLibraryJar)
-        compiledStandardPluginsJar:Copy(sodbeansStandardPluginsJar)
-        compiledStandardLibraryJavaScript:Copy(sodbeansStandardLibraryJavaScript)
-
-        //delete library folders if they exist
-        if sodbeansLibraryFolder:Exists()
-            sodbeansLibraryFolder:Delete(true)
-        end
+//        compiledQuorumJar:Copy(sodbeansQuorumJar)
+//        compiledStandardLibraryJar:Copy(sodbeansStandardLibraryJar)
+//        compiledStandardPluginsJar:Copy(sodbeansStandardPluginsJar)
+//        compiledStandardLibraryJavaScript:Copy(sodbeansStandardLibraryJavaScript)
+//
+//        //delete library folders if they exist
+//        if sodbeansLibraryFolder:Exists()
+//            sodbeansLibraryFolder:Delete(true)
+//        end
 
         if quorumStudioLibraryFolder:Exists()
             quorumStudioLibraryFolder:Delete(true)
         end
 
         //copy the standard library all fresh and new
-        libraryFolder:Copy(sodbeansLibraryFolder, true)
+//        libraryFolder:Copy(sodbeansLibraryFolder, true)
         libraryFolder:Copy(quorumStudioLibraryFolder, true)
 
-        out:Append("Creating Deployment Packages")
-        constant text deployName = "Deploy"
-        File deployFolder
-        deployFolder:SetWorkingDirectory(location:GetAbsolutePath())
-        deployFolder:SetPath(deployName)
+//        out:Append("Creating Deployment Packages")
+//        constant text deployName = "Deploy"
+//        File deployFolder
+//        deployFolder:SetWorkingDirectory(location:GetAbsolutePath())
+//        deployFolder:SetPath(deployName)
+//
+//        if deployFolder:Exists()
+//            deployFolder:Delete(true)
+//        end
 
-        if deployFolder:Exists()
-            deployFolder:Delete(true)
-        end
-
-        deployFolder:CreateDirectories()
-
-        File deploymentQuorumJar
-        deploymentQuorumJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
-        deploymentQuorumJar:SetPath(quorumJarName)
-
-        File deploymentStandardLibraryJar
-        deploymentStandardLibraryJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
-        deploymentStandardLibraryJar:SetPath(quorumStandardLibraryJarName)
-
-        File deploymentStandardPluginsJar
-        deploymentStandardPluginsJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
-        deploymentStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
-
-        File deploymentStandardLibraryJavaScript
-        deploymentStandardLibraryJavaScript:SetWorkingDirectory(deployFolder:GetAbsolutePath())
-        deploymentStandardLibraryJavaScript:SetPath(quorumStandardLibraryJavascriptName)
-        
-        //copy into the deploy folder
-        compiledQuorumJar:Copy(deploymentQuorumJar)
-        compiledStandardLibraryJar:Copy(deploymentStandardLibraryJar)
-        compiledStandardPluginsJar:Copy(deploymentStandardPluginsJar)
-        compiledStandardLibraryJavaScript:Copy(deploymentStandardLibraryJavaScript)
-
-        if copyFolder:Exists()
-            copyFolder:Delete(true)
-        end
+//        deployFolder:CreateDirectories()
+//
+//        File deploymentQuorumJar
+//        deploymentQuorumJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
+//        deploymentQuorumJar:SetPath(quorumJarName)
+//
+//        File deploymentStandardLibraryJar
+//        deploymentStandardLibraryJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
+//        deploymentStandardLibraryJar:SetPath(quorumStandardLibraryJarName)
+//
+//        File deploymentStandardPluginsJar
+//        deploymentStandardPluginsJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
+//        deploymentStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
+//
+//        File deploymentStandardLibraryJavaScript
+//        deploymentStandardLibraryJavaScript:SetWorkingDirectory(deployFolder:GetAbsolutePath())
+//        deploymentStandardLibraryJavaScript:SetPath(quorumStandardLibraryJavascriptName)
+//        
+//        //copy into the deploy folder
+//        compiledQuorumJar:Copy(deploymentQuorumJar)
+//        compiledStandardLibraryJar:Copy(deploymentStandardLibraryJar)
+//        compiledStandardPluginsJar:Copy(deploymentStandardPluginsJar)
+//        compiledStandardLibraryJavaScript:Copy(deploymentStandardLibraryJavaScript)
+//
+//        if copyFolder:Exists()
+//            copyFolder:Delete(true)
+//        end
 
         number finish = date:GetEpochTime()
         number total = finish - start
         total = total / 1000.0
-        out:Append("Bootstrapping complete in " + total + " seconds.")
+        out:Append("Completed in " + total + " seconds.")
     end
 
     private action RunCompilerProcess(
         OutputTab out, File copyFolder, File location, File sourceCodeFolder, 
         Array<File> sourceFiles, text compilerName)
-        ProcessRunner runner
+        Process runner
         runner:SetOutputTab(out)
 
         runner:AddListener(me)
@@ -1054,7 +1122,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
 
         text value = location:GetAbsolutePath()
         if processes:HasKey(value) //kill it, if you have to
-            ProcessRunner old = processes:RemoveKey(value)
+            Process old = processes:RemoveKey(value)
             old:Cancel()
         end
 
@@ -1298,6 +1366,117 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         Build(info)
     end
 
+    action SendToIOS(BuildInformation info)
+        QuorumProject project = info:project
+        OutputTab out = info:outputTab
+        if project:IsLegoType()
+            out:Append("The project is currently in LEGO mode. I cannot send a LEGO project to an Android Device. Please compile in Standard mode.")
+            return now
+        end
+
+        if project:IsServerType()
+            out:Append("The project is currently in Server mode. I cannot send a Server project to an Android Device. Please compile in Standard mode.")
+            return now
+        end
+
+        if project:IsJavascriptType()
+            out:Append("The project is currently in Web Client mode. I cannot send a Web client project to an Android Device. Please compile in Standard mode.")
+            return now
+        end
+        Build(info)
+
+        CompilerResult result = info:result
+        SymbolTable table = result:symbolTable
+        CompilerErrorManager errors = result:compilerErrorManager
+        if not errors:IsCompilationErrorFree()
+            return now
+        end
+
+        //now get the main, so we can write a new template file
+        File main = project:GetMain()
+        if main = undefined
+            out:Append("Main not found. Ending iOS Compilation")
+            return now
+        end
+
+        Class mainClazz = table:GetClassInFile(main:GetAbsolutePath())
+        if mainClazz = undefined
+            out:Append("Main not found. Ending iOS Compilation")
+            return now
+        end
+
+        text run = project:GetLocation():GetAbsolutePath() + "/Run"
+        
+        File runDirectory
+        runDirectory:SetAbsolutePath(run)
+        File parentDirectory = runDirectory:GetParentDirectory()
+
+        File mediaDirectory
+        text mediaPathFromProject = project:GetMobileAssetsPath()
+        if mediaPathFromProject not= undefined
+            text media = parentDirectory:GetAbsolutePath() + "/" + mediaPathFromProject
+
+            mediaDirectory:SetAbsolutePath(media)
+        end
+        
+        //Get the custom iOS properties, if any.
+        text path = ""
+        text jarName = project:GetExecutableName() + ".jar"
+        text applicationName = project:GetExecutableName()
+        File iosLocation
+        iosLocation:SetPath("External/Mac")
+
+        IOSSupport ios
+        ios:AddListener(me)
+        ios:Setup(runDirectory:GetAbsolutePath(), jarName)
+        
+
+        if path not= undefined and iosLocation:Exists()
+            //android:SetAndroidPath(androidPath)
+        end
+
+        out:Append("")
+        out:Append("Starting iOS Generator")
+        out:Append("Generating Template iOS Project")
+        ios:CopyAndRename(iosLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName)
+        out:Append("Copying Information")
+        ios:CopyLibraries() 
+
+        out:Append("")
+        out:Append("Creating XCode Project")
+        Process createXCodeProcess = ios:GetGenerateXCodeProjectProcess()
+        //createXCodeProcess:AddListener(me)
+        createXCodeProcess:Run()
+        
+        text device = project:GetIOSDevice()
+        text version = project:GetIOSVersionKey()
+        out:Append("Building Natives for " + device + ", ios version " + version + 
+            ". This process can take several minutes.")
+
+        AppleNativeCompileListener nativeListener
+        nativeListener:SetOutputTab(out)
+        Process xcodeBuildProcess = ios:GetBuildXCodeProjectProcess(project)
+        xcodeBuildProcess:AddListener(nativeListener)
+        xcodeBuildProcess:Run()
+
+        out:Append("Natives completed")
+        out:Append("Writing configuration files")
+        ios:RewriteConfig(info)       
+
+        text mobileAssetPath = project:GetMobileAssetsPath()
+        if mediaDirectory not= undefined and mediaDirectory:Exists() and mobileAssetPath not= undefined
+            out:Append("Copying Assets")
+            ios:CopyAssets(mediaDirectory, mobileAssetPath)
+        else
+            out:Append("No assets requested for copying")
+        end
+
+        out:Append("Running iOS program")
+        Process build = ios:GetBuildForSimulatorProcess(project)
+        build:AddListener(ios)
+        build:Run()
+    end
+
     action SendToAndroidDebugMode(BuildInformation info)
         QuorumProject project = info:project
         OutputTab out = info:outputTab
@@ -1324,6 +1503,19 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
             return now
         end
 
+        //now get the main, so we can write a new template file
+        File main = project:GetMain()
+        if main = undefined
+            out:Append("Main not found. Ending Android Compilation")
+            return now
+        end
+
+        Class mainClazz = table:GetClassInFile(main:GetAbsolutePath())
+        if mainClazz = undefined
+            out:Append("Main not found. Ending Android Compilation")
+            return now
+        end
+
         text run = project:GetLocation():GetAbsolutePath() + "/Run"
         
         File runDirectory
@@ -1345,7 +1537,9 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         text applicationName = project:GetExecutableName()
         File androidLocation
         androidLocation:SetPath("External/Android")
+
         AndroidSupport android
+        android:AddListener(me)
         android:Setup(runDirectory:GetAbsolutePath(), jarName)
 
         if androidPath not= undefined and not androidPath:IsEmpty()
@@ -1358,6 +1552,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         android:CopyAndRename(androidLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName, androidAlternateJDK)
         out:Append("Copying Information")
         android:CopyLibraries()
+        android:CopyNewMain(mainClazz)
         
 
         text mobileAssetPath = project:GetMobileAssetsPath()
@@ -1369,15 +1564,15 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         end
 
         out:Append("Requesting build from Android System. This can take a few minutes. Please wait.")
-        ProcessRunner build = android:GetAPKDebugBuildProcess()
+        Process build = android:GetAPKDebugBuildProcess()
         build:AddListener(android)
         build:Run()
 
         out:Append("Installing program (if device is found)")
-        ProcessRunner install = android:GetDebugInstallProcess()
+        Process install = android:GetDebugInstallProcess()
         install:AddListener(android)
         install:Run()
-        out:Append("Android Build Complete")
+        out:Append("Completed Android Process with log at: " + android:GetLogLocation())
 
         //for the signed version
 //        text androidPath = project:GetAndroidPath()
@@ -1386,6 +1581,92 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
 //        text androidKeyAlias = project:GetAndroidKeyAlias()
 //        text androidKeyPassword = project:GetAndroidKeyPassword()
 //        text androidAlternateJDK = project:GetAndroidAlternateJDKPath()
+    end
+
+    action StartingBuild 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        //Don't output a message. It doesn't seem to be helpful.
+        //out:Append("Starting Google's translator to Android")
+    end
+
+    action BuildingArchitecture(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("Compiling architecture: " + message)
+    end
+
+    action BuildingPlatform(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("    Compiling platform: " + message)
+    end
+
+    action BuildingType(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("    Build Type: " + message)
+    end
+
+    action SettingNativeDevelopmentKit(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("    Native Development Kit at: " + message)
+    end
+
+    action Linking(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("Linking Graphics Engine into Architecture.")
+    end
+
+    action BootingSimulator(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append("Booting Simulator")
+    end
+
+    action Error(text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        out:Append(message)
+    end
+    
+    action FinishedBuild(boolean success, text message) 
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+
+        if success
+            out:Append("Success: " + message)
+        else
+            out:Append("Failed: " + message)
+        end
     end
 
     action Debug(BuildInformation info)
@@ -1414,21 +1695,52 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         Iterator<Breakpoint> iterator = GetBreakpointIterator()
         repeat while iterator:HasNext()
             Breakpoint bp = iterator:Next()
-            //calculate its dot location from the build information
-            Class clazz = table:GetClassInFile(bp:GetFile():GetAbsolutePath())
-            if clazz not= undefined
-                text key = clazz:GetStaticKey()
-                bp:SetDotName(key)
-                debugger:Add(bp)
-            end
+            ToggleBreakpointInDebugger(bp, table)
         end
-        debuggingProgram = info
+        debuggingProgram = info:Copy()
+        debuggingProgram:result = result:CopyToBareResult()
         debugger:Start()
         debugger:Continue()
     end
 
+    private action ToggleBreakpointInDebugger(Breakpoint bp, SymbolTable table)
+        SymbolTable libraryTable = library:GetSymbolTable()
+        Class clazz = libraryTable:GetClassInFile(bp:GetFile():GetAbsolutePath())
+        File file = bp:GetFile()
+
+        //Is it in the passed in symbol table?
+        if clazz = undefined and table not= undefined
+            clazz = table:GetClassInFile(file:GetAbsolutePath())
+        end
+
+        //it's not in the standard library, so see if the current
+        //file is in a project somewhere. If not, ignore this request.
+        if clazz = undefined
+            if projectManager = undefined
+                return now
+            end
+            
+            Project proj = projectManager:IsProjectSourceFile(file) 
+            if proj not= undefined
+                CompilerResult result = goodCompilerResults:GetValue(proj:GetLocation():GetAbsolutePath())
+                if result not= undefined
+                    table = result:symbolTable
+                    if table not= undefined
+                        clazz = table:GetClassInFile(file:GetAbsolutePath())
+                    end
+                end
+            end           
+        end
+
+        if clazz not= undefined
+            text key = clazz:GetStaticKey()
+            bp:SetDotName(key)
+            debugger:Toggle(bp)
+        end
+    end
+
     private action FindJava returns text
-        //first check if there's a JRE underneat quorum studio
+        //first check if there's a JRE underneath quorum studio
         File file
         text local = file:GetAbsolutePath() + "/jre/bin" + "/" + "java"
         //You can't reliably know the file extension, so check the existence
@@ -1467,7 +1779,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         CompilerErrorManager errors = result:compilerErrorManager
         if errors:IsCompilationErrorFree()
             out:Append("Running " + project:GetName())
-            ProcessRunner runner
+            Process runner
             runner:SetOutputTab(out)
 
             runner:AddListener(me)
@@ -1479,7 +1791,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
             end
             text value = project:GetLocation():GetAbsolutePath()
             if processes:HasKey(value) //kill it, if you have to
-                ProcessRunner old = processes:RemoveKey(value)
+                Process old = processes:RemoveKey(value)
                 old:Cancel()
             end
 
@@ -1526,7 +1838,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         QuorumProject project = info:project
         text path = project:GetLocation():GetAbsolutePath()
         if processes:HasKey(path) //kill it, if you have to
-            ProcessRunner process = processes:GetValue(path) //I think we can toss it
+            Process process = processes:GetValue(path) //I think we can toss it
             process:SendInput(value)
         end
 
@@ -1539,7 +1851,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
         Iterator<text> iterator = processes:GetKeyIterator()
         repeat while iterator:HasNext()
             text key = iterator:Next()
-            ProcessRunner process = processes:GetValue(key)
+            Process process = processes:GetValue(key)
             process:Cancel()
         end
         if debuggingProgram not= undefined
@@ -1561,7 +1873,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
     end
 
     action Run(ProcessStoppedEvent event)
-        ProcessRunner process = event:GetProcess()
+        Process process = event:GetProcess()
         File file = process:GetDirectory()
         if processes:HasKey(file:GetAbsolutePath()) //kill it, if you have to
             processes:RemoveKey(file:GetAbsolutePath()) //I think we can toss it
@@ -1572,11 +1884,15 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener
 
     action Run(ProcessErrorEvent event)
         //output "Error  " + event:GetName()
+        //output event:GetOutput()
     end
 
     action Run(ProcessOutputEvent event)
-        ProcessRunner process = event:GetProcess()
+        Process process = event:GetProcess()
         OutputTab out = process:GetOutputTab()
-        out:Append(event:GetOutput())
+        if out not= undefined and event not= undefined
+            out:Append(event:GetOutput())
+        end
+        //output event:GetOutput()
     end
 end

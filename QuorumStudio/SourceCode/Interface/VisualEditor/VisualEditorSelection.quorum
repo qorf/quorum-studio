@@ -88,8 +88,16 @@ class VisualEditorSelection is Selection
             SetDisplayName(selectedItem:GetName() + " - " + selectedLayer:GetName())
         end
 
+        if itemChanged
+            VisualSceneController scene = GetSceneController()
+            scene:SetCursorToItem(selectedItem)
+            scene:UpdateEditorCameraTarget()
+        end
+
         itemChanged = false
         layerChanged = false
+
+        GetSceneController():UpdateCursorVisibility()
     end
 
     action GetSelectedItem returns InteractableItem

@@ -17,6 +17,7 @@ use Libraries.System.File
 class OpenNewFileBehavior is QuorumStudioBehavior
     
     NewFileDialog dialog = undefined
+    boolean isFolder = false
 
     action Run(BehaviorEvent event)
         GameStateManager manager
@@ -50,6 +51,7 @@ class OpenNewFileBehavior is QuorumStudioBehavior
             if dialog = undefined
                 NewFileDialog properties
                 dialog = properties
+                properties:SetIsFolder(IsFolder())
                 dialog:Initialize()
             end
             
@@ -57,4 +59,13 @@ class OpenNewFileBehavior is QuorumStudioBehavior
             dialog:Show()
         end
     end
+
+    action IsFolder returns boolean
+        return isFolder
+    end
+
+    action SetIsFolder(boolean isFolder)
+        me:isFolder = isFolder
+    end
+
 end

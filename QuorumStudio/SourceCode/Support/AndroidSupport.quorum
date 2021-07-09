@@ -4,12 +4,14 @@ use Libraries.System.Properties
 use Libraries.System.File
 use Libraries.Containers.List
 use Libraries.Containers.Array
-use Libraries.Concurrency.ProcessRunner
+use Libraries.Concurrency.Process
 use Libraries.Concurrency.ProcessListener
 use Libraries.Concurrency.ProcessOutputEvent
 use Libraries.Concurrency.ProcessErrorEvent
 use Libraries.Concurrency.ProcessStoppedEvent
 use Libraries.Concurrency.ProcessStartedEvent
+use Libraries.Development.Environment.Studio.Build.MobileListener
+use Libraries.Language.Compile.Symbol.Class
 
 class AndroidSupport is ProcessListener
     text FILE_SEPARATOR = "/"
@@ -19,8 +21,11 @@ class AndroidSupport is ProcessListener
     constant text PATH_TO_LAYOUT = PATH_TO_MAIN + "res" + FILE_SEPARATOR + "layout" + FILE_SEPARATOR
     constant text PATH_TO_LAYOUT_XML = PATH_TO_LAYOUT + "activity_main.xml"
     constant text PATH_TO_PACKAGE = PATH_TO_MAIN + "java" + FILE_SEPARATOR
+    constant text PATH_TO_STARTUP_FILE = PATH_TO_MAIN + "java" + FILE_SEPARATOR + "com" + FILE_SEPARATOR
+        + "quorum" + FILE_SEPARATOR + "testapplication" + FILE_SEPARATOR + "MainActivity.java"
     constant text PACKAGES_FOLDER = "packagesfolder"
     constant text FOLDER_NAME = "Android"
+    constant text PATH_TO_NATIVE_DEVELOPMENT_KIT = "ndk" + FILE_SEPARATOR + "19.2.5345600"
 
     text androidSDKPath = ""
 
@@ -43,25 +48,77 @@ class AndroidSupport is ProcessListener
     
     Array<text> librarySources 
     Array<text> libraryDestinations
-
+    text log = ""
+    Array<MobileListener> listeners
+    
     on create
         androidSDKPath = GetDefaultAndroidSDKPath()
     end
 
+    action AddListener(MobileListener listener)
+        listeners:Add(listener)
+    end
+
     action Run(ProcessStartedEvent event)
-        //output "Staring " + event:GetName()
+        //output "Starting " + event:GetName()
     end
 
     action Run(ProcessStoppedEvent event)
         //output "Stopping " + event:GetName()
+        File file
+        file:SetAbsolutePath(GetLogLocation())
+
+        if file:Exists()
+            file:Delete()
+        end
+        file:Write(log)
+        log = ""
+    end
+
+    action GetLogLocation returns text
+        return pathToBuildAndroidFolder + "\log.txt"
     end
 
     action Run(ProcessErrorEvent event)
-        //output event:GetOutput()
+        text current = event:GetOutput()
+        log = log + current + current:GetLineFeed()
+        i = 0
+        repeat while i < listeners:GetSize()
+            MobileListener listener = listeners:Get(i)
+            listener:Error(current)
+            i = i + 1
+        end
+    end
+
+    private action SendMessageToListeners(text message)
+        i = 0
+        repeat while i < listeners:GetSize()
+            MobileListener listener = listeners:Get(i)
+            if message:Contains(":app:preBuild")
+                listener:StartingBuild()
+            elseif message:Contains("-DANDROID_ABI") //version
+                listener:BuildingArchitecture(message)
+            elseif message:Contains("-DANDROID_PLATFORM")
+                listener:BuildingPlatform(message)
+            elseif message:Contains("-DCMAKE_BUILD_TYPE")
+                listener:BuildingType(message)
+            elseif message:Contains("-DANDROID_NDK")
+                listener:SettingNativeDevelopmentKit(message)
+            elseif message:Contains("libGameEngineCPlugins.so")
+                listener:Linking(message)
+            elseif message:Contains("Installed on")
+                listener:FinishedBuild(true, message)
+            elseif message:Contains("FAILED") //this probably broke
+                 listener:FinishedBuild(false, message)
+            end
+            i = i + 1
+        end
     end
 
     action Run(ProcessOutputEvent event)
-        //output event:GetOutput()
+        text current = event:GetOutput()
+        log = log + current + current:GetLineFeed()
+        SendMessageToListeners(current)
     end
 
     action Setup(text pathToRunFolder, text jarName)
@@ -81,6 +138,97 @@ class AndroidSupport is ProcessListener
         if properties:IsWindows()
             zipalignPath = zipalignPath + ".exe"
         end
+    end
+
+    action CopyNewMain(Class main)
+        //Write the new startup file with the appropriate Main
+        text value = GetHiddenMain(main)
+        File newMain
+        text pathtemp = pathToBuildAndroidFolder + PATH_TO_STARTUP_FILE
+        newMain:SetAbsolutePath(pathtemp)
+        if not newMain:Exists()
+            newMain:Delete()
+        end
+
+        newMain:Write(value)
+    end
+
+    private action GetHiddenMain(Class main) returns text
+        text newMain = ""
+        newMain = 
+"package com.quorum.testapplication;
+
+import android.app.Activity;
+import android.os.Bundle;
+
+import com.quorum.TestApplication.R;
+
+import quorum.Libraries.Game.AndroidApplication;
+import plugins.quorum.Libraries.Game.GameStateManager;
+"
++
+
+"import " + "quorum." + main:GetStaticKey() + ";"
++
+"
+
+public class MainActivity extends Activity {
+
+    private static boolean initialized = false;
+    private static "+ main:GetName() +" main;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        plugins.quorum.Libraries.Game.AndroidApplication.SetActivity(this);
+
+        if (savedInstanceState == null)
+        {
+            main = new " + main:GetName() + "();
+            main.Main();
+        }
+        else
+        {
+            main.StartAndroidGame();
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus)
+    {
+        super.onWindowFocusChanged(hasFocus);
+
+        if (initialized)
+            ((AndroidApplication)GameStateManager.application).plugin_.onWindowFocusChanged(hasFocus);
+    }
+
+    @Override
+    protected void onPause()
+    {
+        // Call AndroidApplication
+        super.onPause();
+    }
+
+    @Override 
+    protected void onResume()
+    {
+        if (initialized)
+            ((AndroidApplication)GameStateManager.application).plugin_.onResume();
+
+        super.onResume();
+    }
+
+    @Override
+    protected void onDestroy()
+    {
+        // Call AndroidApplication
+        super.onDestroy();
+    }
+}
+"
+        return newMain
     end
 
     action HasKeystoreInfo returns boolean
@@ -132,9 +280,9 @@ class AndroidSupport is ProcessListener
         end
     end
 
-    action GetAPKDebugBuildProcess returns ProcessRunner
+    action GetAPKDebugBuildProcess returns Process
         Properties properties
-        ProcessRunner process
+        Process process
         File directory
         directory:SetAbsolutePath(pathToBuildAndroidFolder)
         process:SetDirectory(directory)
@@ -185,9 +333,9 @@ class AndroidSupport is ProcessListener
         return params
     end
 
-    action GetDebugInstallProcess returns ProcessRunner
+    action GetDebugInstallProcess returns Process
         Properties properties
-        ProcessRunner process
+        Process process
         File directory
         directory:SetAbsolutePath(pathToBuildAndroidFolder)
         process:SetDirectory(directory)
@@ -218,13 +366,8 @@ class AndroidSupport is ProcessListener
         text dq = value:GetDoubleQuote()
         Array<text> params
         params:Add("/C")
-        params:Add(dq + dq)
-        params:Add(pathToBuildAndroidFolder+"\\gradlew.bat")
-        params:Add("-p")  
-        params:Add(pathToBuildAndroidFolder)
-        params:Add("installDebug")
-        params:Add("&")
-        params:Add("exit")
+        params:Add(dq + dq + pathToBuildAndroidFolder+"\\gradlew.bat" + dq + " -p " + dq + pathToBuildAndroidFolder + dq + " installDebug & exit" + dq)
+
         return params
     end
 
@@ -238,9 +381,9 @@ class AndroidSupport is ProcessListener
         return params
     end
 
-    action GetZipAlignProcess returns ProcessRunner
+    action GetZipAlignProcess returns Process
         Properties properties
-        ProcessRunner process
+        Process process
         if properties:IsWindows()
             Array<text> params = BuildZipAlignCommandWindows()
             process:SetProcessName(params:Get(0))
@@ -350,7 +493,7 @@ class AndroidSupport is ProcessListener
 
     action CleanGeneratedFiles(text projectPath)
         Properties properties
-        ProcessRunner process
+        Process process
         Array<text> parameters
         process:SetParameters(parameters)
         if properties:IsWindows()
@@ -458,7 +601,7 @@ class AndroidSupport is ProcessListener
 
     action SetNDKLocation(text pathToBuildAndroidFolder)
         text pathToLocalProperties = pathToBuildAndroidFolder + FILE_SEPARATOR + "local.properties"
-        text ndkLocation = androidSDKPath + FILE_SEPARATOR + "ndk-bundle"
+        text ndkLocation = androidSDKPath + FILE_SEPARATOR + PATH_TO_NATIVE_DEVELOPMENT_KIT
         text final = ""
         Properties properties
         if properties:IsWindows()
@@ -474,6 +617,8 @@ class AndroidSupport is ProcessListener
                 end
                 i = i + 1
             end
+        else 
+            final = ndkLocation
         end
 
         AppendLineToFile(pathToLocalProperties, "ndk.dir="+final)
@@ -506,4 +651,8 @@ class AndroidSupport is ProcessListener
         end
         file:Write(finalValue)
     end
+    action GetLog returns text
+        return log
+    end
+
 end

@@ -10,6 +10,11 @@ use Libraries.Development.Environment.Studio.Behaviors.PaletteCreatePreviewBehav
 use Libraries.System.File
 use Libraries.Game.Layer2D
 use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Game.Scenes.SceneProperties
+use Libraries.Development.Environment.Resources
+use Libraries.Game.Graphics.Texture
+use Libraries.System.Logger
 
 class ScenePalette is Palette
     ItemBlueprintComparison itemComparison
@@ -28,6 +33,7 @@ class ScenePalette is Palette
     Layer2D draggedItemLayer = undefined
     boolean dragLayerInUse = false
     Drawable draggedItem = undefined
+    Logger logger
 
     on create
         SetName("Scene Palette")
@@ -60,6 +66,150 @@ class ScenePalette is Palette
     end
 
     action LoadDefaultAssets
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        if studio:enabledScenes3D
+            AssetPack primitives3D
+            primitives3D:SetName("Basic 3D")
+
+            SceneProperties properties
+            Resources resources
+
+            ModelBlueprint cube
+            cube:SetName("Cube")
+            cube:SetDescription("A cube that is 1 unit wide, tall, and deep.")
+            cube:SetDimensions(1, 1, 1)
+            cube:SetScale(1, 1, 1)
+            cube:SetRotation(0, 0, 0)
+            cube:SetModelType(properties:BOX)
+            Drawable cubeIcon
+            cubeIcon:Load(resources:CUBE_THUMBNAIL)
+            cube:SetPaletteIcon(cubeIcon)
+            primitives3D:Add(cube)
+
+            ModelBlueprint sphere
+            sphere:SetName("Sphere")
+            sphere:SetDescription("A sphere that is 1 unit wide, tall, and deep.")
+            sphere:SetDimensions(1, 1, 1)
+            sphere:SetScale(1, 1, 1)
+            sphere:SetRotation(0, 0, 0)
+            sphere:SetModelType(properties:SPHERE)
+            Drawable sphereIcon
+            sphereIcon:Load(resources:SPHERE_THUMBNAIL)
+            sphere:SetPaletteIcon(sphereIcon)
+            primitives3D:Add(sphere)
+
+            ModelBlueprint cylinder
+            cylinder:SetName("Cylinder")
+            cylinder:SetDescription("A cylinder that is 1 unit wide, tall, and deep.")
+            cylinder:SetDimensions(1, 1, 1)
+            cylinder:SetScale(1, 1, 1)
+            cylinder:SetRotation(0, 0, 0)
+            cylinder:SetModelType(properties:CYLINDER)
+            Drawable cylinderIcon
+            cylinderIcon:Load(resources:CYLINDER_THUMBNAIL)
+            cylinder:SetPaletteIcon(cylinderIcon)
+            primitives3D:Add(cylinder)
+
+            PointLightBlueprint pointLight
+            pointLight:SetName("Point Light")
+            pointLight:SetDescription("A light at a point that shines in a sphere all around it.")
+            Drawable pointLightIcon
+            pointLightIcon:Load(resources:LIGHT_THUMBNAIL)
+            pointLight:SetPaletteIcon(pointLightIcon)
+            Texture pointLightTexture = resources:GetLightTexture()
+            pointLight:SetModelTexture(pointLightTexture)
+            primitives3D:Add(pointLight)
+
+            Audio3DBlueprint audio
+            audio:SetName("Audio3D")
+            audio:SetDescription("An audio source in 3D space")
+            Drawable audioIcon
+            audioIcon:Load(resources:AUDIO_THUMBNAIL)
+            audio:SetPaletteIcon(audioIcon)
+            Texture audioTexture = resources:GetAudioTexture()
+            audio:SetModelTexture(audioTexture)
+            primitives3D:Add(audio)
+
+            LoadAssetPack(primitives3D)
+
+
+            AssetPack custom3D
+            custom3D:SetName("Custom 3D")
+
+            CustomModelBlueprint customModel
+            customModel:SetName("Custom Model")
+            customModel:SetDescription("Load a custom model from an OBJ file")
+            customModel:SetScale(1, 1, 1)
+            customModel:SetRotation(0, 0, 0)
+            customModel:SetModelType(properties:CUSTOM)
+            Drawable customModelIcon
+            customModelIcon:Load(resources:CUSTOM_MODEL_THUMBNAIL)
+            customModel:SetPaletteIcon(customModelIcon)
+            custom3D:Add(customModel)
+
+            Custom3DPrimitiveBlueprint customCube
+            customCube:SetName("Custom Cube")
+            customCube:SetDescription("A cube that is 1 unit wide, tall, and deep.")
+            customCube:SetDimensions(1, 1, 1)
+            customCube:SetScale(1, 1, 1)
+            customCube:SetRotation(0, 0, 0)
+            customCube:SetModelType(properties:BOX)
+            Drawable customCubeIcon
+            customCubeIcon:Load(resources:CUSTOM_CUBE_THUMBNAIL)
+            customCube:SetPaletteIcon(customCubeIcon)
+            custom3D:Add(customCube)
+
+            Custom3DPrimitiveBlueprint customSphere
+            customSphere:SetName("Custom Sphere")
+            customSphere:SetDescription("A sphere that is 1 unit wide, tall, and deep.")
+            customSphere:SetDimensions(1, 1, 1)
+            customSphere:SetScale(1, 1, 1)
+            customSphere:SetRotation(0, 0, 0)
+            customSphere:SetModelType(properties:SPHERE)
+            Drawable customSphereIcon
+            customSphereIcon:Load(resources:CUSTOM_SPHERE_THUMBNAIL)
+            customSphere:SetPaletteIcon(customSphereIcon)
+            custom3D:Add(customSphere)
+
+            Custom3DPrimitiveBlueprint customCylinder
+            customCylinder:SetName("Custom Cylinder")
+            customCylinder:SetDescription("A cylinder that is 1 unit wide, tall, and deep.")
+            customCylinder:SetDimensions(1, 1, 1)
+            customCylinder:SetScale(1, 1, 1)
+            customCylinder:SetRotation(0, 0, 0)
+            customCylinder:SetModelType(properties:CYLINDER)
+            Drawable customCylinderIcon
+            customCylinderIcon:Load(resources:CUSTOM_CYLINDER_THUMBNAIL)
+            customCylinder:SetPaletteIcon(customCylinderIcon)
+            custom3D:Add(customCylinder)
+
+            LoadAssetPack(custom3D)
+
+
+            //now load any assets from the tilesets folder
+            File tilesetFolder
+            tilesetFolder:SetPath("Resources/Tilesets3D")
+            Array<File> files = tilesetFolder:GetDirectoryListing()
+            i = 0
+            repeat while files not= undefined and i < files:GetSize()
+                File file = files:Get(i)
+                text ext = file:GetFileExtension()
+                if ext = "json"
+                    //if loading a user tileset fails, just don't load it.
+                    check
+                        AssetPack tileset
+                        tileset:SetTileset3DFolder(tilesetFolder)
+                        tileset:LoadTileset3D(file)
+                        LoadAssetPack(tileset)
+                    detect e
+                        text message = e:GetStackTraceMessage()
+                        logger:Log(message)
+                    end
+                end
+                i = i + 1
+            end
+        end
+
         AssetPack primitives2D
         primitives2D:SetName("Primitives 2D")
 
@@ -92,6 +242,8 @@ class ScenePalette is Palette
                     tileset:LoadTileset(file)
                     LoadAssetPack(tileset)
                 detect e
+                    text message = e:GetStackTraceMessage()
+                    logger:Log(message)
                 end
             end
             i = i + 1
@@ -159,27 +311,6 @@ class ScenePalette is Palette
             items:Sort(itemComparison)
             AddItemsToTreeItem(root, items)
         end
-//        Iterator<text> iterator = pack:GetKeyIterator()
-//        Array<text> array
-//
-//        repeat while iterator:HasNext()
-//            array:Add(iterator:Next())
-//        end
-//
-//        array:Sort()
-//
-//        integer counter = 0
-//        repeat while counter < array:GetSize()
-//            ItemBlueprint itemBlueprint = pack:GetBlueprint(array:Get(counter))    
-//
-//            ScenePaletteItem item
-//            item:SetItemBlueprint(itemBlueprint)
-//            item:SetName(itemBlueprint:GetName())
-//            item:SetBehavior(paletteActivationBehavior)
-//            
-//            root:Add(cast(TreeItem, item))
-//            counter = counter + 1
-//        end
 
         Add(root)
     end

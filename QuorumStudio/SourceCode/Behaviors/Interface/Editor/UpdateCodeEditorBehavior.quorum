@@ -6,7 +6,7 @@ use Libraries.Interface.Controls.TextBox
 use Libraries.Language.Compile.CompilerResult
 use Libraries.System.File
 use Libraries.Language.Compile.Lexer
-use Libraries.Language.Compile.Token
+use Libraries.Language.Compile.Parsing.Token
 use Libraries.Interface.Controls.TextStyles.TextStyle
 use Libraries.Game.Graphics.Color
 use Libraries.Language.Compile.CompilerErrorManager
@@ -32,9 +32,11 @@ use Libraries.Development.Versioning.DiffResult
 use Libraries.Development.Environment.Studio.Interface.StatusLineGutter
 use Libraries.Containers.HashTable
 use Libraries.Development.Environment.Studio.Interface.BreakpointTextStyle
+use Libraries.Language.Compile.Parsing.QuorumLexer
+use Libraries.Language.Compile.Parsing.TokenIterator
+use Libraries.Language.Compile.Parsing.QuorumLexerConstants
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
-    //CompilerResult compilerResult = undefined
     File path
     Color blue
     Color green
@@ -45,7 +47,6 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     Color caretColor
     Color breakpointColor
     BuildManager manager = undefined
-    //BuildInformation info = undefined
     text projectKey = ""
     text helpPathComparison = undefined
     CodeTextBox box = undefined
@@ -90,13 +91,12 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     end
 
     action Run(CodeTextBox box)
-        //DateTime time
-        //number startTime = time:GetEpochTime()
         File file = box:GetFile()
         boolean isStandardLibrary = false
         Library library = manager:GetLibrary()
         CompilerResult compilerResult = manager:GetRecentCompilerResult(projectKey)
-        Lexer lexer = compilerResult:lexers:GetValue(path:GetAbsolutePath())
+        QuorumLexer lexer
+        lexer:Read(box:GetText())
         StatusLineGutter statusGutter = box:GetStatusGutter()
         statusGutter:SetDiffResult(diffResult)
 
@@ -110,34 +110,34 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         //reset the lexer and go forward
         Array<Token> mainFileTokens
         mainFileTokens:SetMaxSize(500)
-        lexer:Reset()
         constant text DEBUGGER_STYLE = "Debugger"
         TextStyle debuggerStyle = box:GetTextStyle(DEBUGGER_STYLE)
         box:EmptyTextStyles()
 
-        Token token = lexer:NextToken()
-        mainFileTokens:Add(token)
+        TokenIterator<Token> tokenIterator = lexer:GetIterator()
+        tokenIterator:SetReadingAllChannels(true)
+
         i = 0
-        repeat while token not= undefined
-            if token:GetTokenCategory() not= -1
-                if IsKeyword(token, lexer)
+        repeat while tokenIterator:HasNext()
+            Token token = tokenIterator:Next()
+            if token:category not= -1
+                if IsKeyword(token)
                     TextStyle style = GetTextStyle(token)
                     style:SetColor(blue)
                     box:AddTextStyle("Lexer" + i, style)
-                elseif IsStructure(token, lexer)
+                elseif IsStructure(token)
                     TextStyle style = GetTextStyle(token)
                     style:SetColor(purple)
                     box:AddTextStyle("Lexer" + i, style)
-                elseif IsText(token, lexer)
+                elseif IsText(token)
                     TextStyle style = GetTextStyle(token)
                     style:SetColor(orange)
                     box:AddTextStyle("Lexer" + i, style)
-                elseif IsComment(token, lexer)
+                elseif IsComment(token)
                     TextStyle style = GetTextStyle(token)
                     style:SetColor(grey)
                     box:AddTextStyle("Lexer" + i, style)
                 end
-                token = lexer:NextToken()
                 mainFileTokens:Add(token)
             else
                 token = undefined
@@ -150,7 +150,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
             Iterator<Variable> variables = clazzInFile:GetVariables()
             repeat while variables not= undefined and variables:HasNext()
                 Variable var = variables:Next()
-                
+
                 Iterator<Location> uses = var:GetUseLocationIterator(var:GetFile())
                 repeat while uses not= undefined and uses:HasNext()
                     Location location = uses:Next()
@@ -262,6 +262,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         ColoredHighlight caretHighlight
         caretHighlight:SetColor(caretColor)
         caretHighlight:SetLineHighlight(true)
+        caretHighlight:SetRenderPriority(-1)
         TextStyle caretStyle
         caretStyle:SetIndex(caret)
         caretStyle:SetHighlight(caretHighlight)
@@ -276,6 +277,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
             ColoredHighlight breakpointHighlight
             breakpointHighlight:SetColor(breakpointColor)
             breakpointHighlight:SetLineHighlight(true)
+            breakpointHighlight:SetRenderPriority(1)
             BreakpointTextStyle breakpointStyle
             integer index = box:GetIndexOfLine(line)
             breakpointStyle:SetIndex(index)
@@ -319,8 +321,6 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         end
 
         box:RestoreFindReplaceStyles()
-        //number finishTime = time:GetEpochTime()
-        //output (finishTime - startTime)
     end
 
     action Run(BehaviorEvent event)
@@ -329,79 +329,83 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
 
     private action GetTextStyle(Token token) returns TextStyle
         TextStyle style
-        style:SetIndex(token:GetStartIndex())
-        style:SetSize(token:GetStopIndex() - token:GetStartIndex() + 1)
+        style:SetIndex(token:startIndex)
+        style:SetSize(token:endIndex - token:startIndex + 1)
         return style
     end
 
-    private action IsStructure(Token token, Lexer lexer) returns boolean
-        if  token:GetTokenCategory() = lexer:OUTPUT 
-            or token:GetTokenCategory() = lexer:ON
-            or token:GetTokenCategory() = lexer:CREATE
-            or token:GetTokenCategory() = lexer:BLUEPRINT
-            or token:GetTokenCategory() = lexer:NATIVE
-            or token:GetTokenCategory() = lexer:ACTION
-            or token:GetTokenCategory() = lexer:CLASS
-            or token:GetTokenCategory() = lexer:END
-            or token:GetTokenCategory() = lexer:IF
-            or token:GetTokenCategory() = lexer:REPEAT
-            or token:GetTokenCategory() = lexer:ELSE
-            or token:GetTokenCategory() = lexer:ELSE_IF
+    private action IsStructure(Token token) returns boolean
+        QuorumLexerConstants lexer
+        if  token:category = lexer:OUTPUT 
+            or token:category = lexer:ON
+            or token:category = lexer:CREATE
+            or token:category = lexer:BLUEPRINT
+            or token:category = lexer:NATIVE
+            or token:category = lexer:ACTION
+            or token:category = lexer:CLASS
+            or token:category = lexer:END
+            or token:category = lexer:IF
+            or token:category = lexer:REPEAT
+            or token:category = lexer:ELSE
+            or token:category = lexer:ELSE_IF
             return true
         end
 
         return false
     end
 
-    private action IsText(Token token, Lexer lexer) returns boolean
-        if  token:GetTokenCategory() = lexer:STRING 
+    private action IsText(Token token) returns boolean
+        QuorumLexerConstants lexer
+        if  token:category = lexer:STRING 
             return true
         end
         return false
     end
 
-    private action IsComment(Token token, Lexer lexer) returns boolean
-        if  token:GetTokenCategory() = lexer:COMMENTS 
+    private action IsComment(Token token) returns boolean
+        QuorumLexerConstants lexer
+        if  token:category = lexer:COMMENTS 
             return true
         end
         return false
     end
 
-    private action IsKeyword(Token token, Lexer lexer) returns boolean
-        if  token:GetTokenCategory() = lexer:OUTPUT 
-            or token:GetTokenCategory() = lexer:CONSTANT
-            or token:GetTokenCategory() = lexer:ME
-            or token:GetTokenCategory() = lexer:UNTIL
-            or token:GetTokenCategory() = lexer:PUBLIC
-            or token:GetTokenCategory() = lexer:PRIVATE
-            or token:GetTokenCategory() = lexer:ALERT
-            or token:GetTokenCategory() = lexer:DETECT
-            or token:GetTokenCategory() = lexer:ALWAYS
-            or token:GetTokenCategory() = lexer:CHECK
-            or token:GetTokenCategory() = lexer:PARENT
-            or token:GetTokenCategory() = lexer:CAST
-            or token:GetTokenCategory() = lexer:STATIC
-            or token:GetTokenCategory() = lexer:INPUT
-            or token:GetTokenCategory() = lexer:SAY
-            or token:GetTokenCategory() = lexer:NOW
-            or token:GetTokenCategory() = lexer:WHILE
-            or token:GetTokenCategory() = lexer:PACKAGE_NAME
-            or token:GetTokenCategory() = lexer:TIMES
-            or token:GetTokenCategory() = lexer:RETURNS
-            or token:GetTokenCategory() = lexer:RETURN
-            or token:GetTokenCategory() = lexer:AND
-            or token:GetTokenCategory() = lexer:OR
-            or token:GetTokenCategory() = lexer:NULL
-            or token:GetTokenCategory() = lexer:INTEGER_KEYWORD
-            or token:GetTokenCategory() = lexer:NUMBER_KEYWORD
-            or token:GetTokenCategory() = lexer:TEXT
-            or token:GetTokenCategory() = lexer:BOOLEAN_KEYWORD
-            or token:GetTokenCategory() = lexer:USE
-            or token:GetTokenCategory() = lexer:NOT
-            or token:GetTokenCategory() = lexer:NOTEQUALS
-            or token:GetTokenCategory() = lexer:MODULO
-            or token:GetTokenCategory() = lexer:BOOLEAN
-            or token:GetTokenCategory() = lexer:INHERITS
+    private action IsKeyword(Token token) returns boolean
+        QuorumLexerConstants lexer
+        if  token:category = lexer:OUTPUT 
+            or token:category = lexer:CONSTANT
+            or token:category = lexer:ME
+            or token:category = lexer:UNTIL
+            or token:category = lexer:PUBLIC
+            or token:category = lexer:PRIVATE
+            or token:category = lexer:ALERT
+            or token:category = lexer:DETECT
+            or token:category = lexer:ALWAYS
+            or token:category = lexer:CHECK
+            or token:category = lexer:PARENT
+            or token:category = lexer:CAST
+            or token:category = lexer:STATIC
+            or token:category = lexer:INPUT
+            or token:category = lexer:SAY
+            or token:category = lexer:NOW
+            or token:category = lexer:WHILE
+            or token:category = lexer:PACKAGE_NAME
+            or token:category = lexer:TIMES
+            or token:category = lexer:RETURNS
+            or token:category = lexer:RETURN
+            or token:category = lexer:AND
+            or token:category = lexer:OR
+            or token:category = lexer:NULL
+            or token:category = lexer:INTEGER_KEYWORD
+            or token:category = lexer:NUMBER_KEYWORD
+            or token:category = lexer:TEXT
+            or token:category = lexer:BOOLEAN_KEYWORD
+            or token:category = lexer:USE
+            or token:category = lexer:NOT
+            or token:category = lexer:NOT_EQUALS
+            or token:category = lexer:MODULO
+            or token:category = lexer:BOOLEAN
+            or token:category = lexer:INHERITS
             return true
         end
 

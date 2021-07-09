@@ -18,6 +18,7 @@ class AssetPack
     HashTable<text, ItemBlueprint> blueprints
     HashTable<text, Array<ItemBlueprint>> categories
     public constant text DEFAULT = "Default"
+    File tileset3DFolder
 
     action Add(ImageSheet sheet)
         // TO-DO
@@ -26,6 +27,11 @@ class AssetPack
     action Add(Drawable drawable)
         blueprints:Add(drawable:GetName(), DrawableToBlueprint(drawable))
         AddToCategory(DEFAULT, DrawableToBlueprint(drawable))
+    end
+
+    action Add(ItemBlueprint item)
+        blueprints:Add(item:GetName(), item)
+        AddToCategory(DEFAULT, item)
     end
 
     action LoadTileset(File file)
@@ -89,6 +95,67 @@ class AssetPack
                 category = tile:GetValue("Category")
             end
             AddToCategory(category, schematic)
+        end
+    end
+
+    action LoadTileset3D(File file)
+        JavaScriptObjectNotation json
+        json:Read(file)
+        
+        SetName(json:GetValue("Name"))
+
+        Color color
+        SceneProperties properties
+    
+        text path = GetTileset3DFolder():GetPath()
+        JavaScriptObjectNotation tiles = json:GetObject("Tiles")
+        Iterator<JavaScriptObjectNotation> iterator = tiles:GetIterator()
+        repeat while iterator:HasNext()
+            JavaScriptObjectNotation tile = iterator:Next()
+            ModelBlueprint model
+
+            model:SetName(tile:GetValue("Name"))
+            model:SetDescription(tile:GetValue("Description"))
+            model:SetDimensions(1, 1, 1)
+            model:SetScale(1, 1, 1)
+            model:SetRotation(0, 0, 0)
+            
+            File modelFile
+            modelFile:SetPath(path + "/" + tile:GetValue("Model"))
+            model:SetModelFile(modelFile)
+            Drawable icon
+            text res = tile:GetValue("Image")
+            
+            File iconPath
+            iconPath:SetWorkingDirectory(path)
+            iconPath:SetPath(res)
+            icon:Load(iconPath)
+
+            number width = icon:GetWidth()
+            number iconScale = 128 / width
+
+            model:SetPaletteCrop(0.15)
+            model:SetPaletteScale(iconScale)
+            model:SetPaletteIcon(icon)
+
+            if tile:HasValue("Physics Enabled")
+                boolean hasPhysics = tile:GetBoolean("Physics Enabled")
+                if hasPhysics
+                    model:SetPhysicsEnabled(hasPhysics)
+                    if tile:HasValue("Responsiveness")
+                        model:SetResponsiveness(tile:GetInteger("Responsiveness"))
+                    end
+                end
+            end
+
+            blueprints:Add(model:GetName(), model)
+
+            text category = DEFAULT
+            boolean hasCategory = tile:HasValue("Category")
+            if hasCategory
+                category = tile:GetValue("Category")
+            end
+            AddToCategory(category, model)
         end
     end
 
@@ -162,6 +229,14 @@ class AssetPack
 
     action SetName(text name)
         me:name = name
+    end
+
+    action GetTileset3DFolder returns File
+        return tileset3DFolder
+    end
+
+    action SetTileset3DFolder(File tileset3DFolder)
+        me:tileset3DFolder = tileset3DFolder
     end
 
 end

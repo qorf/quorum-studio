@@ -13,6 +13,9 @@ use Libraries.Containers.Support.ArrayIterator
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Versioning.Git
 use Libraries.Development.Versioning.Repository
+use Libraries.System.Properties
+use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
+use Libraries.Development.Environment.Studio.Mobile.AppleDevice
 
 /*
     This class loads a Quorum project into the Integrated Development Environment.
@@ -82,12 +85,26 @@ class QuorumProject is Project
     public constant text MOBILE_ASSETS = "MobileAssets"
     public constant text IPHONE_PROVISIONING_KEY = "IphoneProvisioningKey"
     public constant text IPHONE_SIGNING_IDENTITY = "IphoneSigningIdentity"
+    public constant text IOS_DEVICE = "IOS_DEVICE"
     public constant text ANDROID_PATH = "AndroidPath"
     public constant text ANDROID_ALTERNATE_JDK_PATH = "AndroidAlternateJDKPath"
     public constant text ANDROID_KEYSTORE_PATH = "AndroidKeystorePath"
     public constant text ANDROID_KEYSTORE_PASSWORD = "AndroidKeystorePassword"
     public constant text ANDROID_KEY_ALIAS = "AndroidKeyAlias"
     public constant text ANDROID_KEY_PASSWORD = "AndroidKeyPassword"
+    public constant text MOBILE_ASSETS_DEFAULT_FOLDER = "media"
+    public constant text IOS_VERSION = "iosVersion"
+    public constant text IOS_BUNDLE = "IOS_BUNDLE"
+    public constant text IOS_DEFAULT_DEVICE = "iPhone 12"
+    public constant text IOS_PHYSICAL_DEVICE = "IOS_PHYSICAL_DEVICE"
+    public constant text IOS_13 = "13.0"
+    public constant text IOS_14_1 = "14.1"
+    public constant text IOS_14_2 = "14.2"
+    public constant text IOS_DEFAULT_VERSION = IOS_14_2
+    public constant text IOS_DEFAULT_BUNDLE = "org.quorumlanguage"
+    //this can be set, but should never be stored.
+    private text iosDeviceUniqueID = ""
+    
 
     /* This property checks if this is the Quorum compiler. If it is, the project
         Can be boostrapped and extra menu options appear.
@@ -116,9 +133,12 @@ class QuorumProject is Project
     on create
         library:SetPath("Library/Standard")
         view:SetProject(me)
-        //temporary location
-        //library:SetWorkingDirectory("/Users/stefika/Repositories/quorum-language/Quorum3")
-        //compiler:SetStandardLibraryFolder(library)
+        //set a default assets folder. The user's project properties may override this.
+        SetMobileAssetsPath(MOBILE_ASSETS_DEFAULT_FOLDER)
+        SetIOSVersionKey(IOS_14_2)
+        SetIOSDevice(IOS_DEFAULT_DEVICE)
+        SetIOSBundle(IOS_DEFAULT_BUNDLE)
+        
     end
 
 
@@ -309,6 +329,93 @@ class QuorumProject is Project
     /* This action sets the android key password. */
     action SetAndroidKeyPassword (text path)
         SetPropertyValue(ANDROID_KEY_PASSWORD, path)
+    end
+
+    /* This gets the IOS version to build to. */
+    action GetIOSVersionKey returns text
+        ProjectProperty property = GetProperty(IOS_VERSION)
+        if property = undefined
+            return undefined
+        end
+        text value = property:GetFirstValue()
+        return value
+    end
+
+    /* Get IOS Device */
+    action GetIOSDevice returns text
+        ProjectProperty property = GetProperty(IOS_DEVICE)
+        if property = undefined
+            return undefined
+        end
+        text value = property:GetFirstValue()
+        return value
+    end
+
+    action HasIOSDeviceSignature returns boolean
+        if me:iosDeviceUniqueID not= undefined and not me:iosDeviceUniqueID:IsEmpty()
+            return true
+        end
+        return false
+    end
+    action SetIOSDevice(text value)
+        SetPropertyValue(IOS_DEVICE, value)
+
+        //once we have the value, if we are on mac
+        //get the UUID for the device
+        Properties properties
+        if properties:IsMac()
+            AppleDevicesReader reader
+            Array<AppleDevice> devices = reader:GetAvailableDevices()
+            i = 0
+            repeat while i < devices:GetSize()
+                AppleDevice device = devices:Get(i)
+                if device:GetName() = value
+                    me:iosDeviceUniqueID = device:GetSignature()
+                    i = devices:GetSize()
+                end
+                i = i + 1
+            end
+        end
+    end
+
+    action GetIOSBundle returns text
+        ProjectProperty property = GetProperty(IOS_BUNDLE)
+        if property = undefined
+            return undefined
+        end
+        text value = property:GetFirstValue()
+        return value
+    end
+
+    action SetIOSBundle(text value)
+        SetPropertyValue(IOS_BUNDLE, value)
+    end
+
+    
+    action IsIOSPhysicalDevice returns boolean
+        ProjectProperty property = GetProperty(IOS_PHYSICAL_DEVICE)
+        if property = undefined
+            return false
+        end
+        text value = property:GetFirstValue()
+        if value = "true"
+            return true
+        else
+            return false
+        end
+    end
+
+    action SetIOSPhysicalDevice(boolean value)
+        if value
+            SetPropertyValue(IOS_PHYSICAL_DEVICE, "true")
+        else
+            SetPropertyValue(IOS_PHYSICAL_DEVICE, "false")
+        end
+    end
+
+    /* This action sets the version to build to on IOS. */
+    action SetIOSVersionKey(text path)
+        SetPropertyValue(IOS_VERSION, path)
     end
 
     /* This action returns the build path for image sheets. */
@@ -743,7 +850,10 @@ class QuorumProject is Project
         if not newMain:Exists()
             alert("Set Main file to a file that does not exist")
         end
-        mainFile = newMain
+        text value = newMain:GetFileExtension()
+        if value = "quorum" //sorry Amanda
+            mainFile = newMain
+        end
     end
 
     action GetMainFileProjectTreeItem returns ProjectTreeItem
@@ -925,6 +1035,40 @@ class QuorumProject is Project
                 return now
             end
             SetExecutableName(object:GetText())
+        elseif key = IOS_VERSION
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            text ios = object:GetText()
+            if ios = IOS_13
+                SetIOSVersionKey(ios)
+            elseif ios = IOS_14_1
+                SetIOSVersionKey(ios)
+            else 
+                SetIOSVersionKey(IOS_14_1)
+            end
+        elseif key = IOS_DEVICE
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            text ios = object:GetText()
+            SetIOSDevice(ios)
+        elseif key = IOS_BUNDLE
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            text ios = object:GetText()
+            SetIOSBundle(ios)
+        elseif key = IOS_PHYSICAL_DEVICE
+            if not object:IsBoolean()
+                logger:Log(textMessage)
+                return now
+            end
+            boolean ios = object:GetBoolean()
+            SetIOSPhysicalDevice(ios)
         elseif key = PROJECT_MAIN
             if not object:IsText()
                 logger:Log(textMessage)
@@ -979,6 +1123,12 @@ class QuorumProject is Project
             end
             AddProperty(key, object:GetText())
         elseif key = IPHONE_PROVISIONING_KEY
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = IOS_DEVICE
             if not object:IsText()
                 logger:Log(textMessage)
                 return now
@@ -1206,5 +1356,12 @@ class QuorumProject is Project
         end
         result = result + "}"
         file:Write(result)
+    end
+
+    /* If a unique device name has been set, this action returns its signature (called UUID). 
+        This varies by physical machine and is thus not stored in the project properties.
+    */
+    action GetIOSDeviceSignature returns text
+        return iosDeviceUniqueID
     end
 end

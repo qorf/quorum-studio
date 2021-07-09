@@ -16,7 +16,7 @@ class PropertiesEnablePhysicsBehavior is Behavior
         dialog2D = properties
     end
 
-    action SetDialog2D returns Item2DPropertiesDialog
+    action GetDialog2D returns Item2DPropertiesDialog
         return dialog2D
     end
 
@@ -24,7 +24,7 @@ class PropertiesEnablePhysicsBehavior is Behavior
         dialog3D = properties
     end
 
-    action SetDialog3D returns Item3DPropertiesDialog
+    action GetDialog3D returns Item3DPropertiesDialog
         return dialog3D
     end
 
@@ -41,6 +41,14 @@ class PropertiesEnablePhysicsBehavior is Behavior
                 ToggleButton button = cast(ToggleButton, item)
                 dialog3D:SetPhysicsEnabled(button:GetToggleState())
             end
+        end
+    end
+
+    action Dispose
+        if dialog2D not= undefined
+            dialog2D:SetPhysicsEnabled(false)
+        elseif dialog3D not= undefined
+            dialog3D:SetPhysicsEnabled(false)
         end
     end
 

@@ -1,0 +1,516 @@
+package Libraries.Development.Environment.Studio.Mobile
+
+use Libraries.System.Properties
+use Libraries.System.File
+use Libraries.Containers.List
+use Libraries.Containers.Array
+use Libraries.Concurrency.Process
+use Libraries.Concurrency.ProcessListener
+use Libraries.Concurrency.ProcessOutputEvent
+use Libraries.Concurrency.ProcessErrorEvent
+use Libraries.Concurrency.ProcessStoppedEvent
+use Libraries.Concurrency.ProcessStartedEvent
+use Libraries.Development.Environment.Studio.Build.MobileListener
+use Libraries.Language.Compile.Symbol.Class
+use Libraries.Development.Environment.Studio.Build.BuildInformation
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+
+class IOSSupport is ProcessListener
+    text FILE_SEPARATOR = "/"
+    constant text PATH_TO_MAIN = FILE_SEPARATOR + "ios" + FILE_SEPARATOR + "src" + FILE_SEPARATOR + "main" + FILE_SEPARATOR
+    constant text PATH_TO_APP_BUILD_GRADLE = FILE_SEPARATOR + "ios" + FILE_SEPARATOR  + "build.gradle"
+    constant text PATH_TO_APP_BUILD_ROBOVM_PROPERTIES = 
+        FILE_SEPARATOR + "ios" + FILE_SEPARATOR  + "robovm.properties"
+    constant text PATH_TO_APP_BUILD_ROBOVM_XML = 
+        FILE_SEPARATOR + "ios" + FILE_SEPARATOR  + "robovm.xml"
+    constant text PATH_TO_MAIN_XML = PATH_TO_MAIN + "AndroidManifest.xml"
+    constant text JAR_FOLDER_NAME = "jars"
+    constant text NATIVE_FOLDER_NAME = "natives"
+    constant text PATH_TO_LIBS = FILE_SEPARATOR + "ios" + FILE_SEPARATOR + JAR_FOLDER_NAME
+    constant text PATH_TO_NATIVES = FILE_SEPARATOR + "ios" + 
+        FILE_SEPARATOR + NATIVE_FOLDER_NAME
+    constant text FOLDER_NAME = "Mac"
+    text pathToRunFolder = ""
+    text pathToBuildFolder = ""
+    Array<text> librarySources 
+    Array<text> libraryDestinations
+    text log = ""
+    Array<MobileListener> listeners
+    
+
+    
+
+    action AddListener(MobileListener listener)
+        listeners:Add(listener)
+    end
+
+    action Run(ProcessStartedEvent event)
+    end
+
+    action Run(ProcessStoppedEvent event)
+        File file
+        file:SetAbsolutePath(GetLogLocation())
+
+        if file:Exists()
+            file:Delete()
+        end
+        file:Write(log)
+        log = ""
+    end
+
+    action GetLogLocation returns text
+        return pathToBuildFolder + "\log.txt"
+    end
+
+    action Run(ProcessErrorEvent event)
+        text current = event:GetOutput()
+        log = log + current + current:GetLineFeed()
+        i = 0
+        repeat while i < listeners:GetSize()
+            MobileListener listener = listeners:Get(i)
+            listener:Error(current)
+            i = i + 1
+        end
+    end
+
+    action Run(ProcessOutputEvent event)
+        text current = event:GetOutput()
+        log = log + current + current:GetLineFeed()
+        SendMessageToListeners(current)
+    end
+
+    private action SendMessageToListeners(text message)
+        i = 0
+        repeat while i < listeners:GetSize()
+            MobileListener listener = listeners:Get(i)
+            if message:Contains("Starting Build")
+                listener:StartingBuild()
+            elseif message:Contains("Building RoboVM app") //version
+                listener:BuildingArchitecture(message)
+            elseif message:Contains("Compiling classes using")
+                listener:BuildingPlatform(message)
+            elseif message:Contains("Building ios binary")
+                listener:Linking(message)
+            elseif message:Contains("Compile RoboVM app completed")
+                listener:FinishedBuild(true, message)
+            elseif message:Contains("Booting simulator")
+                listener:BootingSimulator(message)
+            end
+            i = i + 1
+        end
+    end
+
+    action Setup(text pathToRunFolder, text jarName)
+        me:pathToRunFolder = pathToRunFolder
+        me:pathToBuildFolder = pathToRunFolder + FILE_SEPARATOR + FOLDER_NAME
+
+        librarySources:Add(FILE_SEPARATOR + jarName)
+        librarySources:Add(FILE_SEPARATOR + "QuorumStandardLibrary.jar")
+        librarySources:Add(FILE_SEPARATOR + "QuorumStandardPlugins.jar")
+
+        libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + jarName)
+        libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardLibrary.jar")
+        libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardPlugins.jar")
+
+        //Run a script to generate the xcode project, similar to
+        //`/Applications/CMake.app/Contents/bin/cmake -G Xcode ./freetype-2.5.5/CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=/path/ios_cmake/iOS.cmake -B.`
+         
+
+    end
+
+    action CopyAndRename(text templateLocation, text pathToRunFolder, text applicationName)
+
+        // Copy project into new folder with appropriate name
+        CopyFolder(templateLocation, pathToBuildFolder)
+        
+        // Change Application Name
+//        ChangeApplicationName(pathToBuildFolder, applicationName)
+//    
+//        // Clean the generated files that might conflict with the renamings
+        
+    end
+
+    action RewriteConfig(BuildInformation info)
+        text gradle = GetBuildGradle(info)
+        File gradleFile
+        gradleFile:SetAbsolutePath(pathToBuildFolder + PATH_TO_APP_BUILD_GRADLE)
+        gradleFile:Write(gradle)
+
+        text robovmProp = GetRoboVMProperties(info)
+        File robovmPropFile
+        robovmPropFile:SetAbsolutePath(pathToBuildFolder + PATH_TO_APP_BUILD_ROBOVM_PROPERTIES)
+        robovmPropFile:Write(robovmProp)
+
+        text robovmXML = GetRoboVMXML(info)
+        File robovmXMLFile
+        robovmXMLFile:SetAbsolutePath(pathToBuildFolder + PATH_TO_APP_BUILD_ROBOVM_XML)
+        robovmXMLFile:Write(robovmXML)
+
+        QuorumProject project = info:project
+        text version = project:GetIOSVersionKey()   
+        text nativePath = me:pathToBuildFolder  
+        boolean physical = project:IsIOSPhysicalDevice()
+        text folderName = "Debug-iphonesimulator"
+        if physical
+            folderName = "Debug-iphoneos"
+        end
+        //if there isn't one set, set the default, so it shows up as this next time.  
+        if version = undefined
+            nativePath = nativePath + FILE_SEPARATOR + folderName
+            project:SetIOSVersionKey(project:IOS_14_1)
+        elseif version = project:IOS_14_1
+            nativePath = nativePath + FILE_SEPARATOR + folderName
+        elseif version = project:IOS_13
+            nativePath = nativePath + FILE_SEPARATOR + folderName
+        else
+            nativePath = nativePath + FILE_SEPARATOR + folderName
+        end
+
+        text freetype = "liballnatives.a"
+        //copy the correct files over for the requested architecture
+        File file
+        file:SetWorkingDirectory(nativePath)
+        file:SetPath(freetype)
+        
+        File to
+        to:SetWorkingDirectory(pathToBuildFolder + PATH_TO_NATIVES)
+        to:SetPath(freetype)
+
+        File mom = to:GetParentDirectory()
+        if not mom:Exists()
+            mom:CreateDirectory()
+        end
+        file:Copy(to)
+
+        CleanGeneratedFiles(pathToBuildFolder)
+    end
+
+    private action SanitizeMediaFolder(text value) returns text
+        text result = value
+        if result not= undefined and result:GetSize() > 1 and result:GetCharacter(0) = "/"
+            result = result:GetSubtext(1)
+        end
+        return result
+    end
+
+    private action GetRoboVMXML(BuildInformation info) returns text
+        QuorumProject project = info:project
+        
+        text name = project:GetExecutableName()
+        text media = SanitizeMediaFolder(project:GetMobileAssetsPath())
+
+        
+        text result = 
+"
+<config>
+  <mainJar>"+JAR_FOLDER_NAME+"/"+name+".jar</mainJar>
+  <os>ios</os>
+  <arch>thumbv7</arch>
+  <target>ios</target>
+  <resources>
+    <resource>
+      <directory>"+media+"</directory>
+      <targetPath>"+media+"</targetPath>
+    </resource>
+  </resources>
+  <classpath>
+    <classpathentry>"+JAR_FOLDER_NAME+"/"+name+".jar</classpathentry>
+    <classpathentry>"+JAR_FOLDER_NAME+"/QuorumStandardLibrary.jar</classpathentry>
+    <classpathentry>"+JAR_FOLDER_NAME+"/QuorumStandardPlugins.jar</classpathentry>
+  </classpath>
+  <libs>
+    <lib>"+NATIVE_FOLDER_NAME+"/liballnatives.a</lib>
+  </libs>
+  <weakFrameworks>
+    <framework>OpenGLES</framework>
+    <framework>UIKit</framework>
+    <framework>QuartzCore</framework>
+    <framework>CoreGraphics</framework>
+    <framework>OpenAL</framework>
+    <framework>AudioToolbox</framework>
+    <framework>AVFoundation</framework>
+  </weakFrameworks>
+  <iosInfoPList>Info.plist.xml</iosInfoPList>
+</config>
+"
+        return result
+    end
+
+    private action GetRoboVMProperties(BuildInformation info) returns text
+        QuorumProject project = info:project
+        text name = project:GetExecutableName()
+        text bundle = project:GetIOSBundle()
+//this app.id might need change
+text result = 
+"
+app.version=1.0
+app.id="+bundle+"
+app.build=1
+app.name="+name+"
+
+"
+        return result
+    end
+
+    private action GetBuildGradle(BuildInformation info) returns text
+        QuorumProject project = info:project
+        text name = project:GetExecutableName()
+        text result = 
+"
+sourceCompatibility = '1.8'
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
+robovm {
+}
+
+dependencies {
+testImplementation 'junit:junit:4.12'
+    api files('" + JAR_FOLDER_NAME + "/" + name + ".jar')
+    api files('" + JAR_FOLDER_NAME + "/QuorumStandardLibrary.jar')
+    api files('" + JAR_FOLDER_NAME + "/QuorumStandardPlugins.jar')
+}
+"
+        return result
+    end
+    action CopyLibraries 
+        CopyLibraries(librarySources, libraryDestinations)
+    end
+
+    action CopyLibraries(Array<text> sourcePaths, Array<text> destinationPaths)
+        File libFolder
+        libFolder:SetAbsolutePath(pathToBuildFolder + PATH_TO_LIBS)
+
+        if not libFolder:Exists()
+            libFolder:CreateDirectories()
+        end
+
+        i = 0
+        repeat while i < sourcePaths:GetSize()
+            File from
+            File to
+            from:SetAbsolutePath(pathToRunFolder + sourcePaths:Get(i))
+            to:SetAbsolutePath(destinationPaths:Get(i))
+            from:Copy(to)
+            i = i + 1
+        end
+    end
+
+    action GetAvailableDevices returns Array<AppleDevice>
+        AppleDevicesReader reader
+        return reader:GetAvailableDevices()
+    end
+
+    action GetGenerateXCodeProjectProcess returns Process
+        Properties properties
+        Process process
+        File directory
+        directory:SetAbsolutePath(pathToBuildFolder)
+        process:SetDirectory(directory)
+        //This likely needs to change because it isn't going to work on Windows
+        //given limitations on Mac
+        if properties:IsMac()
+            process:SetProcessName("/Applications/CMake.app/Contents/bin/cmake")
+            Array<text> params = GetCMakeParameters()
+            process:SetParameters(params)
+        end
+
+        return process
+    end
+
+    action GetBuildXCodeProjectProcess(QuorumProject project) returns Process
+        Properties properties
+        Process process
+        File directory
+        directory:SetAbsolutePath(pathToBuildFolder)
+        process:SetDirectory(directory)
+        if properties:IsMac()
+            process:SetProcessName("xcodebuild")
+            Array<text> params = GetBuildXCodeProjectParameters(project)
+            process:SetParameters(params)
+        end
+
+        return process
+    end
+
+    private action GetBuildXCodeProjectParameters(QuorumProject project) returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+        text device = project:GetIOSDevice()
+        text signature = project:GetIOSDeviceSignature()
+        text version = project:GetIOSVersionKey()
+        boolean physical = project:IsIOSPhysicalDevice()       
+        Array<text> params
+        params:Add("-project")
+        params:Add("allnativesv2.xcodeproj")
+        params:Add("-target")
+        params:Add("ALL_BUILD")
+        
+        if not physical
+            params:Add("-sdk")
+            params:Add("iphonesimulator")
+        end
+
+        params:Add("-destination")
+
+        if physical
+            params:Add("platform=iOS,id="+signature+",OS="+version+"")
+        else
+            params:Add("platform=iOS Simulator,id="+signature+",OS="+version+"")
+        end
+        return params
+    end
+
+    private action GetCMakeParameters returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+        Array<text> params
+        params:Add("-G")
+        params:Add("Xcode")
+        params:Add("./Source/freetype-2.5.5/CMakeLists.txt")
+        text source = pathToBuildFolder + "/Source/ios_cmake/iOS.cmake" 
+        params:Add("-DCMAKE_TOOLCHAIN_FILE='" + source + "'")
+        params:Add("-B.")
+        return params
+    end
+
+    action GetBuildForSimulatorProcess(QuorumProject project) returns Process
+        Properties properties
+        Process process
+        File directory
+        directory:SetAbsolutePath(pathToBuildFolder)
+        process:SetDirectory(directory)
+        //This likely needs to change because it isn't going to work on Windows
+        //given limitations on Mac
+        if properties:IsMac()
+            File file
+            file:SetAbsolutePath(pathToBuildFolder + "/gradlew")
+            if file:Exists()
+                file:SetExecutable(true)
+            end
+            process:SetProcessName("./gradlew")
+            Array<text> params = BuildForSimulator(project)
+            process:SetParameters(params)
+        end
+
+        return process
+    end
+
+    private action BuildForSimulator(QuorumProject project) returns Array<text>
+        text value = ""
+        text dq = value:GetDoubleQuote()
+
+        text device = project:GetIOSDevice()
+        boolean physical = project:IsIOSPhysicalDevice()
+        Array<text> params
+        params:Add("-p")  
+        params:Add(pathToBuildFolder)
+        if physical
+            params:Add("ios:launchIOSDevice")
+        else
+            params:Add("ios:launchIPhoneSimulator")
+        end
+        params:Add("-Probovm.device.name=" + device)
+        params:Add("--info")
+        //params:Add("--stacktrace")
+        //params:Add("--scan")
+        //params:Add("--debug")
+        return params
+    end
+
+    action CopyAssets(File mediaFolder, text value)
+        if not mediaFolder:Exists() or value = undefined
+            return now
+        end //bail if it isn't there
+
+        File assetsFolder
+        text pathtemp = pathToBuildFolder + FILE_SEPARATOR + "ios" + FILE_SEPARATOR + value
+        assetsFolder:SetAbsolutePath(pathtemp)
+        if not assetsFolder:Exists()
+            assetsFolder:CreateDirectories()
+        end
+
+        mediaFolder:Copy(assetsFolder, true)
+    end
+
+    action CleanGeneratedFiles(text projectPath)
+        Properties properties
+        Process process
+        Array<text> parameters
+        process:SetParameters(parameters)
+        if properties:IsWindows()
+            File directory
+            directory:SetAbsolutePath(projectPath)
+            process:SetDirectory(directory)
+            process:SetProcessName("cmd")
+
+            parameters:Add("/C")
+            parameters:Add("./gradlew.bat")
+            parameters:Add("-p")
+            parameters:Add(projectPath)
+            parameters:Add(" clean")
+            process:SetParameters(parameters)
+            process:AddListener(me)
+            process:Run()
+        elseif properties:IsMac()
+            File file
+            file:SetAbsolutePath(projectPath + "/gradlew")
+            if file:Exists()
+                file:SetExecutable(true)
+            end
+
+            File value = file:GetParentDirectory()
+            process:SetDirectory(value)
+            process:SetProcessName("./gradlew")
+            parameters:Add("-p")
+            parameters:Add(projectPath)
+            parameters:Add(" clean")
+            process:Run()
+        else
+            File file
+            file:SetAbsolutePath(projectPath + "/gradlew")
+
+            process:SetDirectory(file:GetParentDirectory())
+            process:SetProcessName("/gradlew")
+            parameters:Add("-p")
+            parameters:Add(projectPath)
+            parameters:Add(" clean")
+            process:Run()
+        end
+    end
+
+    action ReplaceLineTextInFile(text filePath, text toReplace, text newString)
+        File file
+        file:SetAbsolutePath(filePath)
+        text value = file:Read()
+        Array<text> lines = value:SplitIntoLines()
+
+        text finalValue = ""
+        i = 0
+        repeat while i < lines:GetSize()
+            text line = lines:Get(i)
+            if line:Contains(toReplace)
+                lines:Set(i, newString)
+            end
+
+            finalValue = finalValue + lines:Get(i) + finalValue:GetLineFeed()
+            i = i + 1
+        end
+        file:Write(finalValue)
+    end
+
+    //This isn't clean, but we need to get it working before refactoring and cleaning up.
+    private action CopyFolder(text from, text to)
+        File toFile
+        File fromFile
+
+        toFile:SetAbsolutePath(to)
+        fromFile:SetAbsolutePath(from)
+
+        if toFile:Exists()
+            toFile:Delete(true)
+        end
+
+        fromFile:Copy(toFile, true)
+    end
+    
+end

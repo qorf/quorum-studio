@@ -1,0 +1,91 @@
+package Libraries.Development.Environment.Studio.Interface.VisualEditor
+use Libraries.Game.Graphics.Camera
+use Libraries.Game.Graphics.PerspectiveCamera
+use Libraries.Compute.Vector3
+use Libraries.Compute.Matrix4
+use Libraries.Compute.Quaternion
+
+class CameraItem3D is CameraItem, InteractableItem3D
+
+    on create
+        SetInputGroup("CameraItem3D")
+    end
+
+    action Load(EditorCamera3D camera, VisualSceneController controller)
+        SetCamera(camera)
+        SetController(controller)
+
+        SetPosition(camera:GetPosition():GetX(), camera:GetPosition():GetY(), camera:GetPosition():GetZ())
+    end
+
+    action GetEditorCamera returns EditorCamera3D
+        return cast(EditorCamera3D, GetCamera())
+    end
+
+    action SetRotation(number yaw, number pitch, number roll)
+        EditorCamera3D camera = GetEditorCamera()
+        camera:SetRotation(yaw, pitch, roll)
+        SetPosition(camera:GetPosition())
+    end
+
+    action GetRotation returns Vector3
+        Vector3 vector
+        vector:Set(GetYaw(), GetPitch(), GetRoll())
+        return vector
+    end
+
+    action GetYaw returns number
+        return GetEditorCamera():GetYaw()
+    end
+
+    action GetPitch returns number
+        return GetEditorCamera():GetPitch()
+    end
+
+    action GetRoll returns number
+        return GetEditorCamera():GetRoll()
+    end
+
+    action SetYaw(number yaw)
+        EditorCamera3D camera = GetEditorCamera()
+        camera:SetYaw(yaw)
+        SetPosition(camera:GetPosition())
+    end
+
+    action SetPitch(number pitch)
+        EditorCamera3D camera = GetEditorCamera()
+        camera:SetPitch(pitch)
+        SetPosition(camera:GetPosition())
+    end
+
+    action SetRoll(number roll)
+        EditorCamera3D camera = GetEditorCamera()
+        camera:SetRoll(roll)
+        SetPosition(camera:GetPosition())
+    end
+
+    action SetDistance(number distance)
+        EditorCamera3D camera = GetEditorCamera()
+        camera:SetDistance(distance)
+        SetPosition(camera:GetPosition())
+    end
+
+    action GetDistance returns number
+        return GetEditorCamera():GetDistance()
+    end
+
+    action SetZoom(number zoom)
+        PerspectiveCamera camera = cast(PerspectiveCamera, GetCamera())
+        camera:SetZoom(zoom)
+        if GetLayer() is EditorLayer3D
+            EditorLayer3D layer = cast(EditorLayer3D, GetLayer())
+//            layer:UpdateGridSize()
+        end
+    end
+
+    action GetZoom returns number
+        PerspectiveCamera camera = cast(PerspectiveCamera, GetCamera())
+        return camera:GetZoom()
+    end
+
+end

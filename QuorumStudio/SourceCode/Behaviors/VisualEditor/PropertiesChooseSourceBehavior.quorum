@@ -1,0 +1,48 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.FileChooser
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.Audio3DPropertiesDialog
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
+use Libraries.System.File
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.TextField
+
+class PropertiesChooseSourceBehavior is Behavior
+
+    Audio3DPropertiesDialog dialog = undefined
+    // Changing this field will also make the property dialog change the corresponding item's value.
+    TextField field = undefined
+
+    action SetDialog(Audio3DPropertiesDialog dialog)
+        me:dialog = dialog
+    end
+
+    action GetDialog returns Audio3DPropertiesDialog
+        return dialog
+    end
+
+    action SetField(TextField field)
+        me:field = field
+    end
+
+    action GetField returns TextField
+        return field
+    end
+
+    action Run(BehaviorEvent event)
+        FileChooser chooser
+        VisualSceneController controller = dialog:GetSceneController()
+        VisualEditorTab tab = controller:GetVisualEditorTab()
+        File project = tab:GetProjectLocation()
+        File file = chooser:OpenFileDialog(project)
+
+        if file = undefined
+            return now
+        end
+
+        field:SetText(tab:GetProjectPathToFile(file))
+    end
+end

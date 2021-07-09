@@ -1,0 +1,67 @@
+package Libraries.Development.Environment.Studio.Mobile
+
+use Libraries.Concurrency.ProcessListener
+use Libraries.Concurrency.ProcessStartedEvent
+use Libraries.Concurrency.ProcessStoppedEvent
+use Libraries.Concurrency.ProcessErrorEvent
+use Libraries.Concurrency.ProcessOutputEvent
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.System.DateTime
+
+class AppleNativeCompileListener is ProcessListener
+    number lines = 0
+    number approximateLines = 7233
+    number tempCount = 0
+    OutputTab outputTab = undefined
+    number startTime = 0
+    integer segments = 10
+    integer segmentCount = 0
+    DateTime time
+    action Run(ProcessStartedEvent event)
+        lines = 0
+        
+        startTime = time:GetEpochTime()
+    end
+
+    action Run(ProcessStoppedEvent event)
+    end
+
+    action Run(ProcessErrorEvent event)
+        text value = event:GetOutput()
+        outputTab:Append(value)
+    end
+
+    action Run(ProcessOutputEvent event)
+        lines = lines + 1
+        tempCount = tempCount + 1
+        if tempCount > (approximateLines / (100.0 / segments))
+            tempCount = 0
+            text percent = ("" + ((lines / approximateLines) * 100.0))
+            percent = percent:GetSubtext(0, 4)
+
+            segmentCount = segmentCount + 1
+            number current = time:GetEpochTime()
+            number distance = current - startTime
+            integer remainingSegments = segments - segmentCount
+            if remainingSegments > 0
+                //guess the time remaining by counting remaining segments vs estimated time per segment
+                number timeRemaining  = remainingSegments * (distance / segmentCount) / 1000.0
+                text seconds = "" + timeRemaining
+                seconds = seconds:GetSubtext(0, 3)
+                if seconds:GetCharacter(2) = "."
+                    seconds = seconds:GetSubtext(0, 2)
+                end
+                outputTab:Append("" + percent + "% complete, estimated " + seconds + " seconds remaining.")
+            end
+        end
+    end
+
+    action GetOutputTab returns OutputTab
+        return outputTab
+    end
+
+    action SetOutputTab(OutputTab outputTab)
+        me:outputTab = outputTab
+    end
+
+end

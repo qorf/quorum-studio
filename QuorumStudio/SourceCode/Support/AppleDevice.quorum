@@ -1,0 +1,105 @@
+package Libraries.Development.Environment.Studio.Mobile
+use Libraries.Containers.Array
+
+class AppleDevice
+    text name = ""
+    text signature = ""
+    text version = ""
+    text total = ""
+    boolean parsed = false
+    boolean isDevice = false
+    boolean isSimulator = false
+
+    action GetName returns text
+        return name
+    end
+
+    action GetVersion returns text
+        return version
+    end
+
+    action GetSignature returns text
+        return signature
+    end
+
+    action GetTotal returns text
+        return total
+    end
+
+    action ParseDevice(text line)
+        isDevice = true
+        if line = undefined or line:IsEmpty()
+            return now
+        end
+        total = line
+
+        Array<text> split = line:Split("\(")
+        //if there's 3, the name is the first one
+        if split:GetSize() = 2
+            name = split:Get(0):Trim()
+            signature = "(" + split:Get(split:GetSize() - 1)
+        //if there's 4, or more, the name is all but the last two
+        elseif split:GetSize() = 3
+            name = split:Get(0):Trim()
+            signature = "(" + split:Get(split:GetSize() - 1)
+            version = "(" + split:Get(split:GetSize() - 2)
+        else
+            return now
+        end
+
+        parsed = true
+    end
+
+    action ParseSimulator(text line)
+        isSimulator = true
+        if line = undefined or line:IsEmpty()
+            return now
+        end
+        total = line
+
+        Array<text> split = line:Split("\(")
+        //if there's 3, the name is the first one
+        if split:GetSize() = 3
+            name = split:Get(0):Trim()
+            
+        //if there's 4, or more, the name is all but the last two
+        elseif split:GetSize() > 3
+
+            name = split:Get(0):Trim()
+            //It is unclear what iOS demands for names here. I thought it included
+            //the below information, but it will take more investigation
+            //to know exactly what is used. Do we use the name only?
+            i = 1
+            repeat while i < split:GetSize() - 2
+                name = name + " (" + split:Get(i)
+                i = i + 1
+            end
+        else
+            return now
+        end
+
+        signature = "(" + split:Get(split:GetSize() - 1)
+        version = "(" + split:Get(split:GetSize() - 2)
+        parsed = true
+    end
+
+    action IsParsed returns boolean
+        return parsed
+    end
+
+    action IsSimulator returns boolean
+        return isSimulator
+    end
+
+    action SetIsSimulator(boolean isSimulator)
+        me:isSimulator = isSimulator
+    end
+
+    action IsDevice returns boolean
+        return isDevice
+    end
+
+    action SetIsDevice(boolean isDevice)
+        me:isDevice = isDevice
+    end
+end

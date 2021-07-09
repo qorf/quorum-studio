@@ -18,11 +18,14 @@ use Libraries.Game.DesktopApplication
 use Libraries.Game.DesktopConfiguration
 use Libraries.Security.Cryptography
 use Libraries.Development.Environment.Projects.Credentials
+use Libraries.System.Logger
+use Libraries.System.Blueprints.FileWriterBlueprint
 
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
     constant text KEYMAP_FILE = "Configuration/KeyMap.json"
     constant text PASSWORDS_FILE = "Configuration/passwords.encrypt"
+    constant text LOG_FILE = "Configuration/QuorumStudio.log"
     constant text PROJECTS_LOCATION = "Projects Folder"
     constant text PASSWORDS_PROJECTS = "Projects"
     constant text PASSWORDS_USERNAME = "username"
@@ -54,11 +57,13 @@ class Options is ProjectListener
     File passwordsLocation
     File projectsLocation
     File propertiesLocation
+    File logLocation
     boolean specialBetaBuild = false
     boolean placeConfigInAppDataOnWindows = true
     boolean placeConfigInApplicationSupportOnMac = true
     boolean overrideLibraryLocation = false
     text libraryOverridePath = ""
+    Logger logger
 
     HashTable<text, Credentials> passwords
 
@@ -106,6 +111,11 @@ class Options is ProjectListener
             newPasswordsFile:SetPath("passwords.encrypt")
             passwordsLocation = newPasswordsFile
 
+            File newLogLocation
+            newLogLocation:SetWorkingDirectory(file:GetAbsolutePath())
+            newLogLocation:SetPath("QuorumStudio.log")
+            logLocation = newLogLocation
+
             projLocation = prop:GetEnvironmentVariable("USERPROFILE") + "\Documents"
         elseif prop:IsMac() and placeConfigInApplicationSupportOnMac
             text home = prop:GetProperty("user.home")
@@ -133,6 +143,11 @@ class Options is ProjectListener
             newPasswordsFile:SetPath("passwords.encrypt")
             passwordsLocation = newPasswordsFile
 
+            File newLogLocation
+            newLogLocation:SetWorkingDirectory(file:GetAbsolutePath())
+            newLogLocation:SetPath("QuorumStudio.log")
+            logLocation = newLogLocation
+
             projLocation = prop:GetEnvironmentVariable("HOME")
         else
             File file
@@ -146,9 +161,16 @@ class Options is ProjectListener
             optionsLocation:SetPath(OPTIONS_FILE)
             keymapLocation:SetPath(KEYMAP_FILE)
             passwordsLocation:SetPath(PASSWORDS_FILE)
+            logLocation:SetPath(LOG_FILE)
         end
         projectsLocation:SetWorkingDirectory(projLocation)
         projectsLocation:SetPath("Quorum Studio")
+        if not logLocation:Exists()
+            logLocation:Write("Quorum Studio Log
+")
+        end
+        logger:SetFile(logLocation)
+        
     end
 
     HashTable<text, text> projects 

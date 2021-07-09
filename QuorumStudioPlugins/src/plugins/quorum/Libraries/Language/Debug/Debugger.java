@@ -171,7 +171,7 @@ public class Debugger implements ProcessCoordinator{
         debugger.setWorkingDirectory(workingDirectory);
         debugger.launch();
         
-        watch = new ProcessWatcher(debugger.getInputStream());
+        watch = new ProcessWatcher(debugger.getInputStream(), debugger.getErrorStream());
         OutputStream outputStream = debugger.getOutputStream();
         watch.setStream(outputStream);
         watch.SetProcessCoordinator(this);

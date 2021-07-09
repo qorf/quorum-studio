@@ -1,7 +1,40 @@
 package Libraries.System
+use Libraries.System.Blueprints.FileWriterBlueprint
 
-class Logger 
+/*
+    This class logs any information that has come in.
+*/
+shared class Logger 
+    File file = undefined
+    FileWriterBlueprint writer = undefined
+    text lf = ""
+    on create
+        lf = lf:GetLineFeed()
+    end
     action Log(text value)
-        output value
+        if writer not= undefined
+            writer:Write(value + lf)
+            writer:PushToDisk()
+        else
+            output value
+        end
+    end
+
+    action Close
+        if writer not= undefined
+            writer:Close()
+        end
+    end
+    
+    action GetFile returns File
+        return file
+    end
+
+    action SetFile(File file)
+        me:file = file
+        if writer not= undefined
+            writer:Close()
+        end
+        writer = file:OpenForWriteAppend()
     end
 end
