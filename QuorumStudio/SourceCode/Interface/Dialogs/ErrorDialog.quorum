@@ -9,6 +9,7 @@ use Libraries.Interface.Behaviors.Controls.OptionDialogCancelBehavior
 use Libraries.Interface.Controls.Dialog
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Interface.Layouts.FlowLayout
 
 class ErrorDialog is Dialog
     Label lineLabel
@@ -16,28 +17,20 @@ class ErrorDialog is Dialog
     Control panel
     Button ok
     Button cancel
-
-//    action GetErrorMessage returns text
-//        return lineLabel:GetText()
-//    end
-//
-//    action SetErrorMessage(text errorMessage)
-//        lineLabel:SetText(errorMessage)
-//        lineLabel:SetName(errorMessage)
-//    end
+    text error = "An Error Occured"
 
     DialogCancelBehavior defaultCancelBehavior
     on create
         SetModal(true)
-        SetName("Error!")
+        SetName("Error")
         lineLabel:SetFocusable(true)
-        lineLabel:SetName("An Error Occured")
-        lineLabel:SetText("An Error Occured")
+        lineLabel:SetName(error)
+        lineLabel:SetText(error)
         Setup()
     end
 
     private action Setup
-        SetPixelWidth(400)
+        SetPercentageWidth(0.50) 
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
         defaultCancelBehavior:SetDialog(me)
 
@@ -50,11 +43,15 @@ class ErrorDialog is Dialog
         view:SetBorderStyle(view:ALL)
         view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
 
+        integer leftPadding = 40
         LayoutProperties props = lineLabel:GetDefaultLayoutProperties()
         props:SetPercentageOriginX(0.5)
         props:SetPercentageOriginY(0.5)
         props:SetPercentageX(0.3)
         props:SetPercentageY(0.5)
+        lineLabel:SetPercentageWidth(1.0)
+        lineLabel:SetLeftPadding(leftPadding)
+        lineLabel:SetRightPadding(10000) //is there a better way?
         lineLabel:SetNextFocus(cancel)
         lineLabel:SetPreviousFocus(cancel)
 
@@ -63,8 +60,11 @@ class ErrorDialog is Dialog
         props:SetPercentageOriginY(0.5)
         props:SetPercentageX(0.7)
         props:SetPercentageY(0.5)
+        
         cancel:SetName("OK")
+        cancel:SetTopPadding(50)
         cancel:SetFontSize(14)
+        cancel:SetLeftPadding(leftPadding)
         cancel:SetHorizontalLayoutMode(props:STANDARD)
         cancel:SetPercentageWidth(0.25)
         cancel:SetFocusable(true)
@@ -73,10 +73,10 @@ class ErrorDialog is Dialog
         cancel:SetPreviousFocus(lineLabel)
 
 
-        ManualLayout findLayout
+        FlowLayout findLayout
         panel:SetLayout(findLayout)
         panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(60)
+        panel:SetPixelHeight(80)
         panel:SetBorderColor(color:Black())
         panel:SetBorderThickness(1)
 
@@ -88,5 +88,15 @@ class ErrorDialog is Dialog
 
     action OnShow
         cancel:Focus()
+    end
+
+    action GetError returns text
+        return error
+    end
+
+    action SetError(text error)
+        me:error = error
+        lineLabel:SetText(error)
+        RequestLayout()
     end
 end
