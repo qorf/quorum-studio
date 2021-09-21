@@ -1,0 +1,20 @@
+package Libraries.Development.Environment
+use Libraries.Concurrency.ThreadRunner
+use Libraries.Development.Analytics.Events.StartupBehavior
+
+shared class Analytics
+    ThreadRunner analyticsThread = undefined
+
+    action Startup
+        StartupBehavior behave
+        analyticsThread:Add(behave)
+    end
+
+    action GetAnalyticsThread returns ThreadRunner
+        return analyticsThread
+    end
+
+    action SetAnalyticsThread(ThreadRunner analyticsThread)
+        me:analyticsThread = analyticsThread
+    end
+end

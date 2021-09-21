@@ -109,6 +109,7 @@ use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
 use Libraries.System.Logger
 use Libraries.System.DateTime
 use Libraries.Development.Environment.Studio.Behaviors.FocusCameraBehavior
+use Libraries.Development.Environment.Analytics
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 3
@@ -152,6 +153,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     Item previousFocus = undefined
     SystemHelper helper
     BuildLoop buildLoop
+    Analytics analytics
     SplashScreen splashScreen = undefined
     boolean splashScreenHide = false
     integer exitStatus = SAVE_CHANGES
@@ -242,12 +244,14 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         ThreadRunner buildThreadRunner = behaviors:GetBuildThreadRunner()
         ThreadRunner debuggerRunner = behaviors:GetDebuggerRunner()
         ThreadRunner indexThread = behaviors:GetBuildIndexingThread()
+        ThreadRunner analyticsThread = behaviors:GetAnalyticsThread()
         ThreadRunner gitRunner = behaviors:GetGitRunner()
         ThreadRunner networkRunner = behaviors:GetNetworkThreadRunner()
         buildLoop:SetFinished(true)
         buildThreadRunner:ShutDown()
         debuggerRunner:ShutDown()
         indexThread:ShutDown()
+        analyticsThread:ShutDown()
         gitRunner:ShutDown()
         networkRunner:ShutDown()
 
@@ -448,9 +452,12 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         BuildManager builder = behaviors:GetBuildManager()
         ThreadRunner buildThreadRunner = behaviors:GetBuildThreadRunner()
         ThreadRunner indexThread = behaviors:GetBuildIndexingThread()
+        ThreadRunner analyticsThread = behaviors:GetAnalyticsThread()
         buildThreadRunner:Add(scanner)
         buildLoop:SetBuildManager(builder)
 
+        analytics:SetAnalyticsThread(analyticsThread)
+        analytics:Startup()
         indexThread:Add(buildLoop)
         FocusWindow()
 
