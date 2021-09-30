@@ -5,7 +5,6 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Controls.TextBox
 use Libraries.Language.Compile.CompilerResult
 use Libraries.System.File
-use Libraries.Language.Compile.Lexer
 use Libraries.Language.Compile.Parsing.Token
 use Libraries.Interface.Controls.TextStyles.TextStyle
 use Libraries.Game.Graphics.Color
@@ -100,13 +99,10 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         StatusLineGutter statusGutter = box:GetStatusGutter()
         statusGutter:SetDiffResult(diffResult)
 
-        if lexer = undefined
-            return now
-        end
-
         if box = undefined
             return now
         end
+      
         //reset the lexer and go forward
         Array<Token> mainFileTokens
         mainFileTokens:SetMaxSize(500)
@@ -145,40 +141,50 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
             
             i = i + 1
         end
-        Class clazzInFile = compilerResult:symbolTable:GetClassInFile(path:GetAbsolutePath())
-        if clazzInFile not= undefined
-            Iterator<Variable> variables = clazzInFile:GetVariables()
-            repeat while variables not= undefined and variables:HasNext()
-                Variable var = variables:Next()
 
-                Iterator<Location> uses = var:GetUseLocationIterator(var:GetFile())
-                repeat while uses not= undefined and uses:HasNext()
-                    Location location = uses:Next()
-                    if location:GetFile():GetAbsolutePath() = path:GetAbsolutePath()
-                        integer start = location:GetIndex()
-                        integer finish = location:GetIndexEnd()
+        SymbolTable table = undefined
+        if isStandardLibrary
+            table = library:GetSymbolTable()
+        elseif compilerResult not= undefined
+            table = compilerResult:symbolTable
+        end
 
-                        TextStyle style
-                        style:SetIndex(start)
-                        style:SetSize(finish - start + 1)
-                        style:SetColor(darkGreen)
-                        box:AddTextStyle("Semantics" + i, style)
-                        i = i + 1
+        if table not= undefined
+            Class clazzInFile = table:GetClassInFile(path:GetAbsolutePath())
+            if clazzInFile not= undefined
+                Iterator<Variable> variables = clazzInFile:GetVariables()
+                repeat while variables not= undefined and variables:HasNext()
+                    Variable var = variables:Next()
+    
+                    Iterator<Location> uses = var:GetUseLocationIterator(var:GetFile())
+                    repeat while uses not= undefined and uses:HasNext()
+                        Location location = uses:Next()
+                        if location:GetFile():GetAbsolutePath() = path:GetAbsolutePath()
+                            integer start = location:GetIndex()
+                            integer finish = location:GetIndexEnd()
+    
+                            TextStyle style
+                            style:SetIndex(start)
+                            style:SetSize(finish - start + 1)
+                            style:SetColor(darkGreen)
+                            box:AddTextStyle("Semantics" + i, style)
+                            i = i + 1
+                        end
                     end
+    
+                    integer start = var:GetIndex()
+                    integer finish = var:GetIndexEnd()
+    
+                    TextStyle style
+                    style:SetIndex(start)
+                    style:SetSize(finish - start + 1)
+                    style:SetColor(darkGreen)
+                    box:AddTextStyle("SemanticsName", style)
                 end
-
-                integer start = var:GetIndex()
-                integer finish = var:GetIndexEnd()
-
-                TextStyle style
-                style:SetIndex(start)
-                style:SetSize(finish - start + 1)
-                style:SetColor(darkGreen)
-                box:AddTextStyle("SemanticsName", style)
             end
         end
         
-        if not isStandardLibrary
+        if not isStandardLibrary and compilerResult not= undefined
             CompilerErrorManager errors = compilerResult:compilerErrorManager
             box:SetCompilerErrorManager(errors)
             if errors = undefined
@@ -295,13 +301,6 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         end
 
         File f = path
-        
-        SymbolTable table = undefined
-        if isStandardLibrary
-            table = library:GetSymbolTable()
-        else
-            table = compilerResult:symbolTable
-        end
 
         if table not= undefined
             Class clazz = table:GetClassInFile(f:GetAbsolutePath())

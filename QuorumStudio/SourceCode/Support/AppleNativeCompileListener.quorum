@@ -1,10 +1,8 @@
 package Libraries.Development.Environment.Studio.Mobile
 
-use Libraries.Concurrency.ProcessListener
-use Libraries.Concurrency.ProcessStartedEvent
-use Libraries.Concurrency.ProcessStoppedEvent
-use Libraries.Concurrency.ProcessErrorEvent
-use Libraries.Concurrency.ProcessOutputEvent
+use Libraries.System.ProcessListener
+use Libraries.System.Process
+use Libraries.System.ProcessEvent
 use Libraries.Development.Environment.Studio.Interface.OutputTab
 use Libraries.System.DateTime
 
@@ -17,21 +15,21 @@ class AppleNativeCompileListener is ProcessListener
     integer segments = 10
     integer segmentCount = 0
     DateTime time
-    action Run(ProcessStartedEvent event)
+    action ProcessStarted(ProcessEvent event)
         lines = 0
         
         startTime = time:GetEpochTime()
     end
 
-    action Run(ProcessStoppedEvent event)
+    action ProcessStopped(ProcessEvent event)
     end
 
-    action Run(ProcessErrorEvent event)
+    action Error(ProcessEvent event)
         text value = event:GetOutput()
         outputTab:Append(value)
     end
 
-    action Run(ProcessOutputEvent event)
+    action Output(ProcessEvent event)
         lines = lines + 1
         tempCount = tempCount + 1
         if tempCount > (approximateLines / (100.0 / segments))

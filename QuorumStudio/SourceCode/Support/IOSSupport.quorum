@@ -4,12 +4,9 @@ use Libraries.System.Properties
 use Libraries.System.File
 use Libraries.Containers.List
 use Libraries.Containers.Array
-use Libraries.Concurrency.Process
-use Libraries.Concurrency.ProcessListener
-use Libraries.Concurrency.ProcessOutputEvent
-use Libraries.Concurrency.ProcessErrorEvent
-use Libraries.Concurrency.ProcessStoppedEvent
-use Libraries.Concurrency.ProcessStartedEvent
+use Libraries.System.ProcessListener
+use Libraries.System.Process
+use Libraries.System.ProcessEvent
 use Libraries.Development.Environment.Studio.Build.MobileListener
 use Libraries.Language.Compile.Symbol.Class
 use Libraries.Development.Environment.Studio.Build.BuildInformation
@@ -44,10 +41,10 @@ class IOSSupport is ProcessListener
         listeners:Add(listener)
     end
 
-    action Run(ProcessStartedEvent event)
+    action ProcessStarted(ProcessEvent event)
     end
 
-    action Run(ProcessStoppedEvent event)
+    action ProcessStopped(ProcessEvent event)
         File file
         file:SetAbsolutePath(GetLogLocation())
 
@@ -62,7 +59,7 @@ class IOSSupport is ProcessListener
         return pathToBuildFolder + "\log.txt"
     end
 
-    action Run(ProcessErrorEvent event)
+    action Error(ProcessEvent event)
         text current = event:GetOutput()
         log = log + current + current:GetLineFeed()
         i = 0
@@ -73,7 +70,7 @@ class IOSSupport is ProcessListener
         end
     end
 
-    action Run(ProcessOutputEvent event)
+    action Output(ProcessEvent event)
         text current = event:GetOutput()
         log = log + current + current:GetLineFeed()
         SendMessageToListeners(current)
@@ -309,7 +306,7 @@ testImplementation 'junit:junit:4.12'
         //This likely needs to change because it isn't going to work on Windows
         //given limitations on Mac
         if properties:IsMac()
-            process:SetProcessName("/Applications/CMake.app/Contents/bin/cmake")
+            process:SetName("/Applications/CMake.app/Contents/bin/cmake")
             Array<text> params = GetCMakeParameters()
             process:SetParameters(params)
         end
@@ -324,7 +321,7 @@ testImplementation 'junit:junit:4.12'
         directory:SetAbsolutePath(pathToBuildFolder)
         process:SetDirectory(directory)
         if properties:IsMac()
-            process:SetProcessName("xcodebuild")
+            process:SetName("xcodebuild")
             Array<text> params = GetBuildXCodeProjectParameters(project)
             process:SetParameters(params)
         end
@@ -387,7 +384,7 @@ testImplementation 'junit:junit:4.12'
             if file:Exists()
                 file:SetExecutable(true)
             end
-            process:SetProcessName("./gradlew")
+            process:SetName("./gradlew")
             Array<text> params = BuildForSimulator(project)
             process:SetParameters(params)
         end
@@ -441,7 +438,7 @@ testImplementation 'junit:junit:4.12'
             File directory
             directory:SetAbsolutePath(projectPath)
             process:SetDirectory(directory)
-            process:SetProcessName("cmd")
+            process:SetName("cmd")
 
             parameters:Add("/C")
             parameters:Add("./gradlew.bat")
@@ -460,7 +457,7 @@ testImplementation 'junit:junit:4.12'
 
             File value = file:GetParentDirectory()
             process:SetDirectory(value)
-            process:SetProcessName("./gradlew")
+            process:SetName("./gradlew")
             parameters:Add("-p")
             parameters:Add(projectPath)
             parameters:Add(" clean")
@@ -470,7 +467,7 @@ testImplementation 'junit:junit:4.12'
             file:SetAbsolutePath(projectPath + "/gradlew")
 
             process:SetDirectory(file:GetParentDirectory())
-            process:SetProcessName("/gradlew")
+            process:SetName("/gradlew")
             parameters:Add("-p")
             parameters:Add(projectPath)
             parameters:Add(" clean")

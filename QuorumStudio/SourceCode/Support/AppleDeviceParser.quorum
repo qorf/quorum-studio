@@ -1,10 +1,8 @@
 package Libraries.Development.Environment.Studio.Mobile
 use Libraries.Containers.Array
-use Libraries.Concurrency.ProcessListener
-use Libraries.Concurrency.ProcessOutputEvent
-use Libraries.Concurrency.ProcessStartedEvent
-use Libraries.Concurrency.ProcessStoppedEvent
-use Libraries.Concurrency.ProcessErrorEvent
+use Libraries.System.ProcessListener
+use Libraries.System.Process
+use Libraries.System.ProcessEvent
 
 class AppleDeviceParser is ProcessListener
     boolean isDevice = false
@@ -12,18 +10,18 @@ class AppleDeviceParser is ProcessListener
 
     Array<AppleDevice> devices
 
-    action Run(ProcessStartedEvent event)
+    action ProcessStarted(ProcessEvent event)
 
     end
 
-    action Run(ProcessStoppedEvent event)
+    action ProcessStopped(ProcessEvent event)
     end
 
-    action Run(ProcessErrorEvent event)
+    action Error(ProcessEvent event)
         ProcessLine(event:GetOutput())
     end
 
-    action Run(ProcessOutputEvent event)
+    action Output(ProcessEvent event)
         ProcessLine(event:GetOutput())
     end
 

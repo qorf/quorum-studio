@@ -4,12 +4,9 @@ use Libraries.System.Properties
 use Libraries.System.File
 use Libraries.Containers.List
 use Libraries.Containers.Array
-use Libraries.Concurrency.Process
-use Libraries.Concurrency.ProcessListener
-use Libraries.Concurrency.ProcessOutputEvent
-use Libraries.Concurrency.ProcessErrorEvent
-use Libraries.Concurrency.ProcessStoppedEvent
-use Libraries.Concurrency.ProcessStartedEvent
+use Libraries.System.Process
+use Libraries.System.ProcessListener
+use Libraries.System.ProcessEvent
 use Libraries.Development.Environment.Studio.Build.MobileListener
 use Libraries.Language.Compile.Symbol.Class
 
@@ -59,11 +56,11 @@ class AndroidSupport is ProcessListener
         listeners:Add(listener)
     end
 
-    action Run(ProcessStartedEvent event)
+    action ProcessStarted(ProcessEvent event)
         //output "Starting " + event:GetName()
     end
 
-    action Run(ProcessStoppedEvent event)
+    action ProcessStopped(ProcessEvent event)
         //output "Stopping " + event:GetName()
         File file
         file:SetAbsolutePath(GetLogLocation())
@@ -79,7 +76,7 @@ class AndroidSupport is ProcessListener
         return pathToBuildAndroidFolder + "\log.txt"
     end
 
-    action Run(ProcessErrorEvent event)
+    action Error(ProcessEvent event)
         text current = event:GetOutput()
         log = log + current + current:GetLineFeed()
         i = 0
@@ -115,7 +112,7 @@ class AndroidSupport is ProcessListener
         end
     end
 
-    action Run(ProcessOutputEvent event)
+    action Output(ProcessEvent event)
         text current = event:GetOutput()
         log = log + current + current:GetLineFeed()
         SendMessageToListeners(current)
@@ -288,7 +285,7 @@ public class MainActivity extends Activity {
         process:SetDirectory(directory)
         if properties:IsWindows()
             Array<text> params = BuildDebugAPKWindows()
-            process:SetProcessName("cmd")
+            process:SetName("cmd")
             process:SetParameters(params)
         elseif properties:IsMac()
             File file
@@ -296,11 +293,11 @@ public class MainActivity extends Activity {
             if file:Exists()
                 file:SetExecutable(true)
             end
-            process:SetProcessName("./gradlew")
+            process:SetName("./gradlew")
             Array<text> params = BuildDebugAPK()
             process:SetParameters(params)
         else
-            process:SetProcessName("./gradlew")
+            process:SetName("./gradlew")
             Array<text> params = BuildDebugAPK()
             process:SetParameters(params)
         end
@@ -340,7 +337,7 @@ public class MainActivity extends Activity {
         directory:SetAbsolutePath(pathToBuildAndroidFolder)
         process:SetDirectory(directory)
         if properties:IsWindows()
-            process:SetProcessName("cmd")
+            process:SetName("cmd")
             Array<text> params = BuildDebugInstallAPKWindows()
             process:SetParameters(params)
         elseif properties:IsMac()
@@ -349,11 +346,11 @@ public class MainActivity extends Activity {
             if file:Exists()
                 file:SetExecutable(true)
             end
-            process:SetProcessName("./gradlew")
+            process:SetName("./gradlew")
             Array<text> params = BuildDebugInstallAPK()
             process:SetParameters(params)
         else
-            process:SetProcessName("./gradlew")
+            process:SetName("./gradlew")
             Array<text> params = BuildDebugInstallAPK()
             process:SetParameters(params)
         end
@@ -386,7 +383,7 @@ public class MainActivity extends Activity {
         Process process
         if properties:IsWindows()
             Array<text> params = BuildZipAlignCommandWindows()
-            process:SetProcessName(params:Get(0))
+            process:SetName(params:Get(0))
             params:RemoveAt(0)
             process:SetParameters(params)
             process:Run()
@@ -500,7 +497,7 @@ public class MainActivity extends Activity {
             File directory
             directory:SetAbsolutePath(projectPath)
             process:SetDirectory(directory)
-            process:SetProcessName("cmd")
+            process:SetName("cmd")
 
             parameters:Add("/C")
             //text dq = ""
@@ -523,7 +520,7 @@ public class MainActivity extends Activity {
 
             File value = file:GetParentDirectory()
             process:SetDirectory(value)
-            process:SetProcessName("./gradlew")
+            process:SetName("./gradlew")
             parameters:Add("-p")
             parameters:Add(projectPath)
             parameters:Add(" clean")
@@ -533,7 +530,7 @@ public class MainActivity extends Activity {
             file:SetAbsolutePath(projectPath + "/gradlew")
 
             process:SetDirectory(file:GetParentDirectory())
-            process:SetProcessName("/gradlew")
+            process:SetName("/gradlew")
             parameters:Add("-p")
             parameters:Add(projectPath)
             parameters:Add(" clean")

@@ -10,7 +10,6 @@ use Libraries.Language.Compile.CompilerResult
 use Libraries.Development.Environment.Studio.Interface.OutputTab
 use Libraries.Containers.Iterator
 use Libraries.Language.Compile.CompilerError
-use Libraries.Concurrency.Process
 use Libraries.System.Properties
 use Libraries.Language.Debug.Debugger
 use Libraries.Language.Debug.DebuggerListener
@@ -39,11 +38,8 @@ use Libraries.Development.Environment.Projects.Quorum.ImageSheets
 use Libraries.Development.Environment.Projects.Quorum.ImageSheet
 use Libraries.Development.Environment.Lego
 use Libraries.Language.Compile.Documentation.DocumentationGenerator
-use Libraries.Concurrency.ProcessListener
-use Libraries.Concurrency.ProcessStartedEvent
-use Libraries.Concurrency.ProcessStoppedEvent
-use Libraries.Concurrency.ProcessErrorEvent
-use Libraries.Concurrency.ProcessOutputEvent
+use Libraries.System.ProcessListener
+use Libraries.System.ProcessEvent
 use Libraries.Development.Environment.Studio.Interface.ErrorTab
 use Libraries.Development.Environment.Studio.Behaviors.SelectTabBehavior
 use Libraries.Development.Environment.Studio.Behaviors.UpdateVariablesBehavior
@@ -52,7 +48,6 @@ use Libraries.Concurrency.ThreadRunner
 use Libraries.Development.Environment.Studio.Behaviors.BuildLoop
 use Libraries.Development.Environment.Studio.Behaviors.UpdateCodeEditorBehavior
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
-use Libraries.Language.Compile.Lexer
 use Libraries.Language.Compile.CodeCompletionRequest
 use Libraries.Language.Compile.CodeCompletionResult
 use Libraries.Development.Environment.Studio.Android.AndroidSupport
@@ -78,6 +73,7 @@ use Libraries.Development.Environment.Studio.Mobile.IOSSupport
 use Libraries.Development.Environment.Studio.Mobile.AppleNativeCompileListener
 use Libraries.System.Logger
 use Libraries.Development.Environment.Projects.Project
+use Libraries.System.Process
 
 class BuildManager is DebuggerListener, ProcessListener, ProjectListener, MobileListener
     Library library
@@ -92,6 +88,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
     CodeEditorTabPane editors = undefined
     OutputEditorTabPane outputTabs = undefined
     HashTable<text, Process> processes
+    HashTable<text, OutputTab> outputTabsForProcesses
     ProjectManager projectManager = undefined
 
     //for the parsing and indexing procedures
@@ -323,21 +320,6 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             return false
         end
         text source = box:GetText()
-
-        //it's in the standard library, has a lexer, and is a valid file
-        Lexer standardLibraryLexer = library:GetLexer(file:GetAbsolutePath())
-        if file not= undefined and standardLibraryLexer not= undefined
-            if box not= undefined
-                box:SetBuildManager(me)
-                UpdateCodeEditorBehavior updater
-                //updater:SetBuildInformation(info)
-                updater:SetBuildManager(me)
-                //updater:SetCompilerResult(result)
-                updater:SetPath(file)
-                box:AddBehavior(updater)
-            end
-            return true
-        end
 
         //actually do the building
         BuildInformation info
@@ -1109,7 +1091,8 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         OutputTab out, File copyFolder, File location, File sourceCodeFolder, 
         Array<File> sourceFiles, text compilerName)
         Process runner
-        runner:SetOutputTab(out)
+        
+//        runner:SetOutputTab(out)
 
         runner:AddListener(me)
         runner:SetDirectory(copyFolder)
@@ -1121,8 +1104,10 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         end
 
         text value = location:GetAbsolutePath()
+        outputTabsForProcesses:Add(value, out)
         if processes:HasKey(value) //kill it, if you have to
             Process old = processes:RemoveKey(value)
+            outputTabsForProcesses:RemoveKey(value)
             old:Cancel()
         end
 
@@ -1152,7 +1137,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             end
         end
 
-        runner:SetProcessName(java)
+        runner:SetName(java)
         runner:SetParameters(flags)
         runner:Run()
         //add it into the list of running processes
@@ -1780,7 +1765,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         if errors:IsCompilationErrorFree()
             out:Append("Running " + project:GetName())
             Process runner
-            runner:SetOutputTab(out)
+            
 
             runner:AddListener(me)
             Properties properties
@@ -1790,8 +1775,10 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
                 out:Append("I could not find Java. Is it installed?")
             end
             text value = project:GetLocation():GetAbsolutePath()
+            outputTabsForProcesses:Add(value, out)
             if processes:HasKey(value) //kill it, if you have to
                 Process old = processes:RemoveKey(value)
+                outputTabsForProcesses:RemoveKey(value)
                 old:Cancel()
             end
 
@@ -1805,7 +1792,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
                 flags:Add("-XstartOnFirstThread")
                 flags:Add("-jar")
                 flags:Add(run)
-                runner:SetProcessName(java)
+                runner:SetName(java)
                 runner:SetParameters(flags)
                 runner:Run()
             elseif os:Contains("Windows")
@@ -1815,7 +1802,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
                 flags:Add("-Dsodbeans=1")
                 flags:Add("-jar")
                 flags:Add(run)
-                runner:SetProcessName(java)
+                runner:SetName(java)
                 runner:SetParameters(flags)
                 runner:Run()
             else
@@ -1825,7 +1812,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
                 flags:Add("-Dsodbeans=1")
                 flags:Add("-jar")
                 flags:Add(run)
-                runner:SetProcessName(java)
+                runner:SetName(java)
                 runner:SetParameters(flags)
                 runner:Run()
             end
@@ -1864,7 +1851,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         pulseBehavior:SetFinished(true)
     end
 
-    action Run(ProcessStartedEvent event)
+    action ProcessStarted(ProcessEvent event)
         QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
         Toolbar toolbar = studio:GetToolbar()
         Button debugButton = toolbar:GetButton("Run")
@@ -1872,7 +1859,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         debugButton:AddBehavior(pulseBehavior)
     end
 
-    action Run(ProcessStoppedEvent event)
+    action ProcessStopped(ProcessEvent event)
         Process process = event:GetProcess()
         File file = process:GetDirectory()
         if processes:HasKey(file:GetAbsolutePath()) //kill it, if you have to
@@ -1882,17 +1869,22 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         pulseBehavior:SetFinished(true)
     end
 
-    action Run(ProcessErrorEvent event)
-        //output "Error  " + event:GetName()
-        //output event:GetOutput()
-    end
-
-    action Run(ProcessOutputEvent event)
+    action Error(ProcessEvent event)
         Process process = event:GetProcess()
-        OutputTab out = process:GetOutputTab()
+        text key = processes:GetKey(process)
+        
+        OutputTab out = outputTabsForProcesses:GetValue(key)
         if out not= undefined and event not= undefined
             out:Append(event:GetOutput())
         end
-        //output event:GetOutput()
+    end
+
+    action Output(ProcessEvent event)
+        Process process = event:GetProcess()
+        text key = processes:GetKey(process)
+        OutputTab out = outputTabsForProcesses:GetValue(key)
+        if out not= undefined and event not= undefined
+            out:Append(event:GetOutput())
+        end
     end
 end
