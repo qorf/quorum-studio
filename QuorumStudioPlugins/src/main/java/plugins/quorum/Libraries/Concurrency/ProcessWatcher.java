@@ -65,7 +65,8 @@ public class ProcessWatcher implements Runnable {
                 bufferedWriter.newLine();
                 bufferedWriter.flush();
             } catch (IOException ex) {
-                Logger.getLogger(Process.class.getName()).log(Level.SEVERE, null, ex);
+
+                //Logger.getLogger(Process.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
     }
