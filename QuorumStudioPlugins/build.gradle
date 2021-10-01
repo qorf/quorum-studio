@@ -1,0 +1,73 @@
+plugins {
+    id 'java'
+}
+
+group 'plugins.quorum.studio'
+version '4.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    //testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    //testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+
+    //First the dependency for the poorly named Quorum Debugger
+    compileOnly files('../../debugger/OmniscientDebugger/build/libs/OmniscientDebugger.jar')
+
+    //Now the standard library and compile against Quorum Studio itself.
+    compileOnly files('../../quorum-language/Quorum/Library/Compiled/Run/QuorumStandardLibrary.jar')
+    compileOnly files('../QuorumStudio/Run/QuorumStudio.jar')
+    //While this is not ideal, compile against Quorum Studio's dependencies.
+    //over time these should be moved to use Maven Central and then we should re-create the dependencies
+    //on the fly, but one thing at a time.
+    compileOnly files('../QuorumStudio/External/jsch-0.1.52.jar')
+    compileOnly files('../QuorumStudio/External/ImageSheets.jar')
+    compileOnly files('../QuorumStudio/External/Git/Bouncy.jar')
+    compileOnly files('../QuorumStudio/External/Git/org.eclipse.jgit-5.6.1.202002131546-r.jar')
+    compileOnly files('../QuorumStudio/External/Git/slf4j-api-1.7.30.jar')
+    compileOnly files('../QuorumStudio/External/Git/slf4j-simple-1.7.30.jar')
+}
+
+java {
+    toolchain {
+        /*
+            The first time this is used, we need to set this version
+            so Gradle will download it. There is probably a better way,
+            but we then go back to JDK 8. Eventually, the switch can be permanent
+            and this will no longer be needed.
+         */
+//        languageVersion.set(JavaLanguageVersion.of(11))
+//        vendor = JvmVendorSpec.ADOPTOPENJDK
+
+        languageVersion.set(JavaLanguageVersion.of(8))
+        vendor = JvmVendorSpec.ADOPTOPENJDK
+    }
+}
+
+test {
+    //useJUnitPlatform()
+}
+
+/*
+    For temporary compatibility with the old NetBeans system, copy the class folder
+    into a new location.
+ */
+task('copyBuild', type: JavaCompile) {
+
+    copy {
+        from 'build/classes/java/main'
+        into 'build/classes'
+    }
+
+    def destPath = '../QuorumStudio/Java/jdk'
+    def homePath = System.properties['user.home'] + "/.gradle/jdks/jdk-11.0.12+7"
+    if (!file(destPath).exists()) {
+        copy {
+            from homePath
+            into destPath
+        }
+    }
+}
+

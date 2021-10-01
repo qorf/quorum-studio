@@ -1725,19 +1725,30 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
     end
 
     private action FindJava returns text
-        //first check if there's a JRE underneath quorum studio
+        //first check if there's a JDK underneath quorum studio. By default this is JDK 11
         File file
-        text local = file:GetAbsolutePath() + "/jre/bin" + "/" + "java"
+        text local = file:GetAbsolutePath() + "/Java/jdk/Contents/Home/bin/" + "/" + "java"
         //You can't reliably know the file extension, so check the existence
         //of the parent folder. 
         File parentFolder
         File javaFile
+        javaFile:SetAbsolutePath(local)
+        parentFolder:SetAbsolutePath(file:GetAbsolutePath() + "/Java/jdk/Contents/Home/bin/")
+        if parentFolder:Exists() //use the local one if you can.
+            return javaFile:GetAbsolutePath()
+        end
+
+        //If there isn't one, see if they have a leftover JRE from a previous install.
+        local = file:GetAbsolutePath() + "/jre/bin" + "/" + "java"
+        //You can't reliably know the file extension, so check the existence
+        //of the parent folder. 
         javaFile:SetAbsolutePath(local)
         parentFolder:SetAbsolutePath(file:GetAbsolutePath() + "/jre/bin")
         if parentFolder:Exists() //use the local one if you can.
             return javaFile:GetAbsolutePath()
         end
 
+        //We can't find a local JVM, perhaps because the user deleted it. Is it in Java Home?
         Properties properties
         text home = properties:GetProperty("java.home")
         home = home + "/" + "bin" + "/" + "java"
