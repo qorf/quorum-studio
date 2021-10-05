@@ -1427,6 +1427,15 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         out:Append("Copying Information")
         ios:CopyLibraries() 
 
+        File cmake
+        cmake:SetAbsolutePath("/Applications/CMake.app/Contents/bin/cmake")
+
+
+        if not cmake:Exists()
+            out:Append("Could not find Cmake, which is required for iOS projects. ")
+            out:Append("Please download it at https://cmake.org/")
+            return now
+        end
         out:Append("")
         out:Append("Creating XCode Project")
         Process createXCodeProcess = ios:GetGenerateXCodeProjectProcess()
@@ -1438,6 +1447,13 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         out:Append("Building Natives for " + device + ", ios version " + version + 
             ". This process can take several minutes.")
 
+
+        text signature = project:GetIOSDeviceSignature()
+        if signature = undefined or signature:IsEmpty()
+            out:Append("Could not detect which simulator or device you want to run on.")
+            out:Append("Please open the project properties, select Mobile, and choose your simulator.")
+            return now
+        end
         AppleNativeCompileListener nativeListener
         nativeListener:SetOutputTab(out)
         Process xcodeBuildProcess = ios:GetBuildXCodeProjectProcess(project)
