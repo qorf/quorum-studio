@@ -6,6 +6,7 @@ class AppleDevice
     text signature = ""
     text version = ""
     text total = ""
+    text actualDeviceName = ""
     boolean parsed = false
     boolean isDevice = false
     boolean isSimulator = false
@@ -78,6 +79,9 @@ class AppleDevice
             return now
         end
 
+        //modern versions require we remove the "Simulator" name at the end. So let's do that.
+        integer index = name:IndexOf("Simulator")
+        actualDeviceName = name:GetSubtext(0, index - 1)
         signature = "(" + split:Get(split:GetSize() - 1)
         version = "(" + split:Get(split:GetSize() - 2)
         parsed = true
@@ -102,4 +106,8 @@ class AppleDevice
     action SetIsDevice(boolean isDevice)
         me:isDevice = isDevice
     end
+    action GetActualDeviceName returns text
+        return actualDeviceName
+    end
+
 end

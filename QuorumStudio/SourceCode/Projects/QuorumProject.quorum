@@ -95,12 +95,13 @@ class QuorumProject is Project
     public constant text MOBILE_ASSETS_DEFAULT_FOLDER = "media"
     public constant text IOS_VERSION = "iosVersion"
     public constant text IOS_BUNDLE = "IOS_BUNDLE"
-    public constant text IOS_DEFAULT_DEVICE = "iPhone 12"
+    public constant text IOS_DEFAULT_DEVICE = "iPhone 12 Simulator"
     public constant text IOS_PHYSICAL_DEVICE = "IOS_PHYSICAL_DEVICE"
     public constant text IOS_13 = "13.0"
     public constant text IOS_14_1 = "14.1"
     public constant text IOS_14_2 = "14.2"
-    public constant text IOS_DEFAULT_VERSION = IOS_14_2
+    public constant text IOS_15_0 = "15.0"
+    public constant text IOS_DEFAULT_VERSION = IOS_15_0
     public constant text IOS_DEFAULT_BUNDLE = "org.quorumlanguage"
     //this can be set, but should never be stored.
     private text iosDeviceUniqueID = ""
@@ -135,10 +136,9 @@ class QuorumProject is Project
         view:SetProject(me)
         //set a default assets folder. The user's project properties may override this.
         SetMobileAssetsPath(MOBILE_ASSETS_DEFAULT_FOLDER)
-        SetIOSVersionKey(IOS_14_2)
+        SetIOSVersionKey(IOS_DEFAULT_VERSION)
         SetIOSDevice(IOS_DEFAULT_DEVICE)
         SetIOSBundle(IOS_DEFAULT_BUNDLE)
-        
     end
 
 
@@ -334,8 +334,11 @@ class QuorumProject is Project
     /* This gets the IOS version to build to. */
     action GetIOSVersionKey returns text
         ProjectProperty property = GetProperty(IOS_VERSION)
+        //if the key is undefined, 
+        //create one and return that
         if property = undefined
-            return undefined
+            SetIOSVersionKey(IOS_DEFAULT_VERSION)
+            return IOS_DEFAULT_VERSION
         end
         text value = property:GetFirstValue()
         return value
@@ -344,8 +347,11 @@ class QuorumProject is Project
     /* Get IOS Device */
     action GetIOSDevice returns text
         ProjectProperty property = GetProperty(IOS_DEVICE)
+        //if the device is undefined, 
+        //create one and return it
         if property = undefined
-            return undefined
+            SetPropertyValue(IOS_DEVICE, IOS_DEFAULT_DEVICE)
+            return IOS_DEFAULT_DEVICE
         end
         text value = property:GetFirstValue()
         return value
@@ -1046,7 +1052,7 @@ class QuorumProject is Project
             elseif ios = IOS_14_1
                 SetIOSVersionKey(ios)
             else 
-                SetIOSVersionKey(IOS_14_1)
+                SetIOSVersionKey(IOS_DEFAULT_VERSION)
             end
         elseif key = IOS_DEVICE
             if not object:IsText()

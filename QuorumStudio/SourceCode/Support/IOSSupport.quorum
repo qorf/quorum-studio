@@ -26,7 +26,8 @@ class IOSSupport is ProcessListener
     constant text PATH_TO_LIBS = FILE_SEPARATOR + "ios" + FILE_SEPARATOR + JAR_FOLDER_NAME
     constant text PATH_TO_NATIVES = FILE_SEPARATOR + "ios" + 
         FILE_SEPARATOR + NATIVE_FOLDER_NAME
-    constant text FOLDER_NAME = "Mac"
+    constant text PATH_TO_NATIVE_FILE = PATH_TO_NATIVES + FILE_SEPARATOR + "liballnatives.a"
+    constant text FOLDER_NAME = "Mobile"
     text pathToRunFolder = ""
     text pathToBuildFolder = ""
     Array<text> librarySources 
@@ -108,23 +109,12 @@ class IOSSupport is ProcessListener
         libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + jarName)
         libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardLibrary.jar")
         libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardPlugins.jar")
-
-        //Run a script to generate the xcode project, similar to
-        //`/Applications/CMake.app/Contents/bin/cmake -G Xcode ./freetype-2.5.5/CMakeLists.txt -DCMAKE_TOOLCHAIN_FILE=/path/ios_cmake/iOS.cmake -B.`
-         
-
     end
 
-    action CopyAndRename(text templateLocation, text pathToRunFolder, text applicationName)
+    
 
-        // Copy project into new folder with appropriate name
+    action CopyAndRename(text templateLocation, text pathToRunFolder, text applicationName)
         CopyFolder(templateLocation, pathToBuildFolder)
-        
-        // Change Application Name
-//        ChangeApplicationName(pathToBuildFolder, applicationName)
-//    
-//        // Clean the generated files that might conflict with the renamings
-        
     end
 
     action RewriteConfig(BuildInformation info)
@@ -254,17 +244,20 @@ app.name="+name+"
         text name = project:GetExecutableName()
         text result = 
 "
-sourceCompatibility = '1.8'
-[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(8))
+        vendor = JvmVendorSpec.ADOPTOPENJDK
+    }
+}
 
 robovm {
 }
 
 dependencies {
-testImplementation 'junit:junit:4.12'
-    api files('" + JAR_FOLDER_NAME + "/" + name + ".jar')
-    api files('" + JAR_FOLDER_NAME + "/QuorumStandardLibrary.jar')
-    api files('" + JAR_FOLDER_NAME + "/QuorumStandardPlugins.jar')
+    implementation files('" + JAR_FOLDER_NAME + "/" + name + ".jar')
+    implementation files('" + JAR_FOLDER_NAME + "/QuorumStandardLibrary.jar')
+    implementation files('" + JAR_FOLDER_NAME + "/QuorumStandardPlugins.jar')
 }
 "
         return result
@@ -312,6 +305,27 @@ testImplementation 'junit:junit:4.12'
         end
 
         return process
+    end
+
+    action HasNativesBuilt returns boolean
+        File native
+        native:SetWorkingDirectory(pathToBuildFolder)
+        native:SetPath(PATH_TO_NATIVE_FILE)
+        if native:Exists()
+            return true
+        else
+            return false
+        end        
+    end
+
+    action HasMobileFolder returns boolean
+        File native
+        native:SetAbsolutePath(pathToBuildFolder)
+        if native:Exists()
+            return true
+        else
+            return false
+        end  
     end
 
     action GetBuildXCodeProjectProcess(QuorumProject project) returns Process
@@ -392,7 +406,7 @@ testImplementation 'junit:junit:4.12'
         return process
     end
 
-    private action BuildForSimulator(QuorumProject project) returns Array<text>
+    action BuildForSimulator(QuorumProject project) returns Array<text>
         text value = ""
         text dq = value:GetDoubleQuote()
 
@@ -406,7 +420,26 @@ testImplementation 'junit:junit:4.12'
         else
             params:Add("ios:launchIPhoneSimulator")
         end
-        params:Add("-Probovm.device.name=" + device)
+
+        //we have the device name, but we need its signature
+        text signature = ""
+        AppleDevicesReader reader
+        Array<AppleDevice> devices = reader:GetAvailableDevices()
+        i = 0
+        repeat while i < devices:GetSize()
+            AppleDevice fruit = devices:Get(i)
+
+            text name = fruit:GetName()
+            if name = device
+                //get the signature
+                signature = fruit:GetActualDeviceName()
+            end
+            i = i + 1
+        end
+
+        output device
+        output signature
+        params:Add("-Probovm.device.name=" + signature)
         params:Add("--info")
         //params:Add("--stacktrace")
         //params:Add("--scan")

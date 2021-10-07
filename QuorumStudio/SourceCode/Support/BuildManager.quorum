@@ -1409,56 +1409,65 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         text jarName = project:GetExecutableName() + ".jar"
         text applicationName = project:GetExecutableName()
         File iosLocation
-        iosLocation:SetPath("External/Mac")
+        iosLocation:SetPath("External/Mobile")
 
         IOSSupport ios
         ios:AddListener(me)
         ios:Setup(runDirectory:GetAbsolutePath(), jarName)
-        
-
-        if path not= undefined and iosLocation:Exists()
-            //android:SetAndroidPath(androidPath)
-        end
 
         out:Append("")
         out:Append("Starting iOS Generator")
-        out:Append("Generating Template iOS Project")
-        ios:CopyAndRename(iosLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName)
-        out:Append("Copying Information")
-        ios:CopyLibraries() 
 
-        File cmake
-        cmake:SetAbsolutePath("/Applications/CMake.app/Contents/bin/cmake")
+        //If there is already a mobile folder, we only need to copy the jars to the right spot.
+        if ios:HasMobileFolder()
+            out:Append("Folder detected, copying Quorum files. Clean and build to start fresh on iOS devices.")
+            ios:CopyLibraries()
+        else
+            out:Append("Generating Template iOS Project")
+            ios:CopyAndRename(iosLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName)
+            out:Append("Copying Quorum files")
+            ios:CopyLibraries()
 
-
-        if not cmake:Exists()
-            out:Append("Could not find Cmake, which is required for iOS projects. ")
-            out:Append("Please download it at https://cmake.org/")
-            return now
+            File cmake
+            cmake:SetAbsolutePath("/Applications/CMake.app/Contents/bin/cmake")
+    
+    
+            if not cmake:Exists()
+                out:Append("Could not find Cmake, which is required for iOS projects. ")
+                out:Append("Please download it at https://cmake.org/")
+                return now
+            end
+            out:Append("")
+            out:Append("Creating XCode Project")
+            Process createXCodeProcess = ios:GetGenerateXCodeProjectProcess()
+            //createXCodeProcess:AddListener(me)
+            createXCodeProcess:Run()
+            
+    
+            text device = project:GetIOSDevice()
+            text version = project:GetIOSVersionKey()
+            out:Append("Building Natives for " + device + ", ios version " + version + 
+                ". This process can take several minutes.")
+    
+    
+            text signature = project:GetIOSDeviceSignature()
+            if signature = undefined or signature:IsEmpty()
+                out:Append("Could not detect which simulator or device you want to run on.")
+                out:Append("Please open the project properties, select Mobile, and choose your simulator.")
+                return now
+            end
         end
-        out:Append("")
-        out:Append("Creating XCode Project")
-        Process createXCodeProcess = ios:GetGenerateXCodeProjectProcess()
-        //createXCodeProcess:AddListener(me)
-        createXCodeProcess:Run()
-        
-        text device = project:GetIOSDevice()
-        text version = project:GetIOSVersionKey()
-        out:Append("Building Natives for " + device + ", ios version " + version + 
-            ". This process can take several minutes.")
 
-
-        text signature = project:GetIOSDeviceSignature()
-        if signature = undefined or signature:IsEmpty()
-            out:Append("Could not detect which simulator or device you want to run on.")
-            out:Append("Please open the project properties, select Mobile, and choose your simulator.")
-            return now
+        //first check if the natives are already there. If they are, just keep going.
+        if not ios:HasNativesBuilt()
+            AppleNativeCompileListener nativeListener
+            nativeListener:SetOutputTab(out)
+            Process xcodeBuildProcess = ios:GetBuildXCodeProjectProcess(project)
+            xcodeBuildProcess:AddListener(nativeListener)
+            xcodeBuildProcess:Run() 
+        else
+            out:Append("Natives Detected, skipping build")
         end
-        AppleNativeCompileListener nativeListener
-        nativeListener:SetOutputTab(out)
-        Process xcodeBuildProcess = ios:GetBuildXCodeProjectProcess(project)
-        xcodeBuildProcess:AddListener(nativeListener)
-        xcodeBuildProcess:Run()
 
         out:Append("Natives completed")
         out:Append("Writing configuration files")
