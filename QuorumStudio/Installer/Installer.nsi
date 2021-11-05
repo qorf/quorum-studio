@@ -10,9 +10,9 @@
 ;General
 
     ;Name and file
-    !define PRODUCT_VERSION "3.0.0.0"
+    !define PRODUCT_VERSION "3.5.0.0"
     !define REGISTRY_KEY "Software\QuorumStudio"
-    !define VERSION "3.0.0"
+    !define VERSION "3.5.0"
 
     VIProductVersion "${PRODUCT_VERSION}"
     VIFileVersion "${PRODUCT_VERSION}"
@@ -98,7 +98,7 @@ Section "Core" SecDummy
   File QuorumStudio.exe
   File quorum.ico
   File /nonfatal /r "..\Run\*.*"
-  File /nonfatal /r "..\..\..\openjdkbuild\java-1.8.0-openjdk-1.8.0.212-1\jre"
+  File /nonfatal /r "..\Java"
   File /nonfatal /r "..\External"
   File /nonfatal /r "..\Library"
   File /nonfatal /r "..\Resources"
