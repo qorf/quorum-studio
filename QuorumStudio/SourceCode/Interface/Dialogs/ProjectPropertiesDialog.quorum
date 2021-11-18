@@ -176,14 +176,15 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         initialized = true
 
         SetName("Properties")
-        SetPixelWidth(600)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        SetPercentageWidth(0.5)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:STANDARD)
+        SetPercentageHeight(0.75)
 
         
         FlowLayout tabLayout
         tabPane:SetViewAreaLayout(tabLayout)
         tabPane:SetPercentageWidth(1.0)
-        tabPane:SetPixelHeight(700)
+        tabPane:SetPercentageHeight(1.0)
 
         tabPane:Add(CreateProjectInfoTab())
         tabPane:Add(CreateGamesTab())
@@ -663,81 +664,78 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         panel:SetLayout(layout)
         projectInfoTab:SetRelatedItem(panel)
 
-        Control labelsArea
-        FlowLayout labelsLayout
-        labelsArea:SetLayout(labelsLayout)
-        labelsArea:SetLeftPadding(10)
-        labelsArea:SetRightPadding(40)
-        labelsArea:SetTopPadding(20)
-        labelsArea:SetBottomPadding(20)
-        labelsArea:SetPercentageWidth(0.2)
-        labelsArea:SetVerticalLayoutMode(labelsArea:FIT_CONTENTS)       
+        Control locationArea
+        FlowLayout locationLayout
+        locationArea:SetLayout(locationLayout)
+        locationArea:SetLeftPadding(10)
+//        locationArea:SetRightPadding(40)
+        locationArea:SetTopPadding(20)
+        locationArea:SetBottomPadding(20)
+        locationArea:SetPercentageWidth(1.0)
+        locationArea:SetVerticalLayoutMode(locationArea:FIT_CONTENTS)       
 
         projectLocation:SetText("Project location: ")
-        projectLocation:SetPercentageWidth(1.0)
-        labelsArea:Add(projectLocation)
+        locationArea:Add(projectLocation)
+
+        panel:Add(locationArea)
+
+        Control nameArea
+        FlowLayout nameLayout
+        nameArea:SetLayout(nameLayout)
+        nameArea:SetLeftPadding(10)
+        nameArea:SetBottomPadding(20)
+        nameArea:SetRightPadding(20)
+        nameArea:SetPercentageWidth(1.0)
+        nameArea:SetVerticalLayoutMode(nameArea:FIT_CONTENTS)
 
         Label programName
         programName:SetText("Program Name: ")
-        programName:SetTopPadding(20)
-        programName:SetPercentageWidth(1.0)
-        labelsArea:Add(programName)
+//        programName:SetTopPadding(20)
+//        programName:SetPercentageWidth(1.0)
+        nameArea:Add(programName)
+
+        programNameField:SetHorizontalLayoutMode(programNameField:parent:Libraries.Interface.Controls.Control:FILL)
+        programNameField:SetName("Program Name")
+        nameArea:Add(programNameField)
+        
+        panel:Add(nameArea)
 
         Label projectType
         projectType:SetText("Select Project Type: ")
-        projectType:SetTopPadding(20)
+        projectType:SetLeftPadding(10)
         projectType:SetPercentageWidth(1.0)
-        labelsArea:Add(projectType)
-
-        panel:Add(labelsArea)
-
-        Control controlsArea
-        FlowLayout controlsLayout
-        controlsArea:SetLayout(controlsLayout)
-        controlsArea:SetPercentageWidth(0.75)
-        controlsArea:SetRightPadding(10)
-        controlsArea:SetLeftPadding(10)
-        controlsArea:SetTopPadding(20)
-        controlsArea:SetBottomPadding(20)
-        controlsArea:SetVerticalLayoutMode(controlsArea:FIT_CONTENTS) 
-
-        programNameField:SetHorizontalLayoutMode(programNameField:parent:Libraries.Interface.Controls.Control:FILL)
-        programNameField:SetTopPadding(projectLocation:GetHeight() + 40)
-        programNameField:SetPercentageWidth(1.0)
-        programNameField:SetName("Program Name")
-        controlsArea:Add(programNameField)
+        panel:Add(projectType)
 
         ButtonGroup projectRadios
         projectRadios:SetName("Project Type")
         projectRadios:SetFocusable(true)
-        projectRadios:SetHorizontalLayoutMode(controlsArea:STANDARD)
-        projectRadios:SetTopPadding(20)
-        projectRadios:SetPercentageWidth(0.5)
+        projectRadios:SetHorizontalLayoutMode(parent:Libraries.Interface.Controls.Control:STANDARD)
+        projectRadios:SetTopPadding(10)
+        projectRadios:SetBottomPadding(20)
+        projectRadios:SetLeftPadding(10)
+        projectRadios:SetRightPadding(10)
+        projectRadios:SetPercentageWidth(1.0)
 
         standardProjectButton:SetName("Standard")
         standardProjectButton:SetFontSize(14)
-        standardProjectButton:SetRightPadding(83)
-        standardProjectButton:SetPercentageWidth(0.5)
+        standardProjectButton:SetRightPadding(30)
         projectRadios:Add(standardProjectButton)
 
         legoProjectButton:SetName("Lego")
         legoProjectButton:SetFontSize(14)
+        legoProjectButton:SetRightPadding(30)
         projectRadios:Add(legoProjectButton)
 
         webServerProjectButton:SetName("Web Server")
         webServerProjectButton:SetFontSize(14)
-        webServerProjectButton:SetRightPadding(50)
-        webServerProjectButton:SetTopPadding(20)
+        webServerProjectButton:SetRightPadding(30)
         projectRadios:Add(webServerProjectButton)
 
         webBrowserProjectButton:SetName("Web Browser")
         webBrowserProjectButton:SetFontSize(14)
-        webBrowserProjectButton:SetTopPadding(20)
-        webBrowserProjectButton:SetPercentageWidth(0.2)
         projectRadios:Add(webBrowserProjectButton)
 
-        controlsArea:Add(projectRadios)
-        panel:Add(controlsArea)
+        panel:Add(projectRadios)
 
         Label pluginFolders
         pluginFolders:SetLeftPadding(20)
