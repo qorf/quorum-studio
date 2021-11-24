@@ -5,8 +5,8 @@
 #include "IOSGraphics.h"
 //#include "gl2.h"
 //#include "gl2ext.h"
-#include <OpenGLES/ES2/gl.h>
-#include <OpenGLES/ES2/glext.h>
+#include <OpenGLES/ES3/gl.h>
+#include <OpenGLES/ES3/glext.h>
 #include <stdio.h>
 
 static jclass bufferClass;
@@ -2012,5 +2012,26 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 {
 	glViewport( x, y, width, height );
 }
+
+JNIEXPORT int JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_CreateVertexArray
+(JNIEnv *env, jobject obj) {
+    GLuint buffer = 0;
+    glGenVertexArrays(1, &buffer);
+    return buffer;
+}
+
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_DeleteVertexArray
+  (JNIEnv *env, jobject obj, jint vao)
+{
+    GLuint array = vao;
+    glDeleteVertexArrays(1, &array);
+}
+
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_BindVertexArray
+  (JNIEnv *env, jobject obj, jint array)
+{
+    glBindVertexArray(array);
+}
+
 #endif
 #endif

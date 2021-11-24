@@ -1319,6 +1319,15 @@ JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_g
 JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_glViewportJni
   (JNIEnv *, jobject, jint, jint, jint, jint);
 
+JNIEXPORT int JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_CreateVertexArray
+  (JNIEnv *, jobject);
+
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_DeleteVertexArray
+  (JNIEnv *, jobject, jint);
+
+JNIEXPORT void JNICALL Java_plugins_quorum_Libraries_Game_Graphics_IOSGraphics_BindVertexArray
+  (JNIEnv *, jobject, jint);
+
 #ifdef __cplusplus
 }
 #endif
