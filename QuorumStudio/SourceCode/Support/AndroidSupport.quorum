@@ -22,7 +22,9 @@ class AndroidSupport is ProcessListener
         + "quorum" + FILE_SEPARATOR + "testapplication" + FILE_SEPARATOR + "MainActivity.java"
     constant text PACKAGES_FOLDER = "packagesfolder"
     constant text FOLDER_NAME = "Android"
-    constant text PATH_TO_NATIVE_DEVELOPMENT_KIT = "ndk" + FILE_SEPARATOR + "19.2.5345600"
+
+    constant text NDK_VERSION_NUMBER = "19.2.5345600"
+    constant text PATH_TO_NATIVE_DEVELOPMENT_KIT = "ndk" + FILE_SEPARATOR + NDK_VERSION_NUMBER
 
     text androidSDKPath = ""
 
@@ -473,7 +475,7 @@ public class MainActivity extends Activity {
         
         // Change Application Name
         ChangeApplicationName(pathToBuildAndroidFolder, applicationName)
-//    
+    
 //        // Clean the generated files that might conflict with the renamings
         CleanGeneratedFiles(pathToBuildAndroidFolder)
     end
@@ -500,14 +502,10 @@ public class MainActivity extends Activity {
             process:SetName("cmd")
 
             parameters:Add("/C")
-            //text dq = ""
-            //dq = dq:GetDoubleQuote()
-            parameters:Add("./gradlew.bat")
-            //parameters:Add("gradlew.bat")
-            parameters:Add("-p")
-            parameters:Add(projectPath)
+            text dq = ""
+            dq = dq:GetDoubleQuote()
+            parameters:Add(dq + dq + projectPath + "/gradlew.bat" + dq + dq)
             parameters:Add(" clean")
-            //parameters:Add(dq + dq + " " + projectPath + "\gradlew.bat -p " + projectPath + " clean")
             process:SetParameters(parameters)
             process:AddListener(me)
             process:Run()
@@ -597,7 +595,7 @@ public class MainActivity extends Activity {
     end
 
     action SetNDKLocation(text pathToBuildAndroidFolder)
-        text pathToLocalProperties = pathToBuildAndroidFolder + FILE_SEPARATOR + "local.properties"
+        text pathToAppBuildFile = pathToBuildAndroidFolder + PATH_TO_APP_BUILD_GRADLE
         text ndkLocation = androidSDKPath + FILE_SEPARATOR + PATH_TO_NATIVE_DEVELOPMENT_KIT
         text final = ""
         Properties properties
@@ -618,7 +616,10 @@ public class MainActivity extends Activity {
             final = ndkLocation
         end
 
-        AppendLineToFile(pathToLocalProperties, "ndk.dir="+final)
+        text dq = ndkLocation:GetDoubleQuote()
+
+        ReplaceLineTextInFile(pathToAppBuildFile, "android.ndkVersion " + dq + "placeholder" + dq, "android.ndkVersion " + dq + NDK_VERSION_NUMBER + dq)
+        ReplaceLineTextInFile(pathToAppBuildFile, "android.ndkPath " + dq + "placeholder" + dq, "android.ndkPath " + dq + final + dq)
     end
 
     action AppendLineToFile(text path, text line)

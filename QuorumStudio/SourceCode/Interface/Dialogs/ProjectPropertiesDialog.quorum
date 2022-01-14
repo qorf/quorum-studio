@@ -612,12 +612,14 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         if selection not= undefined
             text name = selection:GetDisplayName()
             integer index = selection:GetIndex()
-            AppleDevicesReader reader
-            Array<AppleDevice> devices = reader:GetAvailableDevices()
-            AppleDevice device = devices:Get(index)
-            //tell the project to try and load a particular device.
-            project:SetIOSPhysicalDevice(device:IsDevice())
-            project:SetIOSDevice(name)
+            if index >= 0
+                AppleDevicesReader reader
+                Array<AppleDevice> devices = reader:GetAvailableDevices()
+                AppleDevice device = devices:Get(index)
+                //tell the project to try and load a particular device.
+                project:SetIOSPhysicalDevice(device:IsDevice())
+                project:SetIOSDevice(name)
+            end
         end
 
         text bundle = bundleIdentifierField:GetText()

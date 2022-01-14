@@ -48,7 +48,7 @@ public class MainActivity extends Activity {
         super.onPause();
     }
 
-    @Override
+    @Override 
     protected void onResume()
     {
         if (initialized)
