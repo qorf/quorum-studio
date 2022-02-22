@@ -1,0 +1,53 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Tab
+use Libraries.System.File
+use Libraries.Compute.Statistics.DataFrame
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Containers.Array
+use Libraries.Compute.Statistics.DataFrameColumn
+use Libraries.Interface.Controls.Column
+use Libraries.Interface.Controls.Cell
+
+class SpreadsheetTab is Tab
+    File file = undefined
+    DataFrame frame
+    action GetFile returns File
+        return file
+    end
+
+    action SetFile(File file)
+        me:file = file
+    end
+
+
+    action Load
+        
+        frame:Load(file)
+
+        
+    end
+
+    action Setup
+        Item2D item = GetRelatedItem()
+        if item not= undefined and item is Spreadsheet
+            Spreadsheet sheet = cast(Spreadsheet, item)
+            Array<DataFrameColumn> columns = frame:GetColumns()
+            i = 0
+            repeat while i < columns:GetSize()
+                DataFrameColumn column = columns:Get(i)
+                Column sheetColumn
+                j = 0
+                repeat while j < column:GetSize()
+                    Cell cell
+                    cell:SetText(column:GetAsText(j))
+                    sheetColumn:Add(cell)
+                    j = j + 1
+                end
+                sheet:Add(sheetColumn)
+                i = i + 1
+            end
+        end
+    end
+end

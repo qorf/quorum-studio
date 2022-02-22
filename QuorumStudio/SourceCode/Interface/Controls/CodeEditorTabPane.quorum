@@ -34,6 +34,8 @@ use Libraries.Game.Game
 use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
+use Libraries.Development.Environment.Studio.Interface.SpreadsheetTab
+use Libraries.Interface.Controls.Spreadsheet
 
 class CodeEditorTabPane is TabPane, TabChangeListener
     KeyboardEvent keys
@@ -69,6 +71,14 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             end
         elseif event:GetTab() is VisualEditorTab
             VisualEditorTab tab = cast(VisualEditorTab, event:GetTab())
+            File file = tab:GetFile()
+            if file not= undefined
+                text path = file:GetAbsolutePath()
+                openFiles:RemoveKey(path)
+                openTabs:RemoveKey(path)
+            end
+        elseif event:GetTab() is SpreadsheetTab
+            SpreadsheetTab tab = cast(SpreadsheetTab, event:GetTab())
             File file = tab:GetFile()
             if file not= undefined
                 text path = file:GetAbsolutePath()
@@ -335,6 +345,60 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         return tab
     end
 
+    private action OpenQuorumSpreadsheetTab(File file) returns SpreadsheetTab
+        boolean value = openFiles:HasKey(file:GetAbsolutePath())
+        if value //it's already open
+            Tab tab = openTabs:GetValue(file:GetAbsolutePath())
+            //now we have to give that tab the focus
+            tab:Activate()
+            return cast(SpreadsheetTab, tab)
+        end
+
+        SpreadsheetTab tab
+        tab:SetFile(file)
+        tab:SetName(file:GetPath())
+
+
+        //We may need to lazy load or popup a message to the user for big files
+        //for now, load anything they throw at us
+        tab:Load()
+
+        Spreadsheet sheet
+        tab:SetRelatedItem(sheet)
+        tab:Setup()
+        
+
+
+//
+//        GameStateManager manager
+//        Game game = manager:GetGame()
+//        QuorumStudio studio = cast(QuorumStudio, game)
+//        ProjectManager projects = studio:GetProjectManager()
+//        Iterator<QuorumProject> iterator = projects:GetIterator()
+//        repeat while iterator not= undefined and iterator:HasNext()
+//            QuorumProject project = iterator:Next()
+//            if project:IsScene(file)
+//                //This scene file is in a project's location somewhere.
+//                tab:SetProjectLocation(project:GetLocation())
+//            end
+//        end
+//
+//        tab:Load()
+//
+//        tab:SetName(file:GetPath())
+        tab:SetIcon(resources:GetQuorumFile())
+        tab:DisplayCloseButton(true)
+        number scale = GetInterfaceScale()
+        tab:SetInterfaceScale(scale)
+        Add(cast(Tab,tab))
+        //Resize()
+
+        openFiles:Add(file:GetAbsolutePath(), file)
+        openTabs:Add(file:GetAbsolutePath(), tab)
+
+        return tab
+    end
+
     /*
         This action opens a new tab if one is not open. If one is already open, 
         then it returns the one already there.
@@ -354,6 +418,8 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             return OpenQuorumFileTab(file)
         elseif extension = "qs"
             return OpenQuorumSceneTab(file)
+        elseif extension = "csv"
+            return OpenQuorumSpreadsheetTab(file)
         end
 
         return undefined
