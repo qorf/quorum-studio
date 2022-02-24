@@ -58,7 +58,7 @@ Function GetJRE
     !define JAVAEXE "javaw.exe"
 
     ClearErrors
-    StrCpy $R0 "$EXEDIR\jre\bin\${JAVAEXE}"
+    StrCpy $R0 "$EXEDIR\Java\jdk\bin\${JAVAEXE}"
     IfFileExists $R0 JreFound  ;; 1) found it locally
     StrCpy $R0 ""
 
