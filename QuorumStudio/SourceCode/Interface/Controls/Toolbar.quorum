@@ -37,9 +37,14 @@ class Toolbar is ToolBar
     KeyMap keymap = undefined
     Array<Button> buttons
     HashTable<text, Button> buttonMap
+    Font fontAwesome
+    
 
     on create
         SetFocusable(true)
+        File file
+        file:SetPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
+        fontAwesome:LoadFont(file)
     end
 
     action GainedFocus(FocusEvent event)
@@ -76,22 +81,22 @@ class Toolbar is ToolBar
 
     action Setup
         SetPixelHeight(34)
-        AddButtonToToolbar(resources:GetNewProject(), behaviors:GetOpenNewProjectBehavior(), "New Project", keymap:GetNewProjectKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetNewFile(), behaviors:GetOpenNewFileBehavior(), "New File", keymap:GetNewFileKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetOpenProject(), behaviors:GetOpenProjectBehavior(), "Open Project", keymap:GetOpenProjectKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetSaveAll(), behaviors:GetSaveAllBehavior(), "Save All", keymap:GetSaveAllKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetUndo(), behaviors:GetUndoBehavior(), "Undo", keymap:GetUndoKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetRedo(), behaviors:GetRedoBehavior(), "Redo", keymap:GetRedoKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetBuild(), behaviors:GetThreadedBuildProjectBehavior(), "Build", keymap:GetBuildKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetCleanAndBuild(), behaviors:GetThreadedCleanBuildProjectBehavior(), "Clean and Build", keymap:GetCleanBuildKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetRun(), behaviors:GetThreadedRunProjectBehavior(), "Run", keymap:GetRunKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetDebug(), behaviors:GetThreadedDebugProjectBehavior(), "Debug", keymap:GetDebugKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetStop(), behaviors:GetThreadedStopBehavior(), "Stop", keymap:GetStopKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetPause(), behaviors:GetThreadedPauseBehavior(), "Pause", keymap:GetPauseKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetContinue(), behaviors:GetThreadedContinueBehavior(), "Continue", keymap:GetContinueKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetStepOver(), behaviors:GetThreadedStepOverBehavior(), "Step Over", keymap:GetStepOverKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetStepInto(), behaviors:GetThreadedStepIntoBehavior(), "Step Into", keymap:GetStepIntoKey():GetDisplayName())
-        AddButtonToToolbar(resources:GetStepOut(), behaviors:GetThreadedStepOutBehavior(), "Step Out", keymap:GetStepOutKey():GetDisplayName())
+        AddButtonToToolbar(61525, behaviors:GetOpenNewProjectBehavior(), "New Project", keymap:GetNewProjectKey():GetDisplayName())
+        AddButtonToToolbar(61788, behaviors:GetOpenNewFileBehavior(), "New File", keymap:GetNewFileKey():GetDisplayName())
+        AddButtonToToolbar(61564, behaviors:GetOpenProjectBehavior(), "Open Project", keymap:GetOpenProjectKey():GetDisplayName())
+        AddButtonToToolbar(61639, behaviors:GetSaveAllBehavior(), "Save All", keymap:GetSaveAllKey():GetDisplayName())
+        AddButtonToToolbar(62186, behaviors:GetUndoBehavior(), "Undo", keymap:GetUndoKey():GetDisplayName())
+        AddButtonToToolbar(62201, behaviors:GetRedoBehavior(), "Redo", keymap:GetRedoKey():GetDisplayName())
+        AddButtonToToolbar(61459, behaviors:GetThreadedBuildProjectBehavior(), "Build", keymap:GetBuildKey():GetDisplayName())
+        AddButtonToToolbar(63262, behaviors:GetThreadedCleanBuildProjectBehavior(), "Clean and Build", keymap:GetCleanBuildKey():GetDisplayName())
+        AddButtonToToolbar(61764, behaviors:GetThreadedRunProjectBehavior(), "Run", keymap:GetRunKey():GetDisplayName())
+        AddButtonToToolbar(61832, behaviors:GetThreadedDebugProjectBehavior(), "Debug", keymap:GetDebugKey():GetDisplayName())
+        AddButtonToToolbar(61517, behaviors:GetThreadedStopBehavior(), "Stop", keymap:GetStopKey():GetDisplayName())
+        AddButtonToToolbar(62091, behaviors:GetThreadedPauseBehavior(), "Pause", keymap:GetPauseKey():GetDisplayName())
+        AddButtonToToolbar(61518, behaviors:GetThreadedContinueBehavior(), "Continue", keymap:GetContinueKey():GetDisplayName())
+        AddButtonToToolbar(61609, behaviors:GetThreadedStepOverBehavior(), "Step Over", keymap:GetStepOverKey():GetDisplayName())
+        AddButtonToToolbar(61611, behaviors:GetThreadedStepIntoBehavior(), "Step Into", keymap:GetStepIntoKey():GetDisplayName())
+        AddButtonToToolbar(61610, behaviors:GetThreadedStepOutBehavior(), "Step Out", keymap:GetStepOutKey():GetDisplayName())
         SetupButtonFocus()
     end
 
@@ -114,6 +119,31 @@ class Toolbar is ToolBar
 
         SetNextFocus(first)
         SetPreviousFocus(last)
+    end
+
+    private action AddButtonToToolbar(integer unicode, Behavior behavior, text name, text description)
+        Button button
+        button:SetFont(fontAwesome)
+        button:SetFontSize(30)
+        text value = ""
+        value = value:GetUnicodeValue(unicode)
+        
+        //button:SetIcon(image)
+        button:SetBorderThickness(0)
+        button:SetTopPadding(3)
+        button:SetBottomPadding(3)
+        button:SetLeftPadding(5)
+        button:SetName(name)
+        button:SetLabelText(value)
+        button:SetDescription(description)
+
+        if behavior not= undefined
+            button:SetBehavior(behavior)
+        end
+        Add(button)
+        buttons:Add(button)
+
+        buttonMap:Add(name, button)
     end
 
     private action AddButtonToToolbar(Icon image, Behavior behavior, text name, text description)
