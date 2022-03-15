@@ -23,6 +23,9 @@ use Libraries.System.Blueprints.FileWriterBlueprint
 use Libraries.Interface.InterfaceOptions.LightModeOptions
 use Libraries.Interface.InterfaceOptions.DarkModeOptions
 use Libraries.Interface.InterfaceOptions.InterfaceOptions
+use Libraries.Game.Graphics.Color
+use Libraries.Interface.Options.LightQuorumStudio
+use Libraries.Interface.Options.DarkQuorumStudio
 
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
@@ -82,6 +85,8 @@ class Options is ProjectListener
     integer width = 1200
     integer height = 800
     text treeSelect = ""
+    LightQuorumStudio lightMode
+    DarkQuorumStudio darkMode
 
     action IsOverridingStandardLibrary returns boolean
         return overrideLibraryLocation
@@ -192,14 +197,11 @@ class Options is ProjectListener
     action SetInterfaceOptions
         InterfaceOptions options = undefined
         if interfaceOptionsMode = undefined or interfaceOptionsMode = "Light"
-            LightModeOptions opt
-            options = opt
+            options = lightMode
         elseif interfaceOptionsMode = "Dark"
-            DarkModeOptions opt
-            options = opt
+            options = darkMode
         else //light mode by default
-            LightModeOptions opt
-            options = opt
+            options = lightMode
         end
         GameStateManager manager
         manager:SetInterfaceOptions(options)
