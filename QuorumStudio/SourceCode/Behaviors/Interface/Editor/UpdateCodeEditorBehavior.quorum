@@ -34,6 +34,10 @@ use Libraries.Development.Environment.Studio.Interface.BreakpointTextStyle
 use Libraries.Language.Compile.Parsing.QuorumLexer
 use Libraries.Language.Compile.Parsing.TokenIterator
 use Libraries.Language.Compile.Parsing.QuorumLexerConstants
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Game.GameStateManager
+use Libraries.Interface.InterfaceOptions.InterfaceOptions
+use Libraries.Game.Graphics.ColorGroup
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
     File path
@@ -43,13 +47,26 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     Color orange
     Color grey
     Color purple
+    //Color caretColor
+    //Color breakpointColor
+
+    Color keywordColor = undefined
+    Color structureColor = undefined
+    Color textColor = undefined
+    Color commentColor = undefined
+
+    Color fieldColor = undefined
+    Color errorLineColor = undefined
+    Color hintLineColor = undefined
     Color caretColor
     Color breakpointColor
+
     BuildManager manager = undefined
     text projectKey = ""
     text helpPathComparison = undefined
     CodeTextBox box = undefined
     DiffResult diffResult = undefined
+    OptionsConstants optionsConstants
 
     /*
         
@@ -63,6 +80,15 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         caretColor:SetColor(233.0/255.0, 239.0/255.0, 248.0/255.0, 1.0)
         breakpointColor:SetColor(252.0/255.0, 157.0/255.0, 159.0/255.0, 1.0)
         purple = blue:Purple()
+
+        keywordColor = blue
+        structureColor = purple
+        textColor = orange
+        commentColor = grey
+
+        fieldColor = darkGreen
+        errorLineColor = blue:Red()
+        hintLineColor = green
     end
 
     action GetBuildManager returns BuildManager
@@ -103,6 +129,54 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
             return now
         end
       
+        GameStateManager gms
+        InterfaceOptions options = gms:GetInterfaceOptions()
+        ColorGroup cgK = options:GetColorProperty(optionsConstants:EDITOR_KEYWORD_COLOR)
+        ColorGroup cgS = options:GetColorProperty(optionsConstants:EDITOR_STRUCTURE_COLOR)
+        ColorGroup cgT = options:GetColorProperty(optionsConstants:EDITOR_TEXT_COLOR)
+        ColorGroup cgC = options:GetColorProperty(optionsConstants:EDITOR_COMMENT_COLOR)
+        ColorGroup cgF = options:GetColorProperty(optionsConstants:EDITOR_FIELD_COLOR)
+        ColorGroup cgEL = options:GetColorProperty(optionsConstants:EDITOR_ERROR_LINE_COLOR)
+        ColorGroup cgHL = options:GetColorProperty(optionsConstants:EDITOR_HINT_LINE_COLOR)
+        ColorGroup cgCC = options:GetColorProperty(optionsConstants:EDITOR_CARET_COLOR)
+        ColorGroup cgBC = options:GetColorProperty(optionsConstants:EDITOR_BREAKPOINT_COLOR)
+        
+        if cgK not= undefined
+            keywordColor = cast(Color, cgK)
+        end
+
+        if cgS not= undefined
+            structureColor = cast(Color, cgS)
+        end
+
+        if cgT not= undefined
+            textColor = cast(Color, cgT)
+        end
+
+        if cgC not= undefined
+            commentColor = cast(Color, cgC)
+        end
+
+        if cgF not= undefined
+            fieldColor = cast(Color, cgF)
+        end
+
+        if cgEL not= undefined
+            errorLineColor = cast(Color, cgEL)
+        end
+
+        if cgHL not= undefined
+            hintLineColor = cast(Color, cgHL)
+        end
+
+        if cgCC not= undefined
+            caretColor = cast(Color, cgCC)
+        end
+
+        if cgBC not= undefined
+            breakpointColor = cast(Color, cgBC)
+        end
+        
         //reset the lexer and go forward
         Array<Token> mainFileTokens
         mainFileTokens:SetMaxSize(500)
@@ -119,19 +193,19 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
             if token:category not= -1
                 if IsKeyword(token)
                     TextStyle style = GetTextStyle(token)
-                    style:SetColor(blue)
+                    style:SetColor(keywordColor)
                     box:AddTextStyle("Lexer" + i, style)
                 elseif IsStructure(token)
                     TextStyle style = GetTextStyle(token)
-                    style:SetColor(purple)
+                    style:SetColor(structureColor)
                     box:AddTextStyle("Lexer" + i, style)
                 elseif IsText(token)
                     TextStyle style = GetTextStyle(token)
-                    style:SetColor(orange)
+                    style:SetColor(textColor)
                     box:AddTextStyle("Lexer" + i, style)
                 elseif IsComment(token)
                     TextStyle style = GetTextStyle(token)
-                    style:SetColor(grey)
+                    style:SetColor(commentColor)
                     box:AddTextStyle("Lexer" + i, style)
                 end
                 mainFileTokens:Add(token)
@@ -166,7 +240,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                             TextStyle style
                             style:SetIndex(start)
                             style:SetSize(finish - start + 1)
-                            style:SetColor(darkGreen)
+                            style:SetColor(fieldColor)
                             box:AddTextStyle("Semantics" + i, style)
                             i = i + 1
                         end
@@ -178,7 +252,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                     TextStyle style
                     style:SetIndex(start)
                     style:SetSize(finish - start + 1)
-                    style:SetColor(darkGreen)
+                    style:SetColor(fieldColor)
                     box:AddTextStyle("SemanticsName", style)
                 end
             end
@@ -218,6 +292,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                         end
                         TextStyle style
                         TextUnderline underline
+                        underline:SetColor(errorLineColor)
                         underline:SetErrorFlag(true)
                         style:SetHighlight(underline)
                         style:SetIndex(index)
@@ -246,7 +321,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                         integer indexEnd = hint:GetIndexEnd()
                         TextStyle style
                         TextUnderline underline
-                        underline:SetColor(green)
+                        underline:SetColor(hintLineColor)
                         style:SetHighlight(underline)
                         style:SetIndex(index)
                         if indexEnd - index + 1 > 0

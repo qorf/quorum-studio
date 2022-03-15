@@ -64,6 +64,9 @@ use Libraries.Development.Versioning.GitConstants
 use Libraries.Language.Compile.Library
 use Libraries.Interface.Accessibility
 use Libraries.Language.Compile.Parsing.QuorumLexerConstants
+use Libraries.Interface.InterfaceOptions.InterfaceOptions
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Development.Environment.Configuration.OptionsConstants
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener, AccessibleControl
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -95,18 +98,33 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     FindDialog findDialog = undefined
     CompilerErrorManager errors = undefined
     integer breakpointAmount = 0
+    OptionsConstants optionsConstants
 
     on create
         Game game = gameStateManager:GetGame()
         game:AddSelectionListener(me)
-        caretColor:SetColor(233.0/255.0, 239.0/255.0, 248.0/255.0, 1.0)
-        breakpointColor:SetColor(252.0/255.0, 157.0/255.0, 159.0/255.0, 1.0)
+
+        UpdateColors()
         Add(gutter)
         Add(statusGutter)
         gutter:AddGutterListener(me)
         statusGutter:AddGutterListener(me)
         SetPopupMenu(GeneratePopupMenu())
         SetMoveFocusOnTab(false)
+    end
+
+    private action UpdateColors 
+        GameStateManager gms
+        InterfaceOptions options = gms:GetInterfaceOptions()
+        ColorGroup cgCC = options:GetColorProperty(optionsConstants:EDITOR_CARET_COLOR)
+        ColorGroup cgBC = options:GetColorProperty(optionsConstants:EDITOR_BREAKPOINT_COLOR)
+        if cgCC not= undefined
+            caretColor = cast(Color, cgCC)
+        end
+
+        if cgBC not= undefined
+            breakpointColor = cast(Color, cgBC)
+        end
     end
 
     private action GeneratePopupMenu returns PopupMenu
@@ -239,6 +257,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     end
 
     action SelectionChanged(SelectionEvent selection)
+        UpdateColors()
         Item item = selection:GetItem()
         if item:GetHashCode() = me:GetHashCode()
             integer caret = GetCaretPosition()
@@ -265,11 +284,12 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     end
 
     action Changed(BreakpointTextStyle style, integer newIndex)
-        output "Index: " + newIndex + ", Line: " + GetLineIndexOfCharacter(newIndex)
+        //output "Index: " + newIndex + ", Line: " + GetLineIndexOfCharacter(newIndex)
         //output "Breakpoint moved: " + newIndex
     end
 
     action ToggledBreakpoint(BreakpointEvent event)
+        UpdateColors()
         if event:IsRehashEvent() //ignore these
             return now
         end
