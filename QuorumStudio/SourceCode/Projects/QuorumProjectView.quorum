@@ -14,6 +14,10 @@ use Libraries.Development.Environment.Studio.Behaviors.OpenNewFileBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SetProgramStartBehavior
 use Libraries.Development.Environment.Studio.Behaviors.DeleteFileBehavior
 use Libraries.Interface.Controls.Icon
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Game.Graphics.Texture
 
 class QuorumProjectView is ProjectView
     QuorumProject project = undefined
@@ -21,6 +25,7 @@ class QuorumProjectView is ProjectView
     CodeEditorTabPane pane = undefined
     QuorumStudio studio = undefined
     Behaviors behaviors = undefined
+    OptionsConstants optionsConstants
 
     constant text SOURCE_FOLDER_NAME = "Source Code"
     action SetMainApplication(QuorumStudio studio)
@@ -132,21 +137,46 @@ class QuorumProjectView is ProjectView
         //folders:Add(source)
         projectItem:SetFile(projectFolder)
         projectItem:SetName(project:GetName())
-        projectItem:SetIcon(resources:GetProjectLogo())
+        GameStateManager manager
+        InterfaceOptions io = manager:GetInterfaceOptions()
+        
+        text logo = io:GetCustomProperty(optionsConstants:QUORUM_PROJECT_ICON)
+        Texture texture = resources:GetTexture(logo)
+        Icon icon
+        icon:Load(texture)
+        projectItem:SetIcon(icon)
         projectItem:Add(folders)
 
         return projectItem
     end
 
     private action GetFileIcon(File file) returns Icon
+        GameStateManager manager
+        InterfaceOptions io = manager:GetInterfaceOptions()
+        
+        
         if file:IsDirectory()
-            return resources:GetFolder()
+            text logo = io:GetCustomProperty(optionsConstants:FOLDER_ICON)
+            Texture texture = resources:GetTexture(logo)
+            Icon icon
+            icon:Load(texture)
+            return icon
         elseif not project:IsMainFile(file)
-            return resources:GetQuorumFile()
+            text logo = io:GetCustomProperty(optionsConstants:QUORUM_FILE_ICON)
+            Texture texture = resources:GetTexture(logo)
+            Icon icon
+            icon:Load(texture)
+            return icon
         else //THERE CAN ONLY BE ONE
-            return resources:GetMainFile()
+            text logo = io:GetCustomProperty(optionsConstants:QUORUM_MAIN_FILE_ICON)
+            Texture texture = resources:GetTexture(logo)
+            Icon icon
+            icon:Load(texture)
+            return icon
         end
     end
+
+    
 
     private action GetItem(File source) returns ProjectTreeItem
         ProjectTreeItem value
