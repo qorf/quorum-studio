@@ -36,6 +36,8 @@ use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
 use Libraries.Development.Environment.Studio.Interface.SpreadsheetTab
 use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Development.Environment.Configuration.OptionsConstants
 
 class CodeEditorTabPane is TabPane, TabChangeListener
     KeyboardEvent keys
@@ -281,11 +283,21 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             end
         end
         Icon icon = undefined
-
+        GameStateManager gsm
+        OptionsConstants optionsConstants
+        InterfaceOptions io = gsm:GetInterfaceOptions()
         if isMain
-            icon = resources:GetMainFile()
+            text logo = io:GetCustomProperty(optionsConstants:QUORUM_MAIN_FILE_ICON)
+            Texture texture = resources:GetTexture(logo)
+            Icon icon2
+            icon2:Load(texture)
+            icon = icon2
         else
-            icon = resources:GetQuorumFile()
+            text logo = io:GetCustomProperty(optionsConstants:QUORUM_FILE_ICON)
+            Texture texture = resources:GetTexture(logo)
+            Icon icon2
+            icon2:Load(texture)
+            icon = icon2
         end 
         EditorTab tab
         tab:SetName(file:GetPath())
