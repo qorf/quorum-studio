@@ -34,7 +34,6 @@ use Libraries.Game.Graphics.ColorGroup
 class Toolbar is ToolBar
     Layout layout = undefined
     Resources resources = undefined
-    //Gradient gradient
     Color color
     number height = 0
     Behaviors behaviors = undefined
@@ -42,7 +41,7 @@ class Toolbar is ToolBar
     Array<Button> buttons
     HashTable<text, Button> buttonMap
     Font fontAwesome
-    
+    OptionsConstants const
 
     on create
         SetFocusable(true)
@@ -85,7 +84,7 @@ class Toolbar is ToolBar
 
     action Setup
         SetPixelHeight(34)
-        OptionsConstants const
+        
         AddButtonToToolbar(61892, const:TOOLBAR_FOLDER_BUTTONS_COLOR, behaviors:GetOpenNewProjectBehavior(), "New Project", keymap:GetNewProjectKey():GetDisplayName())
         AddButtonToToolbar(61897, const:TOOLBAR_FOLDER_BUTTONS_COLOR, behaviors:GetOpenNewFileBehavior(), "New File", keymap:GetNewFileKey():GetDisplayName())
         AddButtonToToolbar(61564, const:TOOLBAR_FOLDER_BUTTONS_COLOR, behaviors:GetOpenProjectBehavior(), "Open Project", keymap:GetOpenProjectKey():GetDisplayName())
@@ -139,7 +138,11 @@ class Toolbar is ToolBar
             Color co2 = cast(Color, co)
             button:SetFontColor(co2)
         end
-        //button:SetIcon(image)
+
+        ColorGroup bg = options:GetColorProperty(const:TOOLBAR_BUTTON_BACKGROUND_COLOR)
+        if bg not= undefined
+            button:SetBackgroundColor(bg)
+        end
         button:SetBorderThickness(0)
         button:SetTopPadding(3)
         button:SetBottomPadding(3)
