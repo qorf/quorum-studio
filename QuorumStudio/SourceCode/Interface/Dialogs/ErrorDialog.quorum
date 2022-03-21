@@ -10,6 +10,7 @@ use Libraries.Interface.Controls.Dialog
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
 use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Views.ControlShaderView
 
 class ErrorDialog is Dialog
     Label lineLabel
@@ -37,11 +38,8 @@ class ErrorDialog is Dialog
         SetNextFocus(lineLabel)
         SetPreviousFocus(ok)
 
-        LabelBoxView view
-        Color color
-        view:SetBorderThickness(1)
-        view:SetBorderStyle(view:ALL)
-        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        ControlShaderView view
+        view:Initialize()
 
         integer leftPadding = 40
         LayoutProperties props = lineLabel:GetDefaultLayoutProperties()
@@ -77,7 +75,7 @@ class ErrorDialog is Dialog
         panel:SetLayout(findLayout)
         panel:SetPercentageWidth(1.0)
         panel:SetPixelHeight(80)
-        panel:SetBorderColor(color:Black())
+        panel:SetInterfaceOptionsKey("Dialog")
         panel:SetBorderThickness(1)
 
         panel:Add(lineLabel)

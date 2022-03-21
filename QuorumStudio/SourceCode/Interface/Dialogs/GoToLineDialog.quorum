@@ -19,6 +19,7 @@ use Libraries.Interface.Events.TextChangeEvent
 use Libraries.Game.InputSet
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Game.InputTable
+use Libraries.Interface.Views.ControlShaderView
 
 class GoToLineDialog is Dialog, TextChangeListener
     boolean initialized = false
@@ -36,7 +37,6 @@ class GoToLineDialog is Dialog, TextChangeListener
 
     action Setup
         if initialized
-//            output "WARNING: Re-initializing the FindDialog."
             lineTextField:SetText("")
             return now
         end
@@ -52,11 +52,8 @@ class GoToLineDialog is Dialog, TextChangeListener
         SetNextFocus(lineLabel)
         SetPreviousFocus(ok)
 
-        LabelBoxView view
-        Color color
-        view:SetBorderThickness(1)
-        view:SetBorderStyle(view:ALL)
-        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        ControlShaderView view
+        view:Initialize()
 
         lineLabel:SetText("Go To Line")
         lineLabel:SetNextFocus(lineTextField)
@@ -114,7 +111,7 @@ class GoToLineDialog is Dialog, TextChangeListener
         panel:SetLayout(findLayout)
         panel:SetPercentageWidth(1.0)
         panel:SetPixelHeight(50)
-        panel:SetBorderColor(color:Black())
+        panel:SetInterfaceOptionsKey("Dialog")
         panel:SetBorderThickness(1)
 
         panel:Add(lineLabel)

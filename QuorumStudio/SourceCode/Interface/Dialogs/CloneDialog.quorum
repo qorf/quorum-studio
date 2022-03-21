@@ -27,6 +27,7 @@ use Libraries.Development.Environment.Studio.Behaviors.CloneRequestBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CloneDialogOkButtonBehavior
 use Libraries.Development.Environment.Studio.Behaviors.OpenBrowseFoldersBehavior
 use Libraries.Development.Environment.Studio.Behaviors.BrowseForCloneLocationBehavior
+use Libraries.Interface.Views.ControlShaderView
 
 class CloneDialog is Dialog
     ThreadRunner gitRunner = undefined
@@ -77,11 +78,8 @@ class CloneDialog is Dialog
         SetNextFocus(urlLabel)
         SetPreviousFocus(ok)
 
-        LabelBoxView view
-        Color color
-        view:SetBorderThickness(1)
-        view:SetBorderStyle(view:ALL)
-        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        ControlShaderView view
+        view:Initialize()
 
         number leftPadding = 20
 
@@ -241,7 +239,7 @@ class CloneDialog is Dialog
         panel:SetLayout(findLayout)
         panel:SetPercentageWidth(1.0)
         panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-        panel:SetBorderColor(color:Black())
+        panel:SetInterfaceOptionsKey("Dialog")
         panel:SetBorderThickness(2)
 
         panel:Add(urlContainer)

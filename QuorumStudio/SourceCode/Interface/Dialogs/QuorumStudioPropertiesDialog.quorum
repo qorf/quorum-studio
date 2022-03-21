@@ -27,6 +27,7 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Configuration.Options
 use Libraries.Development.Environment.Projects.Credentials
 use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioPropertiesOkBehavior
+use Libraries.Interface.Views.ControlShaderView
 
 
 class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
@@ -128,11 +129,9 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         panel:SetPercentageWidth(1.0)
         panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
 
-        LabelBoxView panelView
-        Color color
-
-        panelView:Initialize(color:CustomColor(0.95, 0.95, 0.95, 1), color:Black())
-        panel:SetView2D(panelView)
+        ControlShaderView view
+        view:Initialize()
+        panel:SetView2D(view)
 
         FlowLayout layout
         panel:SetLayout(layout)
@@ -216,15 +215,10 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         cancelButton:SetBehavior(cancelBehavior)
         confirmArea:Add(cancelButton)
 
-        Gradient okayGradient
-        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
-        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
-        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
-
         Button okayButton
         okayButton:SetName("OK")
         okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        okayButton:SetBackgroundColor(okayGradient)
+        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
         okayButton:SetPercentageWidth(0.2)
         okayButton:SetLeftPadding(10)
         okayButton:SetTopPadding(40)

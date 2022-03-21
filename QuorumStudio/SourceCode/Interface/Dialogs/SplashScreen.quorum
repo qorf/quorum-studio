@@ -19,6 +19,7 @@ use Libraries.Compute.Math
 use Libraries.Containers.Array
 use Libraries.Compute.Random
 use Libraries.Interface.Accessibility
+use Libraries.Interface.Views.ControlShaderView
 
 class SplashScreen is Dialog, CompilerListener
     boolean initialized = false
@@ -105,12 +106,6 @@ class SplashScreen is Dialog, CompilerListener
         SetName("Loading")
         SetPercentageWidth(0.40)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-
-        LabelBoxView view
-        Color color
-        view:SetBorderThickness(1)
-        view:SetBorderStyle(view:ALL)
-        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
         
         logo:Load("Resources/Graphics/Interface/QuorumLighter.png")
 
@@ -138,16 +133,21 @@ class SplashScreen is Dialog, CompilerListener
         
         
         panel:SetLayout(findLayout)
+        panel:SetInterfaceOptionsKey("Dialog")
         panel:SetPercentageWidth(1.0)
         panel:SetPixelHeight(140)
-        panel:SetBorderColor(color:Black())
+        panel:SetBorderStyle(properties:ALL)
         panel:SetBorderThickness(1)
         panel:Add(logo)
 
         panel:Add(studio)
         panel:Add(loading)
         panel:Add(progress)
+
+        ControlShaderView view
+        view:Initialize()
         panel:SetView2D(view)
+
         Add(panel)
         progress:SetFocusable(true)
         

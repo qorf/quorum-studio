@@ -32,6 +32,7 @@ use Libraries.Interface.Events.SelectionEvent
 use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Controls.TextBox
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Interface.Views.ControlShaderView
 
 
 class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
@@ -136,18 +137,17 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
         SetPixelWidth(300)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
 
-        LabelBoxView view
-        Color color
-        view:SetBorderThickness(1)
-        view:SetBorderStyle(view:ALL - view:TOP)
-        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        ControlShaderView view
+        view:Initialize()
         
         Control panel
+        LayoutProperties properties = GetDefaultLayoutProperties()
         FlowLayout replaceLayout
         panel:SetLayout(replaceLayout)
         panel:SetPercentageWidth(1.0)
         panel:SetPixelHeight(170)
-        panel:SetBorderColor(color:Black())
+        panel:SetInterfaceOptionsKey("Dialog")
+        panel:SetBorderStyle(properties:ALL - properties:TOP)
         panel:SetBorderThickness(1)
         panel:Add(CreateReplaceControl())
         panel:Add(CreateMatchesControl())

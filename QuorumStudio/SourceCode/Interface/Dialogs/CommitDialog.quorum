@@ -23,6 +23,7 @@ use Libraries.Development.Environment.Studio.Behaviors.CommitRequestBehavior
 use Libraries.Concurrency.ThreadRunner
 use Libraries.Development.Environment.Studio.Behaviors.ThreadedBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CommitDialogOkButtonBehavior
+use Libraries.Interface.Views.ControlShaderView
 
 class CommitDialog is Dialog
     ThreadRunner gitRunner = undefined
@@ -58,11 +59,8 @@ class CommitDialog is Dialog
         SetNextFocus(lineLabel)
         SetPreviousFocus(ok)
 
-        LabelBoxView view
-        Color color
-        view:SetBorderThickness(1)
-        view:SetBorderStyle(view:ALL)
-        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        ControlShaderView view
+        view:Initialize()
 
         lineLabel:SetText("Message: ")
         lineLabel:SetNextFocus(lineTextField)
@@ -106,7 +104,7 @@ class CommitDialog is Dialog
         panel:SetLayout(findLayout)
         panel:SetPercentageWidth(1.0)
         panel:SetPixelHeight(70)
-        panel:SetBorderColor(color:Black())
+        panel:SetInterfaceOptionsKey("Dialog")
         panel:SetBorderThickness(1)
 
         panel:Add(lineLabel)

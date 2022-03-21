@@ -35,6 +35,7 @@ use Libraries.Interface.Controls.TextBox
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Interface.Undo.TextBoxEditState
 use Libraries.Interface.Undo.TextBoxEdit
+use Libraries.Interface.Views.ControlShaderView
 
 class FindDialog is Dialog, TextChangeListener, SelectionListener
     boolean initialized = false
@@ -115,18 +116,15 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         SetPixelWidth(300)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
 
-        LabelBoxView view
-        Color color
-        view:SetBorderThickness(1)
-        view:SetBorderStyle(view:ALL - view:TOP)
-        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        ControlShaderView view
+        view:Initialize()
         
         Control panel
         FlowLayout findLayout
         panel:SetLayout(findLayout)
         panel:SetPercentageWidth(1.0)
         panel:SetPixelHeight(140)
-        panel:SetBorderColor(color:Black())
+        panel:SetInterfaceOptionsKey("Dialog")
         panel:SetBorderThickness(1)
         panel:Add(CreateFindControl())
         panel:Add(CreateMatchesControl())

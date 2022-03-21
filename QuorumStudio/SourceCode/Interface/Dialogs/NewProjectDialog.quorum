@@ -35,6 +35,7 @@ use Libraries.Interface.Controls.Tree
 use Libraries.Interface.Selections.Selection
 use Libraries.Interface.Selections.TreeSelection
 use Libraries.Game.GameStateManager
+use Libraries.Interface.Views.ControlShaderView
 
 
 
@@ -206,8 +207,6 @@ Glassfish)."
     end
 
     action Initialize
-        Color color
-
         initialized = true
 
         SetName("New Project")  
@@ -215,17 +214,17 @@ Glassfish)."
         //SetPixelWidth(500)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
 
-        LabelBoxView view
-        view:SetBorderThickness(1)
-        view:SetBorderStyle(view:ALL - view:TOP)
-        view:Initialize(color:CustomColor(0.9, 0.9, 0.9, 1), color:Black())
+        ControlShaderView view
+        view:Initialize()
         
         Control panel
+        LayoutProperties properties = GetDefaultLayoutProperties()
         FlowLayout newProjectLayout
         panel:SetLayout(newProjectLayout)
         panel:SetPercentageWidth(1.0)
         panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-        panel:SetBorderColor(color:Black())
+        panel:SetInterfaceOptionsKey("Dialog")
+        panel:SetBorderStyle(properties:ALL - properties:TOP)
         panel:SetBorderThickness(1)
         panel:Add(CreateNewProjectControl())
         panel:SetView2D(view)
