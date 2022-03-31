@@ -52,6 +52,7 @@ use Libraries.Development.Environment.Projects.Credentials
 use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
 use Libraries.Development.Environment.Studio.Mobile.AppleDevice
 use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Layouts.LayoutProperties
 
 
 class ProjectPropertiesDialog is Dialog, MouseWheelListener
@@ -178,14 +179,16 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         SetName("Properties")
         SetPercentageWidth(0.5)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:STANDARD)
-        SetPercentageHeight(0.75)
+        GetDefaultLayoutProperties():SetPercentageOriginY(1.0)
+        SetPercentageY(0.875)
 
+        LayoutProperties viewProperties = tabPane:GetViewAreaLayoutProperties()
+        viewProperties:SetVerticalLayoutMode(viewProperties:FIT_CONTENTS)
         
         FlowLayout tabLayout
         tabPane:SetViewAreaLayout(tabLayout)
         tabPane:SetPercentageWidth(1.0)
-        tabPane:SetPercentageHeight(1.0)
+        tabPane:SetVerticalLayoutMode(viewProperties:FIT_CONTENTS)
 
         tabPane:Add(CreateProjectInfoTab())
         tabPane:Add(CreateGamesTab())
@@ -656,7 +659,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         panel:SetInterfaceOptionsKey("Dialog")
         panel:SetPercentageWidth(1.0)
         panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-        panel:SetPixelHeight(550)
+//        panel:SetPixelHeight(550)
 
         ControlShaderView panelView
         panelView:Initialize()
@@ -1025,7 +1028,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         panel:SetInterfaceOptionsKey("Dialog")
         panel:SetPercentageWidth(1.0)
         panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-        panel:SetPixelHeight(500)
+//        panel:SetPixelHeight(500)
 
         ControlShaderView panelView
         panelView:Initialize()
