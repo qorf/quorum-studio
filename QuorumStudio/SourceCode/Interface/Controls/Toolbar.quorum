@@ -48,6 +48,20 @@ class Toolbar is ToolBar
         File file
         file:SetPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
         fontAwesome:LoadFont(file)
+
+        SetFont(fontAwesome)
+        SetFontSize(30)
+        LayoutProperties properties = GetDefaultLayoutProperties()
+        SetVerticalLayoutMode(properties:FIT_CONTENTS)
+    end
+
+    action SetFontSize(integer size)
+        parent:Control:SetFontSize(size)
+        integer counter = 0
+        repeat while counter < buttons:GetSize()
+            buttons:Get(counter):SetFontSize(size)
+            counter = counter + 1
+        end
     end
 
     action GainedFocus(FocusEvent event)
@@ -83,8 +97,6 @@ class Toolbar is ToolBar
     end
 
     action Setup
-        SetPixelHeight(34)
-        
         AddButtonToToolbar(61892, const:TOOLBAR_FOLDER_BUTTONS_COLOR, behaviors:GetOpenNewProjectBehavior(), "New Project", keymap:GetNewProjectKey():GetDisplayName())
         AddButtonToToolbar(61897, const:TOOLBAR_FOLDER_BUTTONS_COLOR, behaviors:GetOpenNewFileBehavior(), "New File", keymap:GetNewFileKey():GetDisplayName())
         AddButtonToToolbar(61564, const:TOOLBAR_FOLDER_BUTTONS_COLOR, behaviors:GetOpenProjectBehavior(), "Open Project", keymap:GetOpenProjectKey():GetDisplayName())
@@ -128,7 +140,7 @@ class Toolbar is ToolBar
     private action AddButtonToToolbar(integer unicode, text optionsKey, Behavior behavior, text name, text description)
         Button button
         button:SetFont(fontAwesome)
-        button:SetFontSize(30)
+        button:SetFontSize(GetFontSize())
         text value = ""
         value = value:GetUnicodeValue(unicode)
         GameStateManager manager
@@ -145,7 +157,7 @@ class Toolbar is ToolBar
         end
         button:SetBorderThickness(0)
         button:SetTopPadding(3)
-        button:SetBottomPadding(3)
+        button:SetBottomPadding(1)
         button:SetLeftPadding(5)
         button:SetName(name)
         button:SetLabelText(value)

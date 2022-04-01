@@ -115,7 +115,6 @@ class SplashScreen is Dialog, CompilerListener
         panel:SetLayout(panelLayout)
         panel:SetInterfaceOptionsKey("Dialog")
         panel:SetPercentageWidth(1.0)
-//        panel:SetPixelHeight(140)
         panel:SetVerticalLayoutMode(properties:FIT_CONTENTS)
         panel:SetBorderStyle(properties:ALL)
         panel:SetBorderThickness(1)
@@ -142,39 +141,36 @@ class SplashScreen is Dialog, CompilerListener
         logoRegion:Add(logo)
 
         Control textRegion
-        FlowLayout regionLayout
+        ManualLayout regionLayout
         textRegion:SetLayout(regionLayout)
-        textRegion:SetHorizontalLayoutMode(properties:FILL)
-        textRegion:SetPercentageHeight(1)
+        textRegion:SetPercentageWidth(0.75)
+        textRegion:SetPercentageHeight(logoRegion:GetPercentageHeight() / 3.0)
+        textRegion:SetVerticalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
         panel:Add(textRegion)
 
         studio:SetText(qs:GetDisplayName())
         studio:SetFontSize(20)
-        studio:SetHorizontalLayoutMode(properties:STANDARD)
-        studio:SetPercentageWidth(1.0)
-        studio:SetTopPadding(8)
-//        studio:SetTopPadding(85)
-//        studio:SetLeftPadding(40)
+        LayoutProperties studioProperties = studio:GetDefaultLayoutProperties()
+        studioProperties:SetPercentageOriginX(0.5)
+        studioProperties:SetPercentageOriginY(1.0)
+        studio:SetPercentageX(0.5)
+        studio:SetPercentageY(0.95)
         textRegion:Add(studio)
-        //progress:SetSize(studio:GetWidth(), progress:GetHeight())
-        //progress:SetSize(1000, 1000)
         
         loading:SetText("Loading ...")
-        loading:SetHorizontalLayoutMode(properties:STANDARD)
-        loading:SetPercentageWidth(1.0)
-        loading:SetTopPadding(12)
-//        loading:SetLeftPadding(270)
-//        loading:SetTopPadding(-70)
-//        loading:SetX(studio:GetX())
-//        loading:SetY(studio:GetY() - studio:GetHeight())
-        
-        progress:SetPercentageWidth(0.4)
-        progress:SetPixelWidth(0)
+        LayoutProperties loadingProperties = loading:GetDefaultLayoutProperties()
+        loadingProperties:SetPercentageOriginX(0.5)
+        loadingProperties:SetPercentageOriginY(0.5)
+        loading:SetPercentageX(0.5)
+        loading:SetPercentageY(0.5)
+        textRegion:Add(loading)        
+
+        progress:SetPercentageWidth(0.9)
+        progress:SetPercentageX(0.05)
         progress:SetPercentageHeight(0.15)
-        progress:SetTopPadding(5)
+        progress:SetPercentageY(0.1)
+        progress:SetBorderThickness(1)
         progress:SetPixelHeight(0)
-        
-        textRegion:Add(loading)
         textRegion:Add(progress)
 
         ControlShaderView view
@@ -187,20 +183,12 @@ class SplashScreen is Dialog, CompilerListener
     end
 
     action OnShow
-//        progress:SetWidth(studio:GetWidth())
-        //progress:SetHeight(2000)
         progress:Focus()
     end
 
     action Update(number seconds)
-        //logo:Rotate(seconds * 90)
         number value = math:RoundToNearestInteger(currentPercent)
         progress:SetValue(value)
-//        loading:SetX(studio:GetX())
-//        loading:SetY(studio:GetY() - studio:GetHeight())
-//
-//        progress:SetX(studio:GetX())
-//        progress:SetY(studio:GetY() - studio:GetHeight() - loading:GetHeight())
 
         if playMessage
             Accessibility access = manager:GetAccessibility()
