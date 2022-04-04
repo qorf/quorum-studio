@@ -191,7 +191,7 @@ class Options is ProjectListener
 ")
         end
         logger:SetFile(logLocation)
-        SetInterfaceOptions()
+        //SetInterfaceOptions()
     end
 
     action SetInterfaceOptions
@@ -333,7 +333,36 @@ class Options is ProjectListener
         JavaScriptObjectNotation notation
         notation:Read(value)
 
-        //get all the properties from JSON
+        //it's a little silly, but we need to process the 
+        //light or dark mode first, so we can load the correct
+        //icons, so we need to loop twice. There isn't millions of options, so that's 
+        //not a huge deal.
+        i = 0
+        repeat while i < notation:GetSize()
+            JavaScriptObjectNotation object = notation:Get(i)
+            //don't process the key, just look for light or dark mode
+            text key = object:GetKey()
+            if key = INTERFACE_OPTIONS
+                if object:IsText()
+                    interfaceOptionsMode = object:GetText()
+                    if interfaceOptionsMode = undefined or interfaceOptionsMode = "Light"
+                        interfaceOptionsMode = "Light"
+                    elseif interfaceOptionsMode = "Dark"
+                        interfaceOptionsMode = "Dark"
+                    else 
+                        interfaceOptionsMode = "Light"
+                    end
+    
+                    
+                end
+                i = notation:GetSize()
+            end
+            i = i + 1
+        end
+
+        SetInterfaceOptions()
+
+        //get all the properties from JSON, but this time ignore the light or dark mode
         i = 0
         repeat while i < notation:GetSize()
             JavaScriptObjectNotation obj = notation:Get(i)
@@ -610,13 +639,6 @@ class Options is ProjectListener
                     me:scale = max
                 else
                     me:scale = value
-                end
-            end
-        elseif key = INTERFACE_OPTIONS
-            if object:IsText()
-                interfaceOptionsMode = object:GetText()
-                if interfaceOptionsMode = undefined
-                    interfaceOptionsMode = "Light"
                 end
             end
         elseif key = WINDOW_WIDTH
