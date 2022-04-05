@@ -4,30 +4,50 @@ use Libraries.Game.Graphics.Color
 use Libraries.Development.Environment.Configuration.OptionsConstants
 
 shared class DarkQuorumStudio is DarkModeOptions
+    integer part = 0
     on create
         Color color
         constant number MAX = 255.0
         //set Properties for the toolbar in various modes
         OptionsConstants const
-        Color lightGreen = color:CustomColor(133.0 / MAX, 216.0 / MAX, 144.0 / MAX, 1)
-        Color lightBlue = color:CustomColor(144.0 / MAX, 191.0 / MAX, 227.0 / MAX, 1)
-        SetColorProperty(const:TOOLBAR_PLAY_BUTTON_COLOR, lightGreen)
-        //SetColorProperty(const:TOOLBAR_FOLDER_BUTTONS_COLOR, color:CustomColor(198.0 / MAX, 117.0 / MAX, 50.0 / MAX, 1))
-        SetColorProperty(const:TOOLBAR_FOLDER_BUTTONS_COLOR, lightBlue)
-        SetColorProperty(const:TOOLBAR_STOP_BUTTON_COLOR, color:CustomColor(230.0 / MAX, 78.0 / MAX, 88.0 / MAX, 1))
+        Color playButtons = color:CustomColor(133.0 / MAX, 216.0 / MAX, 144.0 / MAX, 1)
+        Color folderButtons = color:CustomColor(144.0 / MAX, 191.0 / MAX, 227.0 / MAX, 1)
+        Color stopButton = color:CustomColor(230.0 / MAX, 78.0 / MAX, 88.0 / MAX, 1)
+        SetColorProperty(const:TOOLBAR_PLAY_BUTTON_COLOR, playButtons)
+        SetColorProperty(const:TOOLBAR_FOLDER_BUTTONS_COLOR, folderButtons)
+        SetColorProperty(const:TOOLBAR_STOP_BUTTON_COLOR, stopButton)
 
  
         //These colors are wrong and need to be changed once dark mode is complete.
-        SetColorProperty(const:EDITOR_KEYWORD_COLOR, lightBlue)
-        SetColorProperty(const:EDITOR_STRUCTURE_COLOR, color:CustomColor(207.0 / MAX, 175.0 / MAX, 224.0 / MAX, 1))
-        SetColorProperty(const:EDITOR_TEXT_COLOR, color:CustomColor(255.0 / MAX, 165.0 / MAX, 127.0 / MAX, 1))
-        SetColorProperty(const:EDITOR_COMMENT_COLOR, color:CustomColor(175.0 / MAX, 186.0 / MAX, 255.0 / MAX, 1))
+        Color comments = color:CustomColor(175.0 / MAX, 186.0 / MAX, 255.0 / MAX, 1)
+        Color textColor = color:CustomColor(255.0 / MAX, 165.0 / MAX, 127.0 / MAX, 1)
+        Color structure = color:CustomColor(207.0 / MAX, 175.0 / MAX, 224.0 / MAX, 1)
+        SetColorProperty(const:EDITOR_KEYWORD_COLOR, folderButtons)
+        SetColorProperty(const:EDITOR_STRUCTURE_COLOR, structure)
+        SetColorProperty(const:EDITOR_TEXT_COLOR, textColor)
+        SetColorProperty(const:EDITOR_COMMENT_COLOR, comments)
 
-        SetColorProperty(const:EDITOR_FIELD_COLOR, lightGreen)
+        SetColorProperty(const:EDITOR_FIELD_COLOR, playButtons)
         SetColorProperty(const:EDITOR_ERROR_LINE_COLOR, color:CustomColor(184.0 / MAX, 62.0 / MAX, 59.0 / MAX, 1))
         SetColorProperty(const:EDITOR_HINT_LINE_COLOR, color:CustomColor(199.0 / MAX, 84.0 / MAX, 80.0 / MAX, 1))
         SetColorProperty(const:EDITOR_CARET_COLOR, color:CustomColor(50.0 / MAX, 50.0 / MAX, 50.0 / MAX, 1))
         SetColorProperty(const:EDITOR_BREAKPOINT_COLOR, color:CustomColor(51.0 / MAX, 120.0 / MAX, 246.0 / MAX, 1))
+
+        //code completion window
+        Color textboxBackground = color:CustomColor(43.0 / MAX, 43.0 / MAX, 43.0 / MAX, 1)
+        Color defaultBackground = color:CustomColor(60.0 / MAX, 63.0 / MAX, 65.0 / MAX, 1)
+        SetColorProperty(const:CODE_COMPLETION_PRIMARY_COLOR, defaultBackground)
+        SetColorProperty(const:CODE_COMPLETION_SECONDARY_COLOR, textboxBackground)
+
+        SetColorProperty(const:CODE_COMPLETION_PRIMITIVE_ICON_COLOR, folderButtons)
+        SetColorProperty(const:CODE_COMPLETION_FIELD_ICON_COLOR, playButtons)
+        SetColorProperty(const:CODE_COMPLETION_ACTION_ICON_COLOR, structure)
+        SetColorProperty(const:CODE_COMPLETION_PRIVATE_ACTION_ICON_COLOR, stopButton)
+        SetColorProperty(const:CODE_COMPLETION_DEFAULT_ICON_COLOR, textColor)
+        SetColorProperty(const:CODE_COMPLETION_VARIABLE_ICON_COLOR, comments)
+        SetColorProperty(const:CODE_COMPLETION_PARENT_ICON_COLOR, stopButton)
+        SetColorProperty(const:CODE_COMPLETION_CLASS_ICON_COLOR, comments)
+        SetColorProperty(const:CODE_COMPLETION_PACKAGE_ICON_COLOR, folderButtons)
 
         SetCustomProperty(const:QUORUM_PROJECT_ICON,"Resources/Graphics/Interface/QuorumSmallDark.png")
         SetCustomProperty(const:FOLDER_ICON,"Resources/Graphics/Interface/FolderDark.png")
