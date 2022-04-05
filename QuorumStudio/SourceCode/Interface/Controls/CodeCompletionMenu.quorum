@@ -19,6 +19,10 @@ use Libraries.Interface.Controls.MenuRoot
 use Libraries.Interface.Controls.Control
 use Libraries.Interface.Pools.MenuItemPool
 use Libraries.Interface.Views.ControlView
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Game.Graphics.ColorGroup
 
 class CodeCompletionMenu is PopupMenu
 
@@ -59,11 +63,12 @@ class CodeCompletionMenu is PopupMenu
         primaryColor:SetColor(1.0, 1.0, 1.0, 1.0)
         secondaryColor:SetColor(250.0/255.0, 250.0/255.0, 250.0/255.0, 1)
 
-        Color border = primaryColor:CustomColor(156.0/255.0, 156.0/255.0, 156.0/255.0, 1)
-        SetBorderColor(border)
-        SetBorderThickness(2)
+        //Color border = primaryColor:CustomColor(156.0/255.0, 156.0/255.0, 156.0/255.0, 1)
+        //SetBorderColor(border)
+        //SetBorderThickness(2)
+        
         // 15 is the integer constant value of the "ALL" border style in LayoutProperties
-        GetDefaultLayoutProperties():SetBorderStyle(15)
+        //GetDefaultLayoutProperties():SetBorderStyle(15)
     end
 
     action LoadGraphics(LayoutProperties properties)
@@ -169,6 +174,10 @@ class CodeCompletionMenu is PopupMenu
 
         useFirstColor = true
         
+        GameStateManager manager
+        InterfaceOptions io = manager:GetInterfaceOptions()
+        OptionsConstants const
+
         repeat while iterator:HasNext()
             CodeCompletionItem code = iterator:Next()
             if (code:displayText:StartsWith(result:filter)) or (((not code:displayText:IsEmpty()) and result:filter:IsEmpty()))
@@ -187,63 +196,63 @@ class CodeCompletionMenu is PopupMenu
 
                 if code:GetType() = code:LOCAL_VARIABLE
                     item:SetIcon(variableIcon)
-                    item:SetIconColor(variableIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_VARIABLE_ICON_COLOR))
                     locals:Add(item)
                 elseif code:GetType() = code:PARAMETER
                     item:SetIcon(variableIcon)
-                    item:SetIconColor(variableIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_VARIABLE_ICON_COLOR))
                     locals:Add(item)
                 elseif code:GetType() = code:PRIVATE_FIELD_VARIABLE
                     item:SetIcon(fieldIcon)
-                    item:SetIconColor(fieldIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_FIELD_ICON_COLOR))
                     fields:Add(item)
                 elseif code:GetType() = code:PUBLIC_FIELD_VARIABLE
                     item:SetIcon(fieldIcon)
-                    item:SetIconColor(fieldIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_FIELD_ICON_COLOR))
                     fields:Add(item)
                 elseif code:GetType() = code:PRIVATE_ACTION
                     item:SetIcon(actionPrivateIcon)
-                    item:SetIconColor(actionPrivateIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_PRIVATE_ACTION_ICON_COLOR))
                     actions:Add(item)
                 elseif code:GetType() = code:PUBLIC_ACTION
                     item:SetIcon(actionIcon)
-                    item:SetIconColor(actionIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_ACTION_ICON_COLOR))
                     actions:Add(item)
                 elseif code:GetType() = code:PRIVATE_SYSTEM_ACTION
                     item:SetIcon(actionPrivateIcon)
-                    item:SetIconColor(actionPrivateIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_PRIVATE_ACTION_ICON_COLOR))
                     actions:Add(item)
                 elseif code:GetType() = code:PUBLIC_SYSTEM_ACTION
                     item:SetIcon(actionIcon)
-                    item:SetIconColor(actionIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_ACTION_ICON_COLOR))
                     actions:Add(item)
                 elseif code:GetType() = code:PUBLIC_BLUEPRINT_ACTION
                     item:SetIcon(actionIcon)
-                    item:SetIconColor(actionIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_ACTION_ICON_COLOR))
                     actions:Add(item)
                 elseif code:GetType() = code:CLASS
                     item:SetIcon(classIcon)
-                    item:SetIconColor(classIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_CLASS_ICON_COLOR))
                     classes:Add(item)
                 elseif code:GetType() = code:PRIMITIVE
                     item:SetIcon(primitiveIcon)
-                    item:SetIconColor(primitiveIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_PRIMITIVE_ICON_COLOR))
                     primitives:Add(item)
                 elseif code:GetType() = code:CONTROL_STRUCTURE
                     item:SetIcon(primitiveIcon)
-                    item:SetIconColor(primitiveIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_PRIMITIVE_ICON_COLOR))
                     primitives:Add(item)
                 elseif code:GetType() = code:PACKAGE
                     item:SetIcon(packageIcon)
-                    item:SetIconColor(packageIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_PACKAGE_ICON_COLOR))
                     packages:Add(item)
                 elseif code:GetType() = code:PARENT_FIELD_PRIVATE
                     item:SetIcon(parentIcon)
-                    item:SetIconColor(parentIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_PARENT_ICON_COLOR))
                     parentFields:Add(item)
                 elseif code:GetType() = code:PARENT_FIELD_PUBLIC
                     item:SetIcon(parentIcon)
-                    item:SetIconColor(parentIcon:GetColor())
+                    item:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_PARENT_ICON_COLOR))
                     parentFields:Add(item)
                 end
 
@@ -270,6 +279,12 @@ class CodeCompletionMenu is PopupMenu
     end
 
     private action AddToResult(Array<MenuItem> items, MenuItemComparison compare)
+        GameStateManager manager
+        InterfaceOptions io = manager:GetInterfaceOptions()
+        OptionsConstants const
+        
+        ColorGroup primary = io:GetColorProperty(const:CODE_COMPLETION_PRIMARY_COLOR)
+        ColorGroup secondary = io:GetColorProperty(const:CODE_COMPLETION_SECONDARY_COLOR)
         items:Sort(compare)
         i = 0
         repeat while i < items:GetSize()
@@ -277,9 +292,9 @@ class CodeCompletionMenu is PopupMenu
             Add(item)
 
             if useFirstColor
-                item:SetBackgroundColor(primaryColor)
+                item:SetBackgroundColor(primary)
             else
-                item:SetBackgroundColor(secondaryColor)
+                item:SetBackgroundColor(secondary)
             end
 
             useFirstColor = not useFirstColor

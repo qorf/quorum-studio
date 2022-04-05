@@ -18,6 +18,10 @@ use Libraries.Interface.Controls.TextStyles.ColoredHighlight
 use Libraries.Interface.Controls.TextStyles.TextStyle
 use Libraries.Development.Environment.Studio.Build.BuildManager
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Game.Graphics.ColorGroup
 
 class UpdateVariablesBehavior is Behavior
     boolean finished = false
@@ -122,6 +126,12 @@ class UpdateVariablesBehavior is Behavior
                 oldTextBox:RemoveTextStyle(DEBUGGER_ANNOTATION)
             end
 
+            //update the debugger color
+            GameStateManager m
+            InterfaceOptions io = m:GetInterfaceOptions()
+            OptionsConstants const
+            Color debugColor = cast(Color, io:GetColorProperty(const:EDITOR_BREAKPOINT_HIT_COLOR))
+
             Tab tab1 = codeEditorTabPane:OpenNewTab(newFile)
             if not (tab1 is EditorTab)
                 return now
@@ -132,7 +142,7 @@ class UpdateVariablesBehavior is Behavior
                 if box not= undefined
                     //add the new debugger line
                     ColoredHighlight debuggerHighlight
-                    debuggerHighlight:SetColor(debuggerColor)
+                    debuggerHighlight:SetColor(debugColor)
                     debuggerHighlight:SetLineHighlight(true)
                     debuggerHighlight:SetRenderPriority(2)
                     TextStyle debuggerStyle
