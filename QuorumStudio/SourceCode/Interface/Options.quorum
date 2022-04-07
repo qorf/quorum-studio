@@ -569,10 +569,11 @@ class Options is ProjectListener
         text textMessage = "Could not load property " + key + ", as its value was not of type text."
         text booleanMessage = "Could not load property " + key + ", as its value was not of type boolean."
         if key = OPEN_PROJECTS
-            if object:IsEmpty() or not object:IsArray()
+            if object:IsEmpty()
                 return now
             end
 
+            object = object:GetArray()
             i = 0
             repeat while i < object:GetSize()
                 JavaScriptObjectNotation value = object:Get(i)
@@ -587,10 +588,11 @@ class Options is ProjectListener
                 i = i + 1
             end
         elseif key = OPEN_FILES
-            if object:IsEmpty() or not object:IsArray()
+            if object:IsEmpty()
                 return now
             end
 
+            object = object:GetArray()
             i = 0
             repeat while i < object:GetSize()
                 JavaScriptObjectNotation value = object:Get(i)
@@ -683,6 +685,8 @@ class Options is ProjectListener
             if object:IsEmpty() or not object:IsArray()
                 return now
             end
+        
+            object = object:GetArray()
             i = 0
             repeat while i < object:GetSize()
                 JavaScriptObjectNotation value = object:Get(i)
