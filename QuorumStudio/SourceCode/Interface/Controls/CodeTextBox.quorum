@@ -1446,9 +1446,10 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     TextChange events */
     private action UpdateSelections()
         ColoredHighlight highlight
-        highlight:SetVisibleWhileSelected(true)
-        Color color
-        highlight:SetColor(color:Orange())
+        highlight:SetVisibleWhileSelected(false)
+        InterfaceOptions options = gameStateManager:GetInterfaceOptions()
+        ColorGroup color = options:GetColorProperty(optionsConstants:EDITOR_FIND_COLOR)
+        highlight:SetColor(color)
         integer startIndex = 0
         integer endIndex = 0
 
@@ -1536,15 +1537,16 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
 
         ColoredHighlight highlight
         ColoredHighlight selectionHighlight
-        highlight:SetVisibleWhileSelected(true)
-        selectionHighlight:SetVisibleWhileSelected(true)
+        highlight:SetVisibleWhileSelected(false)
+        selectionHighlight:SetVisibleWhileSelected(false)
         TextStyle textStyle
         TextStyle word
-        Color color
-        Color blue
-        blue:SetColor(0, 0, 0.5, 0.2)
-        highlight:SetColor(color:Orange())
-        selectionHighlight:SetColor(blue)
+
+        InterfaceOptions options = gameStateManager:GetInterfaceOptions()
+        ColorGroup color = options:GetColorProperty(optionsConstants:EDITOR_FIND_COLOR)
+        ColorGroup selectColor = options:GetColorProperty(optionsConstants:EDITOR_FIND_SELECTION_COLOR)
+        highlight:SetColor(color)
+        selectionHighlight:SetColor(selectColor)
 
         if previousSelection >= 0 
             integer previousStartIndex = findIndices:Get(previousSelection):GetFirstValue()
