@@ -23,19 +23,20 @@ use Libraries.Game.GameStateManager
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Development.Environment.Configuration.OptionsConstants
 use Libraries.Game.Graphics.ColorGroup
+use Libraries.Game.Graphics.Font
+use Libraries.System.File
+use Libraries.Game.Graphics.Glyph
+use Libraries.Game.Graphics.TextureRegion
 
 class CodeCompletionMenu is PopupMenu
 
     CodeTextBox textBox = undefined
     BuildManager builder = undefined
-    Color primaryColor
-    Color secondaryColor
     
     Icon primitiveIcon
     Icon actionIcon
     Icon actionPrivateIcon
     Icon fieldIcon
-    Icon defaultIcon
     Icon packageIcon
     Icon variableIcon
     Icon parentIcon
@@ -51,7 +52,7 @@ class CodeCompletionMenu is PopupMenu
     Array<MenuItem> fields
     Array<MenuItem> parentFields
     Array<MenuItem> actions
-
+    Font fontAwesome
     MenuItemPool itemPool
 
     // Used to alternate the colors of MenuItems in the code completion window.
@@ -60,15 +61,10 @@ class CodeCompletionMenu is PopupMenu
     on create
         SetInputGroup("CodeCompletionMenuRoot")
         SetScrollable(true)
-        primaryColor:SetColor(1.0, 1.0, 1.0, 1.0)
-        secondaryColor:SetColor(250.0/255.0, 250.0/255.0, 250.0/255.0, 1)
-
-        //Color border = primaryColor:CustomColor(156.0/255.0, 156.0/255.0, 156.0/255.0, 1)
-        //SetBorderColor(border)
-        //SetBorderThickness(2)
-        
-        // 15 is the integer constant value of the "ALL" border style in LayoutProperties
-        //GetDefaultLayoutProperties():SetBorderStyle(15)
+        File file
+        file:SetPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
+        fontAwesome:LoadFont(file)
+        fontAwesome:SetSize(40)
     end
 
     action LoadGraphics(LayoutProperties properties)
@@ -119,36 +115,28 @@ class CodeCompletionMenu is PopupMenu
         actions:Empty()
     end
 
+    private action GetGlyphTexture(integer unicode) returns TextureRegion
+        text value = ""
+        value = value:GetUnicodeValue(unicode)
+        
+        Glyph glyph = fontAwesome:GetGlyph(value)
+        return glyph:texture
+    end
+
     boolean loadedOnce = false
     action Filter(BehaviorEvent event)
         if not loadedOnce
-            integer size = 25
-            Color red = primaryColor:Red()
-            Color blue = primaryColor:Blue()
-            Color green = primaryColor:Green()
-            Color black = primaryColor:Black()
-            Color orange = primaryColor:Orange()
-            Color olive = primaryColor:Olive()
-            Color magenta = primaryColor:Magenta()
-            Color grey = primaryColor:LightGray()
-            primitiveIcon:LoadFilledCircle(size, orange)
-            fieldIcon:LoadFilledRectangle(size, size, green)
-            actionIcon:LoadFilledTriangle(0,0,size/2, size, size, 0, blue)
-            actionPrivateIcon:LoadFilledTriangle(0,size,size/2, 0, size, size, magenta)
-            defaultIcon:LoadFilledCircle(size, black)
-            variableIcon:LoadFilledRectangle(size, size, grey)
-            parentIcon:LoadFilledCircle(size, red)
-            classIcon:LoadFilledRectangle(size, size, black)
-            packageIcon:LoadFilledRectangle(size, size, orange)
+            primitiveIcon:Load(GetGlyphTexture(63698))
+            fieldIcon:Load(GetGlyphTexture(63128))
+            actionIcon:Load(GetGlyphTexture(61729))
+            actionPrivateIcon:Load(GetGlyphTexture(61475))
+            variableIcon:Load(GetGlyphTexture(63128))
+            parentIcon:Load(GetGlyphTexture(58681))
+            classIcon:Load(GetGlyphTexture(63087))
+            packageIcon:Load(GetGlyphTexture(62566))
             loadedOnce = true
         end
         Regenerate()
-        if event = undefined //explicit user request, have to redo
-
-        else 
-
-        end
-        
     end
 
     private action Regenerate
