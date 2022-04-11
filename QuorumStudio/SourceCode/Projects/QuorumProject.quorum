@@ -1251,14 +1251,15 @@ class QuorumProject is Project
     private action AddMultivalueTextProperty(JavaScriptObjectNotation object)
         text key = object:GetKey()
         Array<text> dependencies
-        if not object:IsArray()
+        if not object:IsArrayObject()
             logger:Log("Could not load property " + key + ", as its value was not of type array.")
             return now
         end
 
+        JavaScriptObjectNotation array = object:GetArray()
         i = 0
-        repeat while i < object:GetSize()
-            JavaScriptObjectNotation value = object:Get(i)
+        repeat while i < array:GetSize()
+            JavaScriptObjectNotation value = array:Get(i)
             if not value:IsText()
                 logger:Log("Could not load property " + key + ", as its value was not of type text.")
                 return now
