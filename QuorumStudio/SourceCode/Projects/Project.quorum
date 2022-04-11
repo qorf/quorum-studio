@@ -4,6 +4,8 @@ use Libraries.Containers.Iterator
 use Libraries.Containers.Array
 use Libraries.System.File
 use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
 
 /*
     This class represents a project on the system. It understands project 
@@ -21,11 +23,22 @@ class Project
     public constant text PROPERTIES_LOCATION = "Project/Project.qp"
     public constant text PROJECT_NAME = "ProjectName"
     public constant text DEVELOPMENT_ENVIRONMENT_VERSION = "DevelopmentEnvironmentVersion"
-    public constant text DEVELOPMENT_ENVIRONMENT_VERSION_VALUE = "Quorum Studio 2.0"
-    public constant number DEVELOPMENT_ENVIRONMENT_VERSION_NUMBER = 2.0
+    //this value represents the current name of Quorum Studio
+    public text DEVELOPMENT_ENVIRONMENT_VERSION_VALUE = ""
+
+    //this value is different and represents the current version number
+    //that the system was at when the project system was last modified
+    //4.0 is equivalent to the Quorum 10 release, so that is the major version it was on.
+    public number DEVELOPMENT_ENVIRONMENT_VERSION_NUMBER = 4.0
     constant text MULTIPLE_VALUE_SPLITTER = ";"
     File location = undefined
     File propertiesLocation
+
+    on create
+        GameStateManager manager
+        QuorumStudio qs = cast(QuorumStudio, manager:GetGame())
+        DEVELOPMENT_ENVIRONMENT_VERSION_VALUE = qs:GetDisplayName()
+    end
 
     /*
         This action returns the location of the project.
