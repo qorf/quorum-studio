@@ -8,6 +8,7 @@ use Libraries.Containers.Iterator
 
 class RemapKeyMap is KeyMap
     KeyboardEvent keys
+    
 
     action Load(File file) returns boolean
         LoadIntoHashTable()
@@ -16,12 +17,26 @@ class RemapKeyMap is KeyMap
         check
             note:Read(fileText)
 
+            boolean hasVersionKey = note:HasValue(GetVersionKey())
+            //if we don't have a version key, this has changed
+            //in Quorum 10, so we need to blow this away
+            if not hasVersionKey
+                return false
+            else //otherwise get the version key and make sure it is high enough
+                number version = note:GetNumber(GetVersionKey())
+                if version < GetKeyMapVersion()
+                    return false
+                end
+            end
+
             Iterator<text> iterator = GetSupportedKeysIterator()
             repeat while iterator:HasNext()
                 text key = iterator:Next()
-                boolean value = LoadKey(note, key)
-                if not value
-                    return false
+                if key not= GetVersionKey()
+                    boolean value = LoadKey(note, key)
+                    if not value
+                        return false
+                    end
                 end
             end
             return true

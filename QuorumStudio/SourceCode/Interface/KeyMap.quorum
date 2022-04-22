@@ -9,6 +9,8 @@ use Libraries.Data.Formats.JavaScriptObjectNotation
 
 class KeyMap 
     HashTable<text, InputSet> map
+    constant text VERSION_KEY = "Version"
+    constant number version = 2.0
     constant text BUILD_KEY = "BUILD_KEY"
     constant text CLEAN_KEY = "CLEAN_KEY"
     constant text CLEAN_BUILD_KEY = "CLEAN_BUILD_KEY"
@@ -327,6 +329,14 @@ class KeyMap
     blueprint action GetSelectSceneItemKey returns InputSet
     blueprint action GetSelectionHighlightDragKey returns InputSet
 
+    action GetVersionKey returns text
+        return VERSION_KEY
+    end
+
+    action GetKeyMapVersion returns number
+        return version
+    end
+
     action GetSupportedKeysIterator returns Iterator<text>
         return map:GetKeyIterator()
     end
@@ -509,6 +519,10 @@ class KeyMap
     */
     action Save(File file)
         JavaScriptObjectNotation note
+
+        //first save the version key
+        note:Add(GetVersionKey(), GetKeyMapVersion())
+
         Iterator<text> iterator = GetSupportedKeysIterator()
         repeat while iterator:HasNext()
             text key = iterator:Next()
