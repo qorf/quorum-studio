@@ -1,5 +1,13 @@
 package Libraries.Language.Debug
 use Libraries.Containers.Array
+use Libraries.Compute.Statistics.DataFrame
+use Libraries.Development.Environment.Studio.Build.BuildInformation
+use Libraries.Language.Compile.CompilerResult
+use Libraries.Language.Compile.Symbol.SymbolTable
+use Libraries.Language.Compile.Symbol.Class
+use Libraries.Compute.Statistics.Columns.TextColumn
+use Libraries.Compute.Statistics.Columns.IntegerColumn
+use Libraries.Compute.Statistics.DataFrameColumn
 
 class CallStackModel 
     system action Get(integer i) returns StackFrame
@@ -9,11 +17,47 @@ class CallStackModel
         with the most current information about the stack trace
     */
     system action Update
-//    system action GetChildren(StackFrame frame, integer i, integer i2) returns Array<StackFrame>
-//    system action IsLeaf(StackFrame frame)
-//    system action GetChildrenCount(StackFrame frame)
-//    system action GetDisplayName(StackFrame frame)
-//    system action GetShortDescription(StackFrame frame)
-//    system action IsReadOnly(StackFrame frame, VariablesColumn column)
-//    system action GetValueAt(StackFrame frame, VariablesColumn column) returns Object
+
+    /* 
+        This action converts a call stack into a DataFrame. This DataFrame
+        represents the total call stack on the system at a particular point
+        in time in execution. 
+    */
+    action GetAsDataFrame(BuildInformation info) returns DataFrame
+        DataFrame frame
+        TextColumn actColumn
+        TextColumn clazzColumn
+        IntegerColumn lineColumn
+        TextColumn fileColumn
+
+        Array<DataFrameColumn> columns
+        columns:Add(actColumn)
+        columns:Add(clazzColumn)
+        columns:Add(lineColumn)
+        columns:Add(fileColumn)
+        frame:SetColumns(columns)
+
+        i = 0
+        repeat while i < GetSize()
+            StackFrame stack = Get(i)
+            text actionName = stack:GetName()
+            text className = stack:GetDotName()
+            integer lineName = stack:GetLine()
+            text fileName = ""
+            CompilerResult result = info:result
+            SymbolTable table = result:symbolTable
+            Class clazz = table:GetClass(stack:GetQuorumName())
+            if clazz not= undefined
+                fileName = clazz:GetFile():GetAbsolutePath()
+            end
+            
+            actColumn:Add(actionName)
+            clazzColumn:Add(className)
+            lineColumn:Add(lineName)
+            fileColumn:Add(fileName)
+            i = i + 1
+        end
+
+        return frame
+    end
 end
