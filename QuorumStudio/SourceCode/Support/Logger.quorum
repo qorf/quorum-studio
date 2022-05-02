@@ -11,8 +11,24 @@ shared class Logger
     on create
         lf = lf:GetLineFeed()
     end
+
     action Log(text value)
         if writer not= undefined
+            DateTime time
+            writer:Write("Time: " + time:ToText() + ".")
+            writer:Write(value + lf)
+            writer:PushToDisk()
+        else
+            output value
+        end
+    end
+
+    action Log(text value, boolean logTime)
+        if writer not= undefined
+            if logTime
+                DateTime time
+                writer:Write("Time: " + time:ToText() + ".")
+            end
             writer:Write(value + lf)
             writer:PushToDisk()
         else
