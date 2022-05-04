@@ -15,33 +15,22 @@ use Libraries.Interface.Accessibility
 use Libraries.Interface.Controls.Icon
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Views.ControlShaderView
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
 
 class AboutBoxDialog is Dialog
     GameStateManager manager
     QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
-    Label warningLabel
 
     boolean initialized = false
     Icon logo
     Label studioLabel
     text name = ""
 
-    on create
-    end
-
     action OnShow()
-        warningLabel:Focus()
-        Accessibility access = manager:GetAccessibility()
-        if access not= undefined
-            access:Notify(warningLabel, name)
-        end
+        studioLabel:Focus()
     end
 
     action Initialize
-        if initialized
-            output "WARNING: Re-initializing the FindDialog."
-        end
-
         initialized = true
         name = studio:GetDisplayName()
         SetName("About " + name)
@@ -72,13 +61,11 @@ class AboutBoxDialog is Dialog
         panel:SetPixelHeight(140)
         panel:SetBorderThickness(1)
         panel:Add(logo)
-
+        
+        studioLabel:SetAccessibilityCode(studioLabel:parent:Item:ITEM)
+        studioLabel:SetFocusable(true)
         panel:Add(studioLabel)
         panel:SetView2D(view)
         Add(panel)
-    end
-
-    action OnHide()
-        studio:ResetExitFlag()   
     end
 end
