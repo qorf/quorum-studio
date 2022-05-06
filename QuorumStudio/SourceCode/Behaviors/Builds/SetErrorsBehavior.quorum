@@ -13,6 +13,7 @@ use Libraries.Language.Compile.CompilerError
 use Libraries.Development.Environment.Studio.Interface.OutputTab
 use Libraries.Interface.Accessibility
 use Libraries.Game.GameStateManager
+use Libraries.Compute.Statistics.DataFrame
 
 class SetErrorsBehavior is Behavior
 
@@ -86,11 +87,8 @@ class SetErrorsBehavior is Behavior
                 errorTab:Empty()
                 text errorMessage = "I found " + errors:GetErrorAmount() + " errors and have listed them in the errors tab."
                 out:Append(errorMessage)
-                Iterator<CompilerError> iterator = errors:GetIterator()
-                repeat while iterator:HasNext()
-                    CompilerError error = iterator:Next()
-                    errorTab:AddError(error)
-                end
+                DataFrame frame = errors:GetCompilerErrorsAsDataFrame()
+                errorTab:SetErrors(frame)
                 errorTab:Resize()
                 outputTabs:Select(errorTab, false)
 
