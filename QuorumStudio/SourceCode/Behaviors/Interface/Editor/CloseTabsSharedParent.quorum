@@ -1,0 +1,62 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.SaveBeforeClosingDialog
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Interface.Controls.Tab
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.TabBar
+
+class CloseTabsSharedParent
+    boolean ignoreCurrent = false
+    action CloseAllTabs
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        CodeEditorTabPane tabPane = studio:GetTabPane()
+        integer openTabs = tabPane:GetSize()
+        integer i = 0
+        repeat while i < openTabs
+            Tab tempTab = tabPane:GetSelectedTab()
+            if tempTab not= undefined
+                if not ignoreCurrent
+                    tabPane:Remove(tempTab)
+                end
+            end
+            i = i + 1
+        end
+    end
+
+    action CloseOtherTabs
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        CodeEditorTabPane tabPane = studio:GetTabPane()
+        integer openTabs = tabPane:GetSize()
+        if openTabs <= 0 return now end
+
+        Tab selected = tabPane:GetSelectedTab()
+        if selected = undefined return now end
+
+        TabBar tabBar = selected:GetTabBar()
+        boolean isRunning = tabBar:GetSize() not= 1
+        integer i = 0
+        repeat while isRunning
+            Tab tempTab = tabBar:Get(i)
+            if(selected = tempTab)
+                i = i + 1
+            else
+                tabBar:Remove(tempTab)
+            end
+            isRunning = tabBar:GetSize() not= 1
+        end   
+    end
+
+    action IsIgnoreCurrent returns boolean
+        return ignoreCurrent
+    end
+
+    action SetIgnoreCurrent(boolean ignoreCurrent)
+        me:ignoreCurrent = ignoreCurrent
+    end
+end

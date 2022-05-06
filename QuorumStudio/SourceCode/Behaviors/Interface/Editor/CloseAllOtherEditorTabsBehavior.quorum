@@ -9,6 +9,10 @@ use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Containers.Array
 use Libraries.Interface.Controls.ToggleButton
 use Libraries.Interface.Controls.TabBar
+use Libraries.Development.Environment.Studio.Behaviors.OpenSaveBeforeClosingDialog
+use Libraries.Development.Environment.Studio.Behaviors.SaveAndCloseBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DiscardAndCloseBehavior
+use Libraries.Development.Environment.Studio.Interface.SaveBeforeClosingDialog
 
 class CloseAllOtherEditorTabsBehavior is Behavior
 
@@ -24,19 +28,21 @@ class CloseAllOtherEditorTabsBehavior is Behavior
     
     action Run(BehaviorEvent event)
         if tab not= undefined
-            TabBar tabBar = tab:GetTabBar()
+            CodeEditorTabPane tabPane = cast(CodeEditorTabPane, tab:GetTabPane())
+            if tabPane:GetDirtyTabsCount() > 0
+                OpenSaveBeforeClosingDialog behave
+                behave:Setup()
 
-            boolean isRunning = tabBar:GetSize() not= 1
-            integer i = 0
-            repeat while isRunning
-                Tab tempTab = tabBar:Get(i)
-                if(tab = tempTab)
-                    i = i + 1
-                else
-                    tabBar:Remove(tempTab)
-                end
-                isRunning = tabBar:GetSize() not= 1
-            end   
+                //set custom save/discard actions
+                SaveAndCloseBehavior save
+                save:SetIgnoreCurrent(true)
+                DiscardAndCloseBehavior discard
+                discard:SetIgnoreCurrent(true)
+                SaveBeforeClosingDialog dialog = behave:GetDialog()
+                dialog:SetSaveBehavior(save)
+                dialog:SetDiscardBehavior(discard)
+                behave:Run()
+            end
         end
     end
 end

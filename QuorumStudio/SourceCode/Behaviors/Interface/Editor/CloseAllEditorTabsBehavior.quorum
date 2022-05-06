@@ -5,6 +5,10 @@ use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Behaviors.OpenSaveBeforeClosingDialog
+use Libraries.Development.Environment.Studio.Behaviors.SaveAndCloseBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DiscardAndCloseBehavior
+use Libraries.Development.Environment.Studio.Interface.SaveBeforeClosingDialog
 
 class CloseAllEditorTabsBehavior is Behavior
 
@@ -21,15 +25,17 @@ class CloseAllEditorTabsBehavior is Behavior
     action Run(BehaviorEvent event)
         if tab not= undefined
             CodeEditorTabPane tabPane = cast(CodeEditorTabPane, tab:GetTabPane())
-            integer openTabs = tabPane:GetSize()
-            
-            integer i = 0
-            repeat while i < openTabs
-                Tab tempTab = tabPane:GetSelectedTab()
-                if tempTab not= undefined
-                    tabPane:Remove(tempTab)
-                end
-                i = i + 1
+            if tabPane:GetDirtyTabsCount() > 0
+                OpenSaveBeforeClosingDialog behave
+                behave:Setup()
+
+                //set custom save/discard actions
+                SaveAndCloseBehavior save
+                DiscardAndCloseBehavior discard
+                SaveBeforeClosingDialog dialog = behave:GetDialog()
+                dialog:SetSaveBehavior(save)
+                dialog:SetDiscardBehavior(discard)
+                behave:Run()
             end
         end
     end

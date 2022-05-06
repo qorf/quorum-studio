@@ -1,0 +1,27 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.SaveBeforeClosingDialog
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Interface.Controls.Tab
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.TabBar
+
+class DiscardAndCloseBehavior is DiscardChangesBehavior, CloseTabsSharedParent
+    SaveBeforeClosingDialog dialog = undefined
+    action SetDialog(SaveBeforeClosingDialog dialog)
+        me:dialog = dialog
+    end
+
+    action Run(BehaviorEvent event)
+        if IsIgnoreCurrent()
+            CloseOtherTabs()
+        else
+            CloseAllTabs()
+        end
+
+        if dialog not= undefined dialog:Hide() end
+    end
+end
