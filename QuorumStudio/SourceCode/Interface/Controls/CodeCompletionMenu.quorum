@@ -53,6 +53,9 @@ class CodeCompletionMenu is PopupMenu
     Array<MenuItem> fields
     Array<MenuItem> parentFields
     Array<MenuItem> actions
+    Array<MenuItem> emptyMenu
+    MenuItem emptyItem
+
     Font fontAwesome
     MenuItemPool itemPool
 
@@ -114,6 +117,7 @@ class CodeCompletionMenu is PopupMenu
         fields:Empty()
         parentFields:Empty()
         actions:Empty()
+        emptyMenu:Empty()
     end
 
     private action GetGlyphTexture(integer unicode) returns TextureRegion
@@ -265,6 +269,17 @@ class CodeCompletionMenu is PopupMenu
             // Moving the selection down forces the menu to select the first
             // item if the selection was empty.
             MoveSelectionDown()
+        elseif IsEmpty() //if the selection is empty, then we have filtered everything out. Add a placeholder
+            MenuItem emptyItem = itemPool:GetNextMenuItem()
+            emptyItem:SetName("No Code Completion Available")
+            emptyItem:SetShortcut("")
+            emptyItem:SetDescription("There is currently no known valid options in the code completion.")
+            //emptyItem:SetLabelText("No Code Completion Available")
+            emptyItem:SetIcon(actionPrivateIcon)
+            emptyItem:SetIconColor(io:GetColorProperty(const:CODE_COMPLETION_PRIVATE_ACTION_ICON_COLOR))
+            emptyMenu:Add(emptyItem)
+            AddToResult(emptyMenu, compare)
+            resultSize = resultSize + 1
         end
     end
 
