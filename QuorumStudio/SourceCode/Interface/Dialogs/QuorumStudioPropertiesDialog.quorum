@@ -28,6 +28,8 @@ use Libraries.Development.Environment.Configuration.Options
 use Libraries.Development.Environment.Projects.Credentials
 use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioPropertiesOkBehavior
 use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Controls.RadioButton
+use Libraries.Interface.Controls.ButtonGroup
 
 
 class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
@@ -37,6 +39,8 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
     //variables for the Teams tab
     TextField usernameTeams
     TextField passwordTeams
+    RadioButton lightModeButton
+    RadioButton darkModeButton
 
     TabPane tabPane
 
@@ -65,25 +69,20 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
         options = studio:GetOptions()
         Load()
-        
     end
 
     action Initialize
-        if initialized
-            output "WARNING: Re-initializing the QuorumStudioPropertiesDialog."
-        end
-
         initialized = true
-
         SetName("Quorum Studio Properties")
-        SetPixelWidth(600)
+        //SetPixelWidth(600)
+        SetPercentageWidth(0.50)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-
+        SetPercentageHeight(0.50)
         
         FlowLayout tabLayout
         tabPane:SetViewAreaLayout(tabLayout)
         tabPane:SetPercentageWidth(1.0)
-        tabPane:SetPixelHeight(700)
+        tabPane:SetPixelHeight(250)
 
         tabPane:Add(CreateLoginTab())
         Add(tabPane)
@@ -104,6 +103,12 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         else 
             options:RemovePassword(options:QUORUM_WEBSITE_PASSWORD_KEY)
         end
+
+        if lightModeButton:GetToggleState()
+            options:SetToLightMode()
+        else
+            options:SetToDarkMode()
+        end
     end
 
     action Load
@@ -112,17 +117,22 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
             usernameTeams:SetText(credentials:GetUsername())
             passwordTeams:SetText(credentials:GetPassword())
         end
+        if options:IsLightMode()
+            lightModeButton:SetToggleState(true)
+        else
+            darkModeButton:SetToggleState(true)
+        end
+        
     end
 
     action IsInitialized returns boolean
         return initialized
     end
 
-
     private action CreateLoginTab returns Tab
         Tab tab
         tab:SetFocusTarget(usernameTeams)
-        tab:SetName("Login")
+        tab:SetName("Properties")
         tab:DisplayCloseButton(false)
 
         Control panel
@@ -204,6 +214,36 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         confirmPadding:SetPercentageWidth(0.56)
         confirmPadding:SetPixelHeight(1)
         confirmArea:Add(confirmPadding)
+
+        Label colorModeLabel
+        colorModeLabel:SetPercentageWidth(1.0)
+        colorModeLabel:SetSize(20)
+        colorModeLabel:SetText("Color Mode (requires restart)")
+        colorModeLabel:SetLeftPadding(10)
+        colorModeLabel:SetTopPadding(20)
+        panel:Add(colorModeLabel)
+
+        ButtonGroup projectRadios
+        projectRadios:SetName("Color Mode")
+        projectRadios:SetFocusable(true)
+        projectRadios:SetHorizontalLayoutMode(parent:Libraries.Interface.Controls.Control:STANDARD)
+        projectRadios:SetTopPadding(10)
+        projectRadios:SetBottomPadding(20)
+        projectRadios:SetLeftPadding(10)
+        projectRadios:SetRightPadding(10)
+        projectRadios:SetPercentageWidth(1.0)
+
+        lightModeButton:SetName("Light")
+        lightModeButton:SetFontSize(14)
+        lightModeButton:SetRightPadding(30)
+        projectRadios:Add(lightModeButton)
+
+        darkModeButton:SetName("Dark")
+        darkModeButton:SetFontSize(14)
+        darkModeButton:SetRightPadding(30)
+        projectRadios:Add(darkModeButton)
+
+        confirmArea:Add(projectRadios)
 
         Button cancelButton
         cancelButton:SetName("Cancel")
