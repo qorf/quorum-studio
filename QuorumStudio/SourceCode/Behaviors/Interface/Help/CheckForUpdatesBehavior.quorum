@@ -127,51 +127,9 @@ class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
             return now
         end
 
-        //if it's a new version, see if they're logged in. If they 
-        //have a username and password, see if it is a valid user. 
-        //if it is a valid user, download the file and install it.
-        //if it is not a valid user, pop-up the username and password box
+        //in Quorum Studio 4, we no longer require usernames or passwords for downloading.
         if studio:IsNewer(major, minor, build)
-            Credentials credentials = options:GetPassword(options:QUORUM_WEBSITE_PASSWORD_KEY)
-            if credentials = undefined 
-                or credentials:GetUsername() = undefined
-                or credentials:GetPassword() = undefined
-                or credentials:GetUsername():IsEmpty()
-                or credentials:GetPassword():IsEmpty()
-                //the user has no login credentials, so tell them to fix that
-                Behaviors behaviors = studio:GetBehaviors()
-                OpenQuorumStudioPropertiesBehavior behave = behaviors:GetOpenQuorumStudioPropertiesBehavior()
-                behave:Run(undefined)
-            else//let's try to login 
-                text user = credentials:GetUsername()
-                text password = credentials:GetPassword()
-
-                Behaviors behaviors = studio:GetBehaviors()
-                ThreadRunner thread = behaviors:GetNetworkThreadRunner()
-                QuorumLoginBehavior qlb
-                FileDownloadBehavior flb
-                flb:SetFileDownloadToRequest(updateFile)
-                flb:SetDownloadLocation(downloadLocation)
-                RunProcessBehavior runBehave
-                runBehave:SetFile(downloadLocation)
-                flb:SetPostDownloadBehavior(runBehave)
-
-                qlb:SetSuccessfulLoginBehavior(flb)
-                ThreadedBehavior behave
-
-                behave:SetNestedBehavior(qlb)
-                behave:SetThreadRunner(thread)
-                thread:Add(behave)
-
-                AdjustCheckForUpdatesBehavior adjust
-                adjust:SetNewMajorVersion(major)
-                adjust:SetNewMinorVersion(minor)
-                adjust:SetNewBuildVersion(build)
-                OutputEditorTabPane pane = studio:GetOutputPane()
-                pane:AddBehavior(adjust)
-
-                flb:SetDialog(adjust:GetDialog())
-            end
+            SetupFileDownloadBehavior(major, minor, build, updateFile, downloadLocation)
         else //there is no new version. Just post the dialog
              //saying that we are up to date.
             CheckForUpdatesDialog dialog
@@ -179,5 +137,36 @@ class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
             dialog:Initialize()
             dialog:Show()
         end
+    end
+
+    /*
+        This action sets up downloading inside of Quorum Studio for the new version.
+    */
+    private action SetupFileDownloadBehavior(integer major, integer minor, integer build, text updateFile, File downloadLocation)
+        Behaviors behaviors = studio:GetBehaviors()
+        ThreadRunner thread = behaviors:GetNetworkThreadRunner()
+        QuorumLoginBehavior qlb
+        FileDownloadBehavior flb
+        flb:SetFileDownloadToRequest(updateFile)
+        flb:SetDownloadLocation(downloadLocation)
+        RunProcessBehavior runBehave
+        runBehave:SetFile(downloadLocation)
+        flb:SetPostDownloadBehavior(runBehave)
+
+        qlb:SetSuccessfulLoginBehavior(flb)
+        ThreadedBehavior behave
+
+        behave:SetNestedBehavior(qlb)
+        behave:SetThreadRunner(thread)
+        thread:Add(behave)
+
+        AdjustCheckForUpdatesBehavior adjust
+        adjust:SetNewMajorVersion(major)
+        adjust:SetNewMinorVersion(minor)
+        adjust:SetNewBuildVersion(build)
+        OutputEditorTabPane pane = studio:GetOutputPane()
+        pane:AddBehavior(adjust)
+
+        flb:SetDialog(adjust:GetDialog())
     end
 end

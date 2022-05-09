@@ -15,11 +15,13 @@ use Libraries.Interface.Accessibility
 use Libraries.Compute.Math
 use Libraries.Interface.Controls.ProgressBar
 use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Layouts.ManualLayout
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.Icon
 
 class CheckForUpdatesDialog is Dialog
     GameStateManager manager
-    QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
-    Label warningLabel
+    QuorumStudio qs = cast(QuorumStudio, manager:GetGame())
 
     boolean initialized = false
     boolean updateChecked = false
@@ -29,95 +31,109 @@ class CheckForUpdatesDialog is Dialog
     number percent = -1
     boolean shutdown = false
     ProgressBar progress
-
-    on create
-    end
+    Icon logo
+    Label studio
+    Label loading
 
     action OnShow()
         progress:Focus()
+        text result = "No updates available."
+        if not updateChecked
+            result = "No updates available."
+        elseif IsNewer()
+            result = "Quorum Studio " + GetNewVersionNumber() + "
+                Download in progress."
+        end
+        loading:SetText(result)
     end
 
     action Initialize
         initialized = true
 
+        QuorumStudio qs = cast(QuorumStudio, manager:GetGame())
         SetName("Checking for Updates")
-        SetPixelWidth(450)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
+        SetPercentageWidth(0.40)
+        
+        logo:Load("Resources/Graphics/Interface/QuorumLighter.png")
+
+        LayoutProperties properties
+        Control panel
+        FlowLayout panelLayout
+        panel:SetLayout(panelLayout)
+        panel:SetInterfaceOptionsKey("Dialog")
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(properties:FIT_CONTENTS)
+        panel:SetBorderStyle(properties:ALL)
+        panel:SetBorderThickness(1)
+
+        // Make a region to contain the logo. It'll use a ManualLayout so we can center the logo within it.
+        Control logoRegion
+        logoRegion:SetPercentageWidth(0.25)
+        logoRegion:SetPercentageHeight(0.8)
+        logoRegion:SetVerticalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        ManualLayout logoLayout
+        logoRegion:SetLayout(logoLayout)
+        panel:Add(logoRegion)
+
+        logo:SetPercentageWidth(0.75)
+        logo:SetPercentageHeight(0.75)
+        logo:SetHorizontalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        LayoutProperties logoProperties = logo:GetDefaultLayoutProperties()
+
+        // Position the logo from its center (set origin), and put the origin at the center of the region
+        logoProperties:SetPercentageOriginX(0.5)
+        logoProperties:SetPercentageOriginY(0.5)
+        logo:SetPercentageX(0.5)
+        logo:SetPercentageY(0.5)
+        logoRegion:Add(logo)
+
+        Control textRegion
+        ManualLayout regionLayout
+        textRegion:SetLayout(regionLayout)
+        textRegion:SetPercentageWidth(0.75)
+        textRegion:SetPercentageHeight(logoRegion:GetPercentageHeight() / 3.0)
+        textRegion:SetVerticalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        panel:Add(textRegion)
+
+        studio:SetText(qs:GetDisplayName())
+        studio:SetFontSize(20)
+        LayoutProperties studioProperties = studio:GetDefaultLayoutProperties()
+        studioProperties:SetPercentageOriginX(0.5)
+        studioProperties:SetPercentageOriginY(1.0)
+        studio:SetPercentageX(0.5)
+        studio:SetPercentageY(0.95)
+        textRegion:Add(studio)
+        
+        loading:SetText("Connecting to Server ...")
+        LayoutProperties loadingProperties = loading:GetDefaultLayoutProperties()
+        loadingProperties:SetPercentageOriginX(0.5)
+        loadingProperties:SetPercentageOriginY(0.5)
+        loading:SetPercentageX(0.5)
+        loading:SetPercentageY(0.5)
+        textRegion:Add(loading)        
+
+        progress:SetPercentageWidth(0.9)
+        progress:SetPercentageX(0.05)
+        progress:SetPercentageHeight(0.15)
+        progress:SetPercentageY(0.1)
+        progress:SetBorderThickness(1)
+        progress:SetPixelHeight(0)
+        textRegion:Add(progress)
 
         ControlShaderView view
         view:Initialize()
-        
-        Control panel
-        FlowLayout newFileLayout
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetLayout(newFileLayout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(110)
-        panel:SetBorderThickness(1)
-        panel:Add(CreateControl())
         panel:SetView2D(view)
-        panel:Add(progress)
-        Add(panel)
-        progress:SetFocusable(true)
-    end
 
-    private action CreateControl returns Control
-        Color color
-        Control control
-        FlowLayout layout
-        control:SetLayout(layout)
-        control:SetBorderThickness(1)
-        control:SetBorderColor(color:Black())
-        control:SetPercentageWidth(1.0)
-        control:SetVerticalLayoutMode(control:FIT_CONTENTS)
-
-        text result = ""
-        if not updateChecked
-            result = "Could not connect to update server."
-        elseif IsNewer()
-            result = "Quorum Studio " + GetNewVersionNumber() + "
-                Download in progress."
-        else
-            result = "You are up to date!"
-        end
-
-        Accessibility access = manager:GetAccessibility()
-        if access not= undefined
-            access:Notify(warningLabel, result + ". Download in progress. Please wait.")
-        end
-
-        warningLabel:SetText(result)
-
-        warningLabel:SetTopPadding(20)
-        warningLabel:SetLeftPadding(10)
-        warningLabel:SetRightPadding(10)
-        warningLabel:SetPercentageWidth(1.0)
-        warningLabel:SetFocusable(true)
-        control:Add(warningLabel)
-
-        Control buttonContainer
-        FlowLayout buttonLayout
-        buttonContainer:SetLayout(buttonLayout)
-        buttonContainer:SetPercentageWidth(1.0)
-        buttonContainer:SetVerticalLayoutMode(buttonContainer:FIT_CONTENTS)
-        buttonContainer:SetTopPadding(50)
-        buttonContainer:SetBottomPadding(20)
-
-        Control buttonPadding
-        buttonPadding:SetPercentageWidth(0.2)
-        buttonPadding:SetPixelHeight(1)
-        buttonContainer:Add(buttonPadding)
-
-        buttonContainer:Add(buttonPadding)
-        control:Add(buttonContainer)
         
-        return control
+        Add(panel)
+        panel:Resize()
+        progress:SetFocusable(true)   
     end
 
     private action IsNewer returns boolean
-        integer major = studio:GetMajorVersion()
-        integer minor = studio:GetMinorVersion()
-        integer build = studio:GetBuildVersion()
+        integer major = qs:GetMajorVersion()
+        integer minor = qs:GetMinorVersion()
+        integer build = qs:GetBuildVersion()
 
         if newMajorVersion > major
             return true
@@ -136,22 +152,13 @@ class CheckForUpdatesDialog is Dialog
     end
 
     action Update(number seconds)
-        if percent not= -1
-            text result = "Quorum Studio version " + GetNewVersionNumber() + "
-                Download in progress "
-            integer value = cast(integer, percent)
-            result = result + value + "%"
-            warningLabel:SetText(result)
-            progress:SetValue(value)
-        end
-
         if shutdown
             Hide()
         end
     end
 
     action OnHide()
-        studio:ResetExitFlag()   
+         
     end
 
     action GetPercent returns number
@@ -160,6 +167,18 @@ class CheckForUpdatesDialog is Dialog
 
     action SetPercent(number percent)
         me:percent = percent
+        progress:SetValue(percent)
+    end
+
+    action GetLabel returns text
+        return loading:GetText()
+    end
+
+    action SetLabel(text value)
+        text result = "Quorum Studio " + GetNewVersionNumber() + ", "
+        integer p = cast(integer, percent)
+        result = result + p + "%: " + value
+        loading:SetText(result)
     end
 
     action GetShutdown returns boolean
@@ -193,6 +212,7 @@ class CheckForUpdatesDialog is Dialog
     action SetNewBuildVersion(integer newBuildVersion)
         me:newBuildVersion = newBuildVersion
     end
+
     action GetUpdateChecked returns boolean
         return updateChecked
     end
@@ -200,5 +220,4 @@ class CheckForUpdatesDialog is Dialog
     action SetUpdateChecked(boolean updateChecked)
         me:updateChecked = updateChecked
     end
-
 end

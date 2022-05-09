@@ -77,7 +77,7 @@ Update Found. Downloading " + fileDownloadToRequest
 
         request:SetWebAddress("https://quorumlanguage.com/downloadQuorum.php?file="+fileDownloadToRequest+"&")
         request:SetDownloadFile(GetDownloadLocation())
-        request:AddHeader("Cookie", "sessionID=" + cookie)
+        //request:AddHeader("Cookie", "sessionID=" + cookie)
         
 
         NetworkConnection http
@@ -112,6 +112,22 @@ Download Complete. Starting Installer."
         number percent = 100 * (r / l)
 
         if dialog not= undefined
+            if percent < 20
+                dialog:SetLabel("Stay on target")
+            elseif percent < 40
+                dialog:SetLabel("You're too close")
+            elseif percent < 60
+                dialog:SetLabel("Not 'that' close ...")
+            elseif percent < 80
+                dialog:SetLabel("Hurry up already ...")
+            elseif percent < 90
+                dialog:SetLabel("(sigh)")
+            elseif percent < 95 
+                dialog:SetLabel("OH COME ON!")
+            elseif percent < 99
+                dialog:SetLabel("I give up ...")
+            end
+
             dialog:SetPercent(percent)
         end
     end
