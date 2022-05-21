@@ -3,6 +3,8 @@ package Libraries.Development.Environment.Studio.Interface.VisualEditor
 use Libraries.Game.Layer3D
 use Libraries.Interface.Events.MouseEvent
 use Libraries.Interface.Item
+use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
+use Libraries.Interface.Controls.Scenes.Items.EditorCursor
 
 class EditorLayer3D is Layer3D, EditorLayer
 
@@ -24,7 +26,7 @@ class EditorLayer3D is Layer3D, EditorLayer
     end
 
     action ProcessMouseEvent(MouseEvent event) returns Item
-        VisualSceneController controller = GetSceneController()
+        SceneEditor controller = cast(SceneEditor, GetSceneEditor())
         if controller = undefined or (not controller:GetSelectedLayer():Equals(me))
             return undefined
         end
@@ -34,7 +36,7 @@ class EditorLayer3D is Layer3D, EditorLayer
     end
 
     action Update(number seconds)
-        VisualSceneController controller = GetSceneController()
+        SceneEditor controller = cast(SceneEditor, GetSceneEditor())
         integer x = cast(integer, controller:GetGlobalX())
         integer y = cast(integer, controller:GetGlobalY())
         integer width = cast(integer, controller:GetWidth())

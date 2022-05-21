@@ -3,7 +3,7 @@ package Libraries.Development.Environment.Studio.Behaviors
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTreeItem
 use Libraries.Interface.Item
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneEditor
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SelectionHighlight
 
 class SceneTreeItemActivationBehavior is QuorumStudioBehavior    
@@ -19,7 +19,7 @@ class SceneTreeItemActivationBehavior is QuorumStudioBehavior
         //If there is no item, check if a layer is active and if so, jump to it
         if item = undefined and treeItem:GetSceneLayer() not= undefined
             text value = treeItem:GetName()
-            VisualSceneController controller = treeItem:GetSceneController()
+            SceneEditor controller = treeItem:GetSceneController()
             if controller not= undefined
                 controller:SetSelectedLayer(treeItem:GetSceneLayer())
                 controller:Focus()
@@ -28,7 +28,7 @@ class SceneTreeItemActivationBehavior is QuorumStudioBehavior
             return now //there is no selected layer, so bail.
         end
 
-        VisualSceneController controller = treeItem:GetSceneController()
+        SceneEditor controller = treeItem:GetSceneController()
         if controller not= undefined
             SelectionHighlight highlight = controller:GetSelectionHighlight(item)
             if highlight not= undefined

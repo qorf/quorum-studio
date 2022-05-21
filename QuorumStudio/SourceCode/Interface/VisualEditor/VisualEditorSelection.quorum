@@ -2,6 +2,7 @@ package Libraries.Development.Environment.Studio.Interface.VisualEditor
 
 use Libraries.Interface.Selections.Selection
 use Libraries.Interface.Item
+use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
 
 class VisualEditorSelection is Selection
     
@@ -11,7 +12,7 @@ class VisualEditorSelection is Selection
     boolean itemChanged = false
     boolean layerChanged = false
 
-    action Initialize(VisualSceneController controller)
+    action Initialize(SceneEditor controller)
         Initialize(controller, controller:GetName())
     end
 
@@ -78,7 +79,7 @@ class VisualEditorSelection is Selection
 
     private action UpdateDisplayName
         if selectedLayer = undefined or selectedItem = undefined
-            VisualSceneController scene = GetSceneController()
+            SceneEditor scene = GetSceneController()
             if scene not= undefined
                 SetDisplayName(scene:GetName())
             else
@@ -89,7 +90,7 @@ class VisualEditorSelection is Selection
         end
 
         if itemChanged
-            VisualSceneController scene = GetSceneController()
+            SceneEditor scene = GetSceneController()
             scene:SetCursorToItem(selectedItem)
             scene:UpdateEditorCameraTarget()
         end
@@ -142,10 +143,10 @@ class VisualEditorSelection is Selection
         SetSelection(undefined, undefined)
     end
 
-    action GetSceneController returns VisualSceneController
+    action GetSceneController returns SceneEditor
         Item item = GetItem()
-        if item is VisualSceneController
-            return cast(VisualSceneController, item)
+        if item is SceneEditor
+            return cast(SceneEditor, item)
         else
             return undefined
         end

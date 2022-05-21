@@ -15,11 +15,12 @@ use Libraries.Development.Environment.Studio.Behaviors.SceneTreeItemActivationBe
 use Libraries.Development.Environment.Studio.Behaviors.SceneTreeEditorCameraBehavior
 use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
 
 class SceneTree is Tree, SelectionListener, SceneChangeListener
 
     VisualEditorResources resources
-    VisualSceneController controller = undefined
+    SceneEditor controller = undefined
     
     // A single Item indicating that no scene is loaded.
     TreeItem defaultItem = undefined
@@ -39,11 +40,11 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
         filterArray:SetSize(1)
     end
     
-    action GetSceneController returns VisualSceneController
+    action GetSceneController returns SceneEditor
         return controller
     end
 
-    action SetSceneController(VisualSceneController sceneController)
+    action SetSceneController(SceneEditor sceneController)
         if controller not= undefined
             controller:RemoveSceneChangeListener(me)
         end

@@ -11,7 +11,7 @@ use Libraries.Game.Scenes.Scene
 use Libraries.Game.Graphics.AmbientLight
 use Libraries.Game.Graphics.DirectionalLight
 use Libraries.Game.Graphics.PointLight
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneEditor
 use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Game.Graphics.Skybox
 use Libraries.System.Properties
@@ -28,7 +28,6 @@ use Libraries.Game.Graphics.Camera
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer2D
 use Libraries.Containers.Number32BitArray
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer3D
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Item2DPropertiesDialog
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.ScenePalette
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Camera2DPropertiesDialog
@@ -38,12 +37,13 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.Camera3DProp
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorPointLight
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.PointLightPropertiesDialog
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorAudio3D
+use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
 
 class VisualEditorTab is Tab, DefaultSceneManager
 
     File file = undefined
     File projectLocation = undefined
-    VisualSceneController controller = undefined
+    SceneEditor controller = undefined
     GameStateManager manager
     SceneProperties properties
 
@@ -121,7 +121,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
         Scene scene
         scene:Load(file)
 
-        VisualSceneController controller
+        SceneEditor controller
         controller:SetVisualEditorTab(me)
         me:controller = controller
         controller:SetName(file:GetPath())
@@ -537,10 +537,10 @@ class VisualEditorTab is Tab, DefaultSceneManager
         // Do extra work to dispose of models, etc. here
     end
 
-    action GetSceneController returns VisualSceneController
+    action GetSceneController returns SceneEditor
         Item2D value = GetRelatedItem()
-        if value is VisualSceneController
-            return cast(VisualSceneController, value)
+        if value is SceneEditor
+            return cast(SceneEditor, value)
         else
             return undefined
         end

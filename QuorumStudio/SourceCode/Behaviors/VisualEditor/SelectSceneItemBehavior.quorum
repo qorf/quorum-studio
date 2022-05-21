@@ -6,8 +6,8 @@ use Libraries.Interface.Item
 use Libraries.Game.Layer
 use Libraries.Interface.Item2D
 use Libraries.Interface.Item3D
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorLayer
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualSceneController
+use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneEditor
+use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
 
 class SelectSceneItemBehavior is QuorumStudioBehavior
 
@@ -21,11 +21,11 @@ class SelectSceneItemBehavior is QuorumStudioBehavior
             layer = item:GetLayer()
         end
 
-        VisualSceneController controller = undefined
+        SceneEditor controller = undefined
 
         if layer is EditorLayer
             EditorLayer editorLayer = cast(EditorLayer, layer)
-            controller = editorLayer:GetSceneController()
+            controller = cast(SceneEditor, editorLayer:GetSceneEditor())
         else
             return now
         end
