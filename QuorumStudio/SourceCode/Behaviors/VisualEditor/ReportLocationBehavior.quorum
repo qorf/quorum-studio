@@ -2,10 +2,10 @@ package Libraries.Development.Environment.Studio.Behaviors
 
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneEditor
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem2D
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem3D
 use Libraries.Compute.Math
 use Libraries.Compute.Vector3
+use Libraries.Interface.Controls.Scenes.Items.EditorItem2D
 
 class ReportLocationBehavior is QuorumStudioBehavior
 
@@ -13,17 +13,17 @@ class ReportLocationBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
         if event:GetItem() is SceneEditor
-            SceneEditor controller = cast(SceneEditor, event:GetItem())
-            Vector3 position = controller:GetSelectedLayer():GetCamera():GetPosition()
+            SceneEditor editor = cast(SceneEditor, event:GetItem())
+            Vector3 position = editor:GetSelectedLayer():GetCamera():GetPosition()
             text message = math:Round(position:GetX(), 2) + ", " + math:Round(position:GetY(), 2) + ", " + math:Round(position:GetZ(), 2)
-            controller:NotifyAccessibility(controller, "Camera at " + message)
+            editor:NotifyAccessibility(editor, "Camera at " + message)
         elseif event:GetItem() is InteractableItem3D
             InteractableItem3D item = cast(InteractableItem3D, event:GetItem())
             Vector3 position = item:GetGlobalPosition()
             text message = math:Round(position:GetX(), 2) + ", " + math:Round(position:GetY(), 2) + ", " + math:Round(position:GetZ(), 2)
             item:NotifyAccessibility(message)
-        elseif event:GetItem() is InteractableItem2D
-            InteractableItem2D item = cast(InteractableItem2D, event:GetItem())
+        elseif event:GetItem() is EditorItem2D
+            EditorItem2D item = cast(EditorItem2D, event:GetItem())
             text message = math:Round(item:GetGlobalX(), 2) + ", " + math:Round(item:GetGlobalY(), 2)
             item:NotifyAccessibility(message)
         end

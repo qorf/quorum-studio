@@ -18,6 +18,7 @@ use Libraries.Interface.Selections.ButtonGroupSelection
 use Libraries.Interface.Controls.ButtonGroup
 use Libraries.Interface.Controls.RadioButton
 use Libraries.Interface.Controls.Scenes.Items.EditorItem
+use Libraries.Interface.Controls.Scenes.Items.EditorItem2D
 
 class Item2DPropertiesDialog is PropertiesDialog
     
@@ -393,8 +394,8 @@ class Item2DPropertiesDialog is PropertiesDialog
                     Hide()
                 end
             else
-                if selection:GetSelectedItem() is InteractableItem2D and not (selection:GetSelectedItem() is CameraItem)
-                    SetFields(cast(InteractableItem2D, selection:GetSelectedItem()))
+                if selection:GetSelectedItem() is EditorItem2D and not (selection:GetSelectedItem() is CameraItem)
+                    SetFields(cast(EditorItem2D, selection:GetSelectedItem()))
                     if not IsShowing()
                         Show()
                     end
@@ -414,14 +415,14 @@ class Item2DPropertiesDialog is PropertiesDialog
     end
 
     action SetFields(EditorItem item)
-        if item is InteractableItem2D = false
+        if item is EditorItem2D = false
             return now
         end
 
-        SetFields(cast(InteractableItem2D, item))
+        SetFields(cast(EditorItem2D, item))
     end
 
-    action SetFields(InteractableItem2D item)
+    action SetFields(EditorItem2D item)
         nameField:SetText(item:GetName())
         positionXField:SetText("" + item:GetX())
         positionYField:SetText("" + item:GetY())
@@ -440,7 +441,7 @@ class Item2DPropertiesDialog is PropertiesDialog
     end
 
     action TextChanged(TextChangeEvent event)
-        InteractableItem2D currentItem = cast(InteractableItem2D, GetSceneController():GetSelectedItem())
+        EditorItem2D currentItem = cast(EditorItem2D, GetSceneController():GetSelectedItem())
         Control control = event:GetControl()
 
         if currentItem = undefined

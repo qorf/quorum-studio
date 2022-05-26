@@ -68,9 +68,9 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.Custom3DPrim
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.CustomModelBlueprint
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.NewItemPreview
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.CameraItem2D
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem2D
 use Libraries.Interface.Controls.Scenes.Items.EditorItem
 use Libraries.Interface.Controls.Scenes.SceneConstants
+use Libraries.Interface.Controls.Scenes.Items.EditorItem2D
 
 /*
 A class used to represent the 2D space within a Visual Editor tab.
@@ -560,7 +560,7 @@ class SceneEditor is SceneEditor_LIBRARY
                 layer:UpdateGridPosition()
             end
     
-            if IsFocused() or manager:GetFocus() is InteractableItem2D
+            if IsFocused() or manager:GetFocus() is EditorItem2D
                 moved = false
                 workVector2:Set(0, 0)
 
@@ -1274,7 +1274,7 @@ class SceneEditor is SceneEditor_LIBRARY
             return now
         end
 
-        if item is InteractableItem2D
+        if item is EditorItem2D
             EditorCursor2D cursor = cast(EditorCursor2D, GetCursor())
             number x = item:GetGlobalX()
             number y = item:GetGlobalY()
@@ -1480,8 +1480,8 @@ class SceneEditor is SceneEditor_LIBRARY
                 InteractableItem3D focus = cast(InteractableItem3D, manager:GetFocus())
                 number roll = math:Round(focus:GetRoll(), 1)
                 NotifyAccessibility(focus, "roll " + roll)
-            elseif manager:GetFocus() is InteractableItem2D
-                InteractableItem2D focus = cast(InteractableItem2D, manager:GetFocus())
+            elseif manager:GetFocus() is EditorItem2D
+                EditorItem2D focus = cast(EditorItem2D, manager:GetFocus())
                 number rotation = math:Round(focus:GetRotation(), 1)
                 NotifyAccessibility(focus, rotation + " degrees")
             end
