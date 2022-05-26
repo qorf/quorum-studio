@@ -20,7 +20,6 @@ use Libraries.Game.Scenes.DefaultSceneManager
 use Libraries.Game.Layer
 use Libraries.Game.Scenes.SceneProperties
 use Libraries.Game.Layer2D
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditorResources
 use Libraries.Interface.Item3D
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTree
@@ -38,6 +37,7 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorPointL
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.PointLightPropertiesDialog
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.EditorAudio3D
 use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
+use Libraries.Interface.Controls.Scenes.SceneConstants
 
 class VisualEditorTab is Tab, DefaultSceneManager
 
@@ -216,9 +216,9 @@ class VisualEditorTab is Tab, DefaultSceneManager
 
     // We override the particular save item calls to ignore items with the editor tag.
     private action SaveItem3D(Item3D item) returns JavaScriptObjectNotation
-        VisualEditorResources resources
+        SceneConstants constants
 
-        if item:HasProperty(resources:EDITOR_TAG)
+        if item:HasProperty(constants:EDITOR_TAG)
             return undefined
         elseif item is EditorAudio3D
             JavaScriptObjectNotation json
@@ -248,9 +248,9 @@ class VisualEditorTab is Tab, DefaultSceneManager
     end
 
     private action SaveItem2D(Item2D item) returns JavaScriptObjectNotation
-        VisualEditorResources resources
+        SceneConstants constants
 
-        if item:HasProperty(resources:EDITOR_TAG)
+        if item:HasProperty(constants:EDITOR_TAG)
             return undefined
         end
 
@@ -341,7 +341,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
     end
 
     private action CustomLoadProperty3D(Item3D item, text key, JavaScriptObjectNotation json) returns boolean
-        VisualEditorResources resources
+        SceneConstants constants
         if key = properties:PHYSICS_ENABLED
             JavaScriptObjectNotation newJson
             boolean value = json:GetBoolean(key)
@@ -370,7 +370,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
                 // An error occurs if there was no value to get. In that case we return silently.
                 return false
             end
-        elseif key = resources:EULER_ANGLES
+        elseif key = constants:EULER_ANGLES
             
         end
 
@@ -378,7 +378,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
     end
 
     private action CustomSaveProperty3D(Item3D item, text key, JavaScriptObjectNotation json) returns boolean
-        VisualEditorResources resources
+        SceneConstants constants
         if key = properties:CLASS
             if item is EditorPointLight
                 json:Add(key, "PointLight")
@@ -404,7 +404,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
                 json:Add(key, value)
                 return true
             end
-        elseif key = resources:EULER_ANGLES
+        elseif key = constants:EULER_ANGLES
             if not (item is EditorModel)
                 return false
             end

@@ -6,6 +6,7 @@ use Libraries.Containers.Iterator
 use Libraries.Game.Item2DDepthComparison
 use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
 use Libraries.Interface.Controls.Scenes.Items.EditorCursor
+use Libraries.Interface.Controls.Scenes.SceneConstants
 
 class EditorCursor2D is EditorCursor, Drawable
 
@@ -24,9 +25,9 @@ class EditorCursor2D is EditorCursor, Drawable
     action Load(EditorLayer2D layer)
         editorLayer = layer
 
-        VisualEditorResources resources    
-        LoadFilledRectangle(100, 100, resources:CURSOR_2D_COLOR)
-        SetZ(resources:CURSOR_2D_DEPTH)
+        SceneConstants constants    
+        LoadFilledRectangle(100, 100, constants:CURSOR_2D_COLOR)
+        SetZ(constants:CURSOR_2D_DEPTH)
         SetGridUnitSize(layer:GetGridUnitSize())
     end
 
@@ -60,7 +61,7 @@ class EditorCursor2D is EditorCursor, Drawable
 
     action GetItemsAtCursor returns Array<Item>
         Array<Item> array
-        VisualEditorResources resources
+        SceneConstants constants
 
         Iterator<Item2D> iterator = editorLayer:GetIterator()
         number x1 = GetX()
@@ -69,7 +70,7 @@ class EditorCursor2D is EditorCursor, Drawable
         number y2 = GetY() + GetHeight()
         repeat while iterator:HasNext()
             Item2D item = iterator:Next()
-            if item:HasProperty(resources:EDITOR_TAG) = false and item:GetX() < x2 and (item:GetX() + item:GetWidth()) > x1 and item:GetY() < y2 and (item:GetY() + item:GetHeight()) > y1
+            if item:HasProperty(constants:EDITOR_TAG) = false and item:GetX() < x2 and (item:GetX() + item:GetWidth()) > x1 and item:GetY() < y2 and (item:GetY() + item:GetHeight()) > y1
                 array:Add(item)
             end
         end

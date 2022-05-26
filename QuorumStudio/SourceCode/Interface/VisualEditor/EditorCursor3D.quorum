@@ -9,6 +9,7 @@ use Libraries.Game.Collision.Narrowphase.ConvexConvexCollisionSolver
 use Libraries.Game.Collision.Narrowphase.ConvexConvexCollisionSolverResults
 use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
 use Libraries.Interface.Controls.Scenes.Items.EditorCursor
+use Libraries.Interface.Controls.Scenes.SceneConstants
 
 
 class EditorCursor3D is EditorCursor, InteractableItem3D
@@ -30,8 +31,8 @@ class EditorCursor3D is EditorCursor, InteractableItem3D
     action Load(EditorLayer3D layer)
         editorLayer = layer
 
-        VisualEditorResources resources
-        LoadBox(1, 1, 1, resources:CURSOR_2D_COLOR)
+        SceneConstants constants
+        LoadBox(1, 1, 1, constants:CURSOR_2D_COLOR)
         SetGridUnitSize(layer:GetGridUnitSize())
     end
 
@@ -42,7 +43,7 @@ class EditorCursor3D is EditorCursor, InteractableItem3D
 
     action GetItemsAtCursor returns Array<Item>
         Array<Item> array
-        VisualEditorResources resources
+        SceneConstants constants
 
         Iterator<Item3D> iterator = editorLayer:GetIterator()
         number width = gridUnitSize * gridWidth * GetScaleX()
@@ -57,7 +58,7 @@ class EditorCursor3D is EditorCursor, InteractableItem3D
         number z2 = z1 + depth
         repeat while iterator:HasNext()
             Item3D item = iterator:Next()
-            if item:HasProperty(resources:EDITOR_TAG) = false
+            if item:HasProperty(constants:EDITOR_TAG) = false
                 boolean shouldAdd = false
                 if item:GetShape() not= undefined and item:GetCenterOfMassTransform() not= undefined
                     shouldAdd = collisionSolver:Collide(item:GetShape(), item:GetCenterOfMassTransform(), GetShape(), GetCenterOfMassTransform(), 0, collisionResults)

@@ -16,10 +16,11 @@ use Libraries.Development.Environment.Studio.Behaviors.SceneTreeEditorCameraBeha
 use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
+use Libraries.Interface.Controls.Scenes.SceneConstants
 
 class SceneTree is Tree, SelectionListener, SceneChangeListener
 
-    VisualEditorResources resources
+    SceneConstants constants
     SceneEditor controller = undefined
     
     // A single Item indicating that no scene is loaded.
@@ -103,7 +104,7 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
                 Iterator<Item2D> iterator = layer:GetIterator()
                 repeat while iterator:HasNext()
                     Item2D item = iterator:Next()
-                    if item:HasProperty(resources:EDITOR_TAG) = false
+                    if item:HasProperty(constants:EDITOR_TAG) = false
                         SceneTreeItem treeItem = ItemToTreeItems(item, layer)
                         itemContainerItem:Add(cast(TreeItem, treeItem))
                     end
@@ -116,7 +117,7 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
                 Iterator<Item3D> iterator = layer:GetIterator()
                 repeat while iterator:HasNext()
                     Item3D item = iterator:Next()
-                    if item:HasProperty(resources:EDITOR_TAG) = false
+                    if item:HasProperty(constants:EDITOR_TAG) = false
                         TreeItem treeItem = ItemToTreeItems(item, layer)
                         itemContainerItem:Add(treeItem)
                     end

@@ -5,6 +5,7 @@ use Libraries.Interface.Item2D
 use Libraries.Game.Graphics.Color
 use Libraries.Game.Scenes.SceneProperties
 use Libraries.Data.Formats.JavaScriptObjectNotation
+use Libraries.Interface.Controls.Scenes.SceneConstants
 
 class SelectionHighlight2D is InteractableItem2D, SelectionHighlight
 
@@ -12,8 +13,8 @@ class SelectionHighlight2D is InteractableItem2D, SelectionHighlight
     Drawable highlightBox
 
     on create
-        VisualEditorResources resources
-        SetZ(resources:SELECTION_HIGHLIGHT_2D_DEPTH)
+        SceneConstants constants
+        SetZ(constants:SELECTION_HIGHLIGHT_2D_DEPTH)
         SetInputGroup("SelectionHighlight2D")
         SetName("Selection Highlight")
     end
@@ -22,24 +23,17 @@ class SelectionHighlight2D is InteractableItem2D, SelectionHighlight
         return item
     end
 
-    // JUST TO MAKE IT COMPILE
-    // REMOVE LATER
-    action GetResources() returns VisualEditorResources
-        VisualEditorResources resources
-        return resources
-    end
-
     action Load(Item2D item, SceneEditor controller)
         Color color = undefined
-        VisualEditorResources resources = GetResources()
+        SceneConstants constants = GetConstants()
 
         if IsFocused()
-            color = resources:SELECTION_HIGHLIGHT_SELECTED_COLOR
+            color = constants:SELECTION_HIGHLIGHT_SELECTED_COLOR
         else
-            color = resources:SELECTION_HIGHLIGHT_UNSELECTED_COLOR
+            color = constants:SELECTION_HIGHLIGHT_UNSELECTED_COLOR
         end
 
-        number padding = resources:SELECTION_HIGHLIGHT_PADDING_2D
+        number padding = constants:SELECTION_HIGHLIGHT_PADDING_2D
 
         SceneProperties properties
         Drawable highlightBox
@@ -62,11 +56,11 @@ class SelectionHighlight2D is InteractableItem2D, SelectionHighlight
     end
 
     action GainedSelection
-        highlightBox:SetColor(GetResources():SELECTION_HIGHLIGHT_SELECTED_COLOR)
+        highlightBox:SetColor(GetConstants():SELECTION_HIGHLIGHT_SELECTED_COLOR)
     end
 
     action LostSelection
-        highlightBox:SetColor(GetResources():SELECTION_HIGHLIGHT_UNSELECTED_COLOR)
+        highlightBox:SetColor(GetConstants():SELECTION_HIGHLIGHT_UNSELECTED_COLOR)
     end
 
     action Scale(number x, number y)

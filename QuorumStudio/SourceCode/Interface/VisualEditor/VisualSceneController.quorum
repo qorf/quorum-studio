@@ -7,7 +7,6 @@ use Libraries.Game.Graphics.Color
 use Libraries.Game.Graphics.Camera
 use Libraries.Game.Layer3D
 use Libraries.Compute.Vector3
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditorResources
 use Libraries.Containers.Array
 use Libraries.Interface.Item3D
 use Libraries.Game.Graphics.Model
@@ -71,6 +70,7 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.NewItemPrevi
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.CameraItem2D
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem2D
 use Libraries.Interface.Controls.Scenes.Items.EditorItem
+use Libraries.Interface.Controls.Scenes.SceneConstants
 
 /*
 A class used to represent the 2D space within a Visual Editor tab.
@@ -81,7 +81,7 @@ class SceneEditor is SceneEditor_LIBRARY
     VisualEditorTab tab = undefined
 
     Array<EditorLayer> layers
-    VisualEditorResources visualResources
+    SceneConstants constants
     VisualEditorSelection selection
 
     Array<SceneChangeListener> sceneChangeListeners
@@ -275,13 +275,13 @@ class SceneEditor is SceneEditor_LIBRARY
         return tab
     end
 
-    action GetEditorTag returns text
-        return visualResources:EDITOR_TAG
-    end
-
-    action GetVisualEditorResources returns VisualEditorResources
-        return visualResources
-    end
+//    action GetEditorTag returns text
+//        return visualResources:EDITOR_TAG
+//    end
+//
+//    action GetVisualEditorResources returns VisualEditorResources
+//        return visualResources
+//    end
 
     action SetProperties3DDialog(Item3DPropertiesDialog dialog)
         item3dPropertiesDialog = dialog
@@ -641,7 +641,7 @@ class SceneEditor is SceneEditor_LIBRARY
                 if accessibility not= undefined
                     Item2D newDummy
                     text describe = GetDescription()
-                    newDummy:SetProperty(visualResources:EDITOR_TAG, undefined)
+                    newDummy:SetProperty(constants:EDITOR_TAG, undefined)
                     newDummy:SetFocusable(true)
                     newDummy:SetAccessibilityCode(dummyItem:parent:Item:ITEM)
                     newDummy:SetName(describe)
