@@ -2,32 +2,32 @@ package Libraries.Development.Environment.Studio.Behaviors
 
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneEditor
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.PropertiesDialog
 use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
 
 class FocusCameraBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
-        SceneEditor controller = undefined
+        SceneEditor editor = undefined
         Object item = event:GetItem()
         if item is SceneEditor
-            controller = cast(SceneEditor, item)
-        elseif item is InteractableItem
-            InteractableItem temp = cast(InteractableItem, item)
-            controller = temp:GetController()
+            editor = cast(SceneEditor, item)
+        elseif item is EditorItem
+            EditorItem temp = cast(EditorItem, item)
+            editor = cast(SceneEditor, temp:GetSceneEditor())
         elseif item is PropertiesDialog
             PropertiesDialog dialog = cast(PropertiesDialog, item)
-            controller = dialog:GetSceneController()
+            editor = dialog:GetSceneController()
         end
 
-        if controller = undefined
+        if editor = undefined
             return now
         end
 
-        EditorLayer layer = controller:GetSelectedLayer()
+        EditorLayer layer = editor:GetSelectedLayer()
         if layer not= undefined
-            controller:SelectEditorCamera(layer)
+            editor:SelectEditorCamera(layer)
         end
     end
 

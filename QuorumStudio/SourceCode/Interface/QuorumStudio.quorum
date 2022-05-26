@@ -90,7 +90,6 @@ use Libraries.Development.Environment.Studio.Behaviors.OpenVisualEditorFindDialo
 use Libraries.Development.Environment.Studio.Behaviors.CloseVisualEditorFindDialogBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SelectionResetScaleBehavior
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTree
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.ScenePalette
 use Libraries.Development.Environment.Studio.Behaviors.CursorSelectItemsBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CursorIncreaseSizeBehavior
@@ -109,6 +108,7 @@ use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
 use Libraries.System.Logger
 use Libraries.System.DateTime
 use Libraries.Development.Environment.Studio.Behaviors.FocusCameraBehavior
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 3
@@ -284,8 +284,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         currentFocus = event:GetNewFocus()
         previousFocus = event:GetLastFocus()
 
-        if currentFocus is InteractableItem
-            // If the focus was an InteractableItem, it must be from the scene editor.
+        if currentFocus is EditorItem
+            // If the focus was an EditorItem, it must be from the scene editor.
             focus = windowsList:GetValue(codeTabs:GetName())
 
         //Bubble up the parents until you find which window you're in

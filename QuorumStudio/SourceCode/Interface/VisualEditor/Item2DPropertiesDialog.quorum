@@ -17,6 +17,7 @@ use Libraries.Development.Environment.Studio.Behaviors.PropertiesEnablePhysicsBe
 use Libraries.Interface.Selections.ButtonGroupSelection
 use Libraries.Interface.Controls.ButtonGroup
 use Libraries.Interface.Controls.RadioButton
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
 
 class Item2DPropertiesDialog is PropertiesDialog
     
@@ -405,14 +406,14 @@ class Item2DPropertiesDialog is PropertiesDialog
             end
         elseif event:GetSelection() is ButtonGroupSelection
             ButtonGroupSelection selection = cast(ButtonGroupSelection, event:GetSelection())
-            InteractableItem item = GetSceneController():GetSelectedItem()
+            EditorItem item = GetSceneController():GetSelectedItem()
             if item not= undefined
                 item:SetEditorResponsiveness(selection:GetIndex())
             end
         end
     end
 
-    action SetFields(InteractableItem item)
+    action SetFields(EditorItem item)
         if item is InteractableItem2D = false
             return now
         end
@@ -547,7 +548,7 @@ class Item2DPropertiesDialog is PropertiesDialog
     end
 
     action SetPhysicsEnabled(boolean enabled)
-        InteractableItem item = GetSceneController():GetSelectedItem()
+        EditorItem item = GetSceneController():GetSelectedItem()
         if item not= undefined and item:IsEditorPhysicsEnabled() not= enabled
             item:SetEditorPhysicsEnabled(enabled)
         end

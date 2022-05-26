@@ -3,19 +3,19 @@ package Libraries.Development.Environment.Studio.Behaviors
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditorFindDialog
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneEditor
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
 
 class CloseVisualEditorFindDialogBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
         if event:GetItem() is VisualEditorFindDialog
             VisualEditorFindDialog dialog = cast(VisualEditorFindDialog, event:GetItem())
-            SceneEditor controller = dialog:GetController()
+            SceneEditor editor = dialog:GetController()
             
-            InteractableItem item = controller:GetSelectedItem()
+            EditorItem item = editor:GetSelectedItem()
             if item not= undefined
                 item:Focus()
             else
-                controller:Focus()
+                editor:Focus()
             end
 
             if dialog:IsShowing()

@@ -4,7 +4,7 @@ use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SelectionHighlight
 use Libraries.Containers.Array
 use Libraries.Interface.Item3D
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
 
 class SelectionCancelBehavior is QuorumStudioBehavior
 
@@ -12,9 +12,9 @@ class SelectionCancelBehavior is QuorumStudioBehavior
     Array<Item3D> emptyArray
 
     action Run(BehaviorEvent event)
-        if event:GetItem() is InteractableItem
-            InteractableItem item = cast(InteractableItem, event:GetItem())
-            item:GetController():SetFilteredItems(emptyArray, true)
+        if event:GetItem() is EditorItem
+            EditorItem item = cast(EditorItem, event:GetItem())
+            item:GetSceneEditor():SetFilteredItems(emptyArray, true)
         end
     end
 end

@@ -3,10 +3,11 @@ package Libraries.Development.Environment.Studio.Interface.VisualEditor
 use Libraries.Interface.Selections.Selection
 use Libraries.Interface.Item
 use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
 
 class VisualEditorSelection is Selection
     
-    InteractableItem selectedItem = undefined
+    EditorItem selectedItem = undefined
     EditorLayer selectedLayer = undefined
 
     boolean itemChanged = false
@@ -16,7 +17,7 @@ class VisualEditorSelection is Selection
         Initialize(controller, controller:GetName())
     end
 
-    action SetSelection(InteractableItem item)
+    action SetSelection(EditorItem item)
         if selectedItem not= undefined
             selectedItem:LostSelection()
         end
@@ -44,7 +45,7 @@ class VisualEditorSelection is Selection
         end
     end
 
-    action SetSelection(EditorLayer layer, InteractableItem item)
+    action SetSelection(EditorLayer layer, EditorItem item)
         if layer = selectedLayer
             if item not= selectedItem
                 SetSelection(item)
@@ -101,7 +102,7 @@ class VisualEditorSelection is Selection
         GetSceneController():UpdateCursorVisibility()
     end
 
-    action GetSelectedItem returns InteractableItem
+    action GetSelectedItem returns EditorItem
         return selectedItem
     end
 

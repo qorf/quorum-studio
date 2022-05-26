@@ -2,24 +2,24 @@ package Libraries.Development.Environment.Studio.Behaviors
 
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneEditor
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.InteractableItem
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
 
 class ToggleGridBehavior is QuorumStudioBehavior
     
     action Run(BehaviorEvent event)
-        SceneEditor controller = undefined
+        SceneEditor editor = undefined
 
         if event:GetItem() is SceneEditor
-            controller = cast(SceneEditor, event:GetItem())
-        elseif event:GetItem() is InteractableItem
-            InteractableItem item = cast(InteractableItem, event:GetItem())
-            controller = item:GetController()
+            editor = cast(SceneEditor, event:GetItem())
+        elseif event:GetItem() is EditorItem
+            EditorItem item = cast(EditorItem, event:GetItem())
+            editor = cast(SceneEditor, item:GetSceneEditor())
         end
 
-        if controller = undefined
+        if editor = undefined
             return now
         end
 
-        controller:SetGridSnapping(not controller:IsGridSnapping())
+        editor:SetGridSnapping(not editor:IsGridSnapping())
     end
 end
