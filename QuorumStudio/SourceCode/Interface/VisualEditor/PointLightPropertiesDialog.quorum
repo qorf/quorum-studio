@@ -14,6 +14,7 @@ use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Events.SelectionListener
 use Libraries.Game.Graphics.PointLight
 use Libraries.Interface.Controls.Scenes.Items.EditorItem
+use Libraries.Interface.Controls.Scenes.Items.EditorItem3D
 
 class PointLightPropertiesDialog is PropertiesDialog
 
@@ -234,7 +235,7 @@ class PointLightPropertiesDialog is PropertiesDialog
             else
                 Object item = selection:GetSelectedItem()
                 if item is PointLightSelectionHighlight or item is NewPointLightPreview
-                    SetFields(cast(InteractableItem3D, item))
+                    SetFields(cast(EditorItem3D, item))
                     if not IsShowing()
                         Show()
                     end
@@ -248,14 +249,14 @@ class PointLightPropertiesDialog is PropertiesDialog
     end
 
     action SetFields(EditorItem item)
-        if item is InteractableItem3D = false
+        if item is EditorItem3D = false
             return now
         end
 
-        SetFields(cast(InteractableItem3D, item))
+        SetFields(cast(EditorItem3D, item))
     end
 
-    action SetFields(InteractableItem3D item)
+    action SetFields(EditorItem3D item)
         nameField:SetText(item:GetName())
         positionXField:SetText("" + item:GetX())
         positionYField:SetText("" + item:GetY())
@@ -276,7 +277,7 @@ class PointLightPropertiesDialog is PropertiesDialog
     end
 
     action TextChanged(TextChangeEvent event)
-        InteractableItem3D currentItem = cast(InteractableItem3D, cast(Object, GetSceneController():GetSelectedItem()))
+        EditorItem3D currentItem = cast(EditorItem3D, cast(Object, GetSceneController():GetSelectedItem()))
         Control control = event:GetControl()
 
         if currentItem = undefined

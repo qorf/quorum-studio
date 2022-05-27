@@ -17,6 +17,7 @@ use Libraries.Development.Environment.Studio.Behaviors.PropertiesChooseSourceBeh
 use Libraries.Game.Graphics.Drawable
 use Libraries.Interface.Controls.Icon
 use Libraries.Interface.Controls.Scenes.Items.EditorItem
+use Libraries.Interface.Controls.Scenes.Items.EditorItem3D
 
 class Audio3DPropertiesDialog is PropertiesDialog
 
@@ -418,8 +419,8 @@ class Audio3DPropertiesDialog is PropertiesDialog
                 end
             else
                 Item selectedItem = selection:GetSelectedItem()
-                if selectedItem is EditorAudio3D and selectedItem is InteractableItem3D
-                    SetFields(cast(InteractableItem3D, selectedItem))
+                if selectedItem is EditorAudio3D and selectedItem is EditorItem3D
+                    SetFields(cast(EditorItem3D, selectedItem))
                     if not IsShowing()
                         Show()
                     end
@@ -433,14 +434,14 @@ class Audio3DPropertiesDialog is PropertiesDialog
     end
 
     action SetFields(EditorItem item)
-        if item is InteractableItem3D = false
+        if item is EditorItem3D = false
             return now
         end
 
-        SetFields(cast(InteractableItem3D, item))
+        SetFields(cast(EditorItem3D, item))
     end
 
-    action SetFields(InteractableItem3D item)
+    action SetFields(EditorItem3D item)
         nameField:SetText(item:GetName())
         positionXField:SetText("" + item:GetX())
         positionYField:SetText("" + item:GetY())

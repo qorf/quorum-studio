@@ -19,6 +19,7 @@ use Libraries.Interface.Controls.ButtonGroup
 use Libraries.Interface.Controls.RadioButton
 use Libraries.Game.Graphics.PointLight
 use Libraries.Interface.Controls.Scenes.Items.EditorItem
+use Libraries.Interface.Controls.Scenes.Items.EditorItem3D
 
 class Item3DPropertiesDialog is PropertiesDialog
 
@@ -516,7 +517,7 @@ class Item3DPropertiesDialog is PropertiesDialog
             else
                 Item selectedItem = selection:GetSelectedItem()
                 if selectedItem is ModelSelectionHighlight or selectedItem is NewModelPreview or selectedItem is NewCustom3DPrimitivePreview
-                    SetFields(cast(InteractableItem3D, selectedItem))
+                    SetFields(cast(EditorItem3D, selectedItem))
                     if not IsShowing()
                         Show()
                     end
@@ -543,14 +544,14 @@ class Item3DPropertiesDialog is PropertiesDialog
     end
 
     action SetFields(EditorItem item)
-        if item is InteractableItem3D = false
+        if item is EditorItem3D = false
             return now
         end
 
-        SetFields(cast(InteractableItem3D, item))
+        SetFields(cast(EditorItem3D, item))
     end
 
-    action SetFields(InteractableItem3D item)
+    action SetFields(EditorItem3D item)
         nameField:SetText(item:GetName())
         positionXField:SetText("" + item:GetX())
         positionYField:SetText("" + item:GetY())
@@ -584,7 +585,7 @@ class Item3DPropertiesDialog is PropertiesDialog
     end
 
     action TextChanged(TextChangeEvent event)
-        InteractableItem3D currentItem = cast(InteractableItem3D, GetSceneController():GetSelectedItem())
+        EditorItem3D currentItem = cast(EditorItem3D, GetSceneController():GetSelectedItem())
         Control control = event:GetControl()
 
         if currentItem = undefined
