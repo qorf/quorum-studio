@@ -51,13 +51,10 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.PointLightSe
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Audio3DSelectionHighlight
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.ModelSelectionHighlight
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneChangeEvent
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.NewItemPreview2D
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.NewItemPreview3D
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.NewModelPreview
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.NewPointLightPreview
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.NewAudio3DPreview
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.NewCustom3DPrimitivePreview
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.NewItemPreview
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.CameraItem2D
 use Libraries.Interface.Controls.Scenes.Items.EditorItem
 use Libraries.Interface.Controls.Scenes.SceneConstants
@@ -73,6 +70,9 @@ use Libraries.Interface.Controls.Scenes.Blueprints.DrawableBlueprint
 use Libraries.Interface.Controls.Scenes.Blueprints.CustomModelBlueprint
 use Libraries.Interface.Controls.Scenes.Blueprints.ModelBlueprint
 use Libraries.Interface.Controls.Scenes.Blueprints.PointLightBlueprint
+use Libraries.Interface.Controls.Scenes.Items.Previews.ItemPreview
+use Libraries.Interface.Controls.Scenes.Items.Previews.ItemPreview2D
+use Libraries.Interface.Controls.Scenes.Items.Previews.ItemPreview3D
 
 
 /*
@@ -900,11 +900,11 @@ class SceneEditor is SceneEditor_LIBRARY
         NotifySceneChangeListeners(event)
     end
 
-    action CreateNewItemPreview(ItemBlueprint schematic)
-        CreateNewItemPreview(schematic, undefined)
+    action CreateItemPreview(ItemBlueprint schematic)
+        CreateItemPreview(schematic, undefined)
     end
 
-    action CreateNewItemPreview(ItemBlueprint schematic, File asset)
+    action CreateItemPreview(ItemBlueprint schematic, File asset)
         if schematic is DrawableBlueprint
             DrawableBlueprint drawableBlueprint = cast(DrawableBlueprint, schematic)
             if not (GetSelectedLayer() is EditorLayer2D)
@@ -933,7 +933,7 @@ class SceneEditor is SceneEditor_LIBRARY
                 layer:UpdateGridPosition()
             end
 
-            NewItemPreview2D preview
+            ItemPreview2D preview
             preview:Load(me, drawableBlueprint)
             // TO-DO: Position preview to match cursor
 
@@ -963,7 +963,7 @@ class SceneEditor is SceneEditor_LIBRARY
 
             // TO-DO: Consider modifying grid size for 3D objects here, same as with 2D objects above.
 
-            NewItemPreview3D preview = undefined
+            ItemPreview3D preview = undefined
             if asset = undefined
                 if schematic is ModelBlueprint
                     NewModelPreview modelPreview
@@ -1001,13 +1001,13 @@ class SceneEditor is SceneEditor_LIBRARY
         end
     end
 
-    action CancelNewItemPreview(NewItemPreview preview)
-        if preview is NewItemPreview3D
-            NewItemPreview3D preview3D = cast(NewItemPreview3D, preview)
+    action CancelItemPreview(ItemPreview preview)
+        if preview is ItemPreview3D
+            ItemPreview3D preview3D = cast(ItemPreview3D, preview)
             EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
             layer:Remove(preview3D)
         else
-            NewItemPreview2D preview2D = cast(NewItemPreview2D, preview)
+            ItemPreview2D preview2D = cast(ItemPreview2D, preview)
             EditorLayer2D layer = cast(EditorLayer2D, GetSelectedLayer())
             layer:Remove(preview2D)
         end
@@ -1058,7 +1058,7 @@ class SceneEditor is SceneEditor_LIBRARY
         return "Item"
     end
 
-    action ConfirmNewItemPreview(NewItemPreview newItem)
+    action ConfirmItemPreview(ItemPreview newItem)
         Item result = undefined
         EditorLayer resultLayer = undefined
 
@@ -1066,8 +1066,8 @@ class SceneEditor is SceneEditor_LIBRARY
             IncrementNameCount(newItem:GetItemBlueprint():GetName())
         end
 
-        if newItem is NewItemPreview3D
-            NewItemPreview3D preview = cast(NewItemPreview3D, newItem)
+        if newItem is ItemPreview3D
+            ItemPreview3D preview = cast(ItemPreview3D, newItem)
             Model model = preview:ConvertToModel()
             result = model
 
@@ -1075,8 +1075,8 @@ class SceneEditor is SceneEditor_LIBRARY
             EditorLayer3D layer = cast(EditorLayer3D, GetSelectedLayer())
             resultLayer = layer
             layer:Add(model)
-        elseif newItem is NewItemPreview2D
-            NewItemPreview2D preview = cast(NewItemPreview2D, newItem)
+        elseif newItem is ItemPreview2D
+            ItemPreview2D preview = cast(ItemPreview2D, newItem)
             Drawable drawable = preview:ConvertToDrawable()
             result = drawable
 
@@ -1105,7 +1105,7 @@ class SceneEditor is SceneEditor_LIBRARY
                 pointLightPropertiesDialog:SetFields(newItem)
             elseif newItem is NewAudio3DPreview
                 audio3DPropertiesDialog:SetFields(newItem)
-            elseif newItem is NewItemPreview2D
+            elseif newItem is ItemPreview2D
                 item2dPropertiesDialog:SetFields(newItem)
             end
         end
