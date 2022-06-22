@@ -19,8 +19,10 @@ use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
 use Libraries.Interface.Controls.Scenes.SceneConstants
 use Libraries.Interface.Controls.Scenes.Layers.EditorLayer2D
 use Libraries.Interface.Selections.SceneEditorSelection
+use Libraries.Interface.Events.SceneEditorChangeListener
+use Libraries.Interface.Events.SceneEditorChangeEvent
 
-class SceneTree is Tree, SelectionListener, SceneChangeListener
+class SceneTree is Tree, SelectionListener, SceneEditorChangeListener
 
     SceneConstants constants
     SceneEditor controller = undefined
@@ -49,7 +51,7 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
 
     action SetSceneController(SceneEditor sceneController)
         if controller not= undefined
-            controller:RemoveSceneChangeListener(me)
+            controller:RemoveSceneEditorChangeListener(me)
         end
 
         controller = sceneController
@@ -64,7 +66,7 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
 
             Add(defaultItem)
         else
-            controller:AddSceneChangeListener(me)
+            controller:AddSceneEditorChangeListener(me)
             Load(controller:GetSceneLayers())
         end
     end
@@ -195,7 +197,7 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
         end
     end
 
-    action SceneAddedItem(SceneChangeEvent event)
+    action SceneAddedItem(SceneEditorChangeEvent event)
         if controller = undefined
             return now
         end
@@ -243,7 +245,7 @@ class SceneTree is Tree, SelectionListener, SceneChangeListener
         end
     end
 
-    action SceneRemovedItem(SceneChangeEvent event)
+    action SceneRemovedItem(SceneEditorChangeEvent event)
         if controller = undefined
             return now
         end
