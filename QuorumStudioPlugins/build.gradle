@@ -1,5 +1,8 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
 plugins {
     id 'java'
+    id "de.undercouch.download" version "5.1.0"
 }
 
 group 'plugins.quorum.studio'
@@ -33,21 +36,62 @@ dependencies {
 java {
     toolchain {
         /*
-            The first time this is used, we need to set this version
-            so Gradle will download it. There is probably a better way,
-            but we then go back to JDK 8. Eventually, the switch can be permanent
-            and this will no longer be needed.
+            We now deploy with JDK 11 as the base and compiling without it, while it used to be necessary
+            in older versions of QS, is no longer necessary.
          */
         languageVersion.set(JavaLanguageVersion.of(11))
         vendor = JvmVendorSpec.ADOPTOPENJDK
-
-//        languageVersion.set(JavaLanguageVersion.of(8))
-//        vendor = JvmVendorSpec.ADOPTOPENJDK
     }
 }
 
 test {
     //useJUnitPlatform()
+}
+
+/*
+Use Download Task to get all of the relevant JDKs that will be deployed with the project. The goal here is to get
+the JDK's associated with the the machine in question and then to modify the script to move it into
+Quorum Studio in the correct way per platform. Different architectures are all downloaded here in part
+to future proof the system and make it consistent everywhere, including in the transition to the M1 processor on Mac.
+
+Here is the documentation for the download task plugin
+https://github.com/michel-kraemer/gradle-download-task
+ */
+task downloadJDKs(type: Download) {
+    //download JDKs for Mac aarch64, x86_64 and Windows x86_64
+    src ([
+            'https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz',
+            'https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz',
+            'https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip'
+    ])
+    dest "$buildDir/jdks"
+    overwrite false
+    doLast {
+        copy {
+            from tarTree(resources.gzip("$buildDir/jdks/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"))
+            into "$buildDir/jdks/mac/x64/"
+        }
+        copy {
+            from tarTree(resources.gzip("$buildDir/jdks/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz"))
+            into "$buildDir/jdks/mac/aarch64/"
+        }
+        copy {
+            from zipTree("$buildDir/jdks/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip")
+            into "$buildDir/jdks/windows/x64/"
+        }
+    }
+}
+
+task(OSCheck) {
+    if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+        println " IS WINDOWS "
+    } else if(Os.isFamily(Os.FAMILY_MAC)) {
+        println " IS MAC "
+    } else if(Os.isFamily(Os.FAMILY_UNIX)) {
+        println " IS UNIX "
+    } else {
+        println " Other OS "
+    }
 }
 
 /*
@@ -62,12 +106,20 @@ task('copyBuild', type: JavaCompile) {
     }
 
     def destPath = '../QuorumStudio/Java/jdk'
-    def homePath = System.properties['user.home'] + "/.gradle/jdks/jdk-11.0.13+8"
+    def homePath = ""
+    if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+        homePath = "$buildDir/jdks/windows/x64/jdk-11.0.15+10"
+    } else if(Os.isFamily(Os.FAMILY_MAC)) {
+        homePath = "$buildDir/jdks/mac/x64/jdk-11.0.15+10"
+    }
     if (!file(destPath).exists()) {
         copy {
             from homePath
             into destPath
         }
+        print "Copy Complete."
+    } else {
+        print "JDK already there. No copying was done."
     }
 }
 
