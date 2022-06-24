@@ -50,27 +50,28 @@ class QuorumLoginBehavior is QuorumStudioBehavior, NetworkRequestListener
 
         request:SetWebAddress("https://quorumlanguage.com/login.php")
         Credentials credentials = options:GetPassword(options:QUORUM_WEBSITE_PASSWORD_KEY)
-        if credentials = undefined 
-            or credentials:GetUsername() = undefined
-            or credentials:GetPassword() = undefined
-            or credentials:GetUsername():IsEmpty()
-            or credentials:GetPassword():IsEmpty()
-            //the user has no login credentials
-            
-        else// Try to login!
-            text user = credentials:GetUsername()
-            text pass = credentials:GetPassword()
-            request:SetBody("username="+user + "&password=" + pass)
-            NetworkConnection http
-            http:AddListener(me)
-    
-            check
-                http:SendRequest(request)
-            detect e
-                output "An error occurred while logging in."
-                e:OutputStackTrace()
-            end
-        end        
+        text user = "defaultLogin"
+        text pass = "noPassword"
+
+        if credentials not= undefined 
+            and credentials:GetUsername() not= undefined
+            and credentials:GetPassword() not= undefined
+            and credentials:GetUsername():IsEmpty() = false
+            and credentials:GetPassword():IsEmpty() = false
+        
+            user = credentials:GetUsername()
+            pass = credentials:GetPassword()
+        end
+        request:SetBody("username="+user + "&password=" + pass)
+        NetworkConnection http
+        http:AddListener(me)
+
+        check
+            http:SendRequest(request)
+        detect e
+            output "An error occurred while logging in."
+            e:OutputStackTrace()
+        end
     end
 
     action ResponseReceived(NetworkResponseEvent response)
