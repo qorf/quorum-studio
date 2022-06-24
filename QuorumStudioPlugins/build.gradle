@@ -7,6 +7,7 @@ plugins {
 
 group 'plugins.quorum.studio'
 version '4.0'
+def jdkFolder = "${project.rootDir}/jdks"
 
 repositories {
     mavenCentral()
@@ -57,69 +58,58 @@ to future proof the system and make it consistent everywhere, including in the t
 Here is the documentation for the download task plugin
 https://github.com/michel-kraemer/gradle-download-task
  */
-task downloadJDKs(type: Download) {
+task downloadJDKsAndCopyToQuorumStudio(type: Download) {
     //download JDKs for Mac aarch64, x86_64 and Windows x86_64
     src ([
             'https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz',
             'https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz',
             'https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip'
     ])
-    dest "$buildDir/jdks"
+    dest jdkFolder
     overwrite false
     doLast {
+        println "Cleaning up old files"
+        delete "${jdkFolder}/mac"
+        delete "${jdkFolder}/windows"
+
+        println "Deflating jdks"
+        println "${jdkFolder}/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"
         copy {
-            from tarTree(resources.gzip("$buildDir/jdks/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"))
-            into "$buildDir/jdks/mac/x64/"
+            from tarTree(resources.gzip("${jdkFolder}/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"))
+            into jdkFolder + "/mac/x64/"
         }
         copy {
-            from tarTree(resources.gzip("$buildDir/jdks/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz"))
-            into "$buildDir/jdks/mac/aarch64/"
+            from tarTree(resources.gzip(jdkFolder + "/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz"))
+            into jdkFolder + "/mac/aarch64/"
         }
         copy {
-            from zipTree("$buildDir/jdks/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip")
-            into "$buildDir/jdks/windows/x64/"
+            from zipTree(jdkFolder + "/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip")
+            into jdkFolder + "/windows/x64/"
         }
-    }
-}
-
-task(OSCheck) {
-    if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-        println " IS WINDOWS "
-    } else if(Os.isFamily(Os.FAMILY_MAC)) {
-        println " IS MAC "
-    } else if(Os.isFamily(Os.FAMILY_UNIX)) {
-        println " IS UNIX "
-    } else {
-        println " Other OS "
-    }
-}
-
-/*
-    For temporary compatibility with the old NetBeans system, copy the class folder
-    into a new location.
- */
-task('copyBuild', type: JavaCompile) {
-
-    copy {
-        from 'build/classes/java/main'
-        into 'build/classes'
-    }
-
-    def destPath = '../QuorumStudio/Java/jdk'
-    def homePath = ""
-    if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-        homePath = "$buildDir/jdks/windows/x64/jdk-11.0.15+10"
-    } else if(Os.isFamily(Os.FAMILY_MAC)) {
-        homePath = "$buildDir/jdks/mac/x64/jdk-11.0.15+10"
-    }
-    if (!file(destPath).exists()) {
+        print "Copying from Quorum Studio"
         copy {
-            from homePath
-            into destPath
+            from 'build/classes/java/main'
+            into 'build/classes'
         }
-        print "Copy Complete."
-    } else {
-        print "JDK already there. No copying was done."
+
+        print "Copying to Installer"
+        def destPath = '../QuorumStudio/Java/jdk'
+        def homePath = ""
+        if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+            homePath = jdkFolder + "/windows/x64/jdk-11.0.15+10"
+        } else if(Os.isFamily(Os.FAMILY_MAC)) {
+            homePath = jdkFolder + "/mac/x64/jdk-11.0.15+10"
+        } //Os.FAMILY_UNIX
+        if (!file(destPath).exists()) {
+            mkdir destPath
+            copy {
+                from homePath
+                into destPath
+            }
+            print "Copy Complete."
+        } else {
+            print "JDK already there. No copying was done."
+        }
     }
 }
 
