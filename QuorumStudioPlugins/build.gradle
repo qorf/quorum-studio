@@ -1,9 +1,13 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
 plugins {
     id 'java'
+    id "de.undercouch.download" version "5.1.0"
 }
 
 group 'plugins.quorum.studio'
 version '4.0'
+def jdkFolder = "${project.rootDir}/jdks"
 
 repositories {
     mavenCentral()
@@ -14,7 +18,7 @@ dependencies {
     //testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
 
     //First the dependency for the poorly named Quorum Debugger
-    compileOnly files('../../debugger/OmniscientDebugger/build/libs/OmniscientDebugger.jar')
+    compileOnly files('../../quorum-debugger/build/libs/OmniscientDebugger.jar')
 
     //Now the standard library and compile against Quorum Studio itself.
     compileOnly files('../../quorum-language/Quorum/Library/Compiled/Run/QuorumStandardLibrary.jar')
@@ -33,15 +37,10 @@ dependencies {
 java {
     toolchain {
         /*
-            The first time this is used, we need to set this version
-            so Gradle will download it. There is probably a better way,
-            but we then go back to JDK 8. Eventually, the switch can be permanent
-            and this will no longer be needed.
+            We now deploy with JDK 11 as the base and compiling without it, while it used to be necessary
+            in older versions of QS, is no longer necessary.
          */
-//        languageVersion.set(JavaLanguageVersion.of(11))
-//        vendor = JvmVendorSpec.ADOPTOPENJDK
-
-        languageVersion.set(JavaLanguageVersion.of(8))
+        languageVersion.set(JavaLanguageVersion.of(11))
         vendor = JvmVendorSpec.ADOPTOPENJDK
     }
 }
@@ -51,22 +50,65 @@ test {
 }
 
 /*
-    For temporary compatibility with the old NetBeans system, copy the class folder
-    into a new location.
+Use Download Task to get all of the relevant JDKs that will be deployed with the project. The goal here is to get
+the JDK's associated with the the machine in question and then to modify the script to move it into
+Quorum Studio in the correct way per platform. Different architectures are all downloaded here in part
+to future proof the system and make it consistent everywhere, including in the transition to the M1 processor on Mac.
+
+Here is the documentation for the download task plugin
+https://github.com/michel-kraemer/gradle-download-task
  */
-task('copyBuild', type: JavaCompile) {
+task downloadJDKsAndCopyToQuorumStudio(type: Download) {
+    //download JDKs for Mac aarch64, x86_64 and Windows x86_64
+    src ([
+            'https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz',
+            'https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz',
+            'https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip'
+    ])
+    dest jdkFolder
+    overwrite false
+    doLast {
+        println "Cleaning up old files"
+        delete "${jdkFolder}/mac"
+        delete "${jdkFolder}/windows"
 
-    copy {
-        from 'build/classes/java/main'
-        into 'build/classes'
-    }
-
-    def destPath = '../QuorumStudio/Java/jdk'
-    def homePath = System.properties['user.home'] + "/.gradle/jdks/jdk-11.0.13+8"
-    if (!file(destPath).exists()) {
+        println "Deflating jdks"
+        println "${jdkFolder}/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"
         copy {
-            from homePath
-            into destPath
+            from tarTree(resources.gzip("${jdkFolder}/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"))
+            into jdkFolder + "/mac/x64/"
+        }
+        copy {
+            from tarTree(resources.gzip(jdkFolder + "/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz"))
+            into jdkFolder + "/mac/aarch64/"
+        }
+        copy {
+            from zipTree(jdkFolder + "/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip")
+            into jdkFolder + "/windows/x64/"
+        }
+        print "Copying from Quorum Studio"
+        copy {
+            from 'build/classes/java/main'
+            into 'build/classes'
+        }
+
+        print "Copying to Installer"
+        def destPath = '../QuorumStudio/Java/jdk'
+        def homePath = ""
+        if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+            homePath = jdkFolder + "/windows/x64/jdk-11.0.15+10"
+        } else if(Os.isFamily(Os.FAMILY_MAC)) {
+            homePath = jdkFolder + "/mac/x64/jdk-11.0.15+10"
+        } //Os.FAMILY_UNIX
+        if (!file(destPath).exists()) {
+            mkdir destPath
+            copy {
+                from homePath
+                into destPath
+            }
+            print "Copy Complete."
+        } else {
+            print "JDK already there. No copying was done."
         }
     }
 }
