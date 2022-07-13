@@ -19,9 +19,6 @@ use Libraries.Interface.Events.FocusEvent
 use Libraries.Compute.Vector2
 use Libraries.Game.Graphics.Drawable
 use Libraries.Containers.HashTable
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.SceneControllerEditManager
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.DeleteEdit
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.InsertEdit
 use Libraries.Game.Game
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
@@ -73,6 +70,9 @@ use Libraries.Interface.Controls.Scenes.Layers.EditorLayer2D
 use Libraries.Interface.Controls.Scenes.Items.EditorCursor2D
 use Libraries.Interface.Events.SceneEditorChangeListener
 use Libraries.Interface.Events.SceneEditorChangeEvent
+use Libraries.Interface.Undo.SceneEditorEditManager
+use Libraries.Interface.Undo.SceneEditorDeleteEdit
+use Libraries.Interface.Undo.SceneEditorInsertEdit
 
 
 /*
@@ -89,7 +89,7 @@ class SceneEditor is SceneEditor_LIBRARY
 
     Array<SceneEditorChangeListener> sceneEditorChangeListeners
 
-    SceneControllerEditManager editManager
+    SceneEditorEditManager editManager
 
     // The rotational speed measured in degrees,
     // and the directional speed, measured in 3D world units.
@@ -380,7 +380,7 @@ class SceneEditor is SceneEditor_LIBRARY
         return findDialog
     end
 
-    action GetEditManager returns SceneControllerEditManager
+    action GetEditManager returns SceneEditorEditManager
         return editManager
     end
 
@@ -835,7 +835,7 @@ class SceneEditor is SceneEditor_LIBRARY
             nextFocus:Focus()
         end
 
-        DeleteEdit edit
+        SceneEditorDeleteEdit edit
         edit:Create(me, resultLayer, highlight:GetItem())
         editManager:Add(edit)
 
@@ -891,7 +891,7 @@ class SceneEditor is SceneEditor_LIBRARY
             index = index + 1
         end
 
-        DeleteEdit edit
+        SceneEditorDeleteEdit edit
         edit:Create(me, resultLayer, item)
         editManager:Add(edit)
 
@@ -1110,7 +1110,7 @@ class SceneEditor is SceneEditor_LIBRARY
             end
         end
 
-        InsertEdit edit
+        SceneEditorInsertEdit edit
         edit:Create(me, resultLayer, result)
         editManager:Add(edit)
     end
@@ -1135,7 +1135,7 @@ class SceneEditor is SceneEditor_LIBRARY
         event:Set(me, item, undefined, layer, event:ADDED)
         NotifySceneEditorChangeListeners(event)
 
-        InsertEdit edit
+        SceneEditorInsertEdit edit
         edit:Create(me, layer, item)
         editManager:Add(edit)
     end

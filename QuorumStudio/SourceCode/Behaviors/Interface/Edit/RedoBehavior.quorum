@@ -11,7 +11,7 @@ use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Undo.TextBoxEditManager
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneEditor
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.Edits.SceneControllerEditManager
+use Libraries.Interface.Undo.SceneEditorEditManager
 
 class RedoBehavior is EditorBehavior
     action Run(Item item)
@@ -24,7 +24,7 @@ class RedoBehavior is EditorBehavior
             end
         elseif item is SceneEditor
             SceneEditor controller = cast(SceneEditor, item)
-            SceneControllerEditManager manager = controller:GetEditManager()
+            SceneEditorEditManager manager = controller:GetEditManager()
             if manager not= undefined and manager:CanRedo()
                 manager:Redo()
             end
