@@ -22,6 +22,7 @@ use Libraries.Interface.Controls.Scenes.Items.EditorItem
 use Libraries.Interface.Controls.Scenes.Layers.EditorLayer2D
 use Libraries.Interface.Selections.SceneEditorSelection
 use Libraries.Interface.Controls.Scenes.Items.CameraItem2D
+use Libraries.Interface.Controls.Scenes.Dialogs.PropertiesDialog
 
 class Camera2DPropertiesDialog is PropertiesDialog
 
@@ -194,7 +195,7 @@ class Camera2DPropertiesDialog is PropertiesDialog
             end
         elseif event:GetSelection() is ButtonGroupSelection
             ButtonGroupSelection selection = cast(ButtonGroupSelection, event:GetSelection())
-            EditorItem item = GetSceneController():GetSelectedItem()
+            EditorItem item = GetSceneEditor():GetSelectedItem()
             if item not= undefined
                 item:SetEditorResponsiveness(selection:GetIndex())
             end
@@ -218,7 +219,7 @@ class Camera2DPropertiesDialog is PropertiesDialog
     end
 
     action TextChanged(TextChangeEvent event)
-        CameraItem2D currentItem = cast(CameraItem2D, GetSceneController():GetSelectedItem())
+        CameraItem2D currentItem = cast(CameraItem2D, GetSceneEditor():GetSelectedItem())
         OrthographicCamera camera = cast(OrthographicCamera, currentItem:GetCamera())
         Control control = event:GetControl()
 
