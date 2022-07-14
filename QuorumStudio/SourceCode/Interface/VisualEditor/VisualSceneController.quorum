@@ -34,7 +34,6 @@ use Libraries.Development.Environment.Studio.Interface.VisualEditor.PointLightPr
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.Audio3DPropertiesDialog
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.PropertiesDialog
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.VisualEditorFindDialog
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.NewModelPreview
 use Libraries.Development.Environment.Studio.Interface.VisualEditor.NewCustom3DPrimitivePreview
 use Libraries.Interface.Selections.SceneEditorSelection
 use Libraries.Interface.Controls.Scenes.Items.EditorItem
@@ -75,6 +74,7 @@ use Libraries.Interface.Controls.Scenes.Items.CameraItem2D
 use Libraries.Interface.Controls.Scenes.Items.CameraItem3D
 use Libraries.Interface.Controls.Scenes.Items.Previews.PointLightPreview
 use Libraries.Interface.Controls.Scenes.Items.Previews.Audio3DPreview
+use Libraries.Interface.Controls.Scenes.Items.Previews.ModelPreview
 
 
 /*
@@ -968,7 +968,7 @@ class SceneEditor is SceneEditor_LIBRARY
             ItemPreview3D preview = undefined
             if asset = undefined
                 if schematic is ModelBlueprint
-                    NewModelPreview modelPreview
+                    ModelPreview modelPreview
                     preview = modelPreview
                     ModelBlueprint modelBlueprint = cast(ModelBlueprint, schematic)
                     modelPreview:Load(me, modelBlueprint)
@@ -992,7 +992,7 @@ class SceneEditor is SceneEditor_LIBRARY
                 elseif schematic is CustomModelBlueprint
                     CustomModelBlueprint newBlueprint = cast(CustomModelBlueprint, schematic)
                     newBlueprint:SetFile(asset)
-                    NewModelPreview modelPreview
+                    ModelPreview modelPreview
                     preview = modelPreview
                     modelPreview:Load(me, newBlueprint)
                 end
@@ -1101,7 +1101,7 @@ class SceneEditor is SceneEditor_LIBRARY
         if newItem:GetItemBlueprint() not= undefined
             text name = newItem:GetItemBlueprint():GetName()
             newItem:SetName(name + GetNextNamePostfix(name))
-            if newItem is NewModelPreview
+            if newItem is ModelPreview
                 item3dPropertiesDialog:SetFields(newItem)
             elseif newItem is PointLightPreview
                 pointLightPropertiesDialog:SetFields(newItem)
