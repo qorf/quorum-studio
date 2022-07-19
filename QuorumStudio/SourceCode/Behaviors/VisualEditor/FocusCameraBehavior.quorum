@@ -1,7 +1,6 @@
 package Libraries.Development.Environment.Studio.Behaviors
 
 use Libraries.Interface.Events.BehaviorEvent
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneEditor
 use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
 use Libraries.Interface.Controls.Scenes.Items.EditorItem
 use Libraries.Interface.Controls.Scenes.Dialogs.PropertiesDialog
@@ -12,11 +11,11 @@ class FocusCameraBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
         SceneEditor_LIBRARY editor = undefined
         Object item = event:GetItem()
-        if item is SceneEditor
-            editor = cast(SceneEditor, item)
+        if item is SceneEditor_LIBRARY
+            editor = cast(SceneEditor_LIBRARY, item)
         elseif item is EditorItem
             EditorItem temp = cast(EditorItem, item)
-            editor = cast(SceneEditor, temp:GetSceneEditor())
+            editor = temp:GetSceneEditor()
         elseif item is PropertiesDialog
             PropertiesDialog dialog = cast(PropertiesDialog, item)
             editor = dialog:GetSceneEditor()

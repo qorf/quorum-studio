@@ -1,16 +1,16 @@
 package Libraries.Development.Environment.Studio.Behaviors
 
 use Libraries.Interface.Events.BehaviorEvent
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneEditor
 use Libraries.Compute.Math
+use Libraries.Interface.Controls.Scenes.SceneEditor_LIBRARY
 
 class ReportCameraDirectionBehavior is QuorumStudioBehavior
 
     Math math
 
     action Run(BehaviorEvent event)
-        if event:GetItem() is SceneEditor
-            SceneEditor controller = cast(SceneEditor, event:GetItem())
+        if event:GetItem() is SceneEditor_LIBRARY
+            SceneEditor_LIBRARY controller = cast(SceneEditor_LIBRARY, event:GetItem())
             controller:NotifyAccessibility(controller, "Camera yaw is " + math:Round(controller:GetYaw(), 1) + ", pitch is " + math:Round(controller:GetPitch(), 1))
         end
     end

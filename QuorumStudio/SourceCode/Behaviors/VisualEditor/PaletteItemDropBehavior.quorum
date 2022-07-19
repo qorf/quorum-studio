@@ -4,7 +4,6 @@ use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Interface.Events.DragAndDropEvent
 use Libraries.Interface.Item
 use Libraries.Interface.Item2D
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneEditor
 use Libraries.Interface.Item3D
 use Libraries.Game.Graphics.Drawable
 use Libraries.Containers.Array
@@ -15,16 +14,17 @@ use Libraries.Interface.Controls.Scenes.Blueprints.DrawableBlueprint
 use Libraries.Interface.Controls.Scenes.Layers.EditorLayer2D
 use Libraries.Interface.Controls.Scenes.ScenePalette
 use Libraries.Interface.Controls.Scenes.ScenePaletteItem
+use Libraries.Interface.Controls.Scenes.SceneEditor_LIBRARY
 
 class PaletteItemDropBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
         DragAndDropEvent dragEvent = event:GetDragAndDropEvent()
 
-        SceneEditor controller = undefined
+        SceneEditor_LIBRARY controller = undefined
         Item destination = dragEvent:GetDestination()
-        if destination is SceneEditor
-            controller = cast(SceneEditor, destination)
+        if destination is SceneEditor_LIBRARY
+            controller = cast(SceneEditor_LIBRARY, destination)
         elseif destination not= undefined
             EditorLayer layer = undefined
             if destination is Item2D
@@ -37,7 +37,7 @@ class PaletteItemDropBehavior is QuorumStudioBehavior
             end
 
             if layer not= undefined
-                controller = cast(SceneEditor, layer:GetSceneEditor())
+                controller = layer:GetSceneEditor()
             end
         end
 

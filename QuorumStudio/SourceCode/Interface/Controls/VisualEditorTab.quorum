@@ -11,7 +11,6 @@ use Libraries.Game.Scenes.Scene
 use Libraries.Game.Graphics.AmbientLight
 use Libraries.Game.Graphics.DirectionalLight
 use Libraries.Game.Graphics.PointLight
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneEditor
 use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Game.Graphics.Skybox
 use Libraries.System.Properties
@@ -33,12 +32,13 @@ use Libraries.Interface.Controls.Scenes.Items.EditorPointLight
 use Libraries.Interface.Controls.Scenes.Items.EditorAudio3D
 use Libraries.Interface.Controls.Scenes.SceneTree
 use Libraries.Interface.Controls.Scenes.ScenePalette
+use Libraries.Interface.Controls.Scenes.SceneEditor_LIBRARY
 
 class VisualEditorTab is Tab, DefaultSceneManager
 
     File file = undefined
     File projectLocation = undefined
-    SceneEditor controller = undefined
+    SceneEditor_LIBRARY controller = undefined
     GameStateManager manager
     SceneProperties properties
 
@@ -116,8 +116,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
         Scene scene
         scene:Load(file)
 
-        SceneEditor controller
-        controller:SetVisualEditorTab(me)
+        SceneEditor_LIBRARY controller
         me:controller = controller
         controller:SetName(file:GetPath())
         SetRelatedItem(controller)
@@ -532,10 +531,10 @@ class VisualEditorTab is Tab, DefaultSceneManager
         // Do extra work to dispose of models, etc. here
     end
 
-    action GetSceneController returns SceneEditor
+    action GetSceneController returns SceneEditor_LIBRARY
         Item2D value = GetRelatedItem()
-        if value is SceneEditor
-            return cast(SceneEditor, value)
+        if value is SceneEditor_LIBRARY
+            return cast(SceneEditor_LIBRARY, value)
         else
             return undefined
         end
