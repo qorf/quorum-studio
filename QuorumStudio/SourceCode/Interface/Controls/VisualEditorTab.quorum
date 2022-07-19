@@ -32,13 +32,13 @@ use Libraries.Interface.Controls.Scenes.Items.EditorPointLight
 use Libraries.Interface.Controls.Scenes.Items.EditorAudio3D
 use Libraries.Interface.Controls.Scenes.SceneTree
 use Libraries.Interface.Controls.Scenes.ScenePalette
-use Libraries.Interface.Controls.Scenes.SceneEditor_LIBRARY
+use Libraries.Interface.Controls.Scenes.SceneEditor
 
 class VisualEditorTab is Tab, DefaultSceneManager
 
     File file = undefined
     File projectLocation = undefined
-    SceneEditor_LIBRARY controller = undefined
+    SceneEditor controller = undefined
     GameStateManager manager
     SceneProperties properties
 
@@ -116,7 +116,7 @@ class VisualEditorTab is Tab, DefaultSceneManager
         Scene scene
         scene:Load(file)
 
-        SceneEditor_LIBRARY controller
+        SceneEditor controller
         me:controller = controller
         controller:SetName(file:GetPath())
         SetRelatedItem(controller)
@@ -531,10 +531,10 @@ class VisualEditorTab is Tab, DefaultSceneManager
         // Do extra work to dispose of models, etc. here
     end
 
-    action GetSceneController returns SceneEditor_LIBRARY
+    action GetSceneController returns SceneEditor
         Item2D value = GetRelatedItem()
-        if value is SceneEditor_LIBRARY
-            return cast(SceneEditor_LIBRARY, value)
+        if value is SceneEditor
+            return cast(SceneEditor, value)
         else
             return undefined
         end
