@@ -89,8 +89,6 @@ use Libraries.Development.Environment.Studio.Behaviors.FocusPropertiesBehavior
 use Libraries.Development.Environment.Studio.Behaviors.OpenVisualEditorFindDialogBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CloseVisualEditorFindDialogBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SelectionResetScaleBehavior
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.SceneTree
-use Libraries.Development.Environment.Studio.Interface.VisualEditor.ScenePalette
 use Libraries.Development.Environment.Studio.Behaviors.CursorSelectItemsBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CursorIncreaseSizeBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CursorDecreaseSizeBehavior
@@ -109,6 +107,8 @@ use Libraries.Development.Environment.Studio.Behaviors.FocusCameraBehavior
 use Libraries.Interface.Controls.Scenes.Items.EditorItem
 use Libraries.Interface.Controls.Scenes.SceneConstants
 use Libraries.Interface.Controls.Scenes.SceneEditorInputTable
+use Libraries.Interface.Controls.Scenes.SceneTree
+use Libraries.Interface.Controls.Scenes.ScenePalette
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 4
@@ -1268,7 +1268,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         scenePane:SetPercentageWidth(1.0)
         scenePane:SetPercentageHeight(1.0)
         scenePane:Add(sceneTree)
-        sceneTree:SetSceneController(undefined)
+        sceneTree:SetSceneEditor(undefined)
 
         sceneTab:SetRelatedItem(scenePane)
         sceneTab:SetFocusTarget(sceneTree)
@@ -1284,6 +1284,17 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         palettePane:SetPercentageWidth(1.0)
         palettePane:SetPercentageHeight(1.0)
         palettePane:Add(scenePalette)
+        scenePalette:SetDefaultCubeThumbnail(resources:CUBE_THUMBNAIL)
+        scenePalette:SetDefaultSphereThumbnail(resources:SPHERE_THUMBNAIL)
+        scenePalette:SetDefaultCylinderThumbnail(resources:CYLINDER_THUMBNAIL)
+        scenePalette:SetDefaultPointLightThumbnail(resources:LIGHT_THUMBNAIL)
+        scenePalette:SetDefaultAudio3DThumbnail(resources:AUDIO_THUMBNAIL)
+        scenePalette:SetDefaultCustomModelThumbnail(resources:CUSTOM_MODEL_THUMBNAIL)
+        scenePalette:SetDefaultCustomCubeThumbnail(resources:CUSTOM_CUBE_THUMBNAIL)
+        scenePalette:SetDefaultCustomSphereThumbnail(resources:CUSTOM_SPHERE_THUMBNAIL)
+        scenePalette:SetDefaultCustomCylinderThumbnail(resources:CUSTOM_CYLINDER_THUMBNAIL)
+        scenePalette:SetPointLightTexture(resources:GetLightTexture())
+        scenePalette:SetAudio3DTexture(resources:GetAudioTexture())
         scenePalette:LoadDefaultAssets()
 
         paletteTab:SetRelatedItem(palettePane)
