@@ -10,9 +10,9 @@
 ;General
 
     ;Name and file
-    !define PRODUCT_VERSION "4.0.1.0"
+    !define PRODUCT_VERSION "4.0.3.0"
     !define REGISTRY_KEY "Software\QuorumStudio"
-    !define VERSION "4.0.1"
+    !define VERSION "4.0.3"
 
     VIProductVersion "${PRODUCT_VERSION}"
     VIFileVersion "${PRODUCT_VERSION}"
@@ -25,7 +25,7 @@
   Name "Quorum Studio"
   Caption "Quorum Studio ${VERSION} Installer"
   Icon "quorum.ico"
-  OutFile "QuorumStudioWindows${VERSION}.exe"
+  OutFile "Quorum Studio ${VERSION}.exe"
 
   ;Default installation folder
   InstallDir "$PROGRAMFILES64\QuorumStudio"
@@ -93,6 +93,8 @@ Section "Core" SecDummy
   
   ;Delete the old standard library so it can be copied in.
   RMDir /r $INSTDIR\Library
+  ;if they have the jdk8 jre, kill it, if you have to
+  RMDir /r $INSTDIR\jre
   
   ;ADD YOUR OWN FILES HERE...
   File QuorumStudio.exe
