@@ -72,6 +72,7 @@ task downloadJDKsAndCopyToQuorumStudio(type: Download) {
         delete "${jdkFolder}/mac"
         delete "${jdkFolder}/windows"
 
+        boolean M1 = false
         println "Deflating jdks"
         println "${jdkFolder}/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"
         copy {
@@ -97,9 +98,13 @@ task downloadJDKsAndCopyToQuorumStudio(type: Download) {
         def homePath = ""
         if (Os.isFamily(Os.FAMILY_WINDOWS)) {
             homePath = jdkFolder + "/windows/x64/jdk-11.0.15+10"
-        } else if(Os.isFamily(Os.FAMILY_MAC)) {
+        } else if(Os.isFamily(Os.FAMILY_MAC) && !M1) {
+            println "Copying x86 "
             homePath = jdkFolder + "/mac/x64/jdk-11.0.15+10"
-        } //Os.FAMILY_UNIX
+        } else if(Os.isFamily(Os.FAMILY_MAC) && M1) {
+            println "Copying M1"
+            homePath = jdkFolder + "/mac/aarch64/jdk-11.0.15+10"
+        }//Os.FAMILY_UNIX
         if (!file(destPath).exists()) {
             mkdir destPath
             copy {
