@@ -75,6 +75,7 @@ class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
         integer build = -10
         text windows = undefined
         text mac = undefined
+        text macARM = undefined
         text updateFile = undefined
         if value not= undefined
             JavaScriptObjectNotation notation
@@ -87,6 +88,7 @@ class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
                 build = cast(integer, notation:GetValue("BuildVersion"))
                 windows = notation:GetValue("Windows")
                 mac = notation:GetValue("Mac")
+                macARM = notation:GetValue("MacARM")
             detect e //ignore this
                 return now //this file is corrupt, so you know, don't update to that.
             end
@@ -111,8 +113,13 @@ class CheckForUpdatesBehavior is QuorumStudioBehavior, NetworkRequestListener
         Properties properties
         if properties:IsWindows()
             updateFile = windows
-        elseif properties:IsMac()
-            updateFile = mac
+        elseif properties:IsMac() //look for ARM if we're on that architecture
+            text arch = properties:GetProperty("os.arch")
+            if arch not= undefined and arch = "aarch64"
+                updateFile = macARM
+            else
+                updateFile = mac
+            end
         end
 
         text name = options:GetAutoUpdateName()
