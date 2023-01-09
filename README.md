@@ -32,6 +32,6 @@ This procedure should not be done unless you know what you are doing and really 
 6. Clean and Build Quorum Language after selecting DoubleBootstrapQuorumStudio.quorum
 7. Run quorum-language
 8. With the console, navigate to where the Quorum Studio project is
-9. Run the following command: java -XstartOnFirstThread -jar Run/QuorumStudio.jar
+9. Either make a new installer or Run the following command to manually run it: java -XstartOnFirstThread -jar Run/QuorumStudio.jar
 
 Congratulations. You now have a version of Quorum Studio running with the latest compiler, built from source.
