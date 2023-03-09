@@ -34,7 +34,7 @@ class IOSSupport is ProcessListener
     Array<text> libraryDestinations
     text log = ""
     Array<MobileListener> listeners
-    
+    text java = ""    
 
     
 
@@ -98,7 +98,7 @@ class IOSSupport is ProcessListener
         end
     end
 
-    action Setup(text pathToRunFolder, text jarName)
+    action Setup(QuorumProject project, text pathToRunFolder, text jarName)
         me:pathToRunFolder = pathToRunFolder
         me:pathToBuildFolder = pathToRunFolder + FILE_SEPARATOR + FOLDER_NAME
 
@@ -109,6 +109,15 @@ class IOSSupport is ProcessListener
         libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + jarName)
         libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardLibrary.jar")
         libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardPlugins.jar")
+
+        boolean physical = project:IsIOSPhysicalDevice()
+        if not physical //simulator
+            librarySources:Add(FILE_SEPARATOR + "jni" + FILE_SEPARATOR + "iosSimulator.a")
+            libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_NATIVES + FILE_SEPARATOR + "iosSimulator.a")
+        else
+            librarySources:Add(FILE_SEPARATOR + "jni" + FILE_SEPARATOR + "ios.a")
+            libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_NATIVES + FILE_SEPARATOR + "ios.a")
+        end
     end
 
     
@@ -182,7 +191,7 @@ class IOSSupport is ProcessListener
 
     private action GetRoboVMXML(BuildInformation info) returns text
         QuorumProject project = info:project
-        
+        boolean physical = project:IsIOSPhysicalDevice() 
         text name = project:GetExecutableName()
         text media = SanitizeMediaFolder(project:GetMobileAssetsPath())
 
@@ -206,7 +215,14 @@ class IOSSupport is ProcessListener
     <classpathentry>"+JAR_FOLDER_NAME+"/QuorumStandardPlugins.jar</classpathentry>
   </classpath>
   <libs>
-    <lib>"+NATIVE_FOLDER_NAME+"/liballnatives.a</lib>
+    <lib>"+NATIVE_FOLDER_NAME
+    
+    if not physical
+        result = result + "/iosSimulator.a"
+    else
+        result = result + "/ios.a"
+    end
+    result = result + "</lib>
   </libs>
   <weakFrameworks>
     <framework>OpenGLES</framework>
@@ -247,7 +263,6 @@ app.name="+name+"
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(8))
-        vendor = JvmVendorSpec.ADOPTOPENJDK
     }
 }
 
@@ -272,6 +287,17 @@ dependencies {
 
         if not libFolder:Exists()
             libFolder:CreateDirectories()
+        end
+
+        File nativeFolder
+        nativeFolder:SetAbsolutePath(pathToBuildFolder + PATH_TO_NATIVES)
+
+        if not libFolder:Exists()
+            libFolder:CreateDirectories()
+        end
+
+        if not nativeFolder:Exists()
+            nativeFolder:CreateDirectories()
         end
 
         i = 0
@@ -415,6 +441,7 @@ dependencies {
         Array<text> params
         params:Add("-p")  
         params:Add(pathToBuildFolder)
+        params:Add("-Dorg.gradle.java.home=" + java)
         if physical
             params:Add("ios:launchIOSDevice")
         else
@@ -437,9 +464,12 @@ dependencies {
             i = i + 1
         end
 
-        output device
-        output signature
-        params:Add("-Probovm.device.name=" + signature)
+//        output device
+//        output signature
+        //If the user didn't define a signature, just pick.
+        if signature not= undefined
+            params:Add("-Probovm.device.name=" + signature)
+        end
         params:Add("--info")
         //params:Add("--stacktrace")
         //params:Add("--scan")
@@ -543,4 +573,12 @@ dependencies {
         fromFile:Copy(toFile, true)
     end
     
+    action GetJava returns text
+        return java
+    end
+
+    action SetJava(text java)
+        me:java = java
+    end
+
 end

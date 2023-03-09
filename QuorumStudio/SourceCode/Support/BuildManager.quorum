@@ -1411,77 +1411,35 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         File iosLocation
         iosLocation:SetPath("External/Mobile")
 
+        //Setup IOS and tell it where to find the JDK
         IOSSupport ios
         ios:AddListener(me)
-        ios:Setup(runDirectory:GetAbsolutePath(), jarName)
-
-        out:Append("")
-        out:Append("Starting iOS Generator")
+        ios:Setup(project, runDirectory:GetAbsolutePath(), jarName)
+        text value = FindJava()
+        File javaHome
+        javaHome:SetAbsolutePath(value)
+        javaHome = javaHome:GetParentDirectory():GetParentDirectory()
+        value = javaHome:GetAbsolutePath()
+        ios:SetJava(value)
 
         //If there is already a mobile folder, we only need to copy the jars to the right spot.
         if ios:HasMobileFolder()
             out:Append("Folder detected, copying Quorum files. Clean and build to start fresh on iOS devices.")
             ios:CopyLibraries()
         else
-            out:Append("Generating Template iOS Project")
             ios:CopyAndRename(iosLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName)
-            out:Append("Copying Quorum files")
             ios:CopyLibraries()
-
-            File cmake
-            cmake:SetAbsolutePath("/Applications/CMake.app/Contents/bin/cmake")
-    
-    
-            if not cmake:Exists()
-                out:Append("Could not find Cmake, which is required for iOS projects. ")
-                out:Append("Please download it at https://cmake.org/")
-                return now
-            end
-            out:Append("")
-            out:Append("Creating XCode Project")
-            Process createXCodeProcess = ios:GetGenerateXCodeProjectProcess()
-            //createXCodeProcess:AddListener(me)
-            createXCodeProcess:Run()
-            
-    
-            text device = project:GetIOSDevice()
-            text version = project:GetIOSVersionKey()
-            out:Append("Building Natives for " + device + ", ios version " + version + 
-                ". This process can take several minutes.")
-    
-    
-            text signature = project:GetIOSDeviceSignature()
-            if signature = undefined or signature:IsEmpty()
-                out:Append("Could not detect which simulator or device you want to run on.")
-                out:Append("Please open the project properties, select Mobile, and choose your simulator.")
-                return now
-            end
         end
 
-        //first check if the natives are already there. If they are, just keep going.
-        if not ios:HasNativesBuilt()
-            AppleNativeCompileListener nativeListener
-            nativeListener:SetOutputTab(out)
-            Process xcodeBuildProcess = ios:GetBuildXCodeProjectProcess(project)
-            xcodeBuildProcess:AddListener(nativeListener)
-            xcodeBuildProcess:Run() 
-        else
-            out:Append("Natives Detected, skipping build")
-        end
-
-        out:Append("Natives completed")
-        out:Append("Writing configuration files")
+        out:Append("Converting Quorum to iOS. This can take a few minutes.")
         ios:RewriteConfig(info)       
 
         text mobileAssetPath = project:GetMobileAssetsPath()
         if mediaDirectory not= undefined and mediaDirectory:Exists() and mobileAssetPath not= undefined
             out:Append("Copying Assets")
             ios:CopyAssets(mediaDirectory, mobileAssetPath)
-        else
-            out:Append("No assets requested for copying")
         end
 
-        out:Append("Running iOS program")
         Process build = ios:GetBuildForSimulatorProcess(project)
         build:AddListener(ios)
         build:Run()
