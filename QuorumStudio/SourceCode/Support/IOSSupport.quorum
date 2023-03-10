@@ -81,6 +81,7 @@ class IOSSupport is ProcessListener
         i = 0
         repeat while i < listeners:GetSize()
             MobileListener listener = listeners:Get(i)
+            
             if message:Contains("Starting Build")
                 listener:StartingBuild()
             elseif message:Contains("Building RoboVM app") //version
@@ -93,6 +94,8 @@ class IOSSupport is ProcessListener
                 listener:FinishedBuild(true, message)
             elseif message:Contains("Booting simulator")
                 listener:BootingSimulator(message)
+            else
+                listener:Error(message)
             end
             i = i + 1
         end
@@ -441,6 +444,8 @@ dependencies {
         Array<text> params
         params:Add("-p")  
         params:Add(pathToBuildFolder)
+//        output "Path: " + pathToBuildFolder
+//        output "JDK: " + java
         params:Add("-Dorg.gradle.java.home=" + java)
         if physical
             params:Add("ios:launchIOSDevice")
@@ -470,7 +475,7 @@ dependencies {
         if signature not= undefined
             params:Add("-Probovm.device.name=" + signature)
         end
-        params:Add("--info")
+        //params:Add("--info")
         //params:Add("--stacktrace")
         //params:Add("--scan")
         //params:Add("--debug")
