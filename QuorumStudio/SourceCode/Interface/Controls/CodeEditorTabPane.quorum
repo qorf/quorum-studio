@@ -38,6 +38,13 @@ use Libraries.Development.Environment.Studio.Interface.SpreadsheetTab
 use Libraries.Interface.Controls.Spreadsheet
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Development.Environment.Configuration.Options
+use Libraries.Interface.Controls.CodeEditor
+use Libraries.Language.Compile.Parsing.ParserToBlockListener
+use Libraries.Language.Compile.CompilerErrorManager
+use Libraries.Language.Compile.Parsing.QuorumLexer
+use Libraries.Language.Compile.Parsing.QuorumParser
+use Libraries.Language.Compile.Context.StartContext
 
 class CodeEditorTabPane is TabPane, TabChangeListener
     KeyboardEvent keys
@@ -214,14 +221,118 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             // File wasn't found, handle the error gracefully.
             // Output is for testing purposes only.
             output "Couldn't find file: " + file:GetAbsolutePath()
-            return now
+            return undefined
         detect error is InputOutputError
             // File couldn't be read for some reason.
             // Output is for testing purposes only.
             output "Couldn't read file: " + file:GetAbsolutePath()
             error:OutputStackTrace()
-            return now
+            return undefined
         end
+
+        Options opts
+        if opts:IsBlockMode()
+            return OpenInBlockMode(contents, file)
+        else
+            return OpenInTextMode(contents, file)
+        end
+    end
+
+    private action OpenInBlockMode(text contents, File file) returns EditorTab
+        EditorTab returnedTab = undefined
+
+        GameStateManager gameManager
+        Game game = gameManager:GetGame()
+        QuorumStudio studio = cast(QuorumStudio, game)
+
+        
+        CodeEditor editor = undefined
+        ParserToBlockListener listener
+        CodeEditor editor2
+        editor = editor2
+        editor:SetBlockListener(listener)
+
+        integer size = 15
+        editor:SetPercentageWidth(1)
+        editor:SetPercentageHeight(1)
+        editor:SetFontSize(20)
+        editor:SetBlockNotchTopWidth(50)
+        editor:SetBlockNotchBottomWidth(25)
+        editor:SetBlockNotchHeight(8)
+        text theCode = contents
+        CompilerErrorManager errorManager
+        QuorumLexer lexer
+        lexer:SetCompilerErrorManager(errorManager)
+        lexer:Read(theCode)
+        
+        if not errorManager:IsCompilationErrorFree()
+            text value = errorManager:GetCompilerErrorsAsText()
+            output value
+            return undefined
+        end
+        QuorumParser parser
+        parser:SetCompilerErrorManager(errorManager)
+        parser:SetLexer(lexer)
+        StartContext start = parser:Start()
+        if not errorManager:IsCompilationErrorFree()
+            text value = errorManager:GetCompilerErrorsAsText()
+            output value
+        end
+        listener:SetStartContext(start)
+        editor:SetName("Block Editor")
+        editor:SetCode(theCode)
+
+
+        boolean isMain = false
+
+        ProjectManager projects = studio:GetProjectManager()
+        Iterator<QuorumProject> iterator = projects:GetIterator()
+        repeat while iterator:HasNext()
+            QuorumProject project = iterator:Next()
+            if project:IsMainFile(file)
+                isMain = true
+            end
+        end
+        Icon icon = undefined
+        GameStateManager gsm
+        OptionsConstants optionsConstants
+        InterfaceOptions io = gsm:GetInterfaceOptions()
+        if isMain
+            text logo = io:GetCustomProperty(optionsConstants:QUORUM_MAIN_FILE_ICON)
+            Texture texture = resources:GetTexture(logo)
+            Icon icon2
+            icon2:Load(texture)
+            icon = icon2
+        else
+            text logo = io:GetCustomProperty(optionsConstants:QUORUM_FILE_ICON)
+            Texture texture = resources:GetTexture(logo)
+            Icon icon2
+            icon2:Load(texture)
+            icon = icon2
+        end
+        EditorTab tab
+        tab:SetName(file:GetPath())
+        tab:SetRelatedItem(editor)
+        tab:SetIcon(icon)
+        tab:DisplayCloseButton(true)
+        tab:SetFile(file)
+        number scale = GetInterfaceScale()
+        tab:SetInterfaceScale(scale)
+        tab:Setup()
+        openFiles:Add(file:GetAbsolutePath(), file)
+        openTabs:Add(file:GetAbsolutePath(), tab)
+        Add(cast(Tab,tab))
+        returnedTab = tab
+        Resize()
+        return returnedTab
+    end
+
+    private action OpenInTextMode(text contents, File file) returns EditorTab
+        EditorTab returnedTab = undefined
+
+        GameStateManager manager
+        Game game = manager:GetGame()
+        QuorumStudio studio = cast(QuorumStudio, game)
 
         CodeTextBox textBox
         LayoutProperties boxProperties = textBox:GetDefaultLayoutProperties()

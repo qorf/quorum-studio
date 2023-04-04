@@ -71,12 +71,19 @@ use Libraries.Interface.Controls.Scenes.SceneConstants
 use Libraries.Interface.Controls.Scenes.SceneEditorInputTable
 use Libraries.Interface.Controls.Scenes.SceneTree
 use Libraries.Interface.Controls.Scenes.ScenePalette
+use Libraries.Interface.Behaviors.Controls.CodeEditorSelectionDownBehavior
+use Libraries.Interface.Behaviors.Controls.CodeEditorSelectionUpBehavior
+use Libraries.Interface.Behaviors.Controls.CodeEditorSelectNextBehavior
+use Libraries.Interface.Behaviors.Controls.CodeEditorSelectPreviousBehavior
+use Libraries.Interface.Behaviors.Controls.CodeEditorEscapeBehavior
+use Libraries.Interface.Behaviors.Controls.ScrollableControlMouseScrollBehavior
+use Libraries.Interface.Behaviors.Controls.ScrollBarDragBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 4
     constant integer MINOR_VERSION = 3
     constant integer BUILD_VERSION = 0
-    constant text NAME = "Quorum Studio " + MAJOR_VERSION + "." + MINOR_VERSION + "." + BUILD_VERSION
+    constant text NAME = "Quorum Studio " + MAJOR_VERSION + "." + MINOR_VERSION + "." + BUILD_VERSION + " Blocks"
     public integer SAVE_CHANGES = 0
     public integer DISCARD_CHANGES = 1
     public integer CANCEL_EXIT = 2
@@ -540,7 +547,73 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         codeCompletionTable:Add(releaseUpArrow, emptyBehavior)
 
         AddInputTable(codeCompletionTable)
-        //SetupVisualEditorInput()
+        SetupBlockEditorInput()
+    end
+
+    action SetupBlockEditorInput
+        InputTable table
+        table:SetIdentifier("CodeEditor")
+        
+        KeyboardEvent keys
+
+        InputSet downSet
+        downSet:SetKeyboardInput(keys:DOWN)
+        CodeEditorSelectionDownBehavior downBehavior
+        table:Add(downSet, downBehavior)
+
+        InputSet upSet
+        upSet:SetKeyboardInput(keys:UP)
+        CodeEditorSelectionUpBehavior upBehavior
+        table:Add(upSet, upBehavior)
+
+        InputSet tabSet
+        tabSet:SetKeyboardInput(keys:TAB)
+        CodeEditorSelectNextBehavior nextBehavior
+        table:Add(tabSet, nextBehavior)
+
+        InputSet shiftTabSet
+        shiftTabSet:SetKeyboardInput(keys:TAB)
+        shiftTabSet:AddModifier(tabSet:SHIFT)
+        CodeEditorSelectPreviousBehavior previousBehavior
+        table:Add(shiftTabSet, previousBehavior)
+
+        InputSet escapeSet
+        escapeSet:SetKeyboardInput(keys:ESCAPE)
+        CodeEditorEscapeBehavior escapeBehavior
+        table:Add(escapeSet, escapeBehavior)
+
+        InputSet mouseScrollSet
+        mouseScrollSet:SetInputType(mouseScrollSet:MOUSE_WHEEL_INPUT)
+        ScrollableControlMouseScrollBehavior scrollBehavior
+        table:Add(mouseScrollSet, scrollBehavior)
+        AddInputTable(table)
+
+
+
+        InputTable editRegionTable = GetInputTable("TextField"):Copy()
+        editRegionTable:SetIdentifier("EditRegion")
+        editRegionTable:RemoveKey(downSet)
+        editRegionTable:RemoveKey(upSet)
+        editRegionTable:Add(downSet, downBehavior)
+        editRegionTable:Add(upSet, upBehavior)
+        AddInputTable(editRegionTable)
+
+
+
+        InputTable scrollBarTable
+        scrollBarTable:SetIdentifier("ScrollBarControl")
+        
+        InputSet dragStartSet
+        dragStartSet:SetDragItemInput()
+        dragStartSet:SetInputTrigger(dragStartSet:BEGIN)
+        InputSet dragSet
+        dragSet:SetDragItemInput()
+        dragSet:SetInputTrigger(dragSet:CONTINUE)
+        
+        ScrollBarDragBehavior barDragBehavior
+        scrollBarTable:Add(dragStartSet, barDragBehavior)
+        scrollBarTable:Add(dragSet, barDragBehavior)
+        AddInputTable(scrollBarTable)
     end
 
     action Load
