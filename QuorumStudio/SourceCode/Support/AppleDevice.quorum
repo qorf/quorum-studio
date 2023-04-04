@@ -40,10 +40,25 @@ class AppleDevice
             name = split:Get(0):Trim()
             signature = "(" + split:Get(split:GetSize() - 1)
         //if there's 4, or more, the name is all but the last two
-        elseif split:GetSize() = 3
-            name = split:Get(0):Trim()
+        elseif split:GetSize() >= 3
+            
             signature = "(" + split:Get(split:GetSize() - 1)
             version = "(" + split:Get(split:GetSize() - 2)
+
+            text val = signature
+            integer value = line:IndexOf(val) - 1
+            i = value
+            repeat while i > 0
+                text char = line:GetCharacter(i)
+                if char = "("
+                    value = i - 1
+                    i = -1
+                end
+                i = i - 1
+            end
+            name =  line:GetSubtext(0, value)
+            a = 5
+        
         else
             return now
         end

@@ -94,6 +94,18 @@ class CodeCompletionMenu is PopupMenu
         Filter(undefined)
 
         if IsEmpty() = false
+            integer size = GetSize()
+
+            //If there's only one item and it's in the empty menu, the user probably just popped up
+            //an empty window, which isn't terribly useful. This still appears to fill properly to one
+            //item if filled later, but correctly ignores it if it's empty on initial setup.
+            //Common example: You type a period at the end of a sentence in a comment, which would
+            //otherwise pop-up code completion.
+            if size = 1 //check if it's the empty menu and ignore it if it is
+                if emptyMenu:GetSize() = 1
+                    return now
+                end
+            end
             number x = textBox:GetCaretGlobalX()
             number y = textBox:GetCaretGlobalY()
             OpenAt(x, y)

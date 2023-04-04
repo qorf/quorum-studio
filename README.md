@@ -20,3 +20,18 @@ In order to Build Quorum Studio, we need several components. To build it, we do 
 5. Once all plugins are built, open Quorum Studio in Quorum Studio, then build it
 
 
+# Double Bootstrapping Quorum Studio from a source-based Quorum Compiler #
+
+This procedure should not be done unless you know what you are doing and really need a version of Quorum Studio that cannot be done because of binary incompatible changes in the quorum-language compiler architecture. This is rare and almost never needed. If, however, it is required, then the steps are as follows, from within Quorum Studio.
+
+1. Open Quorum Studio normally with the standard library off
+2. Run RunLibrary.quorum from the qourum-language repository
+3. Turn off Quorum Studio
+4. Turn on the standard library override
+5. Turn on Quorum Studio
+6. Clean and Build Quorum Language after selecting DoubleBootstrapQuorumStudio.quorum
+7. Run quorum-language
+8. With the console, navigate to where the Quorum Studio project is
+9. Either make a new installer or Run the following command to manually run it: java -XstartOnFirstThread -jar Run/QuorumStudio.jar
+
+Congratulations. You now have a version of Quorum Studio running with the latest compiler, built from source.
