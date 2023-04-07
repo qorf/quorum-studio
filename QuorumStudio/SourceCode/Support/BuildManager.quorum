@@ -885,17 +885,6 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         OutputTab out = info:outputTab
         out:Empty()
 
-        //out:Append("Bootstrapping")
-//        out:Append("Compiling Library.quorum")
-//        //now we run it and check for errors
-//        project:SetMain("SourceCode/Library.quorum")
-//        Run(info)
-//        
-//        out:Append("Compiling Main.quorum")
-//        //Now we rebuild with main.quorum
-//        project:SetMain("SourceCode/main.quorum")
-//        Build(info)
-
         //Now we do the equivalent of the old sh/bat script
         BootstrapCopy(info)
     end
@@ -916,170 +905,22 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         text sourceCodeFolderName = "SourceCode"
         
 
-//        File sodbeansReleaseFolder
-//        sodbeansReleaseFolder:SetAbsolutePath(location:GetAbsolutePath())
-//        sodbeansReleaseFolder = sodbeansReleaseFolder:GetParentDirectory():GetParentDirectory()
-//        sodbeansReleaseFolder:SetPath("sodbeans/Sodbeans/Quorum/release/")
-//
-//        File sodbeansExtFolder
-//        sodbeansExtFolder = sodbeansReleaseFolder:GetParentDirectory():GetParentDirectory()
-//        sodbeansExtFolder:SetPath("Quorum/release/modules/ext/")
-//
-//        File sodbeansLibraryFolder
-//        sodbeansLibraryFolder = sodbeansReleaseFolder:GetParentDirectory():GetParentDirectory()
-//        sodbeansLibraryFolder:SetPath("Quorum/release/modules/Library")
-
         File quorumStudioLibraryFolder
         quorumStudioLibraryFolder:SetAbsolutePath(location:GetAbsolutePath())
         quorumStudioLibraryFolder = quorumStudioLibraryFolder:GetParentDirectory():GetParentDirectory()
         quorumStudioLibraryFolder:SetPath("quorum-studio/QuorumStudio/Library")
 
-//        File copyFolder
-//        copyFolder:SetWorkingDirectory(location:GetAbsolutePath())
-//        copyFolder:SetPath(copyFolderName)
-//
-//        File runFolder
-//        runFolder:SetWorkingDirectory(location:GetAbsolutePath())
-//        runFolder:SetPath(runFolderName)
-
         File libraryFolder
         libraryFolder:SetWorkingDirectory(location:GetAbsolutePath())
         libraryFolder:SetPath(libraryFolderName)
 
-//        File sourceCodeFolder
-//        sourceCodeFolder:SetWorkingDirectory(location:GetAbsolutePath())
-//        sourceCodeFolder:SetPath(sourceCodeFolderName)
-//        
-//        File newLibraryFolder
-//        newLibraryFolder:SetWorkingDirectory(copyFolder:GetAbsolutePath())
-//        newLibraryFolder:SetPath(libraryFolderName)
-//        
-//        if copyFolder:Exists()
-//            copyFolder:Delete(true)
-//        end
-        
-        
-//        copyFolder:CreateDirectories()
-//
-//        runFolder:Copy(copyFolder, true)
-//        libraryFolder:Copy(newLibraryFolder, true)
-//        sourceCodeFolder:Copy(copyFolder, true)
-//
-//        Array<File> sourceFiles = project:GetSources()
-//
-//        //now setup a process that will compile the compiler
-//        out:Append("Compiling Quorum Next in Quorum")
-//        RunCompilerProcess(out, copyFolder, location, sourceCodeFolder, sourceFiles, 
-//            "/Default.jar")
-//        
-//        //now recursively copy the folder in Run up a folder
-//        File newRunFolder
-//        newRunFolder:SetWorkingDirectory(copyFolder:GetAbsolutePath())
-//        newRunFolder:SetPath(runFolderName)
-//        newRunFolder:Copy(copyFolder, true)
-//        newRunFolder:Delete(true)
-//
-//        out:Append("Recompiling Quorum Next in Quorum next")
-//        RunCompilerProcess(out, copyFolder, location, sourceCodeFolder, sourceFiles, 
-//            "/Quorum.jar")
-//
-//        out:Append("Copying to Development Environments")
-//
-//        constant text quorumJarName = "Quorum.jar"
-//        constant text quorumStandardLibraryJarName = "QuorumStandardLibrary.jar"
-//        constant text quorumStandardPluginsJarName = "QuorumStandardPlugins.jar"
-//        constant text quorumStandardLibraryJavascriptName = "QuorumStandardLibrary.js"
-
-        //first copy in the compiler and the standard library
-
-//        File compiledQuorumJar
-//        compiledQuorumJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
-//        compiledQuorumJar:SetPath(quorumJarName)
-//
-//        File compiledStandardLibraryJar
-//        compiledStandardLibraryJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
-//        compiledStandardLibraryJar:SetPath(quorumStandardLibraryJarName)
-//
-//        File compiledStandardPluginsJar
-//        compiledStandardPluginsJar:SetWorkingDirectory(copyFolder:GetAbsolutePath())
-//        compiledStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
-//
-//        File compiledStandardLibraryJavaScript
-//        compiledStandardLibraryJavaScript:SetWorkingDirectory(copyFolder:GetAbsolutePath())
-//        compiledStandardLibraryJavaScript:SetPath(quorumStandardLibraryJavascriptName)
-
-//        File sodbeansQuorumJar
-//        sodbeansQuorumJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
-//        sodbeansQuorumJar:SetPath(quorumJarName)
-//
-//        File sodbeansStandardLibraryJar
-//        sodbeansStandardLibraryJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
-//        sodbeansStandardLibraryJar:SetPath(quorumStandardLibraryJarName)
-//
-//        File sodbeansStandardPluginsJar
-//        sodbeansStandardPluginsJar:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
-//        sodbeansStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
-//
-//        File sodbeansStandardLibraryJavaScript
-//        sodbeansStandardLibraryJavaScript:SetWorkingDirectory(sodbeansExtFolder:GetAbsolutePath())
-//        sodbeansStandardLibraryJavaScript:SetPath(quorumStandardLibraryJavascriptName)
-
-        //copy the jar files
-//        compiledQuorumJar:Copy(sodbeansQuorumJar)
-//        compiledStandardLibraryJar:Copy(sodbeansStandardLibraryJar)
-//        compiledStandardPluginsJar:Copy(sodbeansStandardPluginsJar)
-//        compiledStandardLibraryJavaScript:Copy(sodbeansStandardLibraryJavaScript)
-//
-//        //delete library folders if they exist
-//        if sodbeansLibraryFolder:Exists()
-//            sodbeansLibraryFolder:Delete(true)
-//        end
 
         if quorumStudioLibraryFolder:Exists()
             quorumStudioLibraryFolder:Delete(true)
         end
 
         //copy the standard library all fresh and new
-//        libraryFolder:Copy(sodbeansLibraryFolder, true)
         libraryFolder:Copy(quorumStudioLibraryFolder, true)
-
-//        out:Append("Creating Deployment Packages")
-//        constant text deployName = "Deploy"
-//        File deployFolder
-//        deployFolder:SetWorkingDirectory(location:GetAbsolutePath())
-//        deployFolder:SetPath(deployName)
-//
-//        if deployFolder:Exists()
-//            deployFolder:Delete(true)
-//        end
-
-//        deployFolder:CreateDirectories()
-//
-//        File deploymentQuorumJar
-//        deploymentQuorumJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
-//        deploymentQuorumJar:SetPath(quorumJarName)
-//
-//        File deploymentStandardLibraryJar
-//        deploymentStandardLibraryJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
-//        deploymentStandardLibraryJar:SetPath(quorumStandardLibraryJarName)
-//
-//        File deploymentStandardPluginsJar
-//        deploymentStandardPluginsJar:SetWorkingDirectory(deployFolder:GetAbsolutePath())
-//        deploymentStandardPluginsJar:SetPath(quorumStandardPluginsJarName)
-//
-//        File deploymentStandardLibraryJavaScript
-//        deploymentStandardLibraryJavaScript:SetWorkingDirectory(deployFolder:GetAbsolutePath())
-//        deploymentStandardLibraryJavaScript:SetPath(quorumStandardLibraryJavascriptName)
-//        
-//        //copy into the deploy folder
-//        compiledQuorumJar:Copy(deploymentQuorumJar)
-//        compiledStandardLibraryJar:Copy(deploymentStandardLibraryJar)
-//        compiledStandardPluginsJar:Copy(deploymentStandardPluginsJar)
-//        compiledStandardLibraryJavaScript:Copy(deploymentStandardLibraryJavaScript)
-//
-//        if copyFolder:Exists()
-//            copyFolder:Delete(true)
-//        end
 
         number finish = date:GetEpochTime()
         number total = finish - start
@@ -1091,8 +932,6 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         OutputTab out, File copyFolder, File location, File sourceCodeFolder, 
         Array<File> sourceFiles, text compilerName)
         Process runner
-        
-//        runner:SetOutputTab(out)
 
         runner:AddListener(me)
         runner:SetDirectory(copyFolder)
@@ -1397,7 +1236,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         File parentDirectory = runDirectory:GetParentDirectory()
 
         File mediaDirectory
-        text mediaPathFromProject = project:GetMobileAssetsPath()
+        text mediaPathFromProject = project:GetIOSAssetsPath()
         if mediaPathFromProject not= undefined
             text media = parentDirectory:GetAbsolutePath() + "/" + mediaPathFromProject
 
@@ -1411,80 +1250,50 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         File iosLocation
         iosLocation:SetPath("External/Mobile")
 
+        //Setup IOS and tell it where to find the JDK
         IOSSupport ios
         ios:AddListener(me)
-        ios:Setup(runDirectory:GetAbsolutePath(), jarName)
-
-        out:Append("")
-        out:Append("Starting iOS Generator")
+        ios:Setup(project, runDirectory:GetAbsolutePath(), jarName)
+        text value = FindJava()
+        File javaHome
+        javaHome:SetAbsolutePath(value)
+        javaHome = javaHome:GetParentDirectory():GetParentDirectory()
+        value = javaHome:GetAbsolutePath()
+        ios:SetJava(value)
 
         //If there is already a mobile folder, we only need to copy the jars to the right spot.
         if ios:HasMobileFolder()
             out:Append("Folder detected, copying Quorum files. Clean and build to start fresh on iOS devices.")
             ios:CopyLibraries()
         else
-            out:Append("Generating Template iOS Project")
             ios:CopyAndRename(iosLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName)
-            out:Append("Copying Quorum files")
             ios:CopyLibraries()
-
-            File cmake
-            cmake:SetAbsolutePath("/Applications/CMake.app/Contents/bin/cmake")
-    
-    
-            if not cmake:Exists()
-                out:Append("Could not find Cmake, which is required for iOS projects. ")
-                out:Append("Please download it at https://cmake.org/")
-                return now
-            end
-            out:Append("")
-            out:Append("Creating XCode Project")
-            Process createXCodeProcess = ios:GetGenerateXCodeProjectProcess()
-            //createXCodeProcess:AddListener(me)
-            createXCodeProcess:Run()
-            
-    
-            text device = project:GetIOSDevice()
-            text version = project:GetIOSVersionKey()
-            out:Append("Building Natives for " + device + ", ios version " + version + 
-                ". This process can take several minutes.")
-    
-    
-            text signature = project:GetIOSDeviceSignature()
-            if signature = undefined or signature:IsEmpty()
-                out:Append("Could not detect which simulator or device you want to run on.")
-                out:Append("Please open the project properties, select Mobile, and choose your simulator.")
-                return now
-            end
         end
 
-        //first check if the natives are already there. If they are, just keep going.
-        if not ios:HasNativesBuilt()
-            AppleNativeCompileListener nativeListener
-            nativeListener:SetOutputTab(out)
-            Process xcodeBuildProcess = ios:GetBuildXCodeProjectProcess(project)
-            xcodeBuildProcess:AddListener(nativeListener)
-            xcodeBuildProcess:Run() 
-        else
-            out:Append("Natives Detected, skipping build")
-        end
-
-        out:Append("Natives completed")
-        out:Append("Writing configuration files")
+        out:Append("Converting Quorum to iOS. This can take a few minutes.")
         ios:RewriteConfig(info)       
 
-        text mobileAssetPath = project:GetMobileAssetsPath()
+        text mobileAssetPath = project:GetIOSAssetsPath()
         if mediaDirectory not= undefined and mediaDirectory:Exists() and mobileAssetPath not= undefined
             out:Append("Copying Assets")
             ios:CopyAssets(mediaDirectory, mobileAssetPath)
-        else
-            out:Append("No assets requested for copying")
         end
 
-        out:Append("Running iOS program")
         Process build = ios:GetBuildForSimulatorProcess(project)
         build:AddListener(ios)
-        build:Run()
+
+        File location = project:GetLocation()
+        text processLocation = location:GetAbsolutePath()
+        if processes:HasKey(value) //kill it, if you have to
+            Process old = processes:RemoveKey(processLocation)
+            outputTabsForProcesses:RemoveKey(processLocation)
+            old:Cancel()
+        end
+
+        //Now add it to the processes list
+        processes:Add(processLocation, build)
+
+        build:Run()      
     end
 
     action SendToAndroidDebugMode(BuildInformation info)
@@ -1533,7 +1342,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         File parentDirectory = runDirectory:GetParentDirectory()
 
         File mediaDirectory
-        text mediaPathFromProject = project:GetMobileAssetsPath()
+        text mediaPathFromProject = project:GetAndroidAssetsPath()
         if mediaPathFromProject not= undefined
             text media = parentDirectory:GetAbsolutePath() + "/" + mediaPathFromProject
 
@@ -1565,7 +1374,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         android:CopyNewMain(mainClazz)
         
 
-        text mobileAssetPath = project:GetMobileAssetsPath()
+        text mobileAssetPath = project:GetAndroidAssetsPath()
         if mediaDirectory not= undefined and mediaDirectory:Exists() and mobileAssetPath not= undefined
             out:Append("Copying Assets")
             android:CopyAssets(mediaDirectory, mobileAssetPath)

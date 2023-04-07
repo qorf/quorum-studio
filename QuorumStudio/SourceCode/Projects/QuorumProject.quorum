@@ -82,10 +82,10 @@ class QuorumProject is Project
     public constant text IMAGE_SHEETS = "ImageSheets"
 
     /* This property stores the location of any mobile assets. */
-    public constant text MOBILE_ASSETS = "MobileAssets"
-    public constant text IPHONE_PROVISIONING_KEY = "IphoneProvisioningKey"
-    public constant text IPHONE_SIGNING_IDENTITY = "IphoneSigningIdentity"
+    
+    public constant text IOS_ASSETS = "IOSAssets"
     public constant text IOS_DEVICE = "IOS_DEVICE"
+    public constant text ANDROID_ASSETS = "AndroidAssets"
     public constant text ANDROID_PATH = "AndroidPath"
     public constant text ANDROID_ALTERNATE_JDK_PATH = "AndroidAlternateJDKPath"
     public constant text ANDROID_KEYSTORE_PATH = "AndroidKeystorePath"
@@ -95,7 +95,9 @@ class QuorumProject is Project
     public constant text MOBILE_ASSETS_DEFAULT_FOLDER = "media"
     public constant text IOS_VERSION = "iosVersion"
     public constant text IOS_BUNDLE = "IOS_BUNDLE"
-    public constant text IOS_DEFAULT_DEVICE = "iPhone 12 Simulator"
+    public constant text IOS_PROVISIONING = "IOS_PROVISIONING"
+    public constant text IOS_SIGNATURE = "IOS_SIGNATURE"
+    public constant text IOS_DEFAULT_DEVICE = "iPhone 14 Simulator"
     public constant text IOS_PHYSICAL_DEVICE = "IOS_PHYSICAL_DEVICE"
     public constant text IOS_13 = "13.0"
     public constant text IOS_14_1 = "14.1"
@@ -135,7 +137,8 @@ class QuorumProject is Project
         library:SetPath("Library/Standard")
         view:SetProject(me)
         //set a default assets folder. The user's project properties may override this.
-        SetMobileAssetsPath(MOBILE_ASSETS_DEFAULT_FOLDER)
+        SetAndroidAssetsPath(MOBILE_ASSETS_DEFAULT_FOLDER)
+        SetIOSAssetsPath(MOBILE_ASSETS_DEFAULT_FOLDER)
         SetIOSVersionKey(IOS_DEFAULT_VERSION)
         SetIOSDevice(IOS_DEFAULT_DEVICE)
         SetIOSBundle(IOS_DEFAULT_BUNDLE)
@@ -252,8 +255,8 @@ class QuorumProject is Project
     end
 
     /* This action returns the build path for image sheets. */
-    action GetMobileAssetsPath returns text
-        ProjectProperty property = GetProperty(MOBILE_ASSETS)
+    action GetAndroidAssetsPath returns text
+        ProjectProperty property = GetProperty(ANDROID_ASSETS)
         if property = undefined
             return undefined
         end
@@ -262,8 +265,22 @@ class QuorumProject is Project
     end
 
     /* This action sets the build path for image sheets. */
-    action SetMobileAssetsPath(text path)
-        SetPropertyValue(MOBILE_ASSETS, path)
+    action SetAndroidAssetsPath(text path)
+        SetPropertyValue(ANDROID_ASSETS, path)
+    end
+
+    action GetIOSAssetsPath returns text
+        ProjectProperty property = GetProperty(IOS_ASSETS)
+        if property = undefined
+            return undefined
+        end
+        text value = property:GetFirstValue()
+        return value
+    end
+
+    /* This action sets the build path for image sheets. */
+    action SetIOSAssetsPath(text path)
+        SetPropertyValue(IOS_ASSETS, path)
     end
 
     
@@ -397,6 +414,32 @@ class QuorumProject is Project
         SetPropertyValue(IOS_BUNDLE, value)
     end
 
+    action GetIOSProvisioning returns text
+        ProjectProperty property = GetProperty(IOS_PROVISIONING)
+        if property = undefined
+            return undefined
+        end
+        text value = property:GetFirstValue()
+        return value
+    end
+
+    action SetIOSProvisioning(text value)
+        SetPropertyValue(IOS_PROVISIONING, value)
+    end
+
+    action GetIOSSignature returns text
+        ProjectProperty property = GetProperty(IOS_SIGNATURE)
+        if property = undefined
+            return undefined
+        end
+        text value = property:GetFirstValue()
+        return value
+    end
+
+    action SetIOSSignature(text value)
+        SetPropertyValue(IOS_SIGNATURE, value)
+    end
+
     
     action IsIOSPhysicalDevice returns boolean
         ProjectProperty property = GetProperty(IOS_PHYSICAL_DEVICE)
@@ -424,29 +467,6 @@ class QuorumProject is Project
         SetPropertyValue(IOS_VERSION, path)
     end
 
-    /* This action returns the build path for image sheets. */
-    action GetIphoneProvisioningKey returns text
-        ProjectProperty property = GetProperty(IPHONE_PROVISIONING_KEY)
-        text value = property:GetFirstValue()
-        return value
-    end
-
-    /* This action sets the build path for image sheets. */
-    action SetIphoneProvisioningKey(text path)
-        SetPropertyValue(IPHONE_PROVISIONING_KEY, path)
-    end
-
-    /* This action returns the build path for image sheets. */
-    action GetIphoneSigningIdentity returns text
-        ProjectProperty property = GetProperty(IPHONE_SIGNING_IDENTITY)
-        text value = property:GetFirstValue()
-        return value
-    end
-
-    /* This action sets the build path for image sheets. */
-    action SetIphoneSigningIdentity(text path)
-        SetPropertyValue(IPHONE_SIGNING_IDENTITY, path)
-    end
 
     /* This action gets all image sheets loaded from the properties file. */
     action GetImageSheets returns ImageSheets
@@ -1122,13 +1142,25 @@ class QuorumProject is Project
                 return now
             end
             AddProperty(key, object:GetText())
-        elseif key = MOBILE_ASSETS
+        elseif key = ANDROID_ASSETS
             if not object:IsText()
                 logger:Log(textMessage)
                 return now
             end
             AddProperty(key, object:GetText())
-        elseif key = IPHONE_PROVISIONING_KEY
+        elseif key = IOS_ASSETS
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = IOS_PROVISIONING
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = IOS_SIGNATURE
             if not object:IsText()
                 logger:Log(textMessage)
                 return now
@@ -1171,12 +1203,6 @@ class QuorumProject is Project
             end
             AddProperty(key, object:GetText())
         elseif key = ANDROID_KEY_PASSWORD
-            if not object:IsText()
-                logger:Log(textMessage)
-                return now
-            end
-            AddProperty(key, object:GetText())
-        elseif key = IPHONE_SIGNING_IDENTITY
             if not object:IsText()
                 logger:Log(textMessage)
                 return now
