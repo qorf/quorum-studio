@@ -17,6 +17,8 @@ use Libraries.Containers.HashTable
 use Libraries.Development.Versioning.DiffEdit
 use Libraries.Development.Versioning.GitConstants
 use Libraries.Language.Compile.Hints.Hint
+use Libraries.Interface.Controls.ScrollableLineControl
+use Libraries.Game.Graphics.ColorGroup
 
 class StatusLineGutter is Gutter
     Color color
@@ -24,11 +26,7 @@ class StatusLineGutter is Gutter
         LayoutProperties properties = GetDefaultLayoutProperties()
         properties:SetLeftPadding(12)
         properties:SetRightPadding(8)
-
-        properties:SetBackgroundColor(color:CustomColor(255.0/255.0, 255.0/255.0, 255.0/255.0, 0.0))
-        properties:SetBorderColor(color:CustomColor(142.0/255.0, 142.0/255.0, 142.0/255.0, 0.0))
-        properties:SetBorderThickness(1)
-        properties:SetBorderStyle(properties:RIGHT)
+        properties:SetBorderThickness(0)
     end
 
     Array<Drawable> drawables
@@ -42,19 +40,59 @@ class StatusLineGutter is Gutter
     GitConstants gitConstants
     DiffResult result = undefined
     HashTable<integer, Hint> hintLocations = undefined
-    action UpdateVisuals(integer startLine, integer totalLines, number lineHeight)
-        Empty()
 
-        
-        TextBox textBox = GetTextBox()
-        integer fontSize = textBox:GetFontSize()
-        Font font = textBox:GetFont()
+    action GetGutterThickness returns number
+        ScrollableLineControl control = GetControl()
+
+        integer fontSize = control:GetFontSize()
+        Font font = control:GetFont()
         LayoutProperties properties = GetCurrentLayoutProperties()
         if properties = undefined
             properties = GetDefaultLayoutProperties()
         end
 
-        text linesInText = "" + textBox:GetLineCount()
+        integer glyphsRequired = 2
+        /*
+        We assume the space required for the "0" glyph is a good predictor of
+        the space used for each glyph in the font. For monospaced fonts this
+        will be accurate and the choice of glyph is arbitrary. For other fonts,
+        this is only an approximation, which may require some extra space via
+        padding in order to look correct.
+        */
+        number rightPadding = properties:GetRightPadding()
+        number leftPadding = properties:GetLeftPadding()
+        Glyph glyph = font:GetGlyph("0")
+        return glyph:horizontalAdvance * 1.5 + properties:GetLeftPadding() + rightPadding
+    end
+
+    action GetBackgroundColor returns ColorGroup
+        // The StatusLineGutter attempts to use the parent control's background color, if it's available.
+
+        LayoutProperties properties = GetDefaultLayoutProperties()
+        if properties:HasColorPropertyOverride("backgroundColor")
+            return properties:GetBackgroundColor()
+        end
+
+        Control control = GetControl()
+        if control not= undefined
+            return control:GetBackgroundColor()
+        end
+
+        return parent:Control:GetBackgroundColor()
+    end
+
+    action UpdateVisuals(integer startLine)
+        Empty()
+        
+        ScrollableLineControl control = GetControl()
+        integer fontSize = control:GetFontSize()
+        Font font = control:GetFont()
+        LayoutProperties properties = GetCurrentLayoutProperties()
+        if properties = undefined
+            properties = GetDefaultLayoutProperties()
+        end
+
+        text linesInText = "" + control:GetLineCount()
         integer glyphsRequired = 2
         /*
         We assume the space required for the "0" glyph is a good predictor of
@@ -70,9 +108,18 @@ class StatusLineGutter is Gutter
         number width = glyph:horizontalAdvance * 1.5 + properties:GetLeftPadding() + rightPadding
         integer descent = font:GetMaximumDescent()
         
+        integer totalLines = control:GetLineCount()
+        boolean last = false
+
         integer counter = 0
-        number y = textBox:GetHeight()
-        repeat while counter < totalLines and y > -lineHeight
+        number y = control:GetHeight()
+        repeat while counter + startLine < totalLines and last = false
+            if y < 0
+                last = true
+            end
+
+            number lineHeight = control:GetLineHeight(counter + startLine)
+
             Drawable drawable = GetDrawable(counter)
             integer myWidth = cast(integer, width - rightPadding - leftPadding)
             integer myHeight = cast(integer, lineHeight - 2)
@@ -114,7 +161,6 @@ class StatusLineGutter is Gutter
             counter = counter + 1
         end
 
-        SetSize(width, textBox:GetHeight() + lineHeight)
     end
  
     private action GetDrawable(integer index) returns Drawable
