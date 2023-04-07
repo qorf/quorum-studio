@@ -53,7 +53,11 @@ use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
 use Libraries.Development.Environment.Studio.Mobile.AppleDevice
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Layouts.LayoutProperties
-
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Forms.Banner
+use Libraries.Interface.Layouts.ManualLayout
+use Libraries.Interface.Pages.StackedRowPage
 
 class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
@@ -193,6 +197,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         tabPane:Add(CreateProjectInfoTab())
         tabPane:Add(CreateGamesTab())
         tabPane:Add(CreateMobileTab())
+        tabPane:Add(CreateiOSTab())
         tabPane:Add(CreateTeamsTab())
         Add(tabPane)
 
@@ -1285,10 +1290,208 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         return tab
     end
 
+    private action CreateiOSTab returns Tab
+        Tab tab
+        tab:SetName("iOS")
+        tab:DisplayCloseButton(false)
+
+        StackedRowPage page 
+        Banner banner = page:AddBanner("iOS Device Settings", "Pick a simulator or enter security credentials for physical devices")
+        banner:PositionFromTop()
+        
+        page:AddLabel("iOS Resource Folder")
+        Grouping resourceGroup = page:AddGrouping("Resources")
+        TextField resourceField = resourceGroup:AddTextField("iOS Resources")
+        resourceGroup:AddButton("Browse ..")
+        tab:SetFocusTarget(resourceField)
+        
+        page:AddLabel("Signing Identity")
+        page:AddTextField("Signing") // Note: We don't currently support combo boxes, so text field is substituted here instead
+        
+        page:AddLabel("Provisioning profile")
+        page:AddTextField("Age")
+        
+        
+        page:AddLabel("Device List")
+        List list = page:AddList("Device List")
+
+        AppleDevicesReader reader
+        Array<AppleDevice> devices = reader:GetAvailableDevices()
+        i = 0
+        repeat while i < devices:GetSize()
+            AppleDevice device = devices:Get(i)
+            list:Add(device:GetName())
+            i = i + 1
+        end
+        
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        buttonGroup:AddButton("Cancel")
+        buttonGroup:AddButton("Ok")
+        buttonGroup:PositionFromBottom() 
+        tab:SetRelatedItem(page)
+        return tab
+
+//        Control panel
+//        panel:SetInterfaceOptionsKey("Dialog")
+//        panel:SetPercentageWidth(1.0)
+//        panel:SetPercentageHeight(1.0)
+//        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+//
+//        ControlShaderView panelView
+//        panelView:Initialize()
+//        panel:SetView2D(panelView)
+
+        //FlowLayout layout
+        //panel:SetLayout(layout)
+        
+//
+//        Label resourcesLabel
+//        resourcesLabel:SetText("Resources")
+//        resourcesLabel:SetLeftPadding(10)
+//        resourcesLabel:SetTopPadding(10)
+//        panel:Add(resourcesLabel)
+//
+//        FlowLayout resourcesLayout
+//        Control resourcesContainer
+//        resourcesContainer:SetLayout(resourcesLayout)
+//        resourcesContainer:SetPercentageWidth(1.0)
+//        resourcesContainer:SetPixelWidth(-10)
+//        resourcesContainer:SetVerticalLayoutMode(resourcesContainer:FIT_CONTENTS)
+//        resourcesContainer:SetLeftPadding(10)
+//        resourcesContainer:SetTopPadding(10)
+
+
+
+//        panel:Add(resourcesContainer)
+//
+//        emptyTextFieldBehavior:SetTextField(mobileResourcesField)
+//
+//        mobileResourcesField:SetName("Mobile Resources")
+//        mobileResourcesField:SetPercentageWidth(0.68)
+//        resourcesContainer:Add(mobileResourcesField)
+//
+//        Label iosLabel
+//        iosLabel:SetSize(20)
+//        iosLabel:SetText("Apple")
+//        iosLabel:SetLeftPadding(10)
+//        iosLabel:SetTopPadding(20)
+//        panel:Add(iosLabel)
+//
+//        Control control
+//
+//        Label bundleLabel
+//        //bundleLabel:SetSize(20)
+//        bundleLabel:SetText("Bundle")
+//        bundleLabel:SetLeftPadding(10)
+//        bundleLabel:SetTopPadding(10)
+//        bundleLabel:SetPositionOnBaseLine(false)
+//        
+//        panel:Add(bundleLabel)
+//
+//        jdkField:SetName("Bundle Identifier")
+//        bundleIdentifierField:SetPercentageWidth(0.5)
+//        bundleIdentifierField:SetPixelWidth(-10)
+//        bundleIdentifierField:SetLeftPadding(10)
+//        bundleIdentifierField:SetTopPadding(10)
+//        panel:Add(bundleIdentifierField)
+//        
+//
+//        Label deviceListLabel
+//        deviceListLabel:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
+//        deviceListLabel:SetText("Device List")
+//        deviceListLabel:SetLeftPadding(10)
+//        deviceListLabel:SetRightPadding(10)
+//        deviceListLabel:SetTopPadding(20)
+//        deviceListLabel:SetPercentageWidth(1.0)
+//        panel:Add(deviceListLabel)
+//
+//        ScrollPane appleDevicesScrollPane
+//        appleDevicesScrollPane:SetInterfaceOptionsKey("DialogScrollPane")
+//        appleDevicesScrollPane:SetPercentageWidth(0.7)
+//        appleDevicesScrollPane:SetPixelHeight(100)
+//        FlowLayout appleDevicesScrollLayout
+//        appleDevicesScrollPane:SetLayout(appleDevicesScrollLayout)
+//
+//        availableDevicesList:SetName("Available iOS devices List")
+//        //availableDevicesList:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
+//        availableDevicesList:SetVerticalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+//        availableDevicesList:SetPercentageWidth(1.0)
+//        appleDevicesScrollPane:Add(availableDevicesList)
+//        panel:Add(appleDevicesScrollPane)
+//
+//        integer selection = -1
+//        AppleDevicesReader reader
+//        Array<AppleDevice> devices = reader:GetAvailableDevices()
+//        i = 0
+//        repeat while i < devices:GetSize()
+//            AppleDevice device = devices:Get(i)
+//            availableDevicesList:Add(device:GetName())
+//            i = i + 1
+//        end     
+//
+//        Control confirmArea
+//        FlowLayout confirmLayout
+//        confirmArea:SetLayout(confirmLayout)
+//        confirmArea:SetPercentageWidth(1.0)
+//        confirmArea:SetTopPadding(20)
+//        confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
+//
+//        Control confirmPadding
+//        confirmPadding:SetPercentageWidth(0.56)
+//        confirmPadding:SetPixelHeight(1)
+//        confirmArea:Add(confirmPadding)
+//
+//        Button cancelButton
+//        cancelButton:SetName("Cancel")
+//        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+//        cancelButton:SetPercentageWidth(0.2)
+//        cancelButton:SetLeftPadding(0)
+//        cancelButton:SetTopPadding(40)
+//        cancelButton:SetBottomPadding(20)
+//        cancelButton:SetBehavior(cancelBehavior)
+//        confirmArea:Add(cancelButton)
+//
+//        Button okayButton
+//        okayButton:SetName("OK")
+//        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+//        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
+//        okayButton:SetPercentageWidth(0.2)
+//        okayButton:SetLeftPadding(10)
+//        okayButton:SetTopPadding(40)
+//        okayButton:SetBottomPadding(20)
+//        okayButton:SetBehavior(okBehavior)
+//        confirmArea:Add(okayButton)
+//
+//        panel:Add(confirmArea)
+
+//        mobileResourcesField:SetNextFocus(resourcesBrowse)
+//        mobileResourcesField:SetPreviousFocus(okayButton)
+//        resourcesBrowse:SetNextFocus(resourcesClear)
+//        resourcesBrowse:SetPreviousFocus(mobileResourcesField)
+//        resourcesClear:SetNextFocus(androidLibraryField)
+//        resourcesClear:SetPreviousFocus(resourcesBrowse)
+//        androidLibraryField:SetNextFocus(keyStoreField)
+//        androidLibraryField:SetPreviousFocus(resourcesClear)
+//        keyStoreField:SetNextFocus(keyStorePasswordField)
+//        keyStoreField:SetPreviousFocus(androidLibraryField)
+//        keyStorePasswordField:SetNextFocus(keyAliasField)
+//        keyStorePasswordField:SetPreviousFocus(keyStoreField)
+//        keyAliasField:SetNextFocus(keyPasswordField)
+//        keyAliasField:SetPreviousFocus(keyStorePasswordField)
+//        keyPasswordField:SetNextFocus(jdkField)
+//        keyPasswordField:SetPreviousFocus(keyAliasField)
+//        jdkField:SetNextFocus(cancelButton)
+//        jdkField:SetPreviousFocus(keyPasswordField)
+//        cancelButton:SetNextFocus(okayButton)
+//        cancelButton:SetPreviousFocus(jdkField)
+//        okayButton:SetNextFocus(mobileResourcesField)
+//        okayButton:SetPreviousFocus(cancelButton)
+    end
+
     private action CreateMobileTab returns Tab
         Tab tab
         tab:SetFocusTarget(mobileResourcesField)
-        tab:SetName("Mobile")
+        tab:SetName("Android")
         tab:DisplayCloseButton(false)
 
         Control panel
@@ -1441,92 +1644,92 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         jdkField:SetTopPadding(10)
         panel:Add(jdkField)
 
-        Label iosLabel
-        iosLabel:SetSize(20)
-        iosLabel:SetText("Apple")
-        iosLabel:SetLeftPadding(10)
-        iosLabel:SetTopPadding(20)
-        panel:Add(iosLabel)
-
-        Control control
-        
-        ButtonGroup iosVersionRadios
-        iosVersionRadios:SetTopPadding(20)
-        iosVersionRadios:SetName("iosVersion")
-        iosVersionRadios:SetFocusable(true)
-        iosVersionRadios:SetHorizontalLayoutMode(control:STANDARD)
-        iosVersionRadios:SetPercentageWidth(1.0)
-
-        ios13Button:SetName("iOS 13")
-        ios13Button:SetFontSize(14)
-        ios13Button:SetRightPadding(83)
-        ios13Button:SetPercentageWidth(0.5)
-        iosVersionRadios:Add(ios13Button)
-
-        ios14Button:SetName("iOS 14.2")
-        ios14Button:SetFontSize(14)
-        ios14Button:SetRightPadding(83)
-        ios14Button:SetPercentageWidth(0.5)
-        iosVersionRadios:Add(ios14Button)
-
-        ios15Button:SetName("iOS 15.0")
-        ios15Button:SetFontSize(14)
-        ios15Button:SetRightPadding(83)
-        ios15Button:SetPercentageWidth(0.5)
-        ios15Button:SetToggleState(true)
-        iosVersionRadios:Add(ios15Button)
-        panel:Add(iosVersionRadios)
-
-        Label bundleLabel
-        //bundleLabel:SetSize(20)
-        bundleLabel:SetText("Bundle")
-        bundleLabel:SetLeftPadding(10)
-        bundleLabel:SetTopPadding(10)
-        bundleLabel:SetPositionOnBaseLine(false)
-        
-        panel:Add(bundleLabel)
-
-        jdkField:SetName("Bundle Identifier")
-        bundleIdentifierField:SetPercentageWidth(0.5)
-        bundleIdentifierField:SetPixelWidth(-10)
-        bundleIdentifierField:SetLeftPadding(10)
-        bundleIdentifierField:SetTopPadding(10)
-        panel:Add(bundleIdentifierField)
-        
-
-        Label deviceListLabel
-        deviceListLabel:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        deviceListLabel:SetText("Device List")
-        deviceListLabel:SetLeftPadding(10)
-        deviceListLabel:SetRightPadding(10)
-        deviceListLabel:SetTopPadding(20)
-        deviceListLabel:SetPercentageWidth(1.0)
-        panel:Add(deviceListLabel)
-
-        ScrollPane appleDevicesScrollPane
-        appleDevicesScrollPane:SetInterfaceOptionsKey("DialogScrollPane")
-        appleDevicesScrollPane:SetPercentageWidth(0.7)
-        appleDevicesScrollPane:SetPixelHeight(100)
-        FlowLayout appleDevicesScrollLayout
-        appleDevicesScrollPane:SetLayout(appleDevicesScrollLayout)
-
-        availableDevicesList:SetName("Available iOS devices List")
-        //availableDevicesList:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        availableDevicesList:SetVerticalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        availableDevicesList:SetPercentageWidth(1.0)
-        appleDevicesScrollPane:Add(availableDevicesList)
-        panel:Add(appleDevicesScrollPane)
-
-        integer selection = -1
-        AppleDevicesReader reader
-        Array<AppleDevice> devices = reader:GetAvailableDevices()
-        i = 0
-        repeat while i < devices:GetSize()
-            AppleDevice device = devices:Get(i)
-            availableDevicesList:Add(device:GetName())
-            i = i + 1
-        end     
-
+//        Label iosLabel
+//        iosLabel:SetSize(20)
+//        iosLabel:SetText("Apple")
+//        iosLabel:SetLeftPadding(10)
+//        iosLabel:SetTopPadding(20)
+//        panel:Add(iosLabel)
+//
+//        Control control
+//        
+//        ButtonGroup iosVersionRadios
+//        iosVersionRadios:SetTopPadding(20)
+//        iosVersionRadios:SetName("iosVersion")
+//        iosVersionRadios:SetFocusable(true)
+//        iosVersionRadios:SetHorizontalLayoutMode(control:STANDARD)
+//        iosVersionRadios:SetPercentageWidth(1.0)
+//
+//        ios13Button:SetName("iOS 13")
+//        ios13Button:SetFontSize(14)
+//        ios13Button:SetRightPadding(83)
+//        ios13Button:SetPercentageWidth(0.5)
+//        iosVersionRadios:Add(ios13Button)
+//
+//        ios14Button:SetName("iOS 14.2")
+//        ios14Button:SetFontSize(14)
+//        ios14Button:SetRightPadding(83)
+//        ios14Button:SetPercentageWidth(0.5)
+//        iosVersionRadios:Add(ios14Button)
+//
+//        ios15Button:SetName("iOS 15.0")
+//        ios15Button:SetFontSize(14)
+//        ios15Button:SetRightPadding(83)
+//        ios15Button:SetPercentageWidth(0.5)
+//        ios15Button:SetToggleState(true)
+//        iosVersionRadios:Add(ios15Button)
+//        panel:Add(iosVersionRadios)
+//
+//        Label bundleLabel
+//        //bundleLabel:SetSize(20)
+//        bundleLabel:SetText("Bundle")
+//        bundleLabel:SetLeftPadding(10)
+//        bundleLabel:SetTopPadding(10)
+//        bundleLabel:SetPositionOnBaseLine(false)
+//        
+//        panel:Add(bundleLabel)
+//
+//        jdkField:SetName("Bundle Identifier")
+//        bundleIdentifierField:SetPercentageWidth(0.5)
+//        bundleIdentifierField:SetPixelWidth(-10)
+//        bundleIdentifierField:SetLeftPadding(10)
+//        bundleIdentifierField:SetTopPadding(10)
+//        panel:Add(bundleIdentifierField)
+//        
+//
+//        Label deviceListLabel
+//        deviceListLabel:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
+//        deviceListLabel:SetText("Device List")
+//        deviceListLabel:SetLeftPadding(10)
+//        deviceListLabel:SetRightPadding(10)
+//        deviceListLabel:SetTopPadding(20)
+//        deviceListLabel:SetPercentageWidth(1.0)
+//        panel:Add(deviceListLabel)
+//
+//        ScrollPane appleDevicesScrollPane
+//        appleDevicesScrollPane:SetInterfaceOptionsKey("DialogScrollPane")
+//        appleDevicesScrollPane:SetPercentageWidth(0.7)
+//        appleDevicesScrollPane:SetPixelHeight(100)
+//        FlowLayout appleDevicesScrollLayout
+//        appleDevicesScrollPane:SetLayout(appleDevicesScrollLayout)
+//
+//        availableDevicesList:SetName("Available iOS devices List")
+//        //availableDevicesList:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
+//        availableDevicesList:SetVerticalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+//        availableDevicesList:SetPercentageWidth(1.0)
+//        appleDevicesScrollPane:Add(availableDevicesList)
+//        panel:Add(appleDevicesScrollPane)
+//
+//        integer selection = -1
+//        AppleDevicesReader reader
+//        Array<AppleDevice> devices = reader:GetAvailableDevices()
+//        i = 0
+//        repeat while i < devices:GetSize()
+//            AppleDevice device = devices:Get(i)
+//            availableDevicesList:Add(device:GetName())
+//            i = i + 1
+//        end     
+//
         Control confirmArea
         FlowLayout confirmLayout
         confirmArea:SetLayout(confirmLayout)
