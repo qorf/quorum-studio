@@ -30,17 +30,22 @@ use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioPropertiesOkB
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Controls.RadioButton
 use Libraries.Interface.Controls.ButtonGroup
+use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Pages.StackedRowPage
+use Libraries.Interface.Forms.Banner
+use Libraries.Interface.Controls.Checkbox
 
 
 class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
 
     boolean initialized = false
 
-    //variables for the Teams tab
-    TextField usernameTeams
-    TextField passwordTeams
-    RadioButton lightModeButton
-    RadioButton darkModeButton
+    RadioButton lightModeButton = undefined
+    RadioButton darkModeButton = undefined
+    TextField frameRateField = undefined
+    Checkbox overrideLibraryCheckbox = undefined
+    TextField libraryField = undefined
+    Checkbox framesPerSecondCheckbox = undefined
 
     TabPane tabPane
 
@@ -63,12 +68,9 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         cancelBehavior:SetDialog(me)
         SetBehavior(okBehavior)
 
-        passwordTeams:SetPassword(true)
-
         GameStateManager manager
         QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
         options = studio:GetOptions()
-        Load()
     end
 
     action Initialize
@@ -82,47 +84,77 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         FlowLayout tabLayout
         tabPane:SetViewAreaLayout(tabLayout)
         tabPane:SetPercentageWidth(1.0)
-        tabPane:SetPixelHeight(250)
+        tabPane:SetPixelHeight(750) //this needs to go away after fixes as well
 
         tabPane:Add(CreateLoginTab())
         Add(tabPane)
+        Load()
     end
 
     action Save
-        text user = usernameTeams:GetText()
-        text pass = passwordTeams:GetText()
-
-        //check if they've put anything in the boxes 
-        //and set it to be encrypted
-        if user not= undefined and pass not= undefined 
-            and not user:IsEmpty() and not pass:IsEmpty()
-            Credentials credentials
-            credentials:SetUsername(user)
-            credentials:SetPassword(pass)
-            options:AddPassword(options:QUORUM_WEBSITE_PASSWORD_KEY, credentials)
-        else 
-            options:RemovePassword(options:QUORUM_WEBSITE_PASSWORD_KEY)
-        end
-
         if lightModeButton:GetToggleState()
             options:SetToLightMode()
         else
             options:SetToDarkMode()
         end
+
+        if overrideLibraryCheckbox:GetToggleState()
+            options:SetOverridingStandardLibrary(true)
+        else
+            options:SetOverridingStandardLibrary(false)
+        end 
+
+        if framesPerSecondCheckbox:GetToggleState()
+            options:SetIsShowingFramesPerSecondCounter(true)
+        else
+            options:SetIsShowingFramesPerSecondCounter(false)
+        end
+
+        number frameRate = 30
+        check
+            frameRate = cast(number, frameRateField:GetText())
+        detect e
+        end
+        options:SetFrameRateLimit(frameRate)
+        
+        //for this one, there's a series of different checks we could do here,
+        //but realistically, the user could put this pointing to basically anything
+        //and there's hardly a guarantee it's valid even if the structure is the same
+        //Just check if it's a valid folder and move on
+        text location = libraryField:GetText()
+        File file
+        file:SetAbsolutePath(location)
+        if file:Exists() and file:IsDirectory()
+            options:SetStandardLibraryOverrideRawLocation(location)
+        else //if it's not valid, turn off the override
+            options:SetOverridingStandardLibrary(false)
+        end
     end
 
     action Load
-        Credentials credentials = options:GetPassword(options:QUORUM_WEBSITE_PASSWORD_KEY)
-        if credentials not= undefined
-            usernameTeams:SetText(credentials:GetUsername())
-            passwordTeams:SetText(credentials:GetPassword())
-        end
         if options:IsLightMode()
             lightModeButton:SetToggleState(true)
         else
             darkModeButton:SetToggleState(true)
         end
+
+        if options:IsOverridingStandardLibrary()
+            overrideLibraryCheckbox:SetToggleState(true)
+        else
+            overrideLibraryCheckbox:SetToggleState(true)
+        end
+
+        if options:IsShowingFramesPerSecondCounter()
+            framesPerSecondCheckbox:SetToggleState(true)
+        else
+            framesPerSecondCheckbox:SetToggleState(false)
+        end
         
+        number frames = options:GetFrameRateLimit()
+        frameRateField:SetText("" + frames)
+
+        text libraryLocation = options:GetStandardLibraryOverrideRawLocation()
+        libraryField:SetText(libraryLocation)
     end
 
     action IsInitialized returns boolean
@@ -131,160 +163,48 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
 
     private action CreateLoginTab returns Tab
         Tab tab
-        tab:SetFocusTarget(usernameTeams)
         tab:SetName("Properties")
         tab:DisplayCloseButton(false)
 
-        Control panel
-        panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-
-        ControlShaderView view
-        view:Initialize()
-        panel:SetView2D(view)
-
-        FlowLayout layout
-        panel:SetLayout(layout)
-        tab:SetRelatedItem(panel)
-
+        StackedRowPage page 
+        page:SetPixelHeight(400) //for testing, remove after fixes
+        Banner banner = page:AddBanner("Settings", 
+            "A set of properties for controlling aspects of Quorum Studio")
+        banner:PositionFromTop()
         
-
-        FlowLayout resourcesLayout
-        Control resourcesContainer
-        resourcesContainer:SetLayout(resourcesLayout)
-        resourcesContainer:SetPercentageWidth(1.0)
-        resourcesContainer:SetPixelWidth(-10)
-        resourcesContainer:SetVerticalLayoutMode(resourcesContainer:FIT_CONTENTS)
-        resourcesContainer:SetLeftPadding(10)
-        resourcesContainer:SetTopPadding(10)
-
-        
-
-        Label versionControlLabel
-        versionControlLabel:SetPercentageWidth(1.0)
-        versionControlLabel:SetSize(20)
-        versionControlLabel:SetText("Quorum Login")
-        versionControlLabel:SetLeftPadding(10)
-        versionControlLabel:SetTopPadding(20)
-        panel:Add(versionControlLabel)
-        panel:Add(resourcesContainer)
-
-
-        Label usernameLabel
-        usernameLabel:SetText("Username")
-        usernameLabel:SetPercentageWidth(1.0)
-        usernameLabel:SetLeftPadding(10)
-        usernameLabel:SetTopPadding(10)
-        resourcesContainer:Add(usernameLabel)
-
-        emptyTextFieldBehavior:SetTextField(usernameTeams)
-
-        usernameTeams:SetName("Username Textfield")
-        usernameTeams:SetPercentageWidth(1.0)
-        usernameTeams:SetPixelWidth(-10)
-        usernameTeams:SetLeftPadding(10)
-        usernameTeams:SetTopPadding(10)
-        resourcesContainer:Add(usernameTeams)
-
-        Label androidLabel
-        androidLabel:SetText("Password")
-        androidLabel:SetLeftPadding(10)
-        androidLabel:SetTopPadding(10)
-        resourcesContainer:Add(androidLabel)
-
-        passwordTeams:SetName("Password Textfield")
-        passwordTeams:SetPercentageWidth(1.0)
-        passwordTeams:SetPixelWidth(-10)
-        passwordTeams:SetLeftPadding(10)
-        passwordTeams:SetTopPadding(10)
-        resourcesContainer:Add(passwordTeams)
-
-        Control newLine
-        newLine:SetHorizontalLayoutMode(newLine:FILL)
-        panel:Add(newLine)
-
-        Control confirmArea
-        FlowLayout confirmLayout
-        confirmArea:SetLayout(confirmLayout)
-        confirmArea:SetPercentageWidth(1.0)
-        confirmArea:SetTopPadding(20)
-        confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
-
-        Control confirmPadding
-        confirmPadding:SetPercentageWidth(0.56)
-        confirmPadding:SetPixelHeight(1)
-        confirmArea:Add(confirmPadding)
-
-        Label colorModeLabel
-        colorModeLabel:SetPercentageWidth(1.0)
-        colorModeLabel:SetSize(20)
-        colorModeLabel:SetText("Color Mode (requires restart)")
-        colorModeLabel:SetLeftPadding(10)
-        colorModeLabel:SetTopPadding(20)
-        colorModeLabel:SetFocusable(true)
-        panel:Add(colorModeLabel)
-        
-
+        //add radio buttons
+        page:AddLabel("Color Mode")
         ButtonGroup projectRadios
         projectRadios:SetName("Color Mode")
-        projectRadios:SetFocusable(true)
-        projectRadios:SetHorizontalLayoutMode(parent:Libraries.Interface.Controls.Control:STANDARD)
-        projectRadios:SetTopPadding(10)
-        projectRadios:SetBottomPadding(20)
-        projectRadios:SetLeftPadding(10)
-        projectRadios:SetRightPadding(10)
-        projectRadios:SetPercentageWidth(1.0)
-
-        lightModeButton:SetName("Light")
-        lightModeButton:SetFontSize(14)
-        lightModeButton:SetRightPadding(30)
+        Grouping projectTypeGroup = page:AddGrouping("Color Mode")
+        lightModeButton = projectTypeGroup:AddRadioButton("Light Mode")
+        darkModeButton = projectTypeGroup:AddRadioButton("Dark Mode")
+        
+        //Now group them
         projectRadios:Add(lightModeButton)
-
-        darkModeButton:SetName("Dark")
-        darkModeButton:SetFontSize(14)
-        darkModeButton:SetRightPadding(30)
         projectRadios:Add(darkModeButton)
+        
+        page:AddLabel("Frame Rate")
+        frameRateField = page:AddTextField("Frame Rate")
+        
+        page:AddLabel("Frames Per Second Counter")
+        framesPerSecondCheckbox = page:AddCheckbox("Frames Per Second Counter")
+        
+        page:AddLabel("Override Standard Library (WARNING: Only do this if you have a good reason)")
+        overrideLibraryCheckbox = page:AddCheckbox("Override Standard Library")
+        page:AddLabel("Override Library Path")
+        libraryField = page:AddTextField("Library Location")
+        
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancelButton = buttonGroup:AddButton("Cancel")
+        Button okayButton = buttonGroup:AddButton("Ok")
+        buttonGroup:PositionFromBottom() 
 
-        confirmArea:Add(projectRadios)
-
-        Button cancelButton
-        cancelButton:SetName("Cancel")
-        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        cancelButton:SetPercentageWidth(0.2)
-        cancelButton:SetLeftPadding(0)
-        cancelButton:SetTopPadding(40)
-        cancelButton:SetBottomPadding(20)
         cancelButton:SetBehavior(cancelBehavior)
-        confirmArea:Add(cancelButton)
-
-        Button okayButton
-        okayButton:SetName("OK")
-        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
-        okayButton:SetPercentageWidth(0.2)
-        okayButton:SetLeftPadding(10)
-        okayButton:SetTopPadding(40)
-        okayButton:SetBottomPadding(20)
         okayButton:SetBehavior(okBehavior)
-        confirmArea:Add(okayButton)
 
-        panel:Add(confirmArea)
-
-        usernameTeams:SetNextFocus(passwordTeams)
-        usernameTeams:SetPreviousFocus(okayButton)
-        passwordTeams:SetNextFocus(colorModeLabel)
-        passwordTeams:SetPreviousFocus(usernameTeams)
-
-        colorModeLabel:SetNextFocus(projectRadios)
-        colorModeLabel:SetPreviousFocus(passwordTeams)
-
-        projectRadios:SetNextFocus(cancelButton)
-        projectRadios:SetPreviousFocus(colorModeLabel)
-
-        cancelButton:SetNextFocus(okayButton)
-        cancelButton:SetPreviousFocus(projectRadios)
-        okayButton:SetNextFocus(usernameTeams)
-        okayButton:SetPreviousFocus(cancelButton)
+        tab:SetFocusTarget(lightModeButton)
+        tab:SetRelatedItem(page)
 
         return tab
     end

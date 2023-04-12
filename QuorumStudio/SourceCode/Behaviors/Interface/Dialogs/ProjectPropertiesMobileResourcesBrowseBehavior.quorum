@@ -10,6 +10,7 @@ use Libraries.Development.Environment.Studio.Interface.ProjectPropertiesDialog
 
 class ProjectPropertiesMobileResourcesBrowseBehavior is QuorumStudioBehavior 
     ProjectPropertiesDialog dialog = undefined
+    boolean android = true
 
     action SetDialog(ProjectPropertiesDialog dialog)
         me:dialog = dialog
@@ -26,7 +27,19 @@ class ProjectPropertiesMobileResourcesBrowseBehavior is QuorumStudioBehavior
         File file = chooser:ChooseFolderDialog(project:GetLocation())
 
         if file not= undefined
-            dialog:SetMobileResourcesLocation(file:GetFileName())        
+            if android
+                dialog:SetAndroidResourcesLocation(file:GetFileName())
+            else
+                dialog:SetIOSResourcesLocation(file:GetFileName())
+            end     
         end
+    end
+
+    action GetAndroid returns boolean
+        return android
+    end
+
+    action SetAndroid(boolean android)
+        me:android = android
     end
 end

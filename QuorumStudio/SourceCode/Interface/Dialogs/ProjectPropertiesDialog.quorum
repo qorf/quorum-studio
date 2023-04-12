@@ -53,7 +53,11 @@ use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
 use Libraries.Development.Environment.Studio.Mobile.AppleDevice
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Layouts.LayoutProperties
-
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Forms.Banner
+use Libraries.Interface.Layouts.ManualLayout
+use Libraries.Interface.Pages.StackedRowPage
 
 class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
@@ -65,16 +69,15 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     File sourceLocation = undefined
 
     // Variables for the Project Information tab.
-    Label projectLocation
-    TextField programNameField
-    RadioButton standardProjectButton
-    RadioButton legoProjectButton
-    RadioButton webServerProjectButton
-    RadioButton webBrowserProjectButton
+    TextField programLocationField = undefined
+    TextField programNameField = undefined
+    RadioButton standardProjectButton = undefined
+    RadioButton legoProjectButton = undefined
+    RadioButton webBrowserProjectButton = undefined
 
-    List javaClassList
-    List jarList
-    List quorumSourcesList
+    List javaClassList = undefined
+    List jarList = undefined
+    List quorumSourcesList = undefined
 
     ProjectPropertiesAddJavaClassFolderBehavior addJavaClassBehavior
     RemoveListItemBehavior removeJavaClassBehavior
@@ -98,13 +101,13 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     ProjectPropertiesRemoveImageBehavior removeImageBehavior
 
     ProjectPropertiesMobileResourcesBrowseBehavior mobileResourcesBrowseBehavior
+    ProjectPropertiesMobileResourcesBrowseBehavior iosResourcesBrowseBehavior
     EmptyTextFieldBehavior emptyTextFieldBehavior
 
     // Variables for the Games tab.
     Checkbox enableImageSheets
     Checkbox buildImageSheetsOnCompile
     TextField imageSheetsBuildPathField
-    TextBox imagesTextBox
     List imageSheetsList
     List imagesList
 
@@ -112,17 +115,17 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     integer imageSheetCount = -1   
 
     // Variables for the Mobile tab.
-    TextField mobileResourcesField
-    TextField androidLibraryField
-    TextField keyStoreField
-    TextField keyStorePasswordField
-    TextField keyAliasField
-    TextField keyPasswordField
-    TextField jdkField
-    RadioButton ios13Button
-    RadioButton ios14Button
-    RadioButton ios15Button
-    TextField bundleIdentifierField
+    TextField androidResourcesField = undefined
+    TextField androidLibraryField = undefined
+    TextField keyStoreField = undefined
+    TextField keyStorePasswordField = undefined
+    TextField keyAliasField = undefined
+    TextField keyPasswordField = undefined
+    TextField jdkField = undefined
+    TextField iosResourcesField = undefined
+    TextField iosBundlingField = undefined
+    TextField iosProvisioningField = undefined
+    TextField iosSignatureField = undefined
     TabPane tabPane
     List availableDevicesList
 
@@ -157,13 +160,11 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         removeImageSheetBehavior:SetDialog(me)
         imageSheetListBehavior:SetDialog(me)
         mobileResourcesBrowseBehavior:SetDialog(me)
+        iosResourcesBrowseBehavior:SetDialog(me)
+        iosResourcesBrowseBehavior:SetAndroid(false)
         okBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
         SetBehavior(okBehavior)
-
-        keyStorePasswordField:SetPassword(true)
-        keyPasswordField:SetPassword(true)
-        passwordTeams:SetPassword(true)
 
         GameStateManager manager
         QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
@@ -192,17 +193,10 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         tabPane:Add(CreateProjectInfoTab())
         tabPane:Add(CreateGamesTab())
-        tabPane:Add(CreateMobileTab())
+        tabPane:Add(CreateAndroidTab())
+        tabPane:Add(CreateiOSTab())
         tabPane:Add(CreateTeamsTab())
         Add(tabPane)
-
-        mobileResourcesField:Empty()
-        androidLibraryField:Empty()
-        keyStoreField:Empty()
-        keyStorePasswordField:Empty()
-        keyAliasField:Empty()
-        keyPasswordField:Empty()
-        jdkField:Empty()
     end
 
     action SetProperties(QuorumProject project)
@@ -212,7 +206,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         SetName(project:GetName() + " Properties")
 
-        projectLocation:SetText("Project Location: " + project:GetLocation():GetAbsolutePath())
+        programLocationField:SetText(project:GetLocation():GetAbsolutePath())
         text executableName = project:GetProperty(project:EXECUTABLE_NAME):GetFirstValue()
 
         if executableName not= undefined
@@ -225,8 +219,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             standardProjectButton:SetToggleState(true)
         elseif projectType = project:JAVASCRIPT_COMPILE_TYPE
             webBrowserProjectButton:SetToggleState(true)
-        elseif projectType = project:SERVER_COMPILE_TYPE
-            webServerProjectButton:SetToggleState(true)
         elseif projectType = project:LEGO_COMPILE_TYPE
             legoProjectButton:SetToggleState(true)
         end
@@ -310,14 +302,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             end
         end
 
-        ProjectProperty mobileResourcesProperty = project:GetProperty(project:MOBILE_ASSETS)
-
-        if mobileResourcesProperty not= undefined
-            mobileResourcesField:SetText(mobileResourcesProperty:GetFirstValue())
-        else
-            mobileResourcesField:SetText("media")
-        end
-
+        ProjectProperty androidResourcesProperty = project:GetProperty(project:ANDROID_ASSETS)
         ProjectProperty androidLibraryProperty = project:GetProperty(project:ANDROID_PATH)
         ProjectProperty androidKeyStoreProperty = project:GetProperty(project:ANDROID_KEYSTORE_PATH)
         ProjectProperty androidKeyStorePasswordProperty = project:GetProperty(project:ANDROID_KEYSTORE_PASSWORD)
@@ -327,66 +312,58 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         ProjectProperty iosVersion = project:GetProperty(project:IOS_VERSION)
         ProjectProperty iosDeviceProperty = project:GetProperty(project:IOS_DEVICE)
         ProjectProperty iosBundleProperty = project:GetProperty(project:IOS_BUNDLE)
+        ProjectProperty iosProvisioningProperty = project:GetProperty(project:IOS_PROVISIONING)
+        ProjectProperty iosSignatureProperty = project:GetProperty(project:IOS_SIGNATURE)
+        ProjectProperty iosResourcesProperty = project:GetProperty(project:IOS_ASSETS)
 
-        if androidLibraryProperty not= undefined
+        if androidResourcesProperty not= undefined and androidResourcesField not= undefined
+            androidResourcesField:SetText(androidResourcesProperty:GetFirstValue())
+        else
+            androidResourcesField:SetText("media")
+        end
+
+        if androidLibraryProperty not= undefined and androidLibraryField not= undefined
             androidLibraryField:SetText(project:GetAndroidPath())
         else
             androidLibraryField:Empty()
         end
-            androidLibraryField:HideCaret()
+
+        androidLibraryField:HideCaret()
         
-        if androidKeyStoreProperty not= undefined
+        if androidKeyStoreProperty not= undefined and keyStoreField not= undefined
             keyStoreField:SetText(project:GetAndroidKeystorePath())
         else
             keyStoreField:Empty()
         end
         keyStoreField:HideCaret()
 
-        if androidKeyStorePasswordProperty not= undefined
+        if androidKeyStorePasswordProperty not= undefined and keyStorePasswordField not= undefined
             keyStorePasswordField:SetText(project:GetAndroidKeystorePassword())
         else
             keyStorePasswordField:Empty()
         end
         keyStorePasswordField:HideCaret()
 
-        if androidKeyAliasProperty not= undefined
+        if androidKeyAliasProperty not= undefined and keyAliasField not= undefined
             keyAliasField:SetText(project:GetAndroidKeyAlias())
         else
             keyAliasField:Empty()
         end
         keyAliasField:HideCaret()
 
-        if androidKeyPasswordProperty not= undefined
+        if androidKeyPasswordProperty not= undefined and keyPasswordField not= undefined
             keyPasswordField:SetText(project:GetAndroidKeyPassword())
         else
             keyPasswordField:Empty()
         end
         keyPasswordField:HideCaret()
         
-        if androidJDKProperty not= undefined
+        if androidJDKProperty not= undefined and jdkField not= undefined
             jdkField:SetText(project:GetAndroidAlternateJDKPath())
         else
             jdkField:Empty()
         end
         jdkField:HideCaret()
-
-        ios13Button:SetToggleState(false)
-        ios14Button:SetToggleState(false)
-        ios15Button:SetToggleState(false)
-        if iosVersion not= undefined
-            text value = iosVersion:GetFirstValue()
-            if value = project:IOS_14_2
-                ios14Button:SetToggleState(true)
-            elseif value = project:IOS_13
-                ios13Button:SetToggleState(true)
-            elseif value = project:IOS_15_0
-                ios15Button:SetToggleState(true)
-            else
-                ios15Button:SetToggleState(true)
-            end
-        else
-            ios15Button:SetToggleState(true)
-        end
 
         if iosDeviceProperty not= undefined
             text value = iosDeviceProperty:GetFirstValue()
@@ -402,10 +379,25 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             end
         end
 
-        //
-        if iosBundleProperty not= undefined
+        if iosBundleProperty not= undefined and iosBundlingField not= undefined
             text value = iosBundleProperty:GetFirstValue()
-            bundleIdentifierField:SetText(value)
+            iosBundlingField:SetText(value)
+        end
+
+        if iosProvisioningProperty not= undefined and iosProvisioningField not= undefined
+            text value = iosProvisioningProperty:GetFirstValue()
+            iosProvisioningField:SetText(value)
+        end
+
+        if iosSignatureProperty not= undefined and iosSignatureField not= undefined
+            text value = iosSignatureProperty:GetFirstValue()
+            iosSignatureField:SetText(value)
+        end
+
+        if iosResourcesProperty not= undefined
+            iosResourcesField:SetText(iosResourcesProperty:GetFirstValue())
+        else
+            iosResourcesField:SetText("media")
         end
 
         if project:HasGitSupport() 
@@ -510,8 +502,12 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     end
 
 
-    action SetMobileResourcesLocation(text location)
-        mobileResourcesField:SetText(location)
+    action SetAndroidResourcesLocation(text location)
+        androidResourcesField:SetText(location)
+    end
+
+    action SetIOSResourcesLocation(text location)
+        iosResourcesField:SetText(location)
     end
 
     /*
@@ -525,8 +521,6 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             project:SetProjectCompileType(project:JAVA_COMPILE_TYPE)
         elseif webBrowserProjectButton:GetToggleState() = true
             project:SetProjectCompileType(project:JAVASCRIPT_COMPILE_TYPE)
-        elseif webServerProjectButton:GetToggleState() = true
-            project:SetProjectCompileType(project:SERVER_COMPILE_TYPE)
         elseif legoProjectButton:GetToggleState() = true
             project:SetProjectCompileType(project:LEGO_COMPILE_TYPE)
         end
@@ -596,19 +590,11 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             mobileFlag = true
         end
 
-        if ios14Button:GetToggleState()
-            project:SetIOSVersionKey(project:IOS_14_2)
-        elseif ios15Button:GetToggleState()
-            project:SetIOSVersionKey(project:IOS_15_0)
+        text androidAssetsPath = androidResourcesField:GetText():Trim()
+        if androidAssetsPath:StartsWith("/")
+            project:SetAndroidAssetsPath(androidAssetsPath)
         else
-            project:SetIOSVersionKey(project:IOS_13)
-        end
-
-        text mobileAssetsPath = mobileResourcesField:GetText():Trim()
-        if mobileAssetsPath:StartsWith("/")
-            project:SetMobileAssetsPath(mobileAssetsPath)
-        else
-            project:SetMobileAssetsPath("/" + mobileAssetsPath)
+            project:SetAndroidAssetsPath("/" + androidAssetsPath)
         end
     
         //Save IOS Properties
@@ -626,8 +612,21 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             end
         end
 
-        text bundle = bundleIdentifierField:GetText()
+        text bundle = iosBundlingField:GetText()
         project:SetIOSBundle(bundle)
+
+        text provisioning = iosProvisioningField:GetText()
+        project:SetIOSProvisioning(provisioning)
+
+        text signature = iosSignatureField:GetText()
+        project:SetIOSSignature(signature)
+
+        text iosAssetsPath = iosResourcesField:GetText():Trim()
+        if iosAssetsPath:StartsWith("/")
+            project:SetIOSAssetsPath(iosAssetsPath)
+        else
+            project:SetIOSAssetsPath("/" + iosAssetsPath)
+        end
 
         project:Save()
 
@@ -651,370 +650,102 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
     private action CreateProjectInfoTab returns Tab
         Tab projectInfoTab
-        projectInfoTab:SetFocusTarget(programNameField)
+        projectInfoTab:SetFocusTarget(programLocationField)
         projectInfoTab:SetName("Project Information")
         projectInfoTab:DisplayCloseButton(false)
 
-        Control panel
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-//        panel:SetPixelHeight(550)
-
-        ControlShaderView panelView
-        panelView:Initialize()
-        panel:SetView2D(panelView)
-
-        FlowLayout layout
-        panel:SetLayout(layout)
-        projectInfoTab:SetRelatedItem(panel)
-
-        Control locationArea
-        FlowLayout locationLayout
-        locationArea:SetLayout(locationLayout)
-        locationArea:SetLeftPadding(10)
-//        locationArea:SetRightPadding(40)
-        locationArea:SetTopPadding(20)
-        locationArea:SetBottomPadding(20)
-        locationArea:SetPercentageWidth(1.0)
-        locationArea:SetVerticalLayoutMode(locationArea:FIT_CONTENTS)       
-
-        projectLocation:SetText("Project location: ")
-        locationArea:Add(projectLocation)
-
-        panel:Add(locationArea)
-
-        Control nameArea
-        FlowLayout nameLayout
-        nameArea:SetLayout(nameLayout)
-        nameArea:SetLeftPadding(10)
-        nameArea:SetBottomPadding(20)
-        nameArea:SetRightPadding(20)
-        nameArea:SetPercentageWidth(1.0)
-        nameArea:SetVerticalLayoutMode(nameArea:FIT_CONTENTS)
-
-        Label programName
-        programName:SetText("Program Name: ")
-//        programName:SetTopPadding(20)
-//        programName:SetPercentageWidth(1.0)
-        nameArea:Add(programName)
-
-        programNameField:SetHorizontalLayoutMode(programNameField:parent:Libraries.Interface.Controls.Control:FILL)
-        programNameField:SetName("Program Name")
-        nameArea:Add(programNameField)
+        StackedRowPage page 
+        page:SetPixelHeight(500) //for testing, remove after fixes
+        Banner banner = page:AddBanner("Projects", "General Project Properties for locations and dependencies")
+        banner:PositionFromTop()
         
-        panel:Add(nameArea)
-
-        Label projectType
-        projectType:SetText("Select Project Type: ")
-        projectType:SetLeftPadding(10)
-        projectType:SetPercentageWidth(1.0)
-        panel:Add(projectType)
-
+        page:AddLabel("Project Location")
+        Grouping resourceGroup = page:AddGrouping("Location")
+        programLocationField = resourceGroup:AddTextField("Location")
+        
+        page:AddLabel("Project Name")
+        programNameField = page:AddTextField("Name")
+        
+        //add radio buttons
+        page:AddLabel("Project Type")
         ButtonGroup projectRadios
         projectRadios:SetName("Project Type")
-        projectRadios:SetFocusable(true)
-        projectRadios:SetHorizontalLayoutMode(parent:Libraries.Interface.Controls.Control:STANDARD)
-        projectRadios:SetTopPadding(10)
-        projectRadios:SetBottomPadding(20)
-        projectRadios:SetLeftPadding(10)
-        projectRadios:SetRightPadding(10)
-        projectRadios:SetPercentageWidth(1.0)
-
-        standardProjectButton:SetName("Standard")
-        standardProjectButton:SetFontSize(14)
-        standardProjectButton:SetRightPadding(30)
+        Grouping projectTypeGroup = page:AddGrouping("Project Type")
+        standardProjectButton = projectTypeGroup:AddRadioButton("Standard")
+        webBrowserProjectButton = projectTypeGroup:AddRadioButton("Browser")
+        legoProjectButton = projectTypeGroup:AddRadioButton("LEGO")
+        
+        //Now group them
         projectRadios:Add(standardProjectButton)
-
-        legoProjectButton:SetName("Lego")
-        legoProjectButton:SetFontSize(14)
-        legoProjectButton:SetRightPadding(30)
-        projectRadios:Add(legoProjectButton)
-
-        webServerProjectButton:SetName("Web Server")
-        webServerProjectButton:SetFontSize(14)
-        webServerProjectButton:SetRightPadding(30)
-        projectRadios:Add(webServerProjectButton)
-
-        webBrowserProjectButton:SetName("Web Browser")
-        webBrowserProjectButton:SetFontSize(14)
         projectRadios:Add(webBrowserProjectButton)
+        projectRadios:Add(legoProjectButton)
+        
+        //Create all of the plugins lists and buttons for controlling them
+        page:AddLabel("Plugin Folders")
+        javaClassList = page:AddList("Plugins")
+        
+        Grouping pluginGroup = page:AddGrouping("Plugins")
+        Button addPlugin = pluginGroup:AddButton("Add")
+        Button removePlugin = pluginGroup:AddButton("Remove")
+        Button clearPlugin = pluginGroup:AddButton("Clear")
 
-        panel:Add(projectRadios)
-
-        Label pluginFolders
-        pluginFolders:SetLeftPadding(20)
-        pluginFolders:SetTopPadding(10)
-        pluginFolders:SetBottomPadding(20)
-        pluginFolders:SetText("Additional Quorum Plugin Folders")
-        panel:Add(pluginFolders)
-
-        FlowLayout pluginLayout
-
-        Control pluginArea
-        pluginArea:SetLayout(pluginLayout)
-        pluginArea:SetHorizontalLayoutMode(pluginArea:STANDARD)
-        pluginArea:SetVerticalLayoutMode(pluginArea:FIT_CONTENTS)
-        pluginArea:SetPercentageWidth(1.0)
-        pluginArea:SetLeftPadding(20)
-
-        ScrollPane javaScrollPane
-        javaScrollPane:SetInterfaceOptionsKey("DialogScrollPane")
-        javaScrollPane:SetPercentageWidth(0.7)
-        javaScrollPane:SetPixelHeight(100)
-        FlowLayout javaScrollLayout
-        javaScrollPane:SetLayout(javaScrollLayout)
-
-        javaClassList:SetName("Additional Quorum Plugin Folders")
-        javaClassList:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        javaClassList:SetVerticalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        javaClassList:SetPercentageWidth(1.0)
-        javaScrollPane:Add(javaClassList)
-        pluginArea:Add(javaScrollPane)
-
-        Control pluginButtons
-        FlowLayout pluginButtonsLayout
-        pluginButtons:SetLayout(pluginButtonsLayout)
-        pluginButtons:SetPercentageWidth(0.25)
-        pluginButtons:SetVerticalLayoutMode(pluginButtons:FIT_CONTENTS)
-        pluginButtons:SetRightPadding(10)
-        pluginButtons:SetLeftPadding(20)
-        pluginArea:Add(pluginButtons)
+        //set the behaviors on the plugin buttons
+        addPlugin:SetBehavior(addJavaClassBehavior)
+        removePlugin:SetBehavior(removeJavaClassBehavior)
+        clearPlugin:SetBehavior(clearJavaClassesBehavior)
 
         addJavaClassBehavior:SetList(javaClassList)
         removeJavaClassBehavior:SetList(javaClassList)
         clearJavaClassesBehavior:SetList(javaClassList)
+        
+        //Create the list for all of the jar files
+        page:AddLabel("Jar Folders")
+        jarList = page:AddList("Jars")
+        jarList:Add("Option 1")
+        jarList:Add("Option 2")
+        
+        Grouping jarGroup = page:AddGrouping("Jars")
+        Button addJar = jarGroup:AddButton("Add")
+        Button removeJar = jarGroup:AddButton("Remove")
+        Button clearJars = jarGroup:AddButton("Clear")
 
-        Button addPlugin
-        addPlugin:SetName("Add")
-        addPlugin:SetHorizontalLayoutMode(addPlugin:parent:Libraries.Interface.Controls.Control:STANDARD)
-        addPlugin:SetPercentageWidth(1.0)
-        addPlugin:SetBottomPadding(25)
-        addPlugin:SetBehavior(addJavaClassBehavior)
-        pluginButtons:Add(addPlugin)
-
-        Button removePlugin
-        removePlugin:SetName("Remove")
-        removePlugin:SetHorizontalLayoutMode(removePlugin:parent:Libraries.Interface.Controls.Control:STANDARD)
-        removePlugin:SetPercentageWidth(1.0)
-        removePlugin:SetBottomPadding(25)
-        removePlugin:SetBehavior(removeJavaClassBehavior)
-        pluginButtons:Add(removePlugin)
-
-        Button clearPlugins
-        clearPlugins:SetName("Clear")
-        clearPlugins:SetHorizontalLayoutMode(clearPlugins:parent:Libraries.Interface.Controls.Control:STANDARD)
-        clearPlugins:SetPercentageWidth(1.0)
-        clearPlugins:SetBehavior(clearJavaClassesBehavior)
-        pluginButtons:Add(clearPlugins)
-
-        panel:Add(pluginArea)
-
-        Label jarLibraries
-        jarLibraries:SetText("Additional Java Jar Libraries")
-        jarLibraries:SetLeftPadding(20)
-        jarLibraries:SetTopPadding(10)
-        jarLibraries:SetBottomPadding(20)
-        panel:Add(jarLibraries)
-
-        FlowLayout jarLayout
-
-        Control jarArea
-        jarArea:SetLayout(jarLayout)
-        jarArea:SetHorizontalLayoutMode(jarArea:STANDARD)
-        jarArea:SetVerticalLayoutMode(jarArea:FIT_CONTENTS)
-        jarArea:SetPercentageWidth(1.0)
-        jarArea:SetLeftPadding(20)
-
-        ScrollPane jarScrollPane
-        jarScrollPane:SetInterfaceOptionsKey("DialogScrollPane")
-        jarScrollPane:SetPercentageWidth(0.7)
-        jarScrollPane:SetPixelHeight(100)
-        FlowLayout jarScrollLayout
-        jarScrollPane:SetLayout(jarScrollLayout)
-
-        jarList:SetName("Additional Java Jar Libraries")
-        jarList:SetHorizontalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        jarList:SetVerticalLayoutMode(jarList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        jarList:SetPercentageWidth(1.0)
-        jarScrollPane:Add(jarList)
-        jarArea:Add(jarScrollPane)
-
-        Control jarButtons
-        FlowLayout jarButtonsLayout
-        jarButtons:SetLayout(jarButtonsLayout)
-        jarButtons:SetPercentageWidth(0.25)
-        jarButtons:SetVerticalLayoutMode(jarButtons:FIT_CONTENTS)
-        jarButtons:SetRightPadding(20)
-        jarButtons:SetLeftPadding(10)
-        jarArea:Add(jarButtons)
-
+        //set the behaviors on the Jar buttons
         addJarBehavior:SetList(jarList)
         removeJarBehavior:SetList(jarList)
         clearJarsBehavior:SetList(jarList)
 
-        Button addJar
-        addJar:SetName("Add")
-        addJar:SetHorizontalLayoutMode(addJar:parent:Libraries.Interface.Controls.Control:STANDARD)
-        addJar:SetPercentageWidth(1.0)
-        addJar:SetBottomPadding(25)
         addJar:SetBehavior(addJarBehavior)
-        jarButtons:Add(addJar)
-
-        Button removeJar
-        removeJar:SetName("Remove")
-        removeJar:SetHorizontalLayoutMode(removeJar:parent:Libraries.Interface.Controls.Control:STANDARD)
-        removeJar:SetPercentageWidth(1.0)
-        removeJar:SetBottomPadding(25)
         removeJar:SetBehavior(removeJarBehavior)
-        jarButtons:Add(removeJar)
-
-        Button clearJars
-        clearJars:SetHorizontalLayoutMode(clearJars:parent:Libraries.Interface.Controls.Control:STANDARD)
-        clearJars:SetName("Clear")
-        clearJars:SetPercentageWidth(1.0)
         clearJars:SetBehavior(clearJarsBehavior)
-        jarButtons:Add(clearJars)
 
-        panel:Add(jarArea)
-
-        Label sourceFiles
-        sourceFiles:SetText("Additional Source Files")
-        sourceFiles:SetLeftPadding(20)
-        sourceFiles:SetTopPadding(10)
-        sourceFiles:SetBottomPadding(20)
-        panel:Add(sourceFiles)
-
-        FlowLayout sourceLayout
-
-        Control sourceArea
-        sourceArea:SetLayout(sourceLayout)
-        sourceArea:SetHorizontalLayoutMode(sourceArea:STANDARD)
-        sourceArea:SetVerticalLayoutMode(sourceArea:FIT_CONTENTS)
-        sourceArea:SetPercentageWidth(1.0)
-        sourceArea:SetLeftPadding(20)
+        page:AddLabel("Source Folders")
+        quorumSourcesList = page:AddList("Sources")
+        quorumSourcesList:Add("Option 1")
+        quorumSourcesList:Add("Option 2")
         
-        ScrollPane sourcesScrollPane
-        sourcesScrollPane:SetInterfaceOptionsKey("DialogScrollPane")
-        sourcesScrollPane:SetPercentageWidth(0.7)
-        sourcesScrollPane:SetPixelHeight(100)
-        FlowLayout sourcesScrollLayout
-        sourcesScrollPane:SetLayout(sourcesScrollLayout)
+        Grouping sourceGroup = page:AddGrouping("Sources")
+        Button addSource = sourceGroup:AddButton("Add")
+        Button removeSource = sourceGroup:AddButton("Remove")
+        Button clearSources = sourceGroup:AddButton("Clear")
         
-        quorumSourcesList:SetName("Additional Source Files")
-        quorumSourcesList:SetHorizontalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        quorumSourcesList:SetVerticalLayoutMode(quorumSourcesList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        quorumSourcesList:SetPercentageWidth(1.0)
-
-        sourcesScrollPane:Add(quorumSourcesList)
-        sourceArea:Add(sourcesScrollPane)
-
+        //set the behaviors on the Source buttons
         addSourceBehavior:SetList(quorumSourcesList)
         removeSourceBehavior:SetList(quorumSourcesList)
         clearSourcesBehavior:SetList(quorumSourcesList)
-        
-        Control sourceButtons
-        FlowLayout sourceButtonsLayout
-        sourceButtons:SetLayout(sourceButtonsLayout)
-        sourceButtons:SetPercentageWidth(0.25)
-        sourceButtons:SetVerticalLayoutMode(sourceButtons:FIT_CONTENTS)
-        sourceButtons:SetRightPadding(20)
-        sourceButtons:SetLeftPadding(15)
-        sourceArea:Add(sourceButtons)
 
-        Button addSource
-        addSource:SetName("Add")
-        addSource:SetHorizontalLayoutMode(addSource:parent:Libraries.Interface.Controls.Control:STANDARD)
-        addSource:SetPercentageWidth(1.0)
-        addSource:SetBottomPadding(25)
         addSource:SetBehavior(addSourceBehavior)
-        sourceButtons:Add(addSource)
-
-        Button removeSource
-        removeSource:SetName("Remove")
-        removeSource:SetHorizontalLayoutMode(removeSource:parent:Libraries.Interface.Controls.Control:STANDARD)
-        removeSource:SetPercentageWidth(1.0)
-        removeSource:SetBottomPadding(25)
         removeSource:SetBehavior(removeSourceBehavior)
-        sourceButtons:Add(removeSource)
-
-        Button clearSources
-        clearSources:SetName("Clear")
-        clearSources:SetHorizontalLayoutMode(clearSources:parent:Libraries.Interface.Controls.Control:STANDARD)
-        clearSources:SetPercentageWidth(1.0)
         clearSources:SetBehavior(clearSourcesBehavior)
-        sourceButtons:Add(clearSources)
-
-        panel:Add(sourceArea)
-
-        Control confirmArea
-        FlowLayout confirmLayout
-        confirmArea:SetLayout(confirmLayout)
-        confirmArea:SetPercentageWidth(1.0)
-        confirmArea:SetTopPadding(20)
-        confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
-
-        Control confirmPadding
-        confirmPadding:SetPercentageWidth(0.56)
-        confirmPadding:SetPixelHeight(1)
-        confirmArea:Add(confirmPadding)
-
-        Button cancelButton
-        cancelButton:SetName("Cancel")
-        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        cancelButton:SetPercentageWidth(0.2)
-        cancelButton:SetLeftPadding(0)
-        cancelButton:SetBottomPadding(20)
-        cancelButton:SetTopPadding(40)
-        cancelButton:SetBehavior(cancelBehavior)
-        confirmArea:Add(cancelButton)
-
-        Button okayButton
-        okayButton:SetName("OK")
-        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
-        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        okayButton:SetPercentageWidth(0.2)
-        okayButton:SetLeftPadding(10)
-        okayButton:SetBottomPadding(20)
-        okayButton:SetTopPadding(40)
-        okayButton:SetBehavior(okBehavior)
-        confirmArea:Add(okayButton)
-
-        panel:Add(confirmArea)
-
-        programNameField:SetNextFocus(projectRadios)
-        programNameField:SetPreviousFocus(okayButton)
-        projectRadios:SetNextFocus(javaClassList)
-        projectRadios:SetPreviousFocus(programNameField)
-        javaClassList:SetNextFocus(addPlugin)
-        javaClassList:SetPreviousFocus(projectRadios)
-        addPlugin:SetNextFocus(removePlugin)
-        addPlugin:SetPreviousFocus(javaClassList)
-        removePlugin:SetNextFocus(clearPlugins)
-        removePlugin:SetPreviousFocus(addPlugin)
-        clearPlugins:SetNextFocus(jarList)
-        clearPlugins:SetPreviousFocus(removePlugin)
-        jarList:SetNextFocus(addJar)
-        jarList:SetPreviousFocus(clearPlugins)
-        addJar:SetNextFocus(removeJar)
-        addJar:SetPreviousFocus(jarList)
-        removeJar:SetNextFocus(clearJars)
-        removeJar:SetPreviousFocus(addJar)
-        clearJars:SetNextFocus(quorumSourcesList)
-        clearJars:SetPreviousFocus(removeJar)
-        quorumSourcesList:SetNextFocus(addSource)
-        quorumSourcesList:SetPreviousFocus(clearJars)
-        addSource:SetNextFocus(removeSource)
-        addSource:SetPreviousFocus(quorumSourcesList)
-        removeSource:SetNextFocus(clearSources)
-        removeSource:SetPreviousFocus(addSource)
-        clearSources:SetNextFocus(cancelButton)
-        clearSources:SetPreviousFocus(removeSource)
-        cancelButton:SetNextFocus(okayButton)
-        cancelButton:SetPreviousFocus(clearSources)
-        okayButton:SetNextFocus(programNameField)
-        okayButton:SetPreviousFocus(cancelButton)
         
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancelButton = buttonGroup:AddButton("Cancel")
+        Button okayButton = buttonGroup:AddButton("Ok")
+        buttonGroup:PositionFromBottom() 
+
+        cancelButton:SetBehavior(cancelBehavior)
+        okayButton:SetBehavior(okBehavior)
+
+        projectInfoTab:SetRelatedItem(page)
         return projectInfoTab
     end
 
@@ -1024,500 +755,96 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         tab:SetName("Games")
         tab:DisplayCloseButton(false)
 
-        Control panel
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-//        panel:SetPixelHeight(500)
+        StackedRowPage page 
+        page:SetPixelHeight(500) //for testing, remove after fixes
+        Banner banner = page:AddBanner("Image Sheets", "Properties for 2D Image Sheets")
+        banner:PositionFromTop()
+        
+        page:AddLabel("Image Sheet Properties")
+        enableImageSheets = page:AddCheckbox("Enable Image Sheets")
+        buildImageSheetsOnCompile = page:AddCheckbox("Rebuild Image Sheets every compile")
+        
+        page:AddLabel("Build Path")
+        imageSheetsBuildPathField = page:AddTextField("Build Path Field")
 
-        ControlShaderView panelView
-        panelView:Initialize()
-        panel:SetView2D(panelView)
-        tab:SetRelatedItem(panel)
-
-        FlowLayout layout
-        panel:SetLayout(layout)
-
-        enableImageSheets:SetName("Enable Image Sheet Support")
-        enableImageSheets:SetLeftPadding(10)
-        enableImageSheets:SetRightPadding(20)
-        enableImageSheets:SetTopPadding(10)
-        panel:Add(enableImageSheets)
-
-        buildImageSheetsOnCompile:SetName("Rebuild on Compile")
-        buildImageSheetsOnCompile:SetLeftPadding(10)
-        buildImageSheetsOnCompile:SetTopPadding(10)
-        panel:Add(buildImageSheetsOnCompile)
-
-        Control buildPathContainer
-        buildPathContainer:SetPercentageWidth(1.0)
-        buildPathContainer:SetPixelWidth(-10)
-        buildPathContainer:SetVerticalLayoutMode(buildPathContainer:FIT_CONTENTS)
-        buildPathContainer:SetTopPadding(20)
-        buildPathContainer:SetLeftPadding(10)
-
-        FlowLayout buildPathLayout
-        buildPathContainer:SetLayout(buildPathLayout)
-
-        Label buildPathLabel
-        buildPathLabel:SetText("Build Path: ")
-        buildPathContainer:Add(buildPathLabel)
-
-        imageSheetsBuildPathField:SetText("resources")
-        imageSheetsBuildPathField:SetName("Build Path")
-        imageSheetsBuildPathField:SetHorizontalLayoutMode(imageSheetsBuildPathField:parent:Libraries.Interface.Controls.Control:FILL)
-        buildPathContainer:Add(imageSheetsBuildPathField)
-
-        panel:Add(buildPathContainer)
-
-        Label imageSheetsLabel
-        imageSheetsLabel:SetText("Image Sheets")
-        imageSheetsLabel:SetLeftPadding(10)
-        imageSheetsLabel:SetTopPadding(20)
-        panel:Add(imageSheetsLabel)
-
-        imageSheetListBehavior:SetList(imageSheetsList)
-
-        FlowLayout imageSheetsLayout
-        Control imageSheetsArea
-        imageSheetsArea:SetLayout(imageSheetsLayout)
-        imageSheetsArea:SetHorizontalLayoutMode(imageSheetsArea:STANDARD)
-        imageSheetsArea:SetVerticalLayoutMode(imageSheetsArea:FIT_CONTENTS)
-        imageSheetsArea:SetPercentageWidth(1.0)
-        imageSheetsArea:SetLeftPadding(10)
-        imageSheetsArea:SetTopPadding(10)
-
-        ScrollPane imageSheetsScrollPane
-        imageSheetsScrollPane:SetInterfaceOptionsKey("DialogScrollPane")
-        imageSheetsScrollPane:SetPixelHeight(100)
-        imageSheetsScrollPane:SetPercentageWidth(0.7)
-        FlowLayout imageSheetsScrollLayout
-        imageSheetsScrollPane:SetLayout(imageSheetsScrollLayout)
-
-        imageSheetsList:SetName("Image Sheets List")
-        imageSheetsList:SetHorizontalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        imageSheetsList:SetVerticalLayoutMode(imageSheetsList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        imageSheetsList:SetPercentageWidth(1.0)
-        //have to double click on the list item to initiate behavior
-        imageSheetsScrollPane:Add(imageSheetsList)
+        page:AddLabel("Image Sheets")
+        imageSheetsList = page:AddList("Image SheetList")
         imageSheetsList:SetItemActivationBehavior(imageSheetListBehavior)
-        imageSheetsArea:Add(imageSheetsScrollPane)
+
+        Grouping imageSheetGroup = page:AddGrouping("Image Sheet Buttons")
+        Button addSheet = imageSheetGroup:AddButton("Add")
+        Button editSheet = imageSheetGroup:AddButton("Remove")
+        Button removeSheet = imageSheetGroup:AddButton("Clear")
 
         addImageSheetsBehavior:SetImageSheetsList(imageSheetsList)
         editImageSheetsBehavior:SetImageSheetsList(imageSheetsList)
         removeImageSheetBehavior:SetImageSheetsList(imageSheetsList)
 
-        Control imageSheetsButtons
-        FlowLayout imageSheetsButtonsLayout
-        imageSheetsButtons:SetLayout(imageSheetsButtonsLayout)
-        imageSheetsButtons:SetHorizontalLayoutMode(imageSheetsButtons:FILL)
-        imageSheetsButtons:SetVerticalLayoutMode(imageSheetsButtons:FIT_CONTENTS)
-        imageSheetsArea:Add(imageSheetsButtons)
-
-        Button addSheet
-        addSheet:SetName("Add")
-        addSheet:SetHorizontalLayoutMode(addSheet:parent:Libraries.Interface.Controls.Control:STANDARD)
-        addSheet:SetPercentageWidth(1.0)
-        addSheet:SetLeftPadding(15)
-        addSheet:SetRightPadding(20)
-        addSheet:SetBottomPadding(25)
         addSheet:SetBehavior(addImageSheetsBehavior)
-        imageSheetsButtons:Add(addSheet)
-
-        Button editSheet
-        editSheet:SetName("Edit")
-        editSheet:SetHorizontalLayoutMode(editSheet:parent:Libraries.Interface.Controls.Control:STANDARD)
-        editSheet:SetPercentageWidth(1.0)
-        editSheet:SetLeftPadding(15)
-        editSheet:SetRightPadding(20)
-        editSheet:SetBottomPadding(25)
         editSheet:SetBehavior(editImageSheetsBehavior)
-        imageSheetsButtons:Add(editSheet)
-
-        Button removeSheet
-        removeSheet:SetName("Remove")
-        removeSheet:SetHorizontalLayoutMode(removeSheet:parent:Libraries.Interface.Controls.Control:STANDARD)
-        removeSheet:SetPercentageWidth(1.0)
-        removeSheet:SetLeftPadding(15)
-        removeSheet:SetRightPadding(20)
-        removeSheet:SetBottomPadding(6)
         removeSheet:SetBehavior(removeImageSheetBehavior)
-        imageSheetsButtons:Add(removeSheet)
-
-        panel:Add(imageSheetsArea)
-
-        Label imagesLabel
-        imagesLabel:SetText("Images")
-        imagesLabel:SetLeftPadding(10)
-        imagesLabel:SetTopPadding(20)
-        panel:Add(imagesLabel)
-
-        FlowLayout imagesLayout
-
-        Control imagesArea
-        imagesArea:SetLayout(imagesLayout)
-        imagesArea:SetHorizontalLayoutMode(imageSheetsArea:STANDARD)
-        imagesArea:SetVerticalLayoutMode(imageSheetsArea:FIT_CONTENTS)
-        imagesArea:SetPercentageWidth(1.0)
-        imagesArea:SetLeftPadding(10)
-        imagesArea:SetTopPadding(10)
         
-        ScrollPane scrollPane
-        scrollPane:SetInterfaceOptionsKey("DialogScrollPane")
-        scrollPane:SetPercentageWidth(0.7)
-        scrollPane:SetPixelHeight(100)
-        FlowLayout scrollLayout
-        scrollPane:SetLayout(scrollLayout)
-
-        imagesList:SetName("Images List")
-        imagesList:SetHorizontalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        imagesList:SetVerticalLayoutMode(imagesList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        imagesList:SetPercentageWidth(1.0)
-        scrollPane:Add(imagesList)
-        imagesArea:Add(scrollPane)
+        page:AddLabel("Images")
+        imagesList = page:AddList("Image List")
+        imagesList:Add("Option 1")
+        imagesList:Add("Option 2")
+        
+        Grouping imageGroup = page:AddGrouping("Image Buttons")
+        Button addImage = imageGroup:AddButton("Add")
+        Button addImageFolder = imageGroup:AddButton("Add Folder")
+        Button removeImage = imageGroup:AddButton("Clear")
+        
+        addImage:SetBehavior(addImagesBehavior)
+        addImageFolder:SetBehavior(addImageFolderBehavior)
+        removeImage:SetBehavior(removeImageBehavior)
 
         addImagesBehavior:SetImageSheetsList(imageSheetsList)
         addImageFolderBehavior:SetImageSheetsList(imageSheetsList)
         removeImageBehavior:SetImageSheetsList(imageSheetsList)
         removeImageBehavior:SetImagesList(imagesList)
+        
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancelButton = buttonGroup:AddButton("Cancel")
+        Button okButton = buttonGroup:AddButton("Ok")
+        buttonGroup:PositionFromBottom() 
 
-        Control imagesButtons
-        FlowLayout imagesButtonsLayout
-        imagesButtons:SetLayout(imagesButtonsLayout)
-        imagesButtons:SetHorizontalLayoutMode(imagesButtons:FILL)
-        imagesButtons:SetVerticalLayoutMode(imagesButtons:FIT_CONTENTS)
-        imagesArea:Add(imagesButtons)
+        cancelButton:SetBehavior(okBehavior)
+        okButton:SetBehavior(okBehavior)
 
-        Button addImage
-        addImage:SetName("Add")
-        addImage:SetHorizontalLayoutMode(addImage:parent:Libraries.Interface.Controls.Control:STANDARD)
-        addImage:SetPercentageWidth(1.0)
-        addImage:SetLeftPadding(15)
-        addImage:SetRightPadding(20)
-        addImage:SetBottomPadding(25)
-        addImage:SetBehavior(addImagesBehavior)
-        imagesButtons:Add(addImage)
-
-        Button addImageFolder
-        addImageFolder:SetName("Add Folder")
-        addImageFolder:SetHorizontalLayoutMode(addImageFolder:parent:Libraries.Interface.Controls.Control:STANDARD)
-        addImageFolder:SetPercentageWidth(1.0)
-        addImageFolder:SetLeftPadding(15)
-        addImageFolder:SetRightPadding(20)
-        addImageFolder:SetBottomPadding(25)
-        addImageFolder:SetBehavior(addImageFolderBehavior)
-        imagesButtons:Add(addImageFolder)
-
-        Button removeImage
-        removeImage:SetName("Remove")
-        removeImage:SetHorizontalLayoutMode(removeImage:parent:Libraries.Interface.Controls.Control:STANDARD)
-        removeImage:SetPercentageWidth(1.0)
-        removeImage:SetLeftPadding(15)
-        removeImage:SetRightPadding(20)
-        removeImage:SetBottomPadding(25)
-        removeImage:SetBehavior(removeImageBehavior)
-        imagesButtons:Add(removeImage)
-
-        panel:Add(imagesArea)
-
-        Control confirmArea
-        FlowLayout confirmLayout
-        confirmArea:SetLayout(confirmLayout)
-        confirmArea:SetPercentageWidth(1.0)
-        confirmArea:SetTopPadding(20)
-        confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
-
-        Control confirmPadding
-        confirmPadding:SetPercentageWidth(0.56)
-        confirmPadding:SetPixelHeight(1)
-        confirmArea:Add(confirmPadding)
-
-        Button cancelButton
-        cancelButton:SetName("Cancel")
-        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        cancelButton:SetPercentageWidth(0.2)
-        cancelButton:SetLeftPadding(0)
-        cancelButton:SetBottomPadding(20)
-        cancelButton:SetTopPadding(20)
-        cancelButton:SetBehavior(cancelBehavior)
-        confirmArea:Add(cancelButton)
-
-        Button okayButton
-        okayButton:SetName("OK")
-        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
-        okayButton:SetPercentageWidth(0.2)
-        okayButton:SetLeftPadding(10)
-        okayButton:SetBottomPadding(20)
-        okayButton:SetTopPadding(20)
-        okayButton:SetBehavior(okBehavior)
-        confirmArea:Add(okayButton)
-
-        panel:Add(confirmArea)
-
-        enableImageSheets:SetNextFocus(buildImageSheetsOnCompile)
-        enableImageSheets:SetPreviousFocus(okayButton)
-        buildImageSheetsOnCompile:SetNextFocus(imageSheetsBuildPathField)
-        buildImageSheetsOnCompile:SetPreviousFocus(enableImageSheets)
-        imageSheetsBuildPathField:SetNextFocus(imageSheetsList)
-        imageSheetsBuildPathField:SetPreviousFocus(buildImageSheetsOnCompile)
-        imageSheetsList:SetNextFocus(addSheet)
-        imageSheetsList:SetPreviousFocus(imageSheetsBuildPathField)
-        addSheet:SetNextFocus(editSheet)
-        addSheet:SetPreviousFocus(imageSheetsList)
-        editSheet:SetNextFocus(removeSheet)
-        editSheet:SetPreviousFocus(addSheet)
-        removeSheet:SetNextFocus(imagesList)
-        removeSheet:SetPreviousFocus(editSheet)
-        imagesList:SetNextFocus(addImage)
-        imagesList:SetPreviousFocus(removeSheet)
-        addImage:SetNextFocus(addImageFolder)
-        addImage:SetPreviousFocus(imagesList)
-        addImageFolder:SetNextFocus(removeImage)
-        addImageFolder:SetPreviousFocus(addImage)
-        removeImage:SetNextFocus(cancelButton)
-        removeImage:SetPreviousFocus(addImageFolder)
-        cancelButton:SetNextFocus(okayButton)
-        cancelButton:SetPreviousFocus(removeImage)
-        okayButton:SetNextFocus(enableImageSheets)
-        okayButton:SetPreviousFocus(cancelButton)
-
+        tab:SetRelatedItem(page)
         return tab
     end
 
-    private action CreateMobileTab returns Tab
+    private action CreateiOSTab returns Tab
         Tab tab
-        tab:SetFocusTarget(mobileResourcesField)
-        tab:SetName("Mobile")
+        tab:SetName("Apple")
         tab:DisplayCloseButton(false)
 
-        Control panel
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-
-        ControlShaderView panelView
-        panelView:Initialize()
-        panel:SetView2D(panelView)
-
-        FlowLayout layout
-        panel:SetLayout(layout)
-        tab:SetRelatedItem(panel)
-
-        Label resourcesLabel
-        resourcesLabel:SetText("Resources")
-        resourcesLabel:SetLeftPadding(10)
-        resourcesLabel:SetTopPadding(10)
-        panel:Add(resourcesLabel)
-
-        FlowLayout resourcesLayout
-        Control resourcesContainer
-        resourcesContainer:SetLayout(resourcesLayout)
-        resourcesContainer:SetPercentageWidth(1.0)
-        resourcesContainer:SetPixelWidth(-10)
-        resourcesContainer:SetVerticalLayoutMode(resourcesContainer:FIT_CONTENTS)
-        resourcesContainer:SetLeftPadding(10)
-        resourcesContainer:SetTopPadding(10)
-
-        panel:Add(resourcesContainer)
-
-        emptyTextFieldBehavior:SetTextField(mobileResourcesField)
-
-        mobileResourcesField:SetName("Mobile Resources")
-        mobileResourcesField:SetPercentageWidth(0.68)
-        resourcesContainer:Add(mobileResourcesField)
-
-        FlowLayout resourcesButtonLayout   
-        Control resourcesButtonContainer
-        resourcesButtonContainer:SetLayout(resourcesButtonLayout)
-        resourcesButtonContainer:SetPercentageWidth(0.3)
-        resourcesButtonContainer:SetVerticalLayoutMode(resourcesButtonContainer:FIT_CONTENTS)
-        resourcesButtonContainer:SetLeftPadding(10)
-        resourcesContainer:Add(resourcesButtonContainer)
+        StackedRowPage page 
+        page:SetPixelHeight(500) //for testing, remove after fixes
+        Banner banner = page:AddBanner("Apple Device Settings", "Pick a simulator or enter security credentials for physical devices")
+        banner:PositionFromTop()
         
-        Button resourcesBrowse
-        resourcesBrowse:SetName("Browse...")
-        resourcesBrowse:SetHorizontalLayoutMode(resourcesBrowse:parent:Libraries.Interface.Controls.Control:STANDARD)
-        resourcesBrowse:SetPercentageWidth(0.45)
-        resourcesBrowse:SetLeftPadding(15)
-        resourcesBrowse:SetBehavior(mobileResourcesBrowseBehavior)
-        resourcesButtonContainer:Add(resourcesBrowse)
-
-        Button resourcesClear
-        resourcesClear:SetName("Clear")
-        resourcesClear:SetHorizontalLayoutMode(resourcesClear:parent:Libraries.Interface.Controls.Control:STANDARD)
-        resourcesClear:SetPercentageWidth(0.45)
-        resourcesClear:SetLeftPadding(20)
-        resourcesClear:SetRightPadding(10)
-        resourcesClear:SetBehavior(emptyTextFieldBehavior)
-        resourcesButtonContainer:Add(resourcesClear)
-
-        Label androidLabel
-        androidLabel:SetSize(20)
-        androidLabel:SetText("Android")
-        androidLabel:SetLeftPadding(10)
-        androidLabel:SetTopPadding(20)
-        panel:Add(androidLabel)
-
-        Control newLine
-        newLine:SetHorizontalLayoutMode(newLine:FILL)
-        panel:Add(newLine)
-
-        Label androidLibraryLabel
-        androidLibraryLabel:SetText("Android Library Path")
-        androidLibraryLabel:SetLeftPadding(10)
-        androidLibraryLabel:SetTopPadding(10)
-        panel:Add(androidLibraryLabel)
-
-        androidLibraryField:SetName("Android Library Path")
-        androidLibraryField:SetPercentageWidth(1.0)
-        androidLibraryField:SetPixelWidth(-10)
-        androidLibraryField:SetLeftPadding(10)
-        androidLibraryField:SetTopPadding(10)
-        panel:Add(androidLibraryField)
-
-        Label keyStoreLabel
-        keyStoreLabel:SetText("Key Store Path")
-        keyStoreLabel:SetLeftPadding(10)
-        keyStoreLabel:SetTopPadding(20)
-        panel:Add(keyStoreLabel)
-
-        keyStoreField:SetName("Key Store Path")
-        keyStoreField:SetPercentageWidth(1.0)
-        keyStoreField:SetPixelWidth(-10)
-        keyStoreField:SetLeftPadding(10)
-        keyStoreField:SetTopPadding(10)
-        panel:Add(keyStoreField)
-
-        Label keyStorePasswordLabel
-        keyStorePasswordLabel:SetText("Key Store Password")
-        keyStorePasswordLabel:SetLeftPadding(10)
-        keyStorePasswordLabel:SetTopPadding(20)
-        panel:Add(keyStorePasswordLabel)
-
-        keyStorePasswordField:SetName("Key Store Password")
-        keyStorePasswordField:SetPercentageWidth(1.0)
-        keyStorePasswordField:SetPixelWidth(-10)
-        keyStorePasswordField:SetLeftPadding(10)
-        keyStorePasswordField:SetTopPadding(10)
-        panel:Add(keyStorePasswordField)
-
-        Label keyAliasLabel
-        keyAliasLabel:SetText("Key Alias")
-        keyAliasLabel:SetLeftPadding(10)
-        keyAliasLabel:SetTopPadding(20)
-        panel:Add(keyAliasLabel)
-
-        keyAliasField:SetName("Key Alias")
-        keyAliasField:SetPercentageWidth(1.0)
-        keyAliasField:SetPixelWidth(-10)
-        keyAliasField:SetLeftPadding(10)
-        keyAliasField:SetTopPadding(10)
-        panel:Add(keyAliasField)
-
-        Label keyPasswordLabel
-        keyPasswordLabel:SetText("Key Password")
-        keyPasswordLabel:SetLeftPadding(10)
-        keyPasswordLabel:SetTopPadding(20)
-        panel:Add(keyPasswordLabel)
-
-        keyPasswordField:SetName("Key Password")
-        keyPasswordField:SetPercentageWidth(1.0)
-        keyPasswordField:SetPixelWidth(-10)
-        keyPasswordField:SetLeftPadding(10)
-        keyPasswordField:SetTopPadding(10)
-        panel:Add(keyPasswordField)
-
-        Label jdkLabel
-        jdkLabel:SetText("Alternative Java Development Kit")
-        jdkLabel:SetLeftPadding(10)
-        jdkLabel:SetTopPadding(20)
-        panel:Add(jdkLabel)
-
-        jdkField:SetName("Alternative Java Development Kit")
-        jdkField:SetPercentageWidth(1.0)
-        jdkField:SetPixelWidth(-10)
-        jdkField:SetLeftPadding(10)
-        jdkField:SetTopPadding(10)
-        panel:Add(jdkField)
-
-        Label iosLabel
-        iosLabel:SetSize(20)
-        iosLabel:SetText("Apple")
-        iosLabel:SetLeftPadding(10)
-        iosLabel:SetTopPadding(20)
-        panel:Add(iosLabel)
-
-        Control control
+        page:AddLabel("Resource Folder")
+        Grouping resourceGroup = page:AddGrouping("Resources")
+        iosResourcesField = resourceGroup:AddTextField("Apple Resource Folder")
+        Button browse = resourceGroup:AddButton("Browse ...")
+        browse:SetBehavior(iosResourcesBrowseBehavior)
+        tab:SetFocusTarget(iosResourcesField)
         
-        ButtonGroup iosVersionRadios
-        iosVersionRadios:SetTopPadding(20)
-        iosVersionRadios:SetName("iosVersion")
-        iosVersionRadios:SetFocusable(true)
-        iosVersionRadios:SetHorizontalLayoutMode(control:STANDARD)
-        iosVersionRadios:SetPercentageWidth(1.0)
+        page:AddLabel("Bundle Identifier")
+        iosBundlingField = page:AddTextField("Bundling")
 
-        ios13Button:SetName("iOS 13")
-        ios13Button:SetFontSize(14)
-        ios13Button:SetRightPadding(83)
-        ios13Button:SetPercentageWidth(0.5)
-        iosVersionRadios:Add(ios13Button)
-
-        ios14Button:SetName("iOS 14.2")
-        ios14Button:SetFontSize(14)
-        ios14Button:SetRightPadding(83)
-        ios14Button:SetPercentageWidth(0.5)
-        iosVersionRadios:Add(ios14Button)
-
-        ios15Button:SetName("iOS 15.0")
-        ios15Button:SetFontSize(14)
-        ios15Button:SetRightPadding(83)
-        ios15Button:SetPercentageWidth(0.5)
-        ios15Button:SetToggleState(true)
-        iosVersionRadios:Add(ios15Button)
-        panel:Add(iosVersionRadios)
-
-        Label bundleLabel
-        //bundleLabel:SetSize(20)
-        bundleLabel:SetText("Bundle")
-        bundleLabel:SetLeftPadding(10)
-        bundleLabel:SetTopPadding(10)
-        bundleLabel:SetPositionOnBaseLine(false)
+        page:AddLabel("Signing Identity")
+        iosSignatureField = page:AddTextField("Signing")
         
-        panel:Add(bundleLabel)
-
-        jdkField:SetName("Bundle Identifier")
-        bundleIdentifierField:SetPercentageWidth(0.5)
-        bundleIdentifierField:SetPixelWidth(-10)
-        bundleIdentifierField:SetLeftPadding(10)
-        bundleIdentifierField:SetTopPadding(10)
-        panel:Add(bundleIdentifierField)
+        page:AddLabel("Provisioning profile")
+        iosProvisioningField = page:AddTextField("Provisioning")
         
+        
+        page:AddLabel("Device List")
+        availableDevicesList = page:AddList("Device List")
 
-        Label deviceListLabel
-        deviceListLabel:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        deviceListLabel:SetText("Device List")
-        deviceListLabel:SetLeftPadding(10)
-        deviceListLabel:SetRightPadding(10)
-        deviceListLabel:SetTopPadding(20)
-        deviceListLabel:SetPercentageWidth(1.0)
-        panel:Add(deviceListLabel)
-
-        ScrollPane appleDevicesScrollPane
-        appleDevicesScrollPane:SetInterfaceOptionsKey("DialogScrollPane")
-        appleDevicesScrollPane:SetPercentageWidth(0.7)
-        appleDevicesScrollPane:SetPixelHeight(100)
-        FlowLayout appleDevicesScrollLayout
-        appleDevicesScrollPane:SetLayout(appleDevicesScrollLayout)
-
-        availableDevicesList:SetName("Available iOS devices List")
-        //availableDevicesList:SetHorizontalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:STANDARD)
-        availableDevicesList:SetVerticalLayoutMode(javaClassList:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        availableDevicesList:SetPercentageWidth(1.0)
-        appleDevicesScrollPane:Add(availableDevicesList)
-        panel:Add(appleDevicesScrollPane)
-
-        integer selection = -1
         AppleDevicesReader reader
         Array<AppleDevice> devices = reader:GetAvailableDevices()
         i = 0
@@ -1525,66 +852,66 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             AppleDevice device = devices:Get(i)
             availableDevicesList:Add(device:GetName())
             i = i + 1
-        end     
+        end
+        
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancel = buttonGroup:AddButton("Cancel")
+        Button ok = buttonGroup:AddButton("Ok")
+        buttonGroup:PositionFromBottom() 
+        tab:SetRelatedItem(page)
 
-        Control confirmArea
-        FlowLayout confirmLayout
-        confirmArea:SetLayout(confirmLayout)
-        confirmArea:SetPercentageWidth(1.0)
-        confirmArea:SetTopPadding(20)
-        confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
+        ok:SetBehavior(okBehavior)
+        cancel:SetBehavior(cancelBehavior)
+        return tab
+    end
 
-        Control confirmPadding
-        confirmPadding:SetPercentageWidth(0.56)
-        confirmPadding:SetPixelHeight(1)
-        confirmArea:Add(confirmPadding)
+    private action CreateAndroidTab returns Tab
+        Tab tab
+        tab:SetFocusTarget(androidResourcesField)
+        tab:SetName("Android")
+        tab:DisplayCloseButton(false)
 
-        Button cancelButton
-        cancelButton:SetName("Cancel")
-        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        cancelButton:SetPercentageWidth(0.2)
-        cancelButton:SetLeftPadding(0)
-        cancelButton:SetTopPadding(40)
-        cancelButton:SetBottomPadding(20)
-        cancelButton:SetBehavior(cancelBehavior)
-        confirmArea:Add(cancelButton)
+        StackedRowPage page 
+        page:SetPixelHeight(500) //for testing, remove after fixes
+        Banner banner = page:AddBanner("Android Device Settings", "Enter credentials for physical devices")
+        banner:PositionFromTop()
+        
+        page:AddLabel("Resource Folder")
+        Grouping resourceGroup = page:AddGrouping("Resources")
+        androidResourcesField = resourceGroup:AddTextField("Android Resource Folder")
+        Button browse = resourceGroup:AddButton("Browse ...")
+        browse:SetBehavior(mobileResourcesBrowseBehavior)
+        tab:SetFocusTarget(androidResourcesField)
+        
+        page:AddLabel("Library Path")
+        androidLibraryField = page:AddTextField("Android Library Path")
 
-        Button okayButton
-        okayButton:SetName("OK")
-        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
-        okayButton:SetPercentageWidth(0.2)
-        okayButton:SetLeftPadding(10)
-        okayButton:SetTopPadding(40)
-        okayButton:SetBottomPadding(20)
-        okayButton:SetBehavior(okBehavior)
-        confirmArea:Add(okayButton)
+        page:AddLabel("Key Store Path")
+        keyStoreField = page:AddTextField("Keystore Path")
+        
+        page:AddLabel("Key Store password")
+        keyStorePasswordField = page:AddTextField("Key Store password")
+        
+        page:AddLabel("Key Alias")
+        keyAliasField = page:AddTextField("Key Alias")
 
-        panel:Add(confirmArea)
+        page:AddLabel("Key password")
+        keyPasswordField = page:AddTextField("Key password")
 
-        mobileResourcesField:SetNextFocus(resourcesBrowse)
-        mobileResourcesField:SetPreviousFocus(okayButton)
-        resourcesBrowse:SetNextFocus(resourcesClear)
-        resourcesBrowse:SetPreviousFocus(mobileResourcesField)
-        resourcesClear:SetNextFocus(androidLibraryField)
-        resourcesClear:SetPreviousFocus(resourcesBrowse)
-        androidLibraryField:SetNextFocus(keyStoreField)
-        androidLibraryField:SetPreviousFocus(resourcesClear)
-        keyStoreField:SetNextFocus(keyStorePasswordField)
-        keyStoreField:SetPreviousFocus(androidLibraryField)
-        keyStorePasswordField:SetNextFocus(keyAliasField)
-        keyStorePasswordField:SetPreviousFocus(keyStoreField)
-        keyAliasField:SetNextFocus(keyPasswordField)
-        keyAliasField:SetPreviousFocus(keyStorePasswordField)
-        keyPasswordField:SetNextFocus(jdkField)
-        keyPasswordField:SetPreviousFocus(keyAliasField)
-        jdkField:SetNextFocus(cancelButton)
-        jdkField:SetPreviousFocus(keyPasswordField)
-        cancelButton:SetNextFocus(okayButton)
-        cancelButton:SetPreviousFocus(jdkField)
-        okayButton:SetNextFocus(mobileResourcesField)
-        okayButton:SetPreviousFocus(cancelButton)
+        page:AddLabel("Path to Alternative Java Development Kit")
+        jdkField = page:AddTextField("Path to Alternate Java Development Kit")
 
+        keyStorePasswordField:SetPassword(true)
+        keyPasswordField:SetPassword(true)
+
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancel = buttonGroup:AddButton("Cancel")
+        Button ok = buttonGroup:AddButton("Ok")
+        buttonGroup:PositionFromBottom() 
+        tab:SetRelatedItem(page)
+
+        ok:SetBehavior(okBehavior)
+        cancel:SetBehavior(cancelBehavior)
         return tab
     end
 
@@ -1594,152 +921,34 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         tab:SetName("Teams")
         tab:DisplayCloseButton(false)
 
-        Control panel
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-
-        ControlShaderView panelView
-        panelView:Initialize()
-        panel:SetView2D(panelView)
-
-        FlowLayout layout
-        panel:SetLayout(layout)
-        tab:SetRelatedItem(panel)
-
+        StackedRowPage page 
+        page:SetPixelHeight(500) //for testing, remove after fixes
+        Banner banner = page:AddBanner("Version Control Settings", 
+            "Enter credentials for Github or Bitbucket. Passwords should be credentials keys, not 
+            account passwords, for these services")
+        banner:PositionFromTop()
         
+        page:AddLabel("Username")
+        usernameTeams = page:AddTextField("Username")
 
-        FlowLayout resourcesLayout
-        Control resourcesContainer
-        resourcesContainer:SetLayout(resourcesLayout)
-        resourcesContainer:SetPercentageWidth(1.0)
-        resourcesContainer:SetPixelWidth(-10)
-        resourcesContainer:SetVerticalLayoutMode(resourcesContainer:FIT_CONTENTS)
-        resourcesContainer:SetLeftPadding(10)
-        resourcesContainer:SetTopPadding(10)
+        page:AddLabel("Password")
+        passwordTeams = page:AddTextField("Password")
+        passwordTeams:SetPassword(true)
 
+        page:AddLabel("Name")
+        nameTeams = page:AddTextField("Name")
         
+        page:AddLabel("Email")
+        emailTeams = page:AddTextField("Email")
 
-        Label versionControlLabel
-        versionControlLabel:SetPercentageWidth(1.0)
-        versionControlLabel:SetSize(20)
-        versionControlLabel:SetText("Version Control Information (Git)")
-        versionControlLabel:SetLeftPadding(10)
-        versionControlLabel:SetTopPadding(20)
-        panel:Add(versionControlLabel)
-        panel:Add(resourcesContainer)
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancel = buttonGroup:AddButton("Cancel")
+        Button ok = buttonGroup:AddButton("Ok")
+        buttonGroup:PositionFromBottom() 
+        tab:SetRelatedItem(page)
 
-
-        Label usernameLabel
-        usernameLabel:SetText("Username")
-        usernameLabel:SetPercentageWidth(1.0)
-        usernameLabel:SetLeftPadding(10)
-        usernameLabel:SetTopPadding(10)
-        resourcesContainer:Add(usernameLabel)
-
-        emptyTextFieldBehavior:SetTextField(usernameTeams)
-
-        usernameTeams:SetName("Username Textfield")
-        usernameTeams:SetPercentageWidth(1.0)
-        usernameTeams:SetPixelWidth(-10)
-        usernameTeams:SetLeftPadding(10)
-        usernameTeams:SetTopPadding(10)
-        resourcesContainer:Add(usernameTeams)
-
-        Label androidLabel
-        androidLabel:SetText("Password")
-        androidLabel:SetLeftPadding(10)
-        androidLabel:SetTopPadding(10)
-        resourcesContainer:Add(androidLabel)
-
-        passwordTeams:SetName("Password Textfield")
-        passwordTeams:SetPercentageWidth(1.0)
-        passwordTeams:SetPixelWidth(-10)
-        passwordTeams:SetLeftPadding(10)
-        passwordTeams:SetTopPadding(10)
-        resourcesContainer:Add(passwordTeams)
-
-        Label nameLabel
-        nameLabel:SetText("Name")
-        nameLabel:SetLeftPadding(10)
-        nameLabel:SetTopPadding(10)
-        resourcesContainer:Add(nameLabel)
-
-        nameTeams:SetName("Name Textfield")
-        nameTeams:SetPercentageWidth(1.0)
-        nameTeams:SetPixelWidth(-10)
-        nameTeams:SetLeftPadding(10)
-        nameTeams:SetTopPadding(10)
-        resourcesContainer:Add(nameTeams)
-
-        Label emailLabel
-        emailLabel:SetText("Email")
-        emailLabel:SetLeftPadding(10)
-        emailLabel:SetTopPadding(10)
-        resourcesContainer:Add(emailLabel)
-
-        emailTeams:SetName("Email Textfield")
-        emailTeams:SetPercentageWidth(1.0)
-        emailTeams:SetPixelWidth(-10)
-        emailTeams:SetLeftPadding(10)
-        emailTeams:SetTopPadding(10)
-        resourcesContainer:Add(emailTeams)
-
-        Control newLine
-        newLine:SetHorizontalLayoutMode(newLine:FILL)
-        panel:Add(newLine)
-
-        Control confirmArea
-        FlowLayout confirmLayout
-        confirmArea:SetLayout(confirmLayout)
-        confirmArea:SetPercentageWidth(1.0)
-        confirmArea:SetTopPadding(20)
-        confirmArea:SetVerticalLayoutMode(confirmArea:FIT_CONTENTS)
-
-        Control confirmPadding
-        confirmPadding:SetPercentageWidth(0.56)
-        confirmPadding:SetPixelHeight(1)
-        confirmArea:Add(confirmPadding)
-
-        Button cancelButton
-        cancelButton:SetName("Cancel")
-        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        cancelButton:SetPercentageWidth(0.2)
-        cancelButton:SetLeftPadding(0)
-        cancelButton:SetTopPadding(40)
-        cancelButton:SetBottomPadding(20)
-        cancelButton:SetBehavior(cancelBehavior)
-        confirmArea:Add(cancelButton)
-
-        Button okayButton
-        okayButton:SetName("OK")
-        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
-        okayButton:SetPercentageWidth(0.2)
-        okayButton:SetLeftPadding(10)
-        okayButton:SetTopPadding(40)
-        okayButton:SetBottomPadding(20)
-        okayButton:SetBehavior(okBehavior)
-        confirmArea:Add(okayButton)
-
-        panel:Add(confirmArea)
-
-        usernameTeams:SetNextFocus(passwordTeams)
-        usernameTeams:SetPreviousFocus(okayButton)
-        passwordTeams:SetNextFocus(nameTeams)
-        passwordTeams:SetPreviousFocus(usernameTeams)
-
-        nameTeams:SetNextFocus(emailTeams)
-        nameTeams:SetPreviousFocus(passwordTeams)
-        emailTeams:SetNextFocus(okayButton)
-        emailTeams:SetPreviousFocus(nameTeams)
-
-
-        cancelButton:SetNextFocus(okayButton)
-        cancelButton:SetPreviousFocus(jdkField)
-        okayButton:SetNextFocus(usernameTeams)
-        okayButton:SetPreviousFocus(cancelButton)
-
+        ok:SetBehavior(okBehavior)
+        cancel:SetBehavior(cancelBehavior)
         return tab
     end
 

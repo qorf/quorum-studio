@@ -67,6 +67,7 @@ use Libraries.Language.Compile.Parsing.QuorumLexerConstants
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Game.Graphics.ColorGroup
 use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Interface.Controls.Gutter
 
 class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener, AccessibleControl
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
@@ -105,8 +106,8 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         game:AddSelectionListener(me)
 
         UpdateColors()
-        Add(gutter)
-        Add(statusGutter)
+        Add(cast(Gutter, gutter))
+        Add(cast(Gutter, statusGutter))
         gutter:AddGutterListener(me)
         statusGutter:AddGutterListener(me)
         SetPopupMenu(GeneratePopupMenu())

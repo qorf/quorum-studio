@@ -196,7 +196,7 @@ class IOSSupport is ProcessListener
         QuorumProject project = info:project
         boolean physical = project:IsIOSPhysicalDevice() 
         text name = project:GetExecutableName()
-        text media = SanitizeMediaFolder(project:GetMobileAssetsPath())
+        text media = SanitizeMediaFolder(project:GetIOSAssetsPath())
 
         
         text result = 
@@ -261,6 +261,10 @@ app.name="+name+"
     private action GetBuildGradle(BuildInformation info) returns text
         QuorumProject project = info:project
         text name = project:GetExecutableName()
+        text provision = project:GetIOSProvisioning()
+        text signature = project:GetIOSSignature()
+        text dq = signature:GetDoubleQuote()
+
         text result = 
 "
 java {
@@ -269,8 +273,21 @@ java {
     }
 }
 
-robovm {
-}
+robovm {"
+
+if provision not= undefined and signature not= undefined
+    result = result +"
+        iosSignIdentity = " + dq + signature + dq + "
+        iosProvisioningProfile = " + dq + provision + dq + "
+        iosSkipSigning = false
+        stdoutFifo = " + dq + dq + "
+        stderrFifo = " + dq + dq + "
+}"
+else
+    result = result + "
+    }"
+end
+result = result + "
 
 dependencies {
     implementation files('" + JAR_FOLDER_NAME + "/" + name + ".jar')
