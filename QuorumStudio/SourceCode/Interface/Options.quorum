@@ -55,6 +55,7 @@ class Options is ProjectListener
     constant text LIBRARY = "Library"
     constant text MAXIMIZE_WINDOW = "Maximize Window"
     constant text BETA = "Beta"
+    constant text BLOCK_MODE = "Block Mode"
     constant text LOCAL_PASSWORD_ENCRYPTION_KEY = "KbPdSgVkYp3s6v9y$B&E)H@McQfThWmZ"
     public constant text QUORUM_WEBSITE_PASSWORD_KEY = "QUORUM-WEBSITE_3948Y 93F8 34F93 94F8Y3P4F34FOI3U4F&&__"
     text loginCookie = undefined
@@ -557,6 +558,7 @@ class Options is ProjectListener
         notation:Add(OVERRIDE_STANDARD_LIBRARY_PATH, overrideLibraryLocation)
         notation:Add(LIBRARY, libraryOverridePath)
         notation:Add(BETA, specialBetaBuild)
+        notation:Add(BLOCK_MODE, blockMode)
 
         GameStateManager gameStateManager
         notation:Add(MAXIMIZE_WINDOW, gameStateManager:GetGame():IsWindowMaximized())
@@ -771,6 +773,11 @@ class Options is ProjectListener
                 boolean maximizeWindow = object:GetBoolean()
                 GameStateManager manager
                 manager:GetGame():SetWindowMaximized(maximizeWindow)
+            end
+        elseif key = BLOCK_MODE
+            if object:IsBoolean()
+                boolean blocks = object:GetBoolean()
+                me:blockMode = blocks
             end
         end
     end

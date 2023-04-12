@@ -230,8 +230,8 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             return undefined
         end
 
-        Options opts
-        if opts:IsBlockMode()
+        
+        if studio:GetOptions():IsBlockMode()
             return OpenInBlockMode(contents, file)
         else
             return OpenInTextMode(contents, file)
@@ -255,10 +255,10 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         integer size = 15
         editor:SetPercentageWidth(1)
         editor:SetPercentageHeight(1)
-        editor:SetFontSize(20)
-        editor:SetBlockNotchTopWidth(50)
-        editor:SetBlockNotchBottomWidth(25)
-        editor:SetBlockNotchHeight(8)
+        editor:SetFontSize(size)
+        editor:SetBlockNotchTopWidth(40)
+        editor:SetBlockNotchBottomWidth(20)
+        editor:SetBlockNotchHeight(5)
         text theCode = contents
         CompilerErrorManager errorManager
         QuorumLexer lexer
@@ -278,6 +278,7 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             text value = errorManager:GetCompilerErrorsAsText()
             output value
         end
+
         listener:SetStartContext(start)
         editor:SetName("Block Editor")
         editor:SetCode(theCode)
