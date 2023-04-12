@@ -11,6 +11,7 @@ use Libraries.Interface.Behaviors.Controls.TabCloseBehavior
 use Libraries.Interface.Controls.MenuItem
 use Libraries.Interface.Behaviors.Controls.CloseAllEditorTabsBehavior
 use Libraries.Interface.Behaviors.Controls.CloseAllOtherEditorTabsBehavior
+use Libraries.Interface.Controls.CodeEditor
 
 class EditorTab is Tab, TextChangeListener
     boolean dirty = false
@@ -68,7 +69,17 @@ class EditorTab is Tab, TextChangeListener
     action Save
         if file not= undefined
             CodeTextBox box = GetTextBox()
-            text value = box:GetText()
+            // if there is no textbox it might be a block editor
+            text value = ""
+            if box not= undefined
+                value = box:GetText()
+            else
+                CodeEditor blocks = GetBlockEditor()
+                if blocks = undefined
+                    return now
+                end
+                value = blocks:GetCode():GetText()
+            end
             file:Write(value)
             if dirty
                 SetIsDirty(false)
@@ -85,7 +96,16 @@ class EditorTab is Tab, TextChangeListener
         end
         return undefined
     end
-    
+
+    action GetBlockEditor returns CodeEditor
+        Item2D item = GetRelatedItem()
+        if item not= undefined and item is CodeEditor
+            CodeEditor box = cast(CodeEditor, item)
+            return box
+        end
+        return undefined
+    end
+
     action OnClose
         CodeTextBox box = GetTextBox()
         if box not= undefined
