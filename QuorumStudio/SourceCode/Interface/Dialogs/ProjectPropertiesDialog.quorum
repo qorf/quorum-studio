@@ -71,6 +71,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     // Variables for the Project Information tab.
     TextField programLocationField = undefined
     TextField programNameField = undefined
+    TextField programVersionField = undefined
     RadioButton standardProjectButton = undefined
     RadioButton legoProjectButton = undefined
     RadioButton webBrowserProjectButton = undefined
@@ -212,6 +213,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         if executableName not= undefined
             programNameField:SetText(executableName)
         end
+
+        text version = project:GetProperty(project:PROJECT_VERSION):GetFirstValue()
+        programVersionField:SetText(version)
 
         text projectType = project:GetProperty(project:PROJECT_TYPE):GetFirstValue()
 
@@ -516,7 +520,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     */
     action SavePropertyChanges
         project:SetExecutableName(programNameField:GetText())
-        
+        project:SetProjectVersion(programVersionField:GetText())
         if standardProjectButton:GetToggleState() = true
             project:SetProjectCompileType(project:JAVA_COMPILE_TYPE)
         elseif webBrowserProjectButton:GetToggleState() = true
@@ -666,6 +670,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         page:AddLabel("Project Name")
         programNameField = page:AddTextField("Name")
         
+        page:AddLabel("Project Version")
+        programVersionField = page:AddTextField("Version")
+
         //add radio buttons
         page:AddLabel("Project Type")
         ButtonGroup projectRadios
