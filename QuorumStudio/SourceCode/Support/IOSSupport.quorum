@@ -327,7 +327,7 @@ app.name="+name+"
         text name = project:GetExecutableName()
         text provision = project:GetIOSProvisioning()
         text signature = project:GetIOSSignature()
-        text dq = signature:GetDoubleQuote()
+        text dq = name:GetDoubleQuote()
 
         text result = 
 "
@@ -339,7 +339,8 @@ java {
 
 robovm {"
 
-if provision not= undefined and signature not= undefined
+if provision not= undefined and signature not= undefined 
+    and not provision:IsEmpty() and not signature:IsEmpty()
     result = result +"
         iosSignIdentity = " + dq + signature + dq + "
         iosProvisioningProfile = " + dq + provision + dq + "
