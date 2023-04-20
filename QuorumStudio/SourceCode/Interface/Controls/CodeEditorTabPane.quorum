@@ -232,7 +232,13 @@ class CodeEditorTabPane is TabPane, TabChangeListener
 
         
         if studio:GetOptions():IsBlockMode()
-            return OpenInBlockMode(contents, file)
+            check
+                return OpenInBlockMode(contents, file)
+            detect error
+                error:OutputStackTrace()
+                return OpenInTextMode(contents, file)
+            end
+            return undefined
         else
             return OpenInTextMode(contents, file)
         end
