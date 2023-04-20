@@ -27,6 +27,9 @@ class QuorumProject is Project
     /* This property represents that this project type is the Quorum programming language.*/
     public constant text PROJECT_TYPE_NAME = "Quorum Project"
 
+    /* This property represents the version number of the project. */
+    public constant text PROJECT_VERSION = "Project Version"
+
     /* This property represents the name of the executable file that is compiled. */
     public constant text EXECUTABLE_NAME = "ExecutableName"
 
@@ -142,6 +145,7 @@ class QuorumProject is Project
         SetIOSVersionKey(IOS_DEFAULT_VERSION)
         SetIOSDevice(IOS_DEFAULT_DEVICE)
         SetIOSBundle(IOS_DEFAULT_BUNDLE)
+        SetProjectVersion("1.0")
     end
 
 
@@ -465,6 +469,20 @@ class QuorumProject is Project
     /* This action sets the version to build to on IOS. */
     action SetIOSVersionKey(text path)
         SetPropertyValue(IOS_VERSION, path)
+    end
+
+    action GetProjectVersion returns text
+        ProjectProperty property = GetProperty(PROJECT_VERSION)
+        if property = undefined
+            return undefined
+        end
+        text value = property:GetFirstValue()
+        return value
+    end
+
+    /* This action sets the version to build to on IOS. */
+    action SetProjectVersion(text version)
+        SetPropertyValue(PROJECT_VERSION, version)
     end
 
 
@@ -1055,6 +1073,13 @@ class QuorumProject is Project
             end
 
             AddProperty(key, object:GetText())
+        elseif key = PROJECT_VERSION
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            text version = object:GetText()
+            SetProjectVersion(version)
         elseif key = EXECUTABLE_NAME
             if not object:IsText()
                 logger:Log(textMessage)
