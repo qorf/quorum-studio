@@ -37,13 +37,23 @@ use Libraries.Interface.Selections.TreeSelection
 use Libraries.Game.GameStateManager
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Interface.Controls.TabPane
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Pages.StackedRowPage
+use Libraries.Interface.Forms.Banner
+use Libraries.Interface.Controls.ButtonGroup
+use Libraries.Interface.Forms.Grouping
+use Libraries.Game.Game
+use Libraries.Interface.Controls.ToggleButton
 
 
 
 class NewProjectDialog is Dialog, SelectionListener
     boolean initialized = false
     GameStateManager gameManager
+    TabPane tabPane
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+    Font fontAwesome
 
     HashTable<TreeItem, text> descriptions
     HashTable<TreeItem, Icon> iconsList    
@@ -93,7 +103,7 @@ class NewProjectDialog is Dialog, SelectionListener
     //Dialog Behaviors
     DialogCancelBehavior cancelBehavior
     NewProjectBrowseBehavior browseBehavior
-    NewProjectOkBehavior okayBehavior
+    NewProjectOkBehavior okBehavior
     NewProjectApplicationsListBehavior listBehavior
     
     //set by the browseBehavior, used by the okayBehavior to set the QuorumProject location
@@ -196,42 +206,211 @@ messages in any Java Container (e.g., Tomcat,
 Glassfish)."
 
     on create
+        File file
+        file:SetPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
+        fontAwesome:LoadFont(file)
+
         browseBehavior:SetDialog(me)
         browseBehavior:SetMainApplication(studio)
         cancelBehavior:SetDialog(me)
-        okayBehavior:SetDialog(me)
+        okBehavior:SetDialog(me)
         listBehavior:SetDialog(me)
-        okayBehavior:SetMainApplication(studio)
+        okBehavior:SetMainApplication(studio)
         applicationsTree:AddSelectionListener(me)
         listBehavior:SetTree(applicationsTree)
-        SetBehavior(okayBehavior)
+        SetBehavior(okBehavior)
     end
 
     action Initialize
+//        initialized = true
+//
+//        SetName("New Project")  
+//        SetPercentageWidth(0.50) 
+//        //SetPixelWidth(500)
+//        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
+//
+//        ControlShaderView view
+//        view:Initialize()
+//        
+//        Control panel
+//        LayoutProperties properties = GetDefaultLayoutProperties()
+//        FlowLayout newProjectLayout
+//        panel:SetLayout(newProjectLayout)
+//        panel:SetPercentageWidth(1.0)
+//        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+//        panel:SetInterfaceOptionsKey("Dialog")
+//        panel:SetBorderStyle(properties:ALL - properties:TOP)
+//        panel:SetBorderThickness(1)
+//        panel:Add(CreateNewProjectControl())
+//        panel:SetView2D(view)
+//        Add(panel) 
+//        SetupBehaviors()  
+//        SetupFocus()
+
         initialized = true
+        SetName("New Project Dialog")
+        //SetPixelWidth(600)
+        SetPercentageWidth(0.50)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        SetPercentageHeight(0.5)
+        //SetPercentageOriginX(0.5)
+        SetPercentageOriginY(0.5) //broken at most scales. Needs adjustment.
 
-        SetName("New Project")  
-        SetPercentageWidth(0.50) 
-        //SetPixelWidth(500)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
+        FlowLayout tabLayout
+        tabPane:SetViewAreaLayout(tabLayout)
+        tabPane:SetPercentageWidth(1.0)
+        tabPane:SetPixelHeight(600) //this needs to go away after fixes as well
 
-        ControlShaderView view
-        view:Initialize()
+        tabPane:Add(CreateGeneralTab())
+        tabPane:Add(CreateAppsTab())
+        tabPane:Add(CreateGamesTab())
+        tabPane:Add(CreateDataScienceTab())
+        tabPane:Add(CreateSoundTab())
+        tabPane:Add(CreateOtherTab())
+        Add(tabPane)
+        //Load()
+    end
+
+    private action CreateGeneralTab returns Tab
+        Tab tab
+        tab:SetName("General")
+        tab:DisplayCloseButton(false)
+
+        StackedRowPage page 
+        page:SetPixelHeight(400) //for testing, remove after fixes
+        Banner banner = page:AddBanner("General", 
+            "A set of default projects to enjoy")
+        banner:PositionFromTop()
         
-        Control panel
-        LayoutProperties properties = GetDefaultLayoutProperties()
-        FlowLayout newProjectLayout
-        panel:SetLayout(newProjectLayout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetBorderStyle(properties:ALL - properties:TOP)
-        panel:SetBorderThickness(1)
-        panel:Add(CreateNewProjectControl())
-        panel:SetView2D(view)
-        Add(panel) 
-        SetupBehaviors()  
-        SetupFocus()
+        Grouping appsGrouping = page:AddGrouping("Top Labels")
+        appsGrouping:AddLabel("Console")
+        appsGrouping:AddLabel("App")
+        appsGrouping:AddToggleButton("Blank")
+        appsGrouping:AddToggleButton("App")
+        appsGrouping:AddLabel("Games")
+        appsGrouping:AddLabel("Scene Based Games")
+        appsGrouping:AddToggleButton("Game")
+        appsGrouping:AddToggleButton("Scene")
+
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancelButton = buttonGroup:AddButton("Cancel")
+        Button okayButton = buttonGroup:AddButton("Ok")
+        buttonGroup:PositionFromBottom() 
+
+        cancelButton:SetBehavior(cancelBehavior)
+        okayButton:SetBehavior(okBehavior)
+        //add radio buttons
+//        page:AddLabel("Color Mode")
+//        ButtonGroup projectTypeGroup = page:AddButtonGroup("Color Mode")
+//        lightModeButton = projectTypeGroup:AddRadioButton("Light Mode")
+//        darkModeButton = projectTypeGroup:AddRadioButton("Dark Mode")
+//        
+//        page:AddLabel("Enable Blocks Mode")
+//        blockModeCheckbox = page:AddCheckbox("Blocks Mode Checkbox")
+//
+//        page:AddLabel("Frame Rate")
+//        frameRateField = page:AddTextField("Frame Rate")
+//        
+//        page:AddLabel("Frames Per Second Counter")
+//        framesPerSecondCheckbox = page:AddCheckbox("Frames Per Second Counter")
+//        
+//        page:AddLabel("Override Standard Library (WARNING: Only do this if you have a good reason)")
+//        overrideLibraryCheckbox = page:AddCheckbox("Override Standard Library")
+//        page:AddLabel("Override Library Path")
+//        libraryField = page:AddTextField("Library Location")
+        
+//        Grouping buttonGroup = page:AddGrouping("Confirm")
+//        Button cancelButton = buttonGroup:AddButton("Cancel")
+//        Button okayButton = buttonGroup:AddButton("Ok")
+//        buttonGroup:PositionFromBottom() 
+//
+//        cancelButton:SetBehavior(cancelBehavior)
+//        okayButton:SetBehavior(okBehavior)
+//
+//        tab:SetFocusTarget(lightModeButton)
+        tab:SetRelatedItem(page)
+
+        return tab
+    end
+
+    private action CreateAppsTab returns Tab
+        Tab tab
+        tab:SetName("Apps")
+        tab:DisplayCloseButton(false)
+
+        StackedRowPage page 
+        page:SetPixelHeight(400) //for testing, remove after fixes
+        Banner banner = page:AddBanner("Apps", 
+            "User Interface templates for desktops or mobile devices")
+        banner:PositionFromTop()
+        
+        tab:SetRelatedItem(page)
+
+        return tab
+    end
+
+    private action CreateGamesTab returns Tab
+        Tab tab
+        tab:SetName("Games")
+        tab:DisplayCloseButton(false)
+
+        StackedRowPage page 
+        page:SetPixelHeight(400) //for testing, remove after fixes
+        Banner banner = page:AddBanner("Games", 
+            "Create games for your desktop, web, or mobile device")
+        banner:PositionFromTop()
+        
+        tab:SetRelatedItem(page)
+
+        return tab
+    end
+
+    private action CreateDataScienceTab returns Tab
+        Tab tab
+        tab:SetName("Data Science")
+        tab:DisplayCloseButton(false)
+
+        StackedRowPage page 
+        page:SetPixelHeight(400) //for testing, remove after fixes
+        Banner banner = page:AddBanner("Data Science", 
+            "Make charts, play with data, or test your hypotheses")
+        banner:PositionFromTop()
+        
+        tab:SetRelatedItem(page)
+
+        return tab
+    end
+
+    private action CreateSoundTab returns Tab
+        Tab tab
+        tab:SetName("Sound")
+        tab:DisplayCloseButton(false)
+
+        StackedRowPage page 
+        page:SetPixelHeight(400) //for testing, remove after fixes
+        Banner banner = page:AddBanner("Sound", 
+            "Sound it out with files or digital signal processing")
+        banner:PositionFromTop()
+        
+        tab:SetRelatedItem(page)
+
+        return tab
+    end
+
+    private action CreateOtherTab returns Tab
+        Tab tab
+        tab:SetName("Other")
+        tab:DisplayCloseButton(false)
+
+        StackedRowPage page 
+        page:SetPixelHeight(400) //for testing, remove after fixes
+        Banner banner = page:AddBanner("Other Projects", 
+            "Other fun ideas for Quorum projects")
+        banner:PositionFromTop()
+        
+        tab:SetRelatedItem(page)
+
+        return tab
     end
 
     private action CreateNewProjectControl returns Control
@@ -682,7 +861,7 @@ Glassfish)."
     private action SetupBehaviors
         browseButton:SetBehavior(browseBehavior)
         cancelButton:SetBehavior(cancelBehavior)
-        okayButton:SetBehavior(okayBehavior)
+        okayButton:SetBehavior(okBehavior)
 
         blank:SetBehavior(listBehavior)
         main:SetBehavior(listBehavior)
@@ -789,10 +968,11 @@ Glassfish)."
     end
 
     action OnShow
-        generalParent:Open()
-        blank:Select()
         locationField:SetText(studio:GetProjectsFolder():GetAbsolutePath())
-        applicationsTree:Focus()
+        tabPane:Focus()
+        Tab tab = tabPane:GetSelectedTab()
+        if not tab:Equals(tabPane:Get(0))
+            tab:Activate()
+        end
     end
-
 end
