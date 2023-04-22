@@ -46,6 +46,7 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
     Checkbox overrideLibraryCheckbox = undefined
     TextField libraryField = undefined
     Checkbox framesPerSecondCheckbox = undefined
+    Checkbox blockModeCheckbox = undefined
 
     TabPane tabPane
 
@@ -110,6 +111,12 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
             options:SetIsShowingFramesPerSecondCounter(false)
         end
 
+        if blockModeCheckbox:GetToggleState()
+            options:SetIsBlockMode(true)
+        else
+            options:SetIsBlockMode(false)
+        end
+
         number frameRate = 30
         check
             frameRate = cast(number, frameRateField:GetText())
@@ -149,6 +156,12 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         else
             framesPerSecondCheckbox:SetToggleState(false)
         end
+
+        if options:IsBlockMode()
+            blockModeCheckbox:SetToggleState(true)
+        else
+            blockModeCheckbox:SetToggleState(false)
+        end
         
         number frames = options:GetFrameRateLimit()
         frameRateField:SetText("" + frames)
@@ -178,6 +191,9 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         lightModeButton = projectTypeGroup:AddRadioButton("Light Mode")
         darkModeButton = projectTypeGroup:AddRadioButton("Dark Mode")
         
+        page:AddLabel("Enable Blocks Mode")
+        blockModeCheckbox = page:AddCheckbox("Blocks Mode Checkbox")
+
         page:AddLabel("Frame Rate")
         frameRateField = page:AddTextField("Frame Rate")
         
