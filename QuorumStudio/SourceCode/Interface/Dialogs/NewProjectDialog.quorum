@@ -45,6 +45,7 @@ use Libraries.Interface.Controls.ButtonGroup
 use Libraries.Interface.Forms.Grouping
 use Libraries.Game.Game
 use Libraries.Interface.Controls.ToggleButton
+use Libraries.Development.Environment.Studio.Behaviors.NewProjectToggleButtonBehavior
 
 
 
@@ -65,7 +66,7 @@ class NewProjectDialog is Dialog, SelectionListener
     TextField locationField
     Button browseButton
     Button cancelButton
-    Button okayButton
+    Button okButton
 
     Tree applicationsTree
     TreeItem generalParent
@@ -105,6 +106,7 @@ class NewProjectDialog is Dialog, SelectionListener
     NewProjectBrowseBehavior browseBehavior
     NewProjectOkBehavior okBehavior
     NewProjectApplicationsListBehavior listBehavior
+    text selectedProject = ""
     
     //set by the browseBehavior, used by the okayBehavior to set the QuorumProject location
     File locationPath
@@ -256,10 +258,13 @@ Glassfish)."
         //SetPercentageOriginX(0.5)
         SetPercentageOriginY(0.5) //broken at most scales. Needs adjustment.
 
+        StackedRowPage dialogPage
+        dialogPage:SetPixelHeight(600)
+        Add(dialogPage)
         FlowLayout tabLayout
         tabPane:SetViewAreaLayout(tabLayout)
         tabPane:SetPercentageWidth(1.0)
-        tabPane:SetPixelHeight(600) //this needs to go away after fixes as well
+        tabPane:SetPixelHeight(200) //this needs to go away after fixes as well
 
         tabPane:Add(CreateGeneralTab())
         tabPane:Add(CreateAppsTab())
@@ -267,8 +272,34 @@ Glassfish)."
         tabPane:Add(CreateDataScienceTab())
         tabPane:Add(CreateSoundTab())
         tabPane:Add(CreateOtherTab())
-        Add(tabPane)
+        dialogPage:Add(tabPane)
+
+        dialogPage:AddLabel("Project Location")
+        Grouping locationGrouping = dialogPage:AddGrouping("Location")
+        locationGrouping:AddTextField("Location")
+        browseButton = locationGrouping:AddButton("Browse ..")
+
+        Grouping buttonGroup = dialogPage:AddGrouping("Confirm")
+        cancelButton = buttonGroup:AddButton("Cancel")
+        okButton = buttonGroup:AddButton("Ok")
+        //buttonGroup:PositionFromBottom() //so it can be seen while the library is broken
+
+        cancelButton:SetBehavior(cancelBehavior)
+        okButton:SetBehavior(okBehavior)
+//        Add(tabPane)
         //Load()
+
+        SetupBehaviors()  
+        SetupFocus()
+    end
+
+    private action SetButtonTextToAwesomeFontUnicode(integer unicode, Button button)
+        text value = ""
+        value = value:GetUnicodeValue(unicode)
+
+        button:SetFontSize(50)
+        button:SetFont(fontAwesome)
+        button:SetLabelText(value)
     end
 
     private action CreateGeneralTab returns Tab
@@ -277,57 +308,36 @@ Glassfish)."
         tab:DisplayCloseButton(false)
 
         StackedRowPage page 
-        page:SetPixelHeight(400) //for testing, remove after fixes
+        page:SetPixelHeight(200) //for testing, remove after fixes
         Banner banner = page:AddBanner("General", 
             "A set of default projects to enjoy")
         banner:PositionFromTop()
         
-        Grouping appsGrouping = page:AddGrouping("Top Labels")
-        appsGrouping:AddLabel("Console")
-        appsGrouping:AddLabel("App")
-        appsGrouping:AddToggleButton("Blank")
-        appsGrouping:AddToggleButton("App")
-        appsGrouping:AddLabel("Games")
-        appsGrouping:AddLabel("Scene Based Games")
-        appsGrouping:AddToggleButton("Game")
-        appsGrouping:AddToggleButton("Scene")
+        Grouping labels = page:AddGrouping("Labels")
+        labels:AddLabel("Console")
+        labels:AddLabel("App")
+        labels:AddLabel("Games")
+        labels:AddLabel("Scene")
 
-        Grouping buttonGroup = page:AddGrouping("Confirm")
-        Button cancelButton = buttonGroup:AddButton("Cancel")
-        Button okayButton = buttonGroup:AddButton("Ok")
-        buttonGroup:PositionFromBottom() 
-
-        cancelButton:SetBehavior(cancelBehavior)
-        okayButton:SetBehavior(okBehavior)
-        //add radio buttons
-//        page:AddLabel("Color Mode")
-//        ButtonGroup projectTypeGroup = page:AddButtonGroup("Color Mode")
-//        lightModeButton = projectTypeGroup:AddRadioButton("Light Mode")
-//        darkModeButton = projectTypeGroup:AddRadioButton("Dark Mode")
-//        
-//        page:AddLabel("Enable Blocks Mode")
-//        blockModeCheckbox = page:AddCheckbox("Blocks Mode Checkbox")
-//
-//        page:AddLabel("Frame Rate")
-//        frameRateField = page:AddTextField("Frame Rate")
-//        
-//        page:AddLabel("Frames Per Second Counter")
-//        framesPerSecondCheckbox = page:AddCheckbox("Frames Per Second Counter")
-//        
-//        page:AddLabel("Override Standard Library (WARNING: Only do this if you have a good reason)")
-//        overrideLibraryCheckbox = page:AddCheckbox("Override Standard Library")
-//        page:AddLabel("Override Library Path")
-//        libraryField = page:AddTextField("Library Location")
         
-//        Grouping buttonGroup = page:AddGrouping("Confirm")
-//        Button cancelButton = buttonGroup:AddButton("Cancel")
-//        Button okayButton = buttonGroup:AddButton("Ok")
-//        buttonGroup:PositionFromBottom() 
-//
-//        cancelButton:SetBehavior(cancelBehavior)
-//        okayButton:SetBehavior(okBehavior)
-//
-//        tab:SetFocusTarget(lightModeButton)
+        Grouping appsGrouping = page:AddGrouping("Buttons")
+        ToggleButton button1 = appsGrouping:AddToggleButton("Console")
+        ToggleButton button2 = appsGrouping:AddToggleButton("App")
+        ToggleButton button3 = appsGrouping:AddToggleButton("Game")
+        ToggleButton button4 = appsGrouping:AddToggleButton("Scene")
+
+        //set displays to icons
+        SetButtonTextToAwesomeFontUnicode(61728, button1)
+        SetButtonTextToAwesomeFontUnicode(62413, button2)
+        SetButtonTextToAwesomeFontUnicode(61723, button3)
+        SetButtonTextToAwesomeFontUnicode(63193, button4)
+
+        NewProjectToggleButtonBehavior toggleBehavior
+        toggleBehavior:SetDialog(me)
+        button1:SetBehavior(toggleBehavior)
+        button2:SetBehavior(toggleBehavior)
+        button3:SetBehavior(toggleBehavior)
+        button4:SetBehavior(toggleBehavior)
         tab:SetRelatedItem(page)
 
         return tab
@@ -588,13 +598,13 @@ Glassfish)."
         Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
         okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
 
-        okayButton:SetName("OK")
-        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
+        okButton:SetName("OK")
+        okButton:SetHorizontalLayoutMode(okButton:parent:Libraries.Interface.Controls.Control:STANDARD)
         InterfaceOptions options
-        okayButton:SetInterfaceOptionsKey(options:DIALOG_ACCEPT_BUTTON)
-        okayButton:SetPercentageWidth(0.11)
-        okayButton:SetLeftPadding(10)
-        closingButtonsContainer:Add(okayButton)
+        okButton:SetInterfaceOptionsKey(options:DIALOG_ACCEPT_BUTTON)
+        okButton:SetPercentageWidth(0.11)
+        okButton:SetLeftPadding(10)
+        closingButtonsContainer:Add(okButton)
         control:Add(closingButtonsContainer)
 
         return control
@@ -846,22 +856,22 @@ Glassfish)."
         nameField:SetNextFocus(locationField)
         locationField:SetNextFocus(browseButton)
         browseButton:SetNextFocus(cancelButton)
-        cancelButton:SetNextFocus(okayButton)
-        okayButton:SetNextFocus(applicationsTree)
+        cancelButton:SetNextFocus(okButton)
+        okButton:SetNextFocus(applicationsTree)
 
-        applicationsTree:SetPreviousFocus(okayButton)
+        applicationsTree:SetPreviousFocus(okButton)
         descriptionBox:SetPreviousFocus(applicationsTree)       
         nameField:SetPreviousFocus(descriptionBox)
         locationField:SetPreviousFocus(nameField)
         browseButton:SetPreviousFocus(locationField)
         cancelButton:SetPreviousFocus(browseButton)
-        okayButton:SetPreviousFocus(cancelButton)
+        okButton:SetPreviousFocus(cancelButton)
     end
 
     private action SetupBehaviors
         browseButton:SetBehavior(browseBehavior)
         cancelButton:SetBehavior(cancelBehavior)
-        okayButton:SetBehavior(okBehavior)
+        okButton:SetBehavior(okBehavior)
 
         blank:SetBehavior(listBehavior)
         main:SetBehavior(listBehavior)
@@ -975,4 +985,12 @@ Glassfish)."
             tab:Activate()
         end
     end
+    action GetSelectedProject returns text
+        return selectedProject
+    end
+
+    action SetSelectedProject(text selectedProject)
+        me:selectedProject = selectedProject
+    end
+
 end

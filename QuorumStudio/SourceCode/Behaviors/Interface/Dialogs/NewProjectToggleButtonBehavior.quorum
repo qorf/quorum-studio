@@ -1,0 +1,21 @@
+package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.Interface.NewProjectDialog
+use Libraries.Interface.Item
+
+class NewProjectToggleButtonBehavior is QuorumStudioBehavior
+    NewProjectDialog dialog = undefined
+    
+    action SetDialog(NewProjectDialog dialog)
+        me:dialog = dialog
+    end
+
+    action Run(BehaviorEvent event)
+        Item item = event:GetItem()
+        if item not= undefined and dialog not= undefined
+            text name = item:GetName()
+            dialog:SetSelectedProject(name)
+        end
+    end
+end
