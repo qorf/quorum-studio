@@ -1,41 +1,21 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Dialog
-use Libraries.Interface.Views.LabelBoxView
 use Libraries.Game.Graphics.Color
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Controls.TextField
 use Libraries.Game.Graphics.Label
 use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Controls.Button
-use Libraries.Game.Graphics.Gradient
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
 use Libraries.Development.Environment.Studio.QuorumStudio
-use Libraries.Interface.Controls.ScrollPane
-use Libraries.Game.Graphics.Drawable
-use Libraries.Interface.Controls.Icon
-use Libraries.Containers.HashTable
-use Libraries.Interface.Layouts.LayoutProperties
-use Libraries.Game.FocusManager
 use Libraries.Development.Environment.Studio.Behaviors.NewProjectBrowseBehavior
 use Libraries.System.File
 use Libraries.Development.Environment.Studio.Behaviors.NewProjectOkBehavior
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
-use Libraries.Development.Environment.Projects.QuorumProjectView
-use Libraries.Interface.Controls.TreeItem
-use Libraries.Development.Environment.Projects.ProjectTree
-use Libraries.Containers.Iterator
-use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Resources
 use Libraries.Game.Graphics.Font
-use Libraries.Interface.Events.SelectionListener
-use Libraries.Interface.Events.SelectionEvent
-use Libraries.Development.Environment.Studio.Behaviors.NewProjectApplicationsListBehavior
-use Libraries.Interface.Controls.Tree
-use Libraries.Interface.Selections.Selection
-use Libraries.Interface.Selections.TreeSelection
 use Libraries.Game.GameStateManager
-use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Interface.Controls.TabPane
 use Libraries.Interface.Controls.Tab
@@ -46,20 +26,16 @@ use Libraries.Interface.Forms.Grouping
 use Libraries.Game.Game
 use Libraries.Interface.Controls.ToggleButton
 use Libraries.Development.Environment.Studio.Behaviors.NewProjectToggleButtonBehavior
+use Libraries.Containers.HashTable
 
-
-
-class NewProjectDialog is Dialog, SelectionListener
+class NewProjectDialog is Dialog
     boolean initialized = false
     GameStateManager gameManager
     TabPane tabPane
     QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
     Font fontAwesome
-
-    HashTable<TreeItem, text> descriptions
-    HashTable<TreeItem, Icon> iconsList    
-    HashTable<TreeItem, text> templates
     Resources resources
+    HashTable<text, text> templateHash
 
     constant text CONSOLE = "Console"
     constant text APP = "App"
@@ -89,148 +65,20 @@ class NewProjectDialog is Dialog, SelectionListener
     //Dialog Controls
     TextField nameField = undefined
     TextField locationField = undefined
-    Button browseButton
-    Button cancelButton
-    Button okButton
-
-    Tree applicationsTree
-    TreeItem generalParent
-    TreeItem blank
-    TreeItem main
-
-    TreeItem graphicsParent
-    TreeItem game
-    TreeItem imageSheets
-    TreeItem physics2D
-    TreeItem physics3D
-    TreeItem skybox
-
-    TreeItem scenesParent
-    TreeItem blankScene
-    TreeItem scene3D
-
-    TreeItem legoParent
-    TreeItem lego
-    TreeItem legoMove
-
-    TreeItem otherParent
-    TreeItem document
-    TreeItem internet
-    TreeItem sineWaves
-    TreeItem userInterface
-    TreeItem webServer
-    TreeItem android
-
-    //Array<Icon> iconsList
-    TextBox descriptionBox
-    Button iconButton
-    TreeItem previousTreeItem = undefined
+    Button browseButton = undefined
+    Button cancelButton = undefined
+    Button okButton = undefined
 
     //Dialog Behaviors
     DialogCancelBehavior cancelBehavior
     NewProjectBrowseBehavior browseBehavior
     NewProjectOkBehavior okBehavior
-    NewProjectApplicationsListBehavior listBehavior
     text selectedProject = ""
     
     //set by the browseBehavior, used by the okayBehavior to set the QuorumProject location
     File locationPath
     //set to blank application template by default. Changes based on user's application selection in the dialog
     text templatePath = "Templates/New/Blank" 
-
-    //Application Descriptions
-    text blankDescription = 
-"A blank application in Quorum sets up a default 
-project with no source code inside of it. As 
-classes are optional in Quorum, using a blank 
-project works just as well as an application for 
-writing programs."
-    text mainDescription = 
-"Sets up a default Quorum project with the action
-main template provided."
-    text gameDescription = 
-"This project type creates a template for creating 
-a computer game in Quorum. This includes creating a 
-game object, setting up its actions for use in the 
-game, and starting an application window that a game 
-will draw in. Auditory games may also be built using 
-the same framework."
-
-    text blankSceneDescription = 
-"This project creates a default scene file, along with 
-adding code into the main game to load the scene. This 
-ensures that all physics properties, graphics, sounds, 
-and other attributes created with the visual editor are 
-automatically loaded and placed into the game.
-"
-    text scene3DDescription =
-"This project creates a default scene and game file
-designed for 3D applications. The project includes
-the default 3D assets, as well as code to automatically
-load the scene file and enable 3D physics and gravity."
-
-    text legoDescription = 
-"This project creates a default Lego Quorum 
-application. In this case, if a Lego robot is 
-connected to the system, Quorum will automatically 
-send the built project to the robot. If no Lego 
-robot is connected, the system will detect this and 
-build the project normally."
-    text androidDescription = 
-"This project creates a default class for creating a 
-game in Quorum with tags set appropriately to 
-generate Android Applications. This includes creating 
-a game object, setting up its actions for use in the 
-game, and loading a window for a game to be displayed 
-in."    
-    text documentDescription = 
-"In a documentation application, building the project 
-creates a web page in HTML for the project. In this 
-default case, it will create an HTML file for the 
-class Main."
-    text imageSheetsDescription = 
-"This project creates a game using a preloaded Image 
-Sheet (or texture atlas) which contains the necessary 
-sprites for playing the Pig Shooter game."
-    text internetServicesDescription = 
-"This project sends a network request to a specified 
-web address and then outputs the response text."
-    text legoMoveDescription = 
-"This project creates a Lego Quorum application using 
-the motor on the Lego robot. If a Lego robot is 
-connected to the system, Quorum will automatically 
-send the built project to the robot. If no Lego robot 
-is connected, the system will detect this and build 
-the project normally."
-    text physics2DDescription = 
-"This project creates a game using 2-Dimensional 
-physics. The objects in the game will interact with 
-one another and respond to collision events and an 
-approximated gravitational pull within the game."
-    text physics3DDescription = 
-"This project creates a game using 3-Dimensional 
-physics. The 3D objects in the game will interact with 
-one another and respond to collision events and an 
-approximated gravitational pull within the game."
-    text sineWavesDescription = 
-"This project uses sine waves which are plotted to an 
-audio sample. The audio sample is then output for the 
-user to hear the applied wave forms."
-    text skyboxDescription = 
-"This project creates a game which uses a Skybox 
-environment which the user can rotate and move. The 
-template also has preloaded Models which are displayed 
-within the Skybox."
-    text userInterfaceDescription = 
-"This project creates a User Interface game using 
-buttons. The button will load to the screen and when 
-pressed will execute the specified behavior."
-    text webServerDescription = 
-"This class shows how to setup a Quorum Web Server. We 
-receive messages with the Respond action and respond 
-with a WebResponse Object. We can receive these 
-messages in any Java Container (e.g., Tomcat, 
-Glassfish)."
 
     on create
         File file
@@ -241,39 +89,11 @@ Glassfish)."
         browseBehavior:SetMainApplication(studio)
         cancelBehavior:SetDialog(me)
         okBehavior:SetDialog(me)
-        listBehavior:SetDialog(me)
         okBehavior:SetMainApplication(studio)
-        applicationsTree:AddSelectionListener(me)
-        listBehavior:SetTree(applicationsTree)
         SetBehavior(okBehavior)
     end
 
     action Initialize
-//        initialized = true
-//
-//        SetName("New Project")  
-//        SetPercentageWidth(0.50) 
-//        //SetPixelWidth(500)
-//        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
-//
-//        ControlShaderView view
-//        view:Initialize()
-//        
-//        Control panel
-//        LayoutProperties properties = GetDefaultLayoutProperties()
-//        FlowLayout newProjectLayout
-//        panel:SetLayout(newProjectLayout)
-//        panel:SetPercentageWidth(1.0)
-//        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-//        panel:SetInterfaceOptionsKey("Dialog")
-//        panel:SetBorderStyle(properties:ALL - properties:TOP)
-//        panel:SetBorderThickness(1)
-//        panel:Add(CreateNewProjectControl())
-//        panel:SetView2D(view)
-//        Add(panel) 
-//        SetupBehaviors()  
-//        SetupFocus()
-
         initialized = true
         SetName("New Project Dialog")
         //SetPixelWidth(600)
@@ -313,41 +133,12 @@ Glassfish)."
 
         cancelButton:SetBehavior(cancelBehavior)
         okButton:SetBehavior(okBehavior)
-//        Add(tabPane)
-        //Load()
 
-        SetupBehaviors()  
-        SetupFocus()
         PrepareTemplateHash()
     end
 
-    HashTable<text, text> templateHash
     /*
         Compares the location of any template project on the system
-        constant text CONSOLE = "Console"
-        constant text APP = "App"
-        constant text GAMES = "Game"
-        constant text SCENE = "Scene"
-        constant text MOBILE = "Mobile"
-        constant text IMAGE_SHEET = "Image Sheet"
-        constant text PHYSICS2D = "2D Physics"
-        constant text PHYSICS3D = "3D Physics"
-        constant text SKYBOX = "Skybox"
-        constant text SCENE2D = "2D Scene"
-        constant text SCENE3D = "3D Scene"
-        constant text BAR_CHART = "Bar Chart"
-        constant text PIE_CHART = "Pie Chart"
-        constant text SCATTERPLOT = "Scatterplot"
-        constant text DESCRIPTIVES = "Descriptive Statistics"
-        constant text CORRELATIONS = "Correlations"
-        constant text COMPARE_MEANS = "Compare Means"
-        constant text PLAY_SOUND = "Play Sound"
-        constant text SINE_WAVE = "Sine Wave"
-        constant text MIDI = "MIDI"
-        constant text DATABASE = "Play Sound"
-        constant text LEGO_MINDSTORMS = "Sine Wave"
-        constant text DOCUMENT = "MIDI"
-        constant text INTERNET_SERVICE = "MIDI"
     */
     action PrepareTemplateHash
         templateHash:Add(CONSOLE,"Templates/New/Blank")
@@ -486,7 +277,6 @@ Glassfish)."
         return tab
     end
 
-    
     private action CreateDataScienceTab returns Tab
         Tab tab
         tab:SetName("Data Science")
@@ -539,7 +329,6 @@ Glassfish)."
         return tab
     end
 
-    
     private action CreateSoundTab returns Tab
         Tab tab
         tab:SetName("Sound")
@@ -618,477 +407,6 @@ Glassfish)."
         return tab
     end
 
-    private action CreateNewProjectControl returns Control
-        Color color
-        Control control
-        FlowLayout layout
-        control:SetLayout(layout)
-        control:SetPercentageWidth(1.0)
-        control:SetVerticalLayoutMode(control:FIT_CONTENTS)
-
-        Control applicationsNameContainer
-        FlowLayout panelLayout
-        applicationsNameContainer:SetLayout(panelLayout)
-        applicationsNameContainer:SetPercentageWidth(1.0)
-        applicationsNameContainer:SetVerticalLayoutMode(applicationsNameContainer:FIT_CONTENTS)
-        applicationsNameContainer:SetLeftPadding(30)
-        applicationsNameContainer:SetTopPadding(30)
-        applicationsNameContainer:SetBottomPadding(10)
-
-        SetupIconsList()
-        SetupDescriptionsList()
-        SetupTemplatesList()
-
-        LabelBoxView view
-        view:Initialize(color:White(), color:White())
-        
-        Label applicationsLabel
-        applicationsLabel:SetText("Projects: ")
-        applicationsLabel:SetFontSize(14)
-        applicationsLabel:SetPercentageWidth(1.0)
-        applicationsLabel:SetHorizontalLayoutMode(applicationsLabel:parent:Libraries.Interface.Controls.Control:FILL)
-        applicationsLabel:SetVerticalLayoutMode(applicationsLabel:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        applicationsNameContainer:Add(applicationsLabel)
-        control:Add(applicationsNameContainer)    
-
-        Control applicationsContainer
-        FlowLayout applicationsLayout
-        applicationsContainer:SetLayout(applicationsLayout)
-        applicationsContainer:SetPercentageWidth(0.5)
-        applicationsContainer:SetHorizontalLayoutMode(applicationsContainer:STANDARD)
-        applicationsContainer:SetVerticalLayoutMode(applicationsContainer:FIT_CONTENTS)
-        applicationsContainer:SetView2D(view)
-        applicationsContainer:SetLeftPadding(30)
-        applicationsContainer:SetBottomPadding(10)
-
-        ScrollPane scrollPane
-        scrollPane:SetPercentageWidth(1.0)
-        scrollPane:SetPixelHeight(200)
-        FlowLayout scrollLayout
-        scrollPane:SetLayout(scrollLayout)
-
-        applicationsTree:SetName("New Project Templates")
-        applicationsTree:SetHorizontalLayoutMode(applicationsTree:parent:Libraries.Interface.Controls.Control:STANDARD)
-        applicationsTree:SetVerticalLayoutMode(applicationsTree:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        applicationsTree:SetPercentageWidth(1.0)
-        applicationsTree:SetFontSize(12)
-
-        SetupApplicationTree()
-
-        scrollPane:Add(applicationsTree)
-        applicationsContainer:Add(scrollPane)     
-        control:Add(applicationsContainer)
-
-        Control iconContainer
-        FlowLayout iconLayout
-        iconContainer:SetLayout(iconLayout)
-        iconContainer:SetPercentageWidth(0.35)
-        iconContainer:SetVerticalLayoutMode(iconContainer:FIT_CONTENTS)
-
-        iconButton:SetCenter(iconContainer:GetCenterX(), iconContainer:GetCenterY() + 100)
-        iconButton:SetSize(200, 200)    
-        iconButton:SetLeftPadding(175)
-        iconButton:SetTopPadding(125)
-        iconButton:SetRightPadding(150)
-        Font font = undefined  
-        iconButton:SetFont(font) 
-        iconButton:SetName("Project Image")
-        iconButton:SetHorizontalLayoutMode(iconButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        iconButton:SetVerticalLayoutMode(iconButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        iconContainer:Add(iconButton)
-        control:Add(iconContainer)
-        
-        Control descriptionsContainer
-        FlowLayout descriptionsLayout
-        descriptionsContainer:SetLayout(descriptionsLayout)
-        descriptionsContainer:SetPercentageWidth(1.0)
-        descriptionsContainer:SetVerticalLayoutMode(descriptionsContainer:FIT_CONTENTS)
-        descriptionsContainer:SetTopPadding(20)
-        descriptionsContainer:SetLeftPadding(30)
-        descriptionsContainer:SetRightPadding(30)
-        descriptionsContainer:SetBottomPadding(10)
-
-        Label descriptionsLabel
-        descriptionsLabel:SetText("Description: ")  
-        descriptionsLabel:SetFontSize(14)
-        descriptionsLabel:SetPercentageWidth(1.0)
-        descriptionsLabel:SetHorizontalLayoutMode(descriptionsLabel:parent:Libraries.Interface.Controls.Control:FILL)
-        descriptionsLabel:SetVerticalLayoutMode(descriptionsLabel:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        descriptionsContainer:Add(descriptionsLabel)
-
-        descriptionBox:SetName("Project Description")
-        descriptionBox:SetPercentageWidth(1.0)
-        descriptionBox:SetPixelHeight(100)
-        descriptionBox:SetTopPadding(10)
-        descriptionBox:HideCaret()
-        descriptionBox:GetTextBoxEditManager():SetOff(true)
-        descriptionBox:SetMoveFocusOnTab(true)
-        descriptionsContainer:Add(descriptionBox)   
-        control:Add(descriptionsContainer)
-        
-        FlowLayout projectNameLayout
-        Control projectNameContainer
-        projectNameContainer:SetLayout(projectNameLayout)
-        projectNameContainer:SetPercentageWidth(1.0)
-        projectNameContainer:SetVerticalLayoutMode(projectNameContainer:FIT_CONTENTS)
-        projectNameContainer:SetTopPadding(10)
-        projectNameContainer:SetLeftPadding(30)
-        projectNameContainer:SetRightPadding(30)
-        projectNameContainer:SetBottomPadding(10)
-
-        Label nameLabel
-        nameLabel:SetText("Name:")
-        nameLabel:SetRightPadding(40)
-        projectNameContainer:Add(nameLabel)
-
-        nameField:SetName("Name")
-        nameField:SetHorizontalLayoutMode(nameField:parent:Libraries.Interface.Controls.Control:FILL)
-        projectNameContainer:Add(nameField)
-        control:Add(projectNameContainer)
-
-        FlowLayout projectLocationLayout
-        Control projectLocationContainer
-        projectLocationContainer:SetLayout(projectLocationLayout)
-        projectLocationContainer:SetPercentageWidth(1.0)
-        projectLocationContainer:SetPixelHeight(80)
-        projectLocationContainer:SetTopPadding(10)
-        projectLocationContainer:SetLeftPadding(30)
-        projectLocationContainer:SetRightPadding(30)
-
-        Label locationLabel
-        locationLabel:SetText("Location:")
-        locationLabel:SetRightPadding(6)
-        projectLocationContainer:Add(locationLabel)
-
-        locationField:SetPercentageWidth(0.72)
-        locationField:SetRightPadding(10)
-        locationField:SetName("Location")
-        projectLocationContainer:Add(locationField)
-
-        browseButton:SetName("Browse...")
-        browseButton:SetHorizontalLayoutMode(browseButton:parent:Libraries.Interface.Controls.Control:FILL)
-        projectLocationContainer:Add(browseButton)
-        control:Add(projectLocationContainer)
-
-        FlowLayout closingButtonsLayout
-        Control closingButtonsContainer
-        closingButtonsContainer:SetLayout(closingButtonsLayout)
-        closingButtonsContainer:SetPercentageWidth(1.0)
-        closingButtonsContainer:SetVerticalLayoutMode(closingButtonsContainer:FIT_CONTENTS)
-        closingButtonsContainer:SetBottomPadding(50)
-        closingButtonsContainer:SetRightPadding(30)
-        
-        Control closingPadding
-        closingPadding:SetPercentageWidth(0.76)
-        closingPadding:SetPixelHeight(1)
-        closingButtonsContainer:Add(closingPadding)
-
-        cancelButton:SetName("Cancel")
-        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        cancelButton:SetPercentageWidth(0.12)
-        closingButtonsContainer:Add(cancelButton)
-
-        Gradient okayGradient
-        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
-        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
-        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
-
-        okButton:SetName("OK")
-        okButton:SetHorizontalLayoutMode(okButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        InterfaceOptions options
-        okButton:SetInterfaceOptionsKey(options:DIALOG_ACCEPT_BUTTON)
-        okButton:SetPercentageWidth(0.11)
-        okButton:SetLeftPadding(10)
-        closingButtonsContainer:Add(okButton)
-        control:Add(closingButtonsContainer)
-
-        return control
-    end
-
-    private action SetupApplicationTree()
-        applicationsTree:Add(generalParent)
-        generalParent:SetName("General")
-        generalParent:SetDescription("")
-        generalParent:Add(blank)
-        blank:SetName("Blank")
-        blank:SetDescription(blankDescription)
-        generalParent:Add(main)
-        main:SetName("Main")
-        main:SetDescription(mainDescription)
-        
-        applicationsTree:Add(graphicsParent)
-        graphicsParent:SetName("Graphics")
-        graphicsParent:SetDescription("")
-        graphicsParent:Add(game)
-        game:SetName("Game")
-        game:SetDescription(gameDescription)
-        graphicsParent:Add(imageSheets)
-        imageSheets:SetName("Image Sheets")
-        imageSheets:SetDescription(imageSheetsDescription)
-        graphicsParent:Add(physics2D)
-        physics2D:SetName("Physics 2D")
-        physics2D:SetDescription(physics2DDescription)
-        graphicsParent:Add(physics3D)
-        physics3D:SetName("Physics 3D")
-        physics3D:SetDescription(physics3DDescription)
-        graphicsParent:Add(skybox)
-        skybox:SetName("Skybox")
-        skybox:SetDescription(skyboxDescription)
-
-        applicationsTree:Add(scenesParent)
-        scenesParent:SetName("Scenes")
-        scenesParent:SetDescription("")
-        scenesParent:Add(blankScene)
-        scenesParent:Add(scene3D)
-        blankScene:SetName("Blank Scene")
-        blankScene:SetDescription(blankSceneDescription)
-        scene3D:SetName("3D Scene")
-        scene3D:SetDescription(scene3DDescription)
-        
-
-        applicationsTree:Add(legoParent)
-        legoParent:SetName("LEGO")
-        legoParent:SetDescription("")
-        legoParent:Add(lego)
-        lego:SetName("Lego")
-        lego:SetDescription(legoDescription)
-        legoParent:Add(legoMove)
-        legoMove:SetName("Lego Move")
-        legoMove:SetDescription(legoMoveDescription)
-        
-        applicationsTree:Add(otherParent)
-        otherParent:SetName("Other")
-        otherParent:SetDescription("")
-        otherParent:Add(android)
-        android:SetName("Android")
-        android:SetDescription(androidDescription)
-        otherParent:Add(document)
-        document:SetName("Document")
-        document:SetDescription(documentDescription)
-        otherParent:Add(internet)
-        internet:SetName("Internet Services")
-        internet:SetDescription(internetServicesDescription)
-        otherParent:Add(sineWaves)
-        sineWaves:SetName("Sine Waves")
-        sineWaves:SetDescription(sineWavesDescription)
-        otherParent:Add(userInterface)
-        userInterface:SetName("User Interface")
-        userInterface:SetDescription(userInterfaceDescription)
-        otherParent:Add(webServer)
-        webServer:SetName("Web Server")
-        webServer:SetDescription(webServerDescription)
-    end
-
-    private action SetupDescriptionsList()
-        descriptions:Add(generalParent, "")
-        descriptions:Add(graphicsParent, "")
-        descriptions:Add(legoParent, "")
-        descriptions:Add(otherParent, "")
-        descriptions:Add(blank, blankDescription)
-        descriptions:Add(main, mainDescription)
-        descriptions:Add(game, gameDescription)
-        descriptions:Add(android, androidDescription)
-        descriptions:Add(lego, legoDescription)
-        descriptions:Add(document, documentDescription)
-        descriptions:Add(imageSheets, imageSheetsDescription)
-        descriptions:Add(internet, internetServicesDescription)
-        descriptions:Add(legoMove, legoMoveDescription)
-        descriptions:Add(physics2D, physics2DDescription)
-        descriptions:Add(physics3D, physics3DDescription)
-        descriptions:Add(webServer, webServerDescription)
-        descriptions:Add(userInterface, userInterfaceDescription)
-        descriptions:Add(sineWaves, sineWavesDescription)
-        descriptions:Add(skybox, skyboxDescription)
-        descriptions:Add(blankScene, blankSceneDescription)
-        descriptions:Add(scene3D, scene3DDescription)
-    end
-
-    private action SetupIconsList()
-        Icon quorumIcon
-        Icon blankIcon
-        Icon gameIcon
-        Icon androidIcon
-        Icon legoIcon
-        Icon documentIcon
-        Icon imageIcon
-        Icon internetIcon
-        Icon legoMoveIcon
-        Icon physics2DIcon
-        Icon physics3DIcon        
-        Icon sineIcon
-        Icon skyboxIcon
-        Icon userInterfaceIcon
-        Icon serverIcon
-
-        File quorumFile
-        File blankFile
-        File gameFile 
-        File androidFile
-        File legoFile
-        File documentFile
-        File imageFile
-        File internetFile
-        File legoMoveFile
-        File physics2DFile
-        File physics3DFile
-        File sineFile
-        File skyboxFile
-        File userInterfaceFile
-        File serverFile
-
-        quorumFile:SetPath("/Resources/Graphics/Projects/QuorumSmall.png")
-        blankFile:SetPath("/Resources/Graphics/Projects/BlankIcon.png")
-        gameFile:SetPath("/Resources/Graphics/Projects/GameIcon.png")
-        androidFile:SetPath("/Resources/Graphics/Projects/AndroidIcon.png")
-        legoFile:SetPath("/Resources/Graphics/Projects/LegoIcon.png")
-        documentFile:SetPath("/Resources/Graphics/Projects/DocumentIcon.png")
-        imageFile:SetPath("/Resources/Graphics/Projects/ImageSheetsIcon.png")
-        internetFile:SetPath("/Resources/Graphics/Projects/InternetIcon.png")
-        legoMoveFile:SetPath("/Resources/Graphics/Projects/LegoMoveIcon.png")
-        physics2DFile:SetPath("/Resources/Graphics/Projects/Physics2DIcon.png")
-        physics3DFile:SetPath("/Resources/Graphics/Projects/Physics3DIcon.png")
-        sineFile:SetPath("/Resources/Graphics/Projects/SineWavesIcon.png")
-        skyboxFile:SetPath("/Resources/Graphics/Projects/SkyboxIcon.png")
-        userInterfaceFile:SetPath("/Resources/Graphics/Projects/UserInterfaceIcon.png")
-        serverFile:SetPath("/Resources/Graphics/Projects/WebServerIcon.png")
-
-        quorumIcon:Load(quorumFile)
-        blankIcon:Load(blankFile)
-        gameIcon:Load(gameFile)
-        androidIcon:Load(androidFile)
-        legoIcon:Load(legoFile)
-        documentIcon:Load(documentFile)
-        imageIcon:Load(imageFile)
-        internetIcon:Load(internetFile)
-        legoMoveIcon:Load(legoMoveFile)
-        physics2DIcon:Load(physics2DFile)
-        physics3DIcon:Load(physics3DFile)
-        sineIcon:Load(sineFile)
-        skyboxIcon:Load(skyboxFile)
-        userInterfaceIcon:Load(userInterfaceFile)
-        serverIcon:Load(serverFile)
-
-        iconsList:Add(generalParent, blankIcon)
-        iconsList:Add(legoParent, legoIcon)
-        iconsList:Add(graphicsParent, skyboxIcon)
-        iconsList:Add(otherParent, quorumIcon)
-        iconsList:Add(blank, blankIcon)
-        iconsList:Add(main, blankIcon)
-        iconsList:Add(game, gameIcon)
-        iconsList:Add(android, androidIcon)
-        iconsList:Add(lego, legoIcon)
-        iconsList:Add(document, documentIcon)
-        iconsList:Add(imageSheets, imageIcon)
-        iconsList:Add(internet, internetIcon)
-        iconsList:Add(legoMove, legoMoveIcon)
-        iconsList:Add(physics2D, physics2DIcon)
-        iconsList:Add(physics3D, physics3DIcon)
-        iconsList:Add(sineWaves, sineIcon)
-        iconsList:Add(skybox, skyboxIcon)
-        iconsList:Add(userInterface, userInterfaceIcon)
-        iconsList:Add(webServer, serverIcon)
-
-        //scenes
-        iconsList:Add(blankScene, gameIcon)
-        iconsList:Add(scene3D, gameIcon)
-    end
-
-    action SetCurrentDescription(TreeItem item)        
-        descriptionBox:SetText(descriptions:GetValue(item))
-        SetCurrentProjectIcon(item)
-        SetCurrentProjectName(item)
-        SetTemplatePath(item)
-    end
-
-    private action SetupTemplatesList()
-        templates:Add(blank, "Templates/New/Blank")
-        templates:Add(main, "Templates/New/Main")
-        templates:Add(game, "Templates/New/Game")
-        templates:Add(android, "Templates/New/Android")
-        templates:Add(lego, "Templates/New/LEGO")
-        templates:Add(document, "Templates/Other/Document")
-        templates:Add(imageSheets, "Templates/Other/ImageSheets")
-        templates:Add(internet, "Templates/Other/InternetServices")
-        templates:Add(legoMove, "Templates/Other/LEGOMove")
-        templates:Add(physics2D, "Templates/Other/Physics2D")
-        templates:Add(physics3D, "Templates/Other/Physics3D")
-        templates:Add(sineWaves, "Templates/Other/SineWaves")
-        templates:Add(skybox, "Templates/Other/Skybox")
-        templates:Add(userInterface, "Templates/Other/UserInterface")
-        templates:Add(webServer, "Templates/Other/WebServer") 
-        templates:Add(blankScene, "Templates/Scenes/Blank")
-        templates:Add(scene3D, "Templates/Scenes/Scene3D")
-    end
-
-    private action SetCurrentProjectIcon(TreeItem item)
-        if previousTreeItem not= undefined
-            iconButton:Remove(iconsList:GetValue(previousTreeItem))
-        end
-        iconButton:SetIcon(iconsList:GetValue(item))
-        previousTreeItem = item
-    end
-
-    private action SetCurrentProjectName(TreeItem item)
-        text name = item:GetName()
-        text newName = ""
-        integer i = 0
-        repeat while i < name:GetSize()
-            if name:GetCharacter(i) not= " "
-                newName = newName + name:GetCharacter(i) 
-            end
-            i = i + 1
-        end
-        nameField:SetText(newName + "Application")
-    end
-
-    private action SetTemplatePath(TreeItem item)
-        templatePath = templates:GetValue(item)
-    end
-
-    private action SetupFocus
-        applicationsTree:SetNextFocus(descriptionBox)
-        descriptionBox:SetNextFocus(nameField)
-        nameField:SetNextFocus(locationField)
-        locationField:SetNextFocus(browseButton)
-        browseButton:SetNextFocus(cancelButton)
-        cancelButton:SetNextFocus(okButton)
-        okButton:SetNextFocus(applicationsTree)
-
-        applicationsTree:SetPreviousFocus(okButton)
-        descriptionBox:SetPreviousFocus(applicationsTree)       
-        nameField:SetPreviousFocus(descriptionBox)
-        locationField:SetPreviousFocus(nameField)
-        browseButton:SetPreviousFocus(locationField)
-        cancelButton:SetPreviousFocus(browseButton)
-        okButton:SetPreviousFocus(cancelButton)
-    end
-
-    private action SetupBehaviors
-        browseButton:SetBehavior(browseBehavior)
-        cancelButton:SetBehavior(cancelBehavior)
-        okButton:SetBehavior(okBehavior)
-
-        blank:SetBehavior(listBehavior)
-        main:SetBehavior(listBehavior)
-        game:SetBehavior(listBehavior)
-        android:SetBehavior(listBehavior)
-        lego:SetBehavior(listBehavior)
-        document:SetBehavior(listBehavior)
-        imageSheets:SetBehavior(listBehavior)
-        internet:SetBehavior(listBehavior)
-        legoMove:SetBehavior(listBehavior)
-        physics2D:SetBehavior(listBehavior)
-        physics3D:SetBehavior(listBehavior)
-        sineWaves:SetBehavior(listBehavior)
-        skybox:SetBehavior(listBehavior)
-        userInterface:SetBehavior(listBehavior)
-        webServer:SetBehavior(listBehavior) 
-
-        //scenes
-        blankScene:SetBehavior(listBehavior)
-        scene3D:SetBehavior(listBehavior)
-    end
-
     action GetLocation returns text
         return locationField:GetText()
     end
@@ -1143,33 +461,9 @@ Glassfish)."
         return nameField:GetText():Trim()
     end
 
-    action AppendToProjectPane(QuorumProject project)
-        Resources resource = studio:GetResources()
-
-        QuorumProjectView projectView = cast(QuorumProjectView, project:GetProjectView())
-        projectView:SetMainApplication(studio)
-        projectView:SetResources(resource)
-        TreeItem treeItem = projectView:GetLogicalTree()
-
-        ProjectTree projectTree = studio:GetProjectTree()
-        Iterator<TreeItem> items = projectTree:GetTreeItems()
-
-        projectTree:Add(treeItem)
-    end
-
-    action SelectionChanged(SelectionEvent event)
-        Tree tree = cast(Tree, event:GetItem())
-        TreeSelection selection = tree:GetSelection()
-        if selection:GetTreeItem() is TreeItem
-            TreeItem item = selection:GetTreeItem()
-            item:Activate()
-        end   
-    end
-
     action OnHide
         nameField:Empty()
         locationField:Empty()
-        applicationsTree:Deselect()
     end
 
     action OnShow
