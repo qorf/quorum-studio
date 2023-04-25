@@ -1,0 +1,18 @@
+use Libraries.Compute.Statistics.DataFrame
+use Libraries.Containers.Array
+use Libraries.Compute.Statistics.Calculations.Summarize
+DataFrame frame
+frame:Load("data.csv")
+frame:SelectAllColumns()
+
+Array<Summarize> array = frame:SummarizeSelectedColumns()
+i = 0
+repeat while i < array:GetSize()
+    Summarize summary = array:Get(i)
+    output "Column: " + i
+    output "Min: " + summary:GetMinimum()
+    output "Max: " + summary:GetMaximum()
+    output "Mean: " + summary:GetMean()
+    output "Variance: " + summary:GetVariance()
+    i = i + 1
+end
