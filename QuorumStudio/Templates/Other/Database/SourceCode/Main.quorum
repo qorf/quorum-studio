@@ -1,7 +1,14 @@
-use Libraries.Interface.Forms.Form
-use Libraries.Interface.Forms.Page
-Form form
-Page page = form:GetMainPage()
+use Libraries.Data.Database.Database
+use Libraries.Compute.Statistics.DataFrame
 
-page:AddButton("Hi")
-form:Display()
+//By default, only MySQL is supported and this must be setup locally
+Database database
+database:Connect("https://somelocation.com", "NameOfDatabase", "username", "password")
+if not database:IsConnected()
+    output "Connection failed."
+    return now
+end
+
+//This would output an entire table to the console
+DataFrame frame = database:FindAsDataFrame("Users")
+output frame:ToText()
