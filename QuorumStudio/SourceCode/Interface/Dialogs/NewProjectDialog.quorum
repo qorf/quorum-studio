@@ -62,8 +62,8 @@ class NewProjectDialog is Dialog, SelectionListener
     Resources resources
     
     //Dialog Controls
-    TextField nameField
-    TextField locationField
+    TextField nameField = undefined
+    TextField locationField = undefined
     Button browseButton
     Button cancelButton
     Button okButton
@@ -254,12 +254,12 @@ Glassfish)."
         //SetPixelWidth(600)
         SetPercentageWidth(0.50)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        SetPercentageHeight(0.5)
+        SetPercentageHeight(0.7)
         //SetPercentageOriginX(0.5)
-        SetPercentageOriginY(0.5) //broken at most scales. Needs adjustment.
+        SetPercentageOriginY(0.1) //broken at most scales. Needs adjustment.
 
         StackedRowPage dialogPage
-        dialogPage:SetPixelHeight(600)
+        dialogPage:SetPixelHeight(800)
         Add(dialogPage)
         FlowLayout tabLayout
         tabPane:SetViewAreaLayout(tabLayout)
@@ -273,9 +273,12 @@ Glassfish)."
         tabPane:Add(CreateOtherTab())
         dialogPage:Add(tabPane)
 
+        dialogPage:AddLabel("Project Name")
+        nameField = dialogPage:AddTextField("Name")
+
         dialogPage:AddLabel("Project Location")
         Grouping locationGrouping = dialogPage:AddGrouping("Location")
-        locationGrouping:AddTextField("Location")
+        locationField = locationGrouping:AddTextField("Location")
         browseButton = locationGrouping:AddButton("Browse ..")
 
         Grouping buttonGroup = dialogPage:AddGrouping("Confirm")
