@@ -8,6 +8,12 @@ use Libraries.Interface.Controls.TextBox
 use Libraries.Language.Compile.CodeCompletionResult
 use Libraries.Development.Environment.Studio.Interface.CodeCompletionMenu
 use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Interface.Selections.CodeEditorSelection
+use Libraries.Interface.Controls.Blocks.BlockItem
+use Libraries.Interface.Controls.Blocks.EditBox
+use Libraries.Interface.Controls.Blocks.EditField
+use Libraries.Interface.Controls.Blocks.Block
 
 class ExecuteCodeCompletionBehavior is Behavior
 
@@ -17,6 +23,7 @@ class ExecuteCodeCompletionBehavior is Behavior
 
     CodeCompletionItem completion = undefined
     TextBox box = undefined
+    CodeEditor editor = undefined
     CodeCompletionResult result = undefined
     CodeCompletionMenu menu = undefined
 
@@ -45,8 +52,10 @@ class ExecuteCodeCompletionBehavior is Behavior
     end
 
     action Run(BehaviorEvent event)
-        if completion not= undefined and box not= undefined and result not= undefined
+        if completion not= undefined and result not= undefined and
+            (box not= undefined or editor not= undefined)
             and completion:completionText not= undefined
+
             text value = completion:completionText
             text filter = result:filter
             integer size = 0
@@ -59,23 +68,50 @@ class ExecuteCodeCompletionBehavior is Behavior
                 or (value not= undefined and (value + "(") = filter)
                 value = "" //the user already typed it, so just add parens if blank
             end
-            integer position = box:GetCaretPosition()
+            integer position = -1
+
+
 
             if completion:isActionWithoutParameters
                 value = value + "()"
             end
-            box:Insert(position, value)
-
+            if box not= undefined
+                position = box:GetCaretPosition()
+                box:Insert(position, value)
+            elseif editor not= undefined
+                position = editor:GetCaretPosition()
+                InsertIntoCodeEditor(position, value)
+            end
             //add another dot and popup code completion again.
             if result:IsUsage()
                 if completion:GetType() = completion:PACKAGE and
                    value not= "all"
-                    if box is CodeTextBox
+                    if box not= undefined and box is CodeTextBox
                         box:Insert(box:GetCaretPosition(), ".")
                         DoCodeCompletion(cast(CodeTextBox, box))
                     end
                 end
             end
+        end
+    end
+
+    private action InsertIntoCodeEditor(integer position, text value)
+        CodeEditorSelection selection = editor:GetSelection()
+        Block block = selection:GetBlock()
+        BlockItem blockItem = selection:GetBlockItem()
+        
+        //first we calculate the local position compared to the block
+        //we later need to subtract the position of the block relative to this
+        integer localPosition = position
+        localPosition = localPosition - block:GetStartIndex()
+        if blockItem is EditBox
+            EditBox edit = cast(EditBox, blockItem)
+            localPosition = localPosition - edit:GetStartIndex()
+            edit:Insert(localPosition, value)
+        elseif blockItem is EditField
+            EditField edit = cast(EditField, blockItem)
+            localPosition = localPosition - edit:GetStartIndex()
+            edit:Insert(localPosition, value)
         end
     end
 
@@ -94,6 +130,14 @@ class ExecuteCodeCompletionBehavior is Behavior
 
     action SetMenu(CodeCompletionMenu menu)
         me:menu = menu
+    end
+
+    action GetCodeEditor returns CodeEditor
+        return editor
+    end
+
+    action SetCodeEditor(CodeEditor editor)
+        me:editor = editor
     end
 
 end
