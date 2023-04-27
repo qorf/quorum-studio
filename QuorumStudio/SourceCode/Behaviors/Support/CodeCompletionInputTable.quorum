@@ -5,6 +5,7 @@ use Libraries.Game.InputSet
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.CodeCompletionMenu
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Interface.Controls.Blocks.CodeEditor
 
 class CodeCompletionInputTable is InputTable
 
@@ -23,8 +24,17 @@ class CodeCompletionInputTable is InputTable
         elseif event:GetItem() is CodeCompletionMenu
             CodeCompletionMenu menu = cast(CodeCompletionMenu, event:GetItem())
             CodeTextBox textBox = menu:GetTextBox()
-            InputTable table = textBox:GetInputTable()
-            event:SetItem(textBox)
+            CodeEditor editor = menu:GetCodeEditor()
+            InputTable table = undefined
+            if textBox not= undefined
+                table = textBox:GetInputTable()
+                event:SetItem(textBox)
+            elseif editor not= undefined
+                table = editor:GetInputTable()
+                event:SetItem(editor)
+            else
+                return false
+            end
 
             success = table:ProcessInput(set, event)
 
@@ -33,7 +43,11 @@ class CodeCompletionInputTable is InputTable
                 menu:Filter(event)
                 if menu:IsCompletionItemsEmpty() and not menu:IsParsing()
                     menu:Close()
-                    textBox:Focus()
+                    if textBox not= undefined
+                        textBox:Focus()
+                    elseif editor not= undefined
+                        editor:Focus()
+                    end
                 end
             end
 
