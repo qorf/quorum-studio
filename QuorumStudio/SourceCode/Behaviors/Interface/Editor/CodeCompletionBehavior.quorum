@@ -22,6 +22,13 @@ use Libraries.Development.Environment.Studio.Interface.CodeCompletionMenu
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Game.InputSet
 use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Interface.Selections.CodeEditorSelection
+use Libraries.Interface.Controls.Blocks.BlockItem
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Blocks.EditBox
+use Libraries.Interface.Controls.Blocks.EditField
 
 class CodeCompletionBehavior is QuorumStudioBehavior
 
@@ -56,7 +63,47 @@ class CodeCompletionBehavior is QuorumStudioBehavior
             end
 
             DoCodeCompletion(box)
+        elseif item is CodeEditor
+            CodeEditor box = cast(CodeEditor, item)
+
+            CodeEditorSelection selection = box:GetSelection()
+            BlockItem blockItem = selection:GetBlockItem()
+            
+            // If we're opening this due to inputting a colon or period, insert
+            // it into the TextBox first.
+            InputSet set = event:GetInputSet()
+            if set not= undefined
+                integer value = set:GetInputValue()
+                if value = keys:PERIOD
+                    InsertIntoBlockItem(blockItem, ".")
+                elseif (value = keys:SEMICOLON and set:HasModifier(set:SHIFT)) or value = keys:COLON
+                    InsertIntoBlockItem(blockItem, ":")
+                end
+            end
+
+            DoCodeCompletion(box)
         end
+    end
+
+    private action InsertIntoBlockItem(BlockItem item, text in)
+        if item is EditBox
+            EditBox edit = cast(EditBox, item)
+            edit:Insert(in)
+        elseif item is EditField
+            EditField edit = cast(EditField, item)
+            edit:Insert(in)
+        end
+    end
+
+    private action DoCodeCompletion(CodeEditor box)
+        if builder = undefined
+            return now
+        end
+
+        //menu:SetTextBox(box)
+        menu:Generate(builder)
+
+        //box:ShowCaret()
     end
 
     private action DoCodeCompletion(CodeTextBox box)

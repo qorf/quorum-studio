@@ -56,6 +56,7 @@ class CodeEditorTabPane is TabPane, TabChangeListener
     Behaviors behaviors = undefined
     File queuedFileOpen = undefined
     integer queuedLine = 0
+    boolean firstTimeBlockEditorOpened = true
 
     on create
         LayoutProperties properties = GetDefaultLayoutProperties()
@@ -265,6 +266,48 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         editor:SetBlockNotchTopWidth(40)
         editor:SetBlockNotchBottomWidth(20)
         editor:SetBlockNotchHeight(5)
+        InputTable table = game:GetInputTable(editor:CODE_EDITOR_INPUT_GROUP)
+        if firstTimeBlockEditorOpened //can't be undefined, because it's in the standard library now
+            //table = editor:CopyAndActivateInputTable(editor:CODE_EDITOR_INPUT_GROUP)
+            editor:SetInputGroup(editor:CODE_EDITOR_INPUT_GROUP)
+
+            table:Add(keyMap:GetCodeCompletionKey(), behaviors:GetCodeCompletionBehavior())
+//            table:Add(keyMap:GetCommentLinesKey(), behaviors:GetCommentLinesBehavior())
+//            table:Add(keyMap:GetEditorHintKey(), behaviors:GetEditorHintBehavior())
+//            table:Add(keyMap:GetSmartNavigateUpKey(), behaviors:GetEditorSmartNavigationUp())
+//            table:Add(keyMap:GetSmartNavigateDownKey(), behaviors:GetEditorSmartNavigationDown())
+//            table:Add(keyMap:GetSmartNavigateLeftKey(), behaviors:GetEditorSmartNavigationLeft())
+//            table:Add(keyMap:GetSmartNavigateRightKey(), behaviors:GetEditorSmartNavigationRight())
+//            table:Add(keyMap:GetSelectSmartNavigateUpKey(), behaviors:GetEditorSelectSmartNavigationUp())
+//            table:Add(keyMap:GetSelectSmartNavigateDownKey(), behaviors:GetEditorSelectSmartNavigationDown())
+//            table:Add(keyMap:GetNextKey(), behaviors:GetNextBehavior())
+//            table:Add(keyMap:GetPreviousKey(), behaviors:GetPreviousBehavior())
+//            table:Add(keyMap:GetUndoKey(), behaviors:GetUndoBehavior())
+//            table:Add(keyMap:GetRedoKey(), behaviors:GetRedoBehavior())
+
+            // Extra behaviors and InputSets used to trap incoming periods and
+            // colons for use with code completion.
+
+            InputSet periodSet
+            InputSet colonSet
+            InputSet shiftSemicolonSet
+
+            periodSet:SetKeyboardInput(keys:PERIOD)
+            colonSet:SetKeyboardInput(keys:COLON)
+            shiftSemicolonSet:SetKeyboardInput(keys:SEMICOLON)
+            shiftSemicolonSet:AddModifier(shiftSemicolonSet:SHIFT)
+
+            table:Add(periodSet, behaviors:GetCodeCompletionBehavior())
+            table:Add(colonSet, behaviors:GetCodeCompletionBehavior())
+            table:Add(shiftSemicolonSet, behaviors:GetCodeCompletionBehavior())
+            firstTimeBlockEditorOpened = false
+        else 
+            editor:SetInputGroup(editor:CODE_EDITOR_INPUT_GROUP)
+        end
+
+
+
+
         text theCode = contents
         CompilerErrorManager errorManager
         QuorumLexer lexer
