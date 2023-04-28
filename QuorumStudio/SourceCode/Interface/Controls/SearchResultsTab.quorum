@@ -38,6 +38,7 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Development.Environment.Studio.Behaviors.OpenFindInProjectFileBehavior
 use Libraries.Interface.Controls.SearchTreeItem
+use Libraries.Interface.Controls.Blocks.CodeEditor
 
 class SearchResultsTab is Tab
     Behaviors behaviors = undefined
@@ -217,28 +218,54 @@ class SearchResultsTab is Tab
                     return now
                 end
                 EditorTab tab = cast(EditorTab, tab1)
+                CodeEditor editor = tab:GetBlockEditor()
                 CodeTextBox textBox = tab:GetTextBox()
                 tabPane:Select(tab)
-                MultipleLineText value = textBox:GetMultipleLineText()
-
-                /* If the File Name TreeItem was activated, then we will select 
-                the first instance of the find word in the file, else a line number
-                TreeItem was activated and we will select the instance associated
-                with that line number in the file. */
-                integer startIndex = 0
-                integer endIndex = 0
-                if(setFirstSelection)
-                    startIndex = indices:Get(0):GetFirstValue()
-                    endIndex = indices:Get(0):GetSecondValue()
-                else
-                    Pair<integer> index = treeItemIndices:GetValue(item)
-                    startIndex = index:GetFirstValue()
-                    endIndex = index:GetSecondValue()
+                //if we're in the text editor
+                if textBox not= undefined
+                    MultipleLineText value = textBox:GetMultipleLineText()
+    
+                    /* If the File Name TreeItem was activated, then we will select 
+                    the first instance of the find word in the file, else a line number
+                    TreeItem was activated and we will select the instance associated
+                    with that line number in the file. */
+                    integer startIndex = 0
+                    integer endIndex = 0
+                    if(setFirstSelection)
+                        startIndex = indices:Get(0):GetFirstValue()
+                        endIndex = indices:Get(0):GetSecondValue()
+                    else
+                        Pair<integer> index = treeItemIndices:GetValue(item)
+                        startIndex = index:GetFirstValue()
+                        endIndex = index:GetSecondValue()
+                    end
+                    MultipleLineText lineText = value:GetLine(startIndex)
+                    textBox:SetCaretPosition(endIndex)
+                    textBox:GoToLine(textBox:GetLineIndexOfCharacter(endIndex))
+                    textBox:Select(startIndex, endIndex, true)
                 end
-                MultipleLineText lineText = value:GetLine(startIndex)
-                textBox:SetCaretPosition(endIndex)
-                textBox:GoToLine(textBox:GetLineIndexOfCharacter(endIndex))
-                textBox:Select(startIndex, endIndex, true)
+
+                //if we're in the block editor
+                if editor not= undefined
+                    MultipleLineText value = editor:GetCode()
+    
+                    /* If the File Name TreeItem was activated, then we will select 
+                    the first instance of the find word in the file, else a line number
+                    TreeItem was activated and we will select the instance associated
+                    with that line number in the file. */
+                    integer startIndex = 0
+                    integer endIndex = 0
+                    if(setFirstSelection)
+                        startIndex = indices:Get(0):GetFirstValue()
+                        endIndex = indices:Get(0):GetSecondValue()
+                    else
+                        Pair<integer> index = treeItemIndices:GetValue(item)
+                        startIndex = index:GetFirstValue()
+                        endIndex = index:GetSecondValue()
+                    end
+                    integer line = editor:GetLineIndex(startIndex)
+                    editor:SelectBlockAtLine(line)
+                end
             end
         end
     end
