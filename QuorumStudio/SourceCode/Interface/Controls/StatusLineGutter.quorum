@@ -24,8 +24,8 @@ class StatusLineGutter is Gutter
     Color color
     on create
         LayoutProperties properties = GetDefaultLayoutProperties()
-        properties:SetLeftPadding(12)
-        properties:SetRightPadding(8)
+        properties:SetLeftMargin(12)
+        properties:SetRightMargin(8)
         properties:SetBorderThickness(0)
     end
 
@@ -59,10 +59,10 @@ class StatusLineGutter is Gutter
         this is only an approximation, which may require some extra space via
         padding in order to look correct.
         */
-        number rightPadding = properties:GetRightPadding()
-        number leftPadding = properties:GetLeftPadding()
+        number rightMargin = properties:GetRightMargin()
+        number leftMargin = properties:GetLeftMargin()
         Glyph glyph = font:GetGlyph("0")
-        return glyph:horizontalAdvance * 1.5 + properties:GetLeftPadding() + rightPadding
+        return glyph:horizontalAdvance * 1.5 + properties:GetLeftMargin() + rightMargin
     end
 
     action GetBackgroundColor returns ColorGroup
@@ -102,10 +102,10 @@ class StatusLineGutter is Gutter
         padding in order to look correct.
         */
         Drawable firstLabel = GetDrawable(0)
-        number rightPadding = properties:GetRightPadding()
-        number leftPadding = properties:GetLeftPadding()
+        number rightMargin = properties:GetRightMargin()
+        number leftMargin = properties:GetLeftMargin()
         Glyph glyph = font:GetGlyph("0")
-        number width = glyph:horizontalAdvance * 1.5 + properties:GetLeftPadding() + rightPadding
+        number width = glyph:horizontalAdvance * 1.5 + properties:GetLeftMargin() + rightMargin
         integer descent = font:GetMaximumDescent()
         
         integer totalLines = control:GetLineCount()
@@ -121,11 +121,11 @@ class StatusLineGutter is Gutter
             number lineHeight = control:GetLineHeight(counter + startLine)
 
             Drawable drawable = GetDrawable(counter)
-            integer myWidth = cast(integer, width - rightPadding - leftPadding)
+            integer myWidth = cast(integer, width - rightMargin - leftMargin)
             integer myHeight = cast(integer, lineHeight - 2)
             drawable:SetSize(myWidth, myHeight)
             
-            drawable:SetPosition(width - drawable:GetWidth() - rightPadding, y + descent + 1)
+            drawable:SetPosition(width - drawable:GetWidth() - rightMargin, y + descent + 1)
 
             boolean hasDiffSpot = false
             if result not= undefined
