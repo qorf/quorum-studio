@@ -29,6 +29,7 @@ use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Controls.TextField
 use Libraries.Interface.Controls.Blocks.EditBox
 use Libraries.Interface.Controls.Blocks.EditField
+use Libraries.Interface.Controls.Blocks.EditRegion
 
 class CodeCompletionBehavior is QuorumStudioBehavior
 
@@ -69,7 +70,7 @@ class CodeCompletionBehavior is QuorumStudioBehavior
             CodeEditorSelection selection = box:GetSelection()
             BlockItem blockItem = selection:GetBlockItem()
             
-            // If we're opening this due to inputting a colon or period, insert
+            // If we're opening this d ue to inputting a colon or period, insert
             // it into the TextBox first.
             InputSet set = event:GetInputSet()
             if set not= undefined
@@ -81,7 +82,7 @@ class CodeCompletionBehavior is QuorumStudioBehavior
                 end
             end
 
-            DoCodeCompletion(box)
+            DoCodeCompletion(box, blockItem)
         end
     end
 
@@ -95,7 +96,7 @@ class CodeCompletionBehavior is QuorumStudioBehavior
         end
     end
 
-    private action DoCodeCompletion(CodeEditor box)
+    private action DoCodeCompletion(CodeEditor box, BlockItem item)
         if builder = undefined
             return now
         end
@@ -103,7 +104,11 @@ class CodeCompletionBehavior is QuorumStudioBehavior
         menu:SetCodeEditor(box)
         menu:Generate(builder)
 
-        //box:ShowCaret()
+        if item is EditRegion
+            EditRegion region = cast(EditRegion, item)
+            region:ShowCaret()
+        end
+        
     end
 
     private action DoCodeCompletion(CodeTextBox box)
