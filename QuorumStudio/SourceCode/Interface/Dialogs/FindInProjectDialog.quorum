@@ -26,6 +26,9 @@ use Libraries.Concurrency.ThreadRunner
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Pages.StackedRowPage
+use Libraries.Interface.Forms.Banner
 
 
 class FindInProjectDialog is Dialog
@@ -76,22 +79,50 @@ class FindInProjectDialog is Dialog
         SetName("Find In Project")
         SetPixelWidth(400)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+//
+//        ControlShaderView view
+//        view:Initialize()
 
-        ControlShaderView view
-        view:Initialize()
+//        Control panel
+//        FlowLayout layout
+//        panel:SetLayout(layout)
+//        panel:SetPercentageWidth(1.0)
+//        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
+//        panel:SetInterfaceOptionsKey("Dialog")
+//        LayoutProperties properties = GetDefaultLayoutProperties()
+//        panel:SetBorderStyle(properties:ALL - properties:TOP)
+//        panel:SetBorderThickness(1)
+//        panel:Add(CreateFindInProjectControl())
+//        panel:SetView2D(view)
+//        Add(panel)
+        LoadDialogPage()
+    end
 
-        Control panel
-        FlowLayout layout
-        panel:SetLayout(layout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-        panel:SetInterfaceOptionsKey("Dialog")
-        LayoutProperties properties = GetDefaultLayoutProperties()
-        panel:SetBorderStyle(properties:ALL - properties:TOP)
-        panel:SetBorderThickness(1)
-        panel:Add(CreateFindInProjectControl())
-        panel:SetView2D(view)
-        Add(panel)
+    action LoadDialogPage
+        StackedRowPage page 
+        page:SetPixelHeight(400) //for testing, remove after fixes
+        Banner banner = page:AddBanner("Find In Project", 
+            "Find items within a folder")
+        banner:PositionFromTop()
+
+        //add radio buttons
+        page:AddLabel("Contains Text")
+        queryField = page:AddTextField("Query Text Field")
+
+        page:AddLabel("Settings")
+        Grouping settings = page:AddGrouping("Settings")
+        wholeWordCheckbox = settings:AddCheckbox("Whole Word")
+        matchCaseCheckbox = settings:AddCheckbox("Match Case")
+        
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancelButton = buttonGroup:AddButton("Cancel")
+        Button okayButton = buttonGroup:AddButton("Ok")
+        buttonGroup:PositionFromBottom() 
+
+        cancelButton:SetBehavior(cancelBehavior)
+        okayButton:SetBehavior(findBehavior)
+
+        Add(page)
     end
 
     action CreateFindInProjectControl returns Control
@@ -263,9 +294,14 @@ class FindInProjectDialog is Dialog
 
     action SetRootSelection(TreeSelection selection)
         TreeItem item = selection:GetTreeItem()     //gets the selected TreeItem
-        ProjectTreeItem treeItem = cast(ProjectTreeItem, item)
-        File file = treeItem:GetFile()
-        SetSearchFiles(file)
+        if item not= undefined and item is ProjectTreeItem
+            ProjectTreeItem treeItem = cast(ProjectTreeItem, item)
+            if treeItem = undefined
+                return now
+            end
+            File file = treeItem:GetFile()
+            SetSearchFiles(file)
+        end
     end
 
     /* recursive function to add all of the files to an array that are within the 
