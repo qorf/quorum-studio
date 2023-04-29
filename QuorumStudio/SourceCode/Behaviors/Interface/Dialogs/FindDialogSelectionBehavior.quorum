@@ -13,6 +13,9 @@ use Libraries.Interface.Controls.MenuItem
 use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Controls.Tree
 use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Interface.Controls.Blocks.Block
+use Libraries.Interface.Controls.Blocks.EditRegion
 
 /* Opens the correct Find Dialog based on the current focus */
 class FindDialogSelectionBehavior is QuorumStudioBehavior
@@ -37,6 +40,11 @@ class FindDialogSelectionBehavior is QuorumStudioBehavior
             else
                 return now
             end
+        elseif focusItem is Block or focusItem is EditRegion or focusItem is CodeEditor
+            Button control
+            control:SetBehavior(findBehavior)
+            control:Activate()
+            return now
         elseif item is MenuItem and focusItem is Tree
             if focusItem is ProjectTree
                 ProjectTree treeItem = cast(ProjectTree, focusItem)
