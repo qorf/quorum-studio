@@ -7,10 +7,12 @@ use Libraries.Interface.Controls.Dialog
 use Libraries.Development.Environment.Studio.Interface.ReplaceDialog
 use Libraries.Interface.Controls.Checkbox
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Interface.Controls.Blocks.CodeEditor
 
 class WholeWordMatchCaseBehavior is QuorumStudioBehavior
     FindDialog dialog = undefined
     CodeTextBox textBox = undefined
+    CodeEditor editor = undefined
 
     action SetDialog(FindDialog dialog)
         me:dialog = dialog
@@ -20,13 +22,25 @@ class WholeWordMatchCaseBehavior is QuorumStudioBehavior
         me:textBox = textBox
     end
 
+    action SetCodeEditor(CodeEditor editor)
+        me:editor = editor
+    end
+
     action Run (BehaviorEvent event)
-        textBox:FindText(dialog:GetFindWord(), dialog:GetIsWholeWord(), dialog:GetIsMatchCase())
-        dialog:UpdateMatches(textBox:GetCurrentFindIndex(), textBox:GetFindMatches())
+        if textBox not= undefined
+            textBox:FindText(dialog:GetFindWord(), dialog:GetIsWholeWord(), dialog:GetIsMatchCase())
+            dialog:UpdateMatches(textBox:GetCurrentFindIndex(), textBox:GetFindMatches())
+        elseif editor not= undefined
+
+        end
     end
 
     action Dispose
-        textBox:FindText(dialog:GetFindWord(), dialog:GetIsWholeWord(), dialog:GetIsMatchCase())
-        dialog:UpdateMatches(textBox:GetCurrentFindIndex(), textBox:GetFindMatches())
+        if textBox not= undefined
+            textBox:FindText(dialog:GetFindWord(), dialog:GetIsWholeWord(), dialog:GetIsMatchCase())
+            dialog:UpdateMatches(textBox:GetCurrentFindIndex(), textBox:GetFindMatches())
+        elseif editor not= undefined
+
+        end
     end
 end

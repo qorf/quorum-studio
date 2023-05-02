@@ -36,6 +36,7 @@ use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Interface.Undo.TextBoxEditState
 use Libraries.Interface.Undo.TextBoxEdit
 use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Controls.Blocks.CodeEditor
 
 class FindDialog is Dialog, TextChangeListener, SelectionListener
     boolean initialized = false
@@ -48,6 +49,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
 
     // The TextBox that we're searching through.
     CodeTextBox textBox = undefined
+    CodeEditor editor = undefined
 
     //FindDialog Controls
     TextField findField
@@ -77,17 +79,22 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         showing = true
         findField:Focus()
         
-        wholeWord:SetToggleState(textBox:GetIsWholeWord())
-        matchCase:SetToggleState(textBox:GetIsMatchCase())
-        if (textBox:HasSelection())
-            findField:SetText(textBox:GetFindSelection())
-            findField:SetCaretPosition(findField:GetSize())
-            textBox:SetCaretPosition(textBox:GetCaretPosition() - findField:GetSize())
-        else
-            findField:SetText(textBox:GetFindWord())
-            findField:SetCaretPosition(findField:GetSize())
+        if textBox not= undefined
+            wholeWord:SetToggleState(textBox:GetIsWholeWord())
+            matchCase:SetToggleState(textBox:GetIsMatchCase())
+            if (textBox:HasSelection())
+                findField:SetText(textBox:GetFindSelection())
+                findField:SetCaretPosition(findField:GetSize())
+                textBox:SetCaretPosition(textBox:GetCaretPosition() - findField:GetSize())
+            else
+                findField:SetText(textBox:GetFindWord())
+                findField:SetCaretPosition(findField:GetSize())
+            end
+            textBox:SetIsDialogOpen(true)
+        elseif editor not= undefined
+            
         end
-        textBox:SetIsDialogOpen(true)
+
         if findField:GetText() not= ""
             findButton:Activate()
         end
@@ -272,6 +279,16 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         parent:Dialog:Show()
     end
 
+    action GetCodeEditor returns CodeEditor
+        return editor
+    end
+    
+    action SetCodeEditor(CodeEditor code)
+        editor = code
+        findBehavior:SetCodeEditor(editor)
+        previous:SetBehavior(previousBehavior)
+        next:SetBehavior(nextBehavior)    
+    end
 
     action SetTextBox(CodeTextBox code)
         textBox = code
