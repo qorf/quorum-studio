@@ -27,8 +27,11 @@ use Libraries.Game.Game
 use Libraries.Interface.Controls.ToggleButton
 use Libraries.Development.Environment.Studio.Behaviors.NewProjectToggleButtonBehavior
 use Libraries.Containers.HashTable
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Events.SelectionListener
+use Libraries.Interface.Events.SelectionEvent
 
-class NewProjectDialog is Dialog
+class NewProjectDialog is Dialog, SelectionListener
     boolean initialized = false
     GameStateManager gameManager
     TabPane tabPane
@@ -65,9 +68,11 @@ class NewProjectDialog is Dialog
     //Dialog Controls
     TextField nameField = undefined
     TextField locationField = undefined
-    Button browseButton = undefined
     Button cancelButton = undefined
-    Button okButton = undefined
+
+    // Names for the nameField and locationField
+    constant text NAME_FIELD_ID = "Name"
+    constant text LOCATION_FIELD_ID = "Location"
 
     //Dialog Behaviors
     DialogCancelBehavior cancelBehavior
@@ -91,50 +96,67 @@ class NewProjectDialog is Dialog
         okBehavior:SetDialog(me)
         okBehavior:SetMainApplication(studio)
         SetBehavior(okBehavior)
+
+        SetVerticalLayoutMode(parent:Control:STANDARD)
     end
 
     action Initialize
         initialized = true
         SetName("New Project Dialog")
-        //SetPixelWidth(600)
         SetPercentageWidth(0.50)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        SetPercentageHeight(0.7)
-        //SetPercentageOriginX(0.5)
-        SetPercentageOriginY(0.1) //broken at most scales. Needs adjustment.
+        SetPercentageHeight(0.75)
 
-        StackedRowPage dialogPage
-        dialogPage:SetPixelHeight(800)
-        Add(dialogPage)
+//        StackedRowPage dialogPage
+//        Add(dialogPage)
         FlowLayout tabLayout
         tabPane:SetViewAreaLayout(tabLayout)
         tabPane:SetPercentageWidth(1.0)
-        tabPane:SetPixelHeight(200) //this needs to go away after fixes as well
+//        tabPane:SetPercentageHeight(1.0)
+        tabPane:AddSelectionListener(me)
+        tabPane:SetVerticalLayoutMode(parent:Control:FILL)
+//        tabPane:GetViewAreaLayoutProperties():SetVerticalLayoutMode(parent:Control:FIT_CONTENTS)
 
         tabPane:Add(CreateGeneralTab())
         tabPane:Add(CreateGamesTab())
         tabPane:Add(CreateDataScienceTab())
         tabPane:Add(CreateSoundTab())
         tabPane:Add(CreateOtherTab())
-        dialogPage:Add(tabPane)
-
-        dialogPage:AddLabel("Project Name")
-        nameField = dialogPage:AddTextField("Name")
-
-        dialogPage:AddLabel("Project Location")
-        Grouping locationGrouping = dialogPage:AddGrouping("Location")
-        locationField = locationGrouping:AddTextField("Location")
-        browseButton = locationGrouping:AddButton("Browse ..")
-
-        Grouping buttonGroup = dialogPage:AddGrouping("Confirm")
-        cancelButton = buttonGroup:AddButton("Cancel")
-        okButton = buttonGroup:AddButton("Ok")
-        //buttonGroup:PositionFromBottom() //so it can be seen while the library is broken
-
-        cancelButton:SetBehavior(cancelBehavior)
-        okButton:SetBehavior(okBehavior)
+        Add(tabPane)
 
         PrepareTemplateHash()
+    end
+
+    action SelectionChanged(SelectionEvent selection)
+        // Get the currently selected Page from the Tabs
+        Tab tab = tabPane:GetSelectedTab()
+
+        /*
+        During selection, first the old tab is deselected, and there's a brief
+        period where there's no selected tab. We only care when a new tab becomes
+        selected, so ignore the empty case.
+        */
+        if tab = undefined
+            return now
+        end
+
+        Page page = cast(Page, tab:GetRelatedItem())
+
+        // Get the fields from the new page. They all share the same name but are across different pages.
+        TextField newNameField = page:GetTextField(NAME_FIELD_ID)
+        TextField newLocationField = page:GetTextField(LOCATION_FIELD_ID)
+
+        // Update the text of the fields to match the previous ones, if we had a previous selection
+        if nameField not= undefined
+            newNameField:SetText(nameField:GetText())
+        end
+
+        if locationField not= undefined
+            newLocationField:SetText(locationField:GetText())
+        end
+
+        // Make sure we store the current fields for future updates and retrieving info when the project is created.
+        nameField = newNameField
+        locationField = newLocationField
     end
 
     /*
@@ -176,13 +198,36 @@ class NewProjectDialog is Dialog
         button:SetLabelText(value)
     end
 
+    /*
+    This adds the common set of elements to the bottom of a page:
+    the file name and location fields, browse button, and confirm
+    and cancel buttons.
+    */
+    private action AddBottomPageElements(Page page)
+        page:AddLabel("Project Name")
+        TextField nameField = page:AddTextField(NAME_FIELD_ID)
+
+        page:AddLabel("Project Location")
+        Grouping locationGrouping = page:AddGrouping("Location")
+        TextField locationField = locationGrouping:AddTextField(LOCATION_FIELD_ID)
+        Button browseButton = locationGrouping:AddButton("Browse...")
+
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancelButton = buttonGroup:AddButton("Cancel")
+        Button okButton = buttonGroup:AddButton("Ok")
+        buttonGroup:PositionFromBottom() //so it can be seen while the library is broken
+
+        cancelButton:SetBehavior(cancelBehavior)
+        okButton:SetBehavior(okBehavior)
+    end
+
     private action CreateGeneralTab returns Tab
         Tab tab
         tab:SetName("General")
         tab:DisplayCloseButton(false)
 
         StackedRowPage page 
-        page:SetPixelHeight(200) //for testing, remove after fixes
+//        page:SetPixelHeight(200) //for testing, remove after fixes
         Banner banner = page:AddBanner("General", 
             "A set of default projects to enjoy")
         banner:PositionFromTop()
@@ -219,6 +264,10 @@ class NewProjectDialog is Dialog
         button3:SetBehavior(toggleBehavior)
         button4:SetBehavior(toggleBehavior)
         button5:SetBehavior(toggleBehavior)
+
+        // Add the fields and buttons at the bottom of the page
+        AddBottomPageElements(page)
+
         tab:SetRelatedItem(page)
 
         return tab
@@ -230,7 +279,7 @@ class NewProjectDialog is Dialog
         tab:DisplayCloseButton(false)
 
         StackedRowPage page 
-        page:SetPixelHeight(400) //for testing, remove after fixes
+//        page:SetPixelHeight(400) //for testing, remove after fixes
         Banner banner = page:AddBanner("Games", 
             "Create games for your desktop, web, or mobile device")
         banner:PositionFromTop()
@@ -239,7 +288,6 @@ class NewProjectDialog is Dialog
         labels:AddLabel(IMAGE_SHEET)
         labels:AddLabel(PHYSICS2D)
         labels:AddLabel(PHYSICS3D)
-
         
         Grouping appsGrouping = page:AddGrouping("Buttons")
         ToggleButton button1 = appsGrouping:AddToggleButton(IMAGE_SHEET)
@@ -272,6 +320,10 @@ class NewProjectDialog is Dialog
         button4:SetBehavior(toggleBehavior)
         button5:SetBehavior(toggleBehavior)
         button6:SetBehavior(toggleBehavior)
+
+        // Add the fields and buttons at the bottom of the page
+        AddBottomPageElements(page)
+
         tab:SetRelatedItem(page)
 
         return tab
@@ -282,8 +334,7 @@ class NewProjectDialog is Dialog
         tab:SetName("Data Science")
         tab:DisplayCloseButton(false)
 
-        StackedRowPage page 
-        page:SetPixelHeight(400) //for testing, remove after fixes
+        StackedRowPage page
         Banner banner = page:AddBanner("Data Science", 
             "Make charts, play with data, or test your hypotheses")
         banner:PositionFromTop()
@@ -324,6 +375,10 @@ class NewProjectDialog is Dialog
         button4:SetBehavior(toggleBehavior)
         button5:SetBehavior(toggleBehavior)
         button6:SetBehavior(toggleBehavior)
+
+        // Add the fields and buttons at the bottom of the page
+        AddBottomPageElements(page)
+
         tab:SetRelatedItem(page)
 
         return tab
@@ -334,8 +389,7 @@ class NewProjectDialog is Dialog
         tab:SetName("Sound")
         tab:DisplayCloseButton(false)
 
-        StackedRowPage page 
-        page:SetPixelHeight(400) //for testing, remove after fixes
+        StackedRowPage page
         Banner banner = page:AddBanner("Sound", 
             "Sound it out with files or digital signal processing")
         banner:PositionFromTop()
@@ -361,6 +415,10 @@ class NewProjectDialog is Dialog
         button1:SetBehavior(toggleBehavior)
         button2:SetBehavior(toggleBehavior)
         button3:SetBehavior(toggleBehavior)
+
+        // Add the fields and buttons at the bottom of the page
+        AddBottomPageElements(page)
+
         tab:SetRelatedItem(page)
 
         return tab
@@ -371,8 +429,7 @@ class NewProjectDialog is Dialog
         tab:SetName("Other")
         tab:DisplayCloseButton(false)
 
-        StackedRowPage page 
-        page:SetPixelHeight(400) //for testing, remove after fixes
+        StackedRowPage page
         Banner banner = page:AddBanner("Other Projects", 
             "Other fun ideas for Quorum projects")
         banner:PositionFromTop()
@@ -402,6 +459,10 @@ class NewProjectDialog is Dialog
         button2:SetBehavior(toggleBehavior)
         button3:SetBehavior(toggleBehavior)
         button4:SetBehavior(toggleBehavior)
+
+        // Add the fields and buttons at the bottom of the page
+        AddBottomPageElements(page)
+
         tab:SetRelatedItem(page)
 
         return tab
@@ -467,12 +528,14 @@ class NewProjectDialog is Dialog
     end
 
     action OnShow
-        locationField:SetText(studio:GetProjectsFolder():GetAbsolutePath())
         tabPane:Focus()
+
         Tab tab = tabPane:GetSelectedTab()
         if not tab:Equals(tabPane:Get(0))
             tab:Activate()
         end
+
+        locationField:SetText(studio:GetProjectsFolder():GetAbsolutePath())
     end
 
     action GetSelectedProject returns text

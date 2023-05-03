@@ -170,6 +170,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         GameStateManager manager
         QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
         options = studio:GetOptions()
+
+        SetVerticalLayoutMode(parent:Control:STANDARD)
     end
 
     action Initialize
@@ -181,16 +183,16 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
         SetName("Properties")
         SetPercentageWidth(0.5)
-        GetDefaultLayoutProperties():SetPercentageOriginY(1.0)
-        SetPercentageY(0.875)
+        SetPercentageHeight(0.75)
 
         LayoutProperties viewProperties = tabPane:GetViewAreaLayoutProperties()
-        viewProperties:SetVerticalLayoutMode(viewProperties:FIT_CONTENTS)
+        viewProperties:SetPercentageWidth(1.0)
+        viewProperties:SetPercentageHeight(1.0)
         
         FlowLayout tabLayout
         tabPane:SetViewAreaLayout(tabLayout)
         tabPane:SetPercentageWidth(1.0)
-        tabPane:SetVerticalLayoutMode(viewProperties:FIT_CONTENTS)
+        tabPane:SetVerticalLayoutMode(viewProperties:FILL)
 
         tabPane:Add(CreateProjectInfoTab())
         tabPane:Add(CreateGamesTab())
@@ -658,8 +660,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         projectInfoTab:SetName("Project Information")
         projectInfoTab:DisplayCloseButton(false)
 
-        StackedRowPage page 
-        page:SetPixelHeight(500) //for testing, remove after fixes
+        StackedRowPage page
+        page:SetPercentageHeight(1.0)
         Banner banner = page:AddBanner("Projects", "General Project Properties for locations and dependencies")
         banner:PositionFromTop()
         
@@ -755,8 +757,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         tab:SetName("Games")
         tab:DisplayCloseButton(false)
 
-        StackedRowPage page 
-        page:SetPixelHeight(500) //for testing, remove after fixes
+        StackedRowPage page
         Banner banner = page:AddBanner("Image Sheets", "Properties for 2D Image Sheets")
         banner:PositionFromTop()
         
@@ -820,8 +821,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         tab:SetName("Apple")
         tab:DisplayCloseButton(false)
 
-        StackedRowPage page 
-        page:SetPixelHeight(500) //for testing, remove after fixes
+        StackedRowPage page
         Banner banner = page:AddBanner("Apple Device Settings", "Pick a simulator or enter security credentials for physical devices")
         banner:PositionFromTop()
         
@@ -871,8 +871,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         tab:SetName("Android")
         tab:DisplayCloseButton(false)
 
-        StackedRowPage page 
-        page:SetPixelHeight(500) //for testing, remove after fixes
+        StackedRowPage page
         Banner banner = page:AddBanner("Android Device Settings", "Enter credentials for physical devices")
         banner:PositionFromTop()
         
@@ -921,8 +920,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         tab:SetName("Teams")
         tab:DisplayCloseButton(false)
 
-        StackedRowPage page 
-        page:SetPixelHeight(500) //for testing, remove after fixes
+        StackedRowPage page
         Banner banner = page:AddBanner("Version Control Settings", 
             "Enter credentials for Github or Bitbucket. Passwords should be credentials keys, not 
             account passwords, for these services")
