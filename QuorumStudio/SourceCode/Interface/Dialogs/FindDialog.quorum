@@ -37,6 +37,9 @@ use Libraries.Interface.Undo.TextBoxEditState
 use Libraries.Interface.Undo.TextBoxEdit
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Pages.StackedRowPage
+use Libraries.Interface.Forms.Banner
 
 class FindDialog is Dialog, TextChangeListener, SelectionListener
     boolean initialized = false
@@ -52,12 +55,12 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
     CodeEditor editor = undefined
 
     //FindDialog Controls
-    TextField findField
-    Label matches
-    Checkbox wholeWord
-    Checkbox matchCase
-    Button previous
-    Button next  
+    TextField findField = undefined
+    Label matches = undefined
+    Checkbox wholeWord = undefined
+    Checkbox matchCase = undefined
+    Button previous = undefined
+    Button next = undefined
     Button findButton
 
     //FindDialog Control Behaviors
@@ -67,7 +70,6 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
     PreviousBehavior previousBehavior
 
     on create
-        findField:AddTextChangeListener(me)
         wholeWordMatchCaseBehavior:SetDialog(me)
         tabPane:AddSelectionListener(me)
         findBehavior:SetDialog(me)
@@ -120,125 +122,60 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
 
     action Initialize
         initialized = true
+        SetPercentageWidth(0.25)
+        SetPercentageHeight(0.4)
 
         SetName("Find")
-        SetPixelWidth(300)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        SetVerticalLayoutMode(parent:Control:FILL)
 
         ControlShaderView view
         view:Initialize()
         
-        Control panel
-        FlowLayout findLayout
-        panel:SetLayout(findLayout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(140)
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetBorderThickness(1)
-        panel:Add(CreateFindControl())
-        panel:Add(CreateMatchesControl())
-        panel:SetView2D(view)
-        Add(panel)
+//        Control panel
+//        FlowLayout findLayout
+//        panel:SetLayout(findLayout)
+//        panel:SetPercentageWidth(1.0)
+//        panel:SetPixelHeight(140)
+//        panel:SetInterfaceOptionsKey("Dialog")
+//        panel:SetBorderThickness(1)
+//        panel:Add()
+//        panel:Add(CreateMatchesControl())
+//        panel:SetView2D(view)
+        Add(CreateFindControl())
     end
 
     private action CreateFindControl returns Control
-        Color color
-        Control createFindContainer
-        FlowLayout createFindLayout
-        createFindContainer:SetLayout(createFindLayout)
-        createFindContainer:SetBorderThickness(1)
-        createFindContainer:SetBorderColor(color:Black())
-        createFindContainer:SetPercentageWidth(1.0)
-        createFindContainer:SetVerticalLayoutMode(createFindContainer:FIT_CONTENTS)
-
-        FlowLayout findLayout
-        Control findContainer
-        findContainer:SetLayout(findLayout)
-        findContainer:SetPercentageWidth(1.0)
-        findContainer:SetVerticalLayoutMode(findContainer:FIT_CONTENTS)
-        findContainer:SetLeftMargin(20)
-        findContainer:SetTopMargin(20)
-        findContainer:SetRightMargin(30)
-
-        Label findLabel
-        findLabel:SetPositionOnBaseLine(false)
-        findLabel:SetText("Find:")
-        findLabel:SetRightMargin(10)
-        findContainer:Add(findLabel)
+        StackedRowPage page
         
-        findField:SetHorizontalLayoutMode(findField:parent:Libraries.Interface.Controls.Control:FILL)
-        findField:SetName("Find")
-        findField:SetText("")
-        findField:SetFocusable(true)
-        findField:SetNextFocus(wholeWord)
-        findField:SetPreviousFocus(next)
+        
+        //page:AddLabel("Find")
+        findField = page:AddTextField("Find Field")
+        findField:AddTextChangeListener(me)
         findButton:SetBehavior(findBehavior)
-        findContainer:Add(findField)
-
-        createFindContainer:Add(findContainer)
-
-        FlowLayout optionsLayout
-        Control optionsContainer
-        optionsContainer:SetLayout(optionsLayout)
-        optionsContainer:SetPercentageWidth(1.0)
-        optionsContainer:SetHorizontalLayoutMode(optionsContainer:STANDARD)
-        optionsContainer:SetVerticalLayoutMode(optionsContainer:FIT_CONTENTS)
-        optionsContainer:SetLeftMargin(10)
-        optionsContainer:SetRightMargin(10)
-        optionsContainer:SetTopMargin(30)
         
-        wholeWord:SetName("Whole Word")
-        wholeWord:SetFontSize(14)
-        wholeWord:SetLeftMargin(6)
-        wholeWord:SetRightMargin(6)
-        wholeWord:SetPercentageWidth(0.5)
-        wholeWord:SetFocusable(true)
-        wholeWord:SetNextFocus(matchCase)
-        wholeWord:SetPreviousFocus(findField)
+        Grouping options = page:AddGrouping("Checkbox Options")
+        wholeWord = options:AddCheckbox("Whole")
+        matchCase = options:AddCheckbox("Match")
+        wholeWord:SetLayoutRows(1)
+        matchCase:SetLayoutRows(1)
+
         wholeWord:SetBehavior(wholeWordMatchCaseBehavior)
-        optionsContainer:Add(wholeWord)
-
-        Control buttonsMargin
-        buttonsMargin:SetPercentageWidth(0.15)
-        buttonsMargin:SetPixelHeight(1)
-        optionsContainer:Add(buttonsMargin)
-
-        previous:SetName("Previous")
-        previous:SetFontSize(14)
-        previous:SetRightMargin(6)
-        previous:SetLeftMargin(6)
-        previous:SetHorizontalLayoutMode(previous:parent:Libraries.Interface.Controls.Control:STANDARD)
-        previous:SetPercentageWidth(0.22)
-        previous:SetFocusable(true)
-        previous:SetNextFocus(next)
-        previous:SetPreviousFocus(matchCase)
-        optionsContainer:Add(previous)
-        
-        next:SetName("Next")
-        next:SetFontSize(14)
-        next:SetRightMargin(6)
-        next:SetLeftMargin(6)
-        next:SetHorizontalLayoutMode(next:parent:Libraries.Interface.Controls.Control:STANDARD)
-        next:SetPercentageWidth(0.22)
-        next:SetFocusable(true)
-        next:SetNextFocus(findField)
-        next:SetPreviousFocus(previous)
-        
-        optionsContainer:Add(next)
-
-        matchCase:SetName("Match Case")
-        matchCase:SetFontSize(14)
-        matchCase:SetLeftMargin(6)
-        matchCase:SetPercentageWidth(0.5)
-        matchCase:SetFocusable(true)
-        matchCase:SetNextFocus(previous)
-        matchCase:SetPreviousFocus(wholeWord)
         matchCase:SetBehavior(wholeWordMatchCaseBehavior)
-        optionsContainer:Add(matchCase)
 
-        createFindContainer:Add(optionsContainer)
+        Banner banner = page:AddBanner("Matches")//, "Find code snippets")
+        matches = banner:GetTitleLabel()
+        //matches = banner:GetLabel()
+        //banner:PositionFromTop()
 
-        return createFindContainer
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        previous = buttonGroup:AddButton("Previous")
+        next = buttonGroup:AddButton("Next")
+        buttonGroup:PositionFromBottom() 
+
+        previous:SetBehavior(previousBehavior)
+        next:SetBehavior(nextBehavior) 
+
+        return page
     end
 
     private action CreateMatchesControl returns Control
@@ -269,15 +206,32 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
     end
 
     action Show
+        LayoutProperties properties = GetDefaultLayoutProperties()
+        properties:SetPercentageX(0)
+        properties:SetPercentageY(0)
+        properties:SetPercentageOriginX(1)
+        properties:SetPercentageOriginY(1)
+        number globalX = 0
+        number globalY = 0
+        number width = 0
+        number height = 0
         if textBox not= undefined
-            LayoutProperties properties = GetDefaultLayoutProperties()
-            properties:SetPercentageX(0)
-            properties:SetPercentageY(0)
-            properties:SetPercentageOriginX(1)
-            properties:SetPercentageOriginY(1)
-            properties:SetPixelX(textBox:GetGlobalX() + textBox:GetWidth() - 20)
-            properties:SetPixelY(textBox:GetGlobalY() + textBox:GetHeight() - 39)
-        end
+            globalX = textBox:GetGlobalX() + textBox:GetWidth()
+            globalY = textBox:GetGlobalY() + textBox:GetHeight()
+            width = textBox:GetWidth()
+            height = textBox:GetHeight()
+        elseif editor not= undefined
+            globalX = editor:GetGlobalX() + editor:GetWidth()
+            globalY = editor:GetGlobalY() + editor:GetHeight()
+            width = editor:GetWidth()
+            height = editor:GetHeight()
+        end 
+
+        //scaled buffer
+        globalX = globalX - (width * 0.02)
+        globalY = globalY - (height * 0.02)
+        properties:SetPixelX(globalX)//textBox:GetGlobalX() + textBox:GetWidth() - 20)
+        properties:SetPixelY(globalY)//textBox:GetGlobalY() + textBox:GetHeight() - 39)
         parent:Dialog:Show()
     end
 
@@ -308,8 +262,6 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         textBox:SetDialog(me)
         textBox:SetIsDialogOpen(true)
         wholeWordMatchCaseBehavior:SetTextBox(textBox)
-        previous:SetBehavior(previousBehavior)
-        next:SetBehavior(nextBehavior)     
     end
 
     action GetTextBox returns CodeTextBox
