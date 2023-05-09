@@ -52,44 +52,49 @@ class ExecuteCodeCompletionBehavior is Behavior
     end
 
     action Run(BehaviorEvent event)
-        if completion not= undefined and result not= undefined and
-            (box not= undefined or editor not= undefined)
-            and completion:completionText not= undefined
+        if completion = undefined or result = undefined
+            return now
+        end
 
-            text value = completion:completionText
-            text filter = result:filter
-            integer size = 0
-            if filter not= undefined
-                size = filter:GetSize()
-            end
-            if value not= undefined and value:GetSize() > size
-                value = value:GetSubtext(size)
-            elseif (value not= undefined and value:GetSize() = size)
-                or (value not= undefined and (value + "(") = filter)
-                value = "" //the user already typed it, so just add parens if blank
-            end
-            integer position = -1
+        if box = undefined and editor = undefined
+            return now
+        end
 
+        if completion:completionText = undefined
+            return now
+        end
 
+        text value = completion:completionText
+        text filter = result:filter
+        integer size = 0
+        if filter not= undefined
+            size = filter:GetSize()
+        end
+        if value not= undefined and value:GetSize() > size
+            value = value:GetSubtext(size)
+        elseif (value not= undefined and value:GetSize() = size)
+            or (value not= undefined and (value + "(") = filter)
+            value = "" //the user already typed it, so just add parens if blank
+        end
+        integer position = -1
 
-            if completion:isActionWithoutParameters
-                value = value + "()"
-            end
-            if box not= undefined
-                position = box:GetCaretPosition()
-                box:Insert(position, value)
-            elseif editor not= undefined
-                position = editor:GetCaretPosition()
-                InsertIntoCodeEditor(position, value)
-            end
-            //add another dot and popup code completion again.
-            if result:IsUsage()
-                if completion:GetType() = completion:PACKAGE and
-                   value not= "all"
-                    if box not= undefined and box is CodeTextBox
-                        box:Insert(box:GetCaretPosition(), ".")
-                        DoCodeCompletion(cast(CodeTextBox, box))
-                    end
+        if completion:isActionWithoutParameters
+            value = value + "()"
+        end
+        if box not= undefined
+            position = box:GetCaretPosition()
+            box:Insert(position, value)
+        elseif editor not= undefined
+            position = editor:GetCaretPosition()
+            InsertIntoCodeEditor(position, value)
+        end
+        //add another dot and popup code completion again.
+        if result:IsUsage()
+            if completion:GetType() = completion:PACKAGE and
+                value not= "all"
+                if box not= undefined and box is CodeTextBox
+                    box:Insert(box:GetCaretPosition(), ".")
+                    DoCodeCompletion(cast(CodeTextBox, box))
                 end
             end
         end
