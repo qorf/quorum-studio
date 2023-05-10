@@ -8,6 +8,7 @@ use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Controls.TextBox
 use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
+use Libraries.Interface.Controls.Blocks.CodeEditor
 
 class FocusEditorBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
@@ -18,10 +19,20 @@ class FocusEditorBehavior is QuorumStudioBehavior
         if selection:GetTab() is EditorTab
             EditorTab tab = cast(EditorTab, selection:GetTab())
             TextBox box = tab:GetTextBox()
-            if box = undefined
+            if box not= undefined
+                box:Focus()
                 return now
             end
-            box:Focus()
+            
+
+            CodeEditor editor = tab:GetBlockEditor()
+            if editor not= undefined
+                editor:Focus()
+                return now
+            end
+
+            //we fell through, just bail
+            return now
         elseif selection:GetTab() is VisualEditorTab
             VisualEditorTab tab = cast(VisualEditorTab, selection:GetTab())
             tab:GetSceneEditor():Focus()
