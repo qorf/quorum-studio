@@ -550,11 +550,14 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             Iterator<Location> locations = var:GetUseLocationIterator(var:GetFile())
             repeat while locations not= undefined and locations:HasNext()
                 location = locations:Next()
+
                 if IsInLocation(position, location) and var not= undefined
                     Location loc = var:GetTypeLocation()
-                    SetCaretPosition(loc:GetIndex())
-                    GoToLine(loc:GetLineNumber())
-                    return true
+                    if loc not= undefined
+                        SetCaretPosition(loc:GetIndex())
+                        GoToLine(loc:GetLineNumber())
+                        return true
+                    end
                 end
             end
         end
