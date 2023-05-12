@@ -701,34 +701,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             goodCompilerResults:Add(SINGLE_FILE_COMPILE_KEY, copy)
         end
         recentCompilerResults:Add(SINGLE_FILE_COMPILE_KEY, result)
-        
-        if box not= undefined
-            box:SetBuildManager(me)
-            UpdateCodeEditorBehavior updater
-            //updater:SetHintPathComparison(libraryKey)
-            //updater:SetBuildInformation(info)
-            updater:SetBuildManager(me)
-            updater:SetProjectKey(SINGLE_FILE_COMPILE_KEY)
-
-            QuorumProject proj = GetQuorumProject()
-            //if there is a compiler project open, compare the file to that one
-            if proj not= undefined
-                boolean hasGit = proj:HasGitSupport()
-                if hasGit //if it has Git support, do a diff on the file and update accordingly
-                    Repository repository = proj:GetGitRepository()
-                    Git git = proj:GetGit()
-                    DiffRequest req
-                    req:SetFile(libraryFile)
-                    text currentText = box:GetText()
-                    req:SetCurrentText(currentText)
-                    DiffResult res = git:RequestDiff(repository, req)
-                    updater:SetDiffResult(res)
-                end
-            end
-            //updater:SetCompilerResult(result)
-            updater:SetPath(libraryFile)
-            box:AddBehavior(updater)
-        end
+        UpdateFile(info, true)
     end
 
     private action GetQuorumProject returns QuorumProject
@@ -873,9 +846,20 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         end
 
         recentCompilerResults:Add(value, result)
+        UpdateFile(info, false)
+    end
+
+    private action UpdateFile(BuildInformation info, boolean library)
+        QuorumProject project = info:project
+        File theFileCompiled = info:recompile
         CodeTextBox box = info:box
         CodeEditor editor = info:editor
-
+        text value = ""
+        if not library
+            value = project:GetLocation():GetAbsolutePath()
+        else
+            value = SINGLE_FILE_COMPILE_KEY
+        end
         if box = undefined and editor = undefined
             return now
         end
@@ -891,8 +875,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         updater:SetBuildManager(me)
         updater:SetProjectKey(value)
             
-        boolean hasGit = project:HasGitSupport()
-        if hasGit //if it has Git support, do a diff on the file and update accordingly
+        if project not= undefined and project:HasGitSupport() //if it has Git support, do a diff on the file and update accordingly
             Repository repository = project:GetGitRepository()
             Git git = project:GetGit()
             DiffRequest req
