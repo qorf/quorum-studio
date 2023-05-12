@@ -4,15 +4,8 @@ use Libraries.Interface.Controls.Dialog
 use Libraries.Interface.Controls.TextField
 use Libraries.Interface.Controls.Checkbox
 use Libraries.Interface.Controls.Button
-use Libraries.Interface.Views.LabelBoxView
-use Libraries.Game.Graphics.Color
-use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Game.Graphics.Label
-use Libraries.Interface.Layouts.LayoutProperties
-use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
-use Libraries.Containers.Array
-use Libraries.Containers.Support.Pair
 use Libraries.Development.Environment.Studio.Behaviors.WholeWordMatchCaseBehavior
 use Libraries.Development.Environment.Studio.Behaviors.PreviousBehavior
 use Libraries.Development.Environment.Studio.Behaviors.NextBehavior
@@ -27,12 +20,18 @@ use Libraries.Development.Environment.Studio.Behaviors.FindBehavior
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Game.InputTable
 use Libraries.Game.InputSet
-use Libraries.Interface.Selections.TabPaneSelection
-use Libraries.Interface.Events.SelectionEvent
-use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Controls.TextBox
-use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Interface.Forms.Banner
+use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Pages.StackedRowPage
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Interface.Controls.Tab
 
 
 class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
@@ -46,17 +45,18 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
 
     // The TextBox that we're searching through.
     CodeTextBox textBox = undefined
+    CodeEditor editor = undefined
 
     //ReplaceDialog Controls
-    TextField findField
-    TextField replaceField
+    TextField findField = undefined
+    TextField replaceField = undefined
     Label matches = undefined
-    Checkbox wholeWord
-    Checkbox matchCase
-    Button previous
-    Button next
-    Button replace
-    Button replaceAll
+    Checkbox wholeWord = undefined
+    Checkbox matchCase = undefined
+    Button previous = undefined
+    Button next = undefined
+    Button replace = undefined
+    Button replaceAll = undefined
     Button findButton
 
     //ReplaceDialog Control Behaviors
@@ -68,21 +68,13 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
     FindBehavior findBehavior
 
     on create
-        findField:AddTextChangeListener(me)
-        wholeWordMatchCaseBehavior:SetDialog(me)
-        replaceAllBehavior:SetDialog(me)
-        replaceBehavior:SetDialog(me) 
-        findBehavior:SetDialog(me)
-        tabPane:AddSelectionListener(me)
-        SetMatchesLabel(matches)
         SetModal(false)
-        //SetBehavior(nextBehavior)
+        SetBehavior(nextBehavior)
     end
 
     action OnShow()
         showing = true
         
-        findField:Focus()
         wholeWord:SetToggleState(textBox:GetIsWholeWord())
         matchCase:SetToggleState(textBox:GetIsMatchCase())
         if(textBox:HasSelection())
@@ -96,10 +88,13 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
         end
         replaceField:SetText(textBox:GetReplaceWord())
         replaceField:SetCaretPosition(replaceField:GetSize())
+        replaceField:HideCaret()
         textBox:SetIsDialogOpen(true)
         if findField:GetText() not= ""
             findButton:Activate()
         end
+
+        findField:Focus()
         
         //Should be "ALT + N" (until ALT key works correctly using the same hotkey as the CodeTextBox)
         KeyboardEvent keys
@@ -126,197 +121,64 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
         replaceAllSet:SetKeyboardInput(keys:A)
         replaceAllSet:AddModifier(replaceAllSet:SHIFT)
         dialogInputs:Add(replaceAllSet, replaceAllBehavior)
-        
     end
 
     action Initialize
-
         initialized = true
+        SetPercentageWidth(0.3)
+        SetPercentageHeight(0.4)
 
         SetName("Find and Replace")
-        SetPixelWidth(300)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        SetVerticalLayoutMode(parent:Control:FILL)
 
         ControlShaderView view
         view:Initialize()
-        
-        Control panel
-        LayoutProperties properties = GetDefaultLayoutProperties()
-        FlowLayout replaceLayout
-        panel:SetLayout(replaceLayout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(170)
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetBorderStyle(properties:ALL - properties:TOP)
-        panel:SetBorderThickness(1)
-        panel:Add(CreateReplaceControl())
-        panel:Add(CreateMatchesControl())
-        panel:SetView2D(view)
-        Add(panel)
+        Add(CreateReplaceControl())
+
+        findField:AddTextChangeListener(me)
+        wholeWordMatchCaseBehavior:SetDialog(me)
+        replaceAllBehavior:SetDialog(me)
+        replaceBehavior:SetDialog(me) 
+        findBehavior:SetDialog(me)
     end
 
     private action CreateReplaceControl returns Control
-        Color color
-        Control createReplaceContainer
-        FlowLayout createReplaceLayout
-        createReplaceContainer:SetLayout(createReplaceLayout)
-        createReplaceContainer:SetBorderThickness(1)
-        createReplaceContainer:SetBorderColor(color:Black())
-        createReplaceContainer:SetPercentageWidth(1.0)
-        createReplaceContainer:SetVerticalLayoutMode(createReplaceContainer:FIT_CONTENTS)
-
-        FlowLayout findLayout
-        Control findContainer
-        findContainer:SetLayout(findLayout)
-        findContainer:SetPercentageWidth(1.0)
-        findContainer:SetVerticalLayoutMode(findContainer:FIT_CONTENTS)
-        findContainer:SetLeftMargin(20)
-        findContainer:SetTopMargin(20)
-        findContainer:SetRightMargin(30)
-
-        Label findLabel
-        findLabel:SetText("Find:")
-        findLabel:SetRightMargin(52)
-        findContainer:Add(findLabel)
+        StackedRowPage page
         
-        findField:SetHorizontalLayoutMode(findField:parent:Libraries.Interface.Controls.Control:FILL)
-        findField:SetName("Find")
-        findField:SetText("")
-        findField:SetFocusable(true)
-        findField:SetNextFocus(replaceField)
-        findField:SetPreviousFocus(replaceAll)
+        findField = page:AddTextField("Find Field")
+        findField:AddTextChangeListener(me)
         findButton:SetBehavior(findBehavior)
-        findContainer:Add(findField)
 
-        createReplaceContainer:Add(findContainer)
-
-        FlowLayout replaceLayout
-        Control replaceContainer
-        replaceContainer:SetLayout(replaceLayout)
-        replaceContainer:SetPercentageWidth(1.0)
-        replaceContainer:SetVerticalLayoutMode(replaceContainer:FIT_CONTENTS)
-        replaceContainer:SetLeftMargin(20)
-        replaceContainer:SetTopMargin(20)
-        replaceContainer:SetRightMargin(30)
-
-        Label replaceLabel
-        replaceLabel:SetText("Replace:")
-        replaceLabel:SetRightMargin(6)
-        replaceContainer:Add(replaceLabel)
-
-        replaceField:SetHorizontalLayoutMode(replaceField:parent:Libraries.Interface.Controls.Control:FILL)
-        replaceField:SetName("Replace")
-        replaceField:SetText("")
-        replaceField:SetFocusable(true)
-        replaceField:SetNextFocus(wholeWord)
-        replaceField:SetPreviousFocus(findField)
-        replaceContainer:Add(replaceField)
-
-        createReplaceContainer:Add(replaceContainer)
-
-        FlowLayout optionsLayout
-        Control optionsContainer
-        optionsContainer:SetLayout(optionsLayout)
-        optionsContainer:SetPercentageWidth(1.0)
-        optionsContainer:SetHorizontalLayoutMode(optionsContainer:STANDARD)
-        optionsContainer:SetVerticalLayoutMode(optionsContainer:FIT_CONTENTS)
-        optionsContainer:SetLeftMargin(10)
-        optionsContainer:SetRightMargin(10)
-        optionsContainer:SetTopMargin(30)
+        replaceField = page:AddTextField("Replace Field")
         
-        FlowLayout checkBoxLayout
-        Control checkBoxContainer
-        checkBoxContainer:SetLayout(checkBoxLayout)
-        checkBoxContainer:SetPercentageWidth(0.35)
-        checkBoxContainer:SetLeftMargin(6)
-        checkBoxContainer:SetRightMargin(20)
-        checkBoxContainer:SetHorizontalLayoutMode(checkBoxContainer:STANDARD)
-        checkBoxContainer:SetVerticalLayoutMode(checkBoxContainer:FIT_CONTENTS)
-        
-        wholeWord:SetName("Whole Word")
-        wholeWord:SetFontSize(14)
-        wholeWord:SetPercentageWidth(1.0)
-        wholeWord:SetFocusable(true)
-        wholeWord:SetNextFocus(matchCase)
-        wholeWord:SetPreviousFocus(replaceField)
+        Grouping options = page:AddGrouping("Checkbox Options")
+        wholeWord = options:AddCheckbox("Whole")
+        matchCase = options:AddCheckbox("Match")
+        wholeWord:SetLayoutRows(1)
+        matchCase:SetLayoutRows(1)
+
         wholeWord:SetBehavior(wholeWordMatchCaseBehavior)
-        checkBoxContainer:Add(wholeWord)
-
-        matchCase:SetName("Match Case")
-        matchCase:SetFontSize(14)
-        matchCase:SetTopMargin(20)
-        matchCase:SetPercentageWidth(1.0)
-        matchCase:SetFocusable(true)
-        matchCase:SetNextFocus(previous)
-        matchCase:SetPreviousFocus(wholeWord)
         matchCase:SetBehavior(wholeWordMatchCaseBehavior)
-        checkBoxContainer:Add(matchCase)
 
-        optionsContainer:Add(checkBoxContainer)
+        Banner banner = page:AddBanner("Matches")
+        matches = banner:GetTitleLabel()
+        SetMatchesLabel(matches)
 
-        FlowLayout buttons1Layout
-        Control buttons1Container
-        buttons1Container:SetLayout(buttons1Layout)
-        buttons1Container:SetPercentageWidth(0.24)
-        buttons1Container:SetLeftMargin(20)
-        buttons1Container:SetHorizontalLayoutMode(buttons1Container:STANDARD)
-        buttons1Container:SetVerticalLayoutMode(buttons1Container:FIT_CONTENTS)
+        Grouping replaceGroup = page:AddGrouping("Confirm")
+        replace = replaceGroup:AddButton("Replace")
+        replaceAll = replaceGroup:AddButton("Replace All")
 
-        previous:SetName("Previous")
-        previous:SetFontSize(14)
-        previous:SetBottomMargin(10)
-        previous:SetHorizontalLayoutMode(previous:parent:Libraries.Interface.Controls.Control:STANDARD)
-        previous:SetPercentageWidth(1.0)
-        previous:SetFocusable(true)
-        previous:SetNextFocus(next)
-        previous:SetPreviousFocus(matchCase)
-        
-        replace:SetName("Replace")
-        replace:SetFontSize(14)
-        replace:SetTopMargin(10)
-        replace:SetHorizontalLayoutMode(replace:parent:Libraries.Interface.Controls.Control:STANDARD)
-        replace:SetPercentageWidth(1.0)
-        replace:SetFocusable(true)
-        replace:SetNextFocus(replaceAll)
-        replace:SetPreviousFocus(next)
-        replace:SetBehavior(replaceBehavior)
-        buttons1Container:Add(previous)
-        buttons1Container:Add(replace)
-        
-        optionsContainer:Add(buttons1Container)
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        previous = buttonGroup:AddButton("Previous")
+        next = buttonGroup:AddButton("Next")
 
-        FlowLayout buttons2Layout
-        Control buttons2Container
-        buttons2Container:SetLayout(buttons2Layout)
-        buttons2Container:SetPercentageWidth(0.32)
-        buttons2Container:SetLeftMargin(10)
-        buttons2Container:SetHorizontalLayoutMode(buttons2Container:STANDARD)
-        buttons2Container:SetVerticalLayoutMode(buttons2Container:FIT_CONTENTS)
+        replace:SetBehavior(replaceBehavior) 
+        replaceAll:SetBehavior(replaceAllBehavior) 
+        previous:SetBehavior(previousBehavior)
+        next:SetBehavior(nextBehavior) 
 
-        next:SetName("Next")
-        next:SetFontSize(14)
-        next:SetBottomMargin(10)
-        next:SetHorizontalLayoutMode(next:parent:Libraries.Interface.Controls.Control:STANDARD)
-        next:SetPercentageWidth(1.0)
-        next:SetFocusable(true)
-        next:SetNextFocus(replace)
-        next:SetPreviousFocus(previous)
-        
-        replaceAll:SetName("Replace All")
-        replaceAll:SetFontSize(14)
-        replaceAll:SetTopMargin(10)
-        replaceAll:SetPercentageWidth(1.0)
-        replaceAll:SetHorizontalLayoutMode(replaceAll:parent:Libraries.Interface.Controls.Control:STANDARD)
-        replaceAll:SetFocusable(true)
-        replaceAll:SetNextFocus(findField)
-        replaceAll:SetPreviousFocus(replace)
-        replaceAll:SetBehavior(replaceAllBehavior)
-        buttons2Container:Add(next)
-        buttons2Container:Add(replaceAll)       
-        optionsContainer:Add(buttons2Container)       
-        createReplaceContainer:Add(optionsContainer)
+        return page
 
-        return createReplaceContainer
     end
 
     action IsInitialized returns boolean
@@ -324,16 +186,32 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
     end
 
     action Show
+        LayoutProperties properties = GetDefaultLayoutProperties()
+        properties:SetPercentageX(0)
+        properties:SetPercentageY(0)
+        properties:SetPercentageOriginX(1)
+        properties:SetPercentageOriginY(1)
+        number globalX = 0
+        number globalY = 0
+        number width = 0
+        number height = 0
         if textBox not= undefined
-            LayoutProperties properties = GetDefaultLayoutProperties()
-            properties:SetPercentageX(0)
-            properties:SetPercentageY(0)
-            properties:SetPercentageOriginX(1)
-            properties:SetPercentageOriginY(1)
-            properties:SetPixelX(textBox:GetGlobalX() + textBox:GetWidth() - 20)
-            properties:SetPixelY(textBox:GetGlobalY() + textBox:GetHeight() - 39)
-        end
+            globalX = textBox:GetGlobalX() + textBox:GetWidth()
+            globalY = textBox:GetGlobalY() + textBox:GetHeight()
+            width = textBox:GetWidth()
+            height = textBox:GetHeight()
+        elseif editor not= undefined
+            globalX = editor:GetGlobalX() + editor:GetWidth()
+            globalY = editor:GetGlobalY() + editor:GetHeight()
+            width = editor:GetWidth()
+            height = editor:GetHeight()
+        end 
 
+        //scaled buffer
+        globalX = globalX - (width * 0.02)
+        globalY = globalY - (height * 0.02)
+        properties:SetPixelX(globalX)
+        properties:SetPixelY(globalY)
         parent:Dialog:Show()
     end
 
@@ -349,11 +227,15 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
         next:SetBehavior(nextBehavior)
     end
 
+    action SetCodeEditor(CodeEditor code)
+        editor = code
+    end
+
     action GetTextBox returns CodeTextBox
         return textBox
     end
 
-    action GetFindWord() returns text
+    action GetFindWord returns text
         return findField:GetText()
     end
 
@@ -446,10 +328,12 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
     //Removes any highlights in the textBox, empties the arrays and textFields and resets the selection index.
     action OnHide
         showing = false
-        textBox:SetFindWord(findField:GetText())
-        textBox:SetReplaceWord(replaceField:GetText())
-        textBox:SetIsDialogOpen(false)
-        textBox:DialogClosed()
+        if textBox not= undefined
+            textBox:SetFindWord(findField:GetText())
+            textBox:SetReplaceWord(replaceField:GetText())
+            textBox:SetIsDialogOpen(false)
+            textBox:DialogClosed()
+        end
         SetTextChangeListenerOn(false)
     end   
 end

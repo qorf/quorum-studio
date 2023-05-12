@@ -120,7 +120,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
 
     action Initialize
         initialized = true
-        SetPercentageWidth(0.25)
+        SetPercentageWidth(0.3)
         SetPercentageHeight(0.4)
 
         SetName("Find")
@@ -150,6 +150,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         Banner banner = page:AddBanner("Matches")
         matches = banner:GetTitleLabel()
 
+        SetMatchesLabel(matches)
         Grouping buttonGroup = page:AddGrouping("Confirm")
         previous = buttonGroup:AddButton("Previous")
         next = buttonGroup:AddButton("Next")
@@ -159,29 +160,6 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         next:SetBehavior(nextBehavior) 
 
         return page
-    end
-
-    private action CreateMatchesControl returns Control
-        FlowLayout matchesLayout
-        Control matchesContainer
-        matchesContainer:SetLayout(matchesLayout)
-        matchesContainer:SetPercentageWidth(1.0)
-        matchesContainer:SetVerticalLayoutMode(matchesContainer:FIT_CONTENTS)
-        matchesContainer:SetTopMargin(50)
-        matchesContainer:SetRightMargin(10)
-        matchesContainer:SetLeftMargin(20)
-
-        Label label
-        label:SetText("")
-        label:SetHorizontalLayoutMode(label:parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
-        label:SetPercentageWidth(0.2)
-        label:SetPixelHeight(20)
-        label:SetLeftMargin(6)
-        label:SetRightMargin(30)
-        matchesContainer:Add(label)
-        SetMatchesLabel(label)
-        return matchesContainer
-        
     end
 
     action IsInitialized returns boolean
@@ -213,8 +191,8 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         //scaled buffer
         globalX = globalX - (width * 0.02)
         globalY = globalY - (height * 0.02)
-        properties:SetPixelX(globalX)//textBox:GetGlobalX() + textBox:GetWidth() - 20)
-        properties:SetPixelY(globalY)//textBox:GetGlobalY() + textBox:GetHeight() - 39)
+        properties:SetPixelX(globalX)
+        properties:SetPixelY(globalY)
         parent:Dialog:Show()
     end
 
@@ -304,35 +282,36 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         findField:Select(0, findField:GetSize())
     end
 
-    //Updates the matches label on the Dialog to reflect how many instances of 
-    //"find" were found in the textBox. If there is a currentSelection it will also 
-    //display the selection number in relation to the number of total matches found.
+    /*
+        Updates the matches label on the Dialog to reflect how many instances of 
+        "find" were found in the textBox. If there is a currentSelection it will also 
+        display the selection number in relation to the number of total matches found.
+    */
     action UpdateMatches(integer currentSelection, integer totalMatches)
-        //if findField:GetText() not= ""
-            if totalMatches = 0
-                matches:SetText("No matches")
-            elseif totalMatches = 1
-                matches:SetText(cast(text, totalMatches) + " match")
+        if totalMatches = 0
+            matches:SetText("No matches")
+        elseif totalMatches = 1
+            matches:SetText(cast(text, totalMatches) + " match")
+        else
+            if currentSelection >= 0
+                matches:SetText(cast(text, (currentSelection + 1)) + " of " + cast(text, totalMatches) + " matches")
             else
-                if currentSelection >= 0
-                    matches:SetText(cast(text, (currentSelection + 1)) + " of " + cast(text, totalMatches) + " matches")
-                else
-                    matches:SetText(cast(text, totalMatches) + " matches")
-                end
+                matches:SetText(cast(text, totalMatches) + " matches")
             end
-        //else 
-            //matches:SetText("") 
-        //end
+        end
     end
 
-    //repopulates the highlighting for any remaining instances that were not replaced by calling FindText (not currently working)
+    /* 
+        Repopulates the highlighting for any remaining instances that were not replaced by calling FindText (not currently working)
+    */
     action UpdateTextBox()
         findButton:Activate()
     end
 
-    //Listens for text change within the findField and text change events in the 
-    //current textBox that is being searched. Calls to update the selections if
-    //there is a text change event that occurs in either field.
+    /*  Listens for text change within the findField and text change events in the 
+        current textBox that is being searched. Calls to update the selections if
+        there is a text change event that occurs in either field.
+    */
     action TextChanged(TextChangeEvent event)
         text find = ""
         if event:GetControl():Equals(cast(Object, findField))
@@ -353,13 +332,9 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         if textBox not= undefined
             if event:GetControl():Equals(cast(Object, textBox)) 
                 if textChangeListenerOn
-                    //determine if findWord is in the added or removed text before updating the textbox.
-                    //integer startIndex = event:GetIndex() //index where the text change event is occurring, can be used to check this changed text area in the textbox before updating the textbox
                     if event:GetEventType() = event:ADDED
-                        //text addedText = event:GetAddedText()
                         UpdateTextBox()
                     elseif event:GetEventType() = event:DELETED
-                        //text deletedText = event:GetDeletedText()
                         UpdateTextBox()
                     elseif event:GetEventType() = event:MODIFIED   
                         UpdateTextBox()
@@ -413,5 +388,4 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         CloseFindDialogs()
         SetTextChangeListenerOn(false)
     end
-
 end
