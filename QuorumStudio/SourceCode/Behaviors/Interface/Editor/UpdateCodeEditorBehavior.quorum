@@ -117,7 +117,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         me:path = path
     end
 
-    action Run(CodeEditor box)
+    action Run(CodeEditor editor)
         if editor = undefined
             return now
         end
@@ -125,8 +125,30 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         boolean isStandardLibrary = false
         Library library = manager:GetLibrary()
         CompilerResult compilerResult = manager:GetRecentCompilerResult(projectKey)
+    
+        SymbolTable table = undefined
+        if isStandardLibrary
+            table = library:GetSymbolTable()
+        elseif compilerResult not= undefined
+            table = compilerResult:symbolTable
+        end
 
+        File f = path
         //output "Fired from the parsing and indexing loop in blocks"
+        if table not= undefined
+            Class clazz = table:GetClassInFile(f:GetAbsolutePath())
+
+            if clazz = undefined
+                ClassOpcode op = library:GetOpcode(f:GetAbsolutePath()) 
+                if op not= undefined
+                    clazz = op:GetClass()
+                end
+            end
+
+            if clazz not= undefined
+                editor:SetClass(clazz)
+            end
+        end
         
     end
 
