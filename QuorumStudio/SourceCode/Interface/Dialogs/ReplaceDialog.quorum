@@ -32,6 +32,7 @@ use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Events.SelectionEvent
 use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Interface.Controls.Tab
+use Libraries.Game.Graphics.Color
 
 
 class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
@@ -75,23 +76,27 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
     action OnShow()
         showing = true
         
-        wholeWord:SetToggleState(textBox:GetIsWholeWord())
-        matchCase:SetToggleState(textBox:GetIsMatchCase())
-        if(textBox:HasSelection())
-            findField:SetText(textBox:GetFindSelection())
-            findField:SetCaretPosition(findField:GetSize())
-            textBox:SetCaretPosition(textBox:GetCaretPosition() - findField:GetSize())
-            textBox:SetReplaceWord("")
-        else    
-            findField:SetText(textBox:GetFindWord())
-            findField:SetCaretPosition(findField:GetSize())
-        end
-        replaceField:SetText(textBox:GetReplaceWord())
-        replaceField:SetCaretPosition(replaceField:GetSize())
-        replaceField:HideCaret()
-        textBox:SetIsDialogOpen(true)
-        if findField:GetText() not= ""
-            findButton:Activate()
+        if textBox not= undefined
+            wholeWord:SetToggleState(textBox:GetIsWholeWord())
+            matchCase:SetToggleState(textBox:GetIsMatchCase())
+            if(textBox:HasSelection())
+                findField:SetText(textBox:GetFindSelection())
+                findField:SetCaretPosition(findField:GetSize())
+                textBox:SetCaretPosition(textBox:GetCaretPosition() - findField:GetSize())
+                textBox:SetReplaceWord("")
+            else    
+                findField:SetText(textBox:GetFindWord())
+                findField:SetCaretPosition(findField:GetSize())
+            end
+            replaceField:SetText(textBox:GetReplaceWord())
+            replaceField:SetCaretPosition(replaceField:GetSize())
+            replaceField:HideCaret()
+            textBox:SetIsDialogOpen(true)
+            if findField:GetText() not= ""
+                findButton:Activate()
+            end
+        elseif editor not= undefined
+            
         end
 
         findField:Focus()
@@ -229,6 +234,12 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
 
     action SetCodeEditor(CodeEditor code)
         editor = code
+        findBehavior:SetCodeEditor(editor)
+        replaceBehavior:SetCodeEditor(code)
+        replaceAllBehavior:SetCodeEditor(code)
+        previous:SetBehavior(previousBehavior)
+        next:SetBehavior(nextBehavior)   
+        wholeWordMatchCaseBehavior:SetCodeEditor(editor) 
     end
 
     action GetTextBox returns CodeTextBox
