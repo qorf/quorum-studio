@@ -38,6 +38,7 @@ use Libraries.Development.Environment.Configuration.OptionsConstants
 use Libraries.Game.GameStateManager
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Game.Graphics.ColorGroup
+use Libraries.Interface.Controls.Blocks.CodeEditor
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
     File path
@@ -65,6 +66,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     text projectKey = ""
     text helpPathComparison = undefined
     CodeTextBox box = undefined
+    CodeEditor editor = undefined
     DiffResult diffResult = undefined
     OptionsConstants optionsConstants
 
@@ -115,7 +117,23 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         me:path = path
     end
 
+    action Run(CodeEditor box)
+        if editor = undefined
+            return now
+        end
+        File file = editor:GetFile()
+        boolean isStandardLibrary = false
+        Library library = manager:GetLibrary()
+        CompilerResult compilerResult = manager:GetRecentCompilerResult(projectKey)
+
+        //output "Fired from the parsing and indexing loop in blocks"
+        
+    end
+
     action Run(CodeTextBox box)
+        if box = undefined
+            return now
+        end
         File file = box:GetFile()
         boolean isStandardLibrary = false
         Library library = manager:GetLibrary()
@@ -124,10 +142,6 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         lexer:Read(box:GetText())
         StatusLineGutter statusGutter = box:GetStatusGutter()
         statusGutter:SetDiffResult(diffResult)
-
-        if box = undefined
-            return now
-        end
       
         GameStateManager gms
         InterfaceOptions options = gms:GetInterfaceOptions()
@@ -398,7 +412,12 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     end
 
     action Run(BehaviorEvent event)
-        box = cast(CodeTextBox, event:GetItem())
+        Item item = event:GetItem()
+        if item not= undefined and item is CodeTextBox
+            box = cast(CodeTextBox, event:GetItem())
+        elseif item not= undefined and item is CodeEditor
+            editor = cast(CodeEditor, event:GetItem())
+        end
     end
 
     private action GetTextStyle(Token token) returns TextStyle
@@ -489,7 +508,11 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     boolean firstTime = true
     action Update(number seconds)
         if firstTime
-        Run(box)
+            if box not= undefined
+                Run(box)
+            elseif editor not= undefined
+                Run(editor)
+            end
             firstTime = false
         end
     end

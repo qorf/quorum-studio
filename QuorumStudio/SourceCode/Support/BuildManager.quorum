@@ -339,6 +339,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         info:recompile = file
         info:recompileValue = source
         info:box = box
+        info:editor = blockBox
 
         FastBuild(info)
         
@@ -871,30 +872,42 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             goodCompilerResults:Add(value, copy)
         end
 
-        
-
         recentCompilerResults:Add(value, result)
         CodeTextBox box = info:box
+        CodeEditor editor = info:editor
+
+        if box = undefined and editor = undefined
+            return now
+        end
+
+        text code = undefined
         if box not= undefined
-            box:SetBuildManager(me)
-            UpdateCodeEditorBehavior updater
-            //updater:SetBuildInformation(info)
-            updater:SetBuildManager(me)
-            updater:SetProjectKey(value)
+            code = box:GetText()
+        elseif editor not= undefined
+            code = editor:GetText()
+        end
+
+        UpdateCodeEditorBehavior updater
+        updater:SetBuildManager(me)
+        updater:SetProjectKey(value)
             
-            boolean hasGit = project:HasGitSupport()
-            if hasGit //if it has Git support, do a diff on the file and update accordingly
-                Repository repository = project:GetGitRepository()
-                Git git = project:GetGit()
-                DiffRequest req
-                req:SetFile(theFileCompiled)
-                text currentText = box:GetText()
-                req:SetCurrentText(currentText)
-                DiffResult res = git:RequestDiff(repository, req)
-                updater:SetDiffResult(res)
-            end
-            updater:SetPath(info:recompile)
+        boolean hasGit = project:HasGitSupport()
+        if hasGit //if it has Git support, do a diff on the file and update accordingly
+            Repository repository = project:GetGitRepository()
+            Git git = project:GetGit()
+            DiffRequest req
+            req:SetFile(theFileCompiled)
+            req:SetCurrentText(code)
+            DiffResult res = git:RequestDiff(repository, req)
+            updater:SetDiffResult(res)
+        end
+        
+        updater:SetPath(info:recompile)
+
+        if box not= undefined
             box:AddBehavior(updater)
+        elseif editor not= undefined
+            editor:AddBehavior(updater)
         end
     end
 
