@@ -78,6 +78,7 @@ use Libraries.Interface.Controls.Blocks.CodeEditor
 use Libraries.Containers.MultipleLineText
 use Libraries.Interface.Selections.CodeEditorSelection
 use Libraries.Interface.Controls.Blocks.Block
+use Libraries.Language.Debug.BreakpointManager
 
 class BuildManager is DebuggerListener, ProcessListener, ProjectListener, MobileListener
     Library library
@@ -86,8 +87,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
     constant text DEFAULT_LIBRARY_OUTPUT_PATH = "Library/Compiled"
     Debugger debugger
     HashTable<text, BuildInformation> builds
-    HashTable<text, HashTable<integer, Breakpoint>> breakpoints
-    Array<BreakpointListener> breakpointListeners
+    BreakpointManager breakpointManager
     BuildInformation debuggingProgram = undefined
     CodeEditorTabPane editors = undefined
     OutputEditorTabPane outputTabs = undefined
@@ -203,78 +203,31 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
     end
 
     action Add(BreakpointListener listener)
-        breakpointListeners:Add(listener)
+        breakpointManager:Add(listener)
     end
 
     action Remove(BreakpointListener listener)
-        breakpointListeners:Remove(listener)
+        breakpointManager:Remove(listener)
     end
 
     action GetBreakpointListeners returns Iterator<BreakpointListener>
-        return breakpointListeners:GetIterator()
+        return breakpointManager:GetListeners()
     end
 
     action GetBreakpointIterator returns Iterator<Breakpoint>
-        Array<Breakpoint> bps
-        Iterator<text> iterator = breakpoints:GetKeyIterator()
-        repeat while iterator:HasNext()
-            text value = iterator:Next()
-            HashTable<integer,Breakpoint> lines = breakpoints:GetValue(value)
-            Iterator<Breakpoint> points = lines:GetValueIterator()
-            repeat while points:HasNext()
-                Breakpoint bp = points:Next()
-                bps:Add(bp)
-            end
-        end
-        return bps:GetIterator()
+        return breakpointManager:GetBreakpoints()
     end
 
-    Array<Breakpoint> bpCache
     action RehashBreakpoints(text path)
-        HashTable<integer, Breakpoint> points = breakpoints:GetValue(path)
-        
-        if points not= undefined
-            Iterator<Breakpoint> iterator = points:GetValueIterator()
-            repeat while iterator:HasNext()
-                Breakpoint bp = iterator:Next()
-                bpCache:Add(bp)
-            end
-
-            points:Empty()
-            i = 0
-            repeat while i < bpCache:GetSize()
-                Breakpoint value = bpCache:Get(i)
-                points:Add(value:GetLine(), value)
-                i = i + 1
-            end
-
-            bpCache:Empty()
-        end
-
-        BreakpointEvent event
-        event:SetPath(path)
-        event:SetRehashEvent(true)
-        FireBreakpointEvent(event)
+        breakpointManager:Rehash(path)
     end
 
     action GetBreakpointIterator(text path) returns Iterator<Breakpoint>
-        HashTable<integer, Breakpoint> points = breakpoints:GetValue(path)
-        if points = undefined
-            Array<Breakpoint> bps
-            return bps:GetIterator()
-        end
-
-        Iterator<Breakpoint> iterator = points:GetValueIterator()
-        return iterator
+        return breakpointManager:GetBreakpoints(path)
     end
 
     private action FireBreakpointEvent(BreakpointEvent event)
-        i = 0
-        repeat while i < breakpointListeners:GetSize()
-            BreakpointListener listener = breakpointListeners:Get(i)
-            listener:ToggledBreakpoint(event)
-            i = i + 1
-        end
+        breakpointManager:FireEvent(event)
     end
 
     /*
@@ -351,40 +304,15 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
     end
 
     action ToggleBreakpoint(Breakpoint point)
-        File file = point:GetFile()
-        integer line = point:GetLine()
-        text path = file:GetAbsolutePath()
-        BreakpointEvent event
-        event:SetBreakpoint(point)
-        if breakpoints:HasKey(path)
-            HashTable<integer, Breakpoint> lines = breakpoints:GetValue(path)
-            if lines:HasKey(line)
-                lines:RemoveKey(line)
-
-                if lines:IsEmpty()
-                    breakpoints:RemoveKey(path)
-                end
-                event:SetIsAdded(false)
-            else 
-                lines:Add(line, point)
-                event:SetIsAdded(true)
-            end
-        else 
-            HashTable<integer, Breakpoint> lines
-            lines:Add(line, point)
-            breakpoints:Add(path, lines)
-            event:SetIsAdded(true)
-        end
+        breakpointManager:ToggleBreakpoint(point)
 
         if debugger not= undefined
             ToggleBreakpointInDebugger(point, undefined)
         end
-
-        FireBreakpointEvent(event)
     end
 
     action ToggleBreakpoint(File file, integer line)
-        //path = path + ":" + line
+        //In this case, don't call the manager directly so the debugger fires.
         Breakpoint point
         point:SetLine(line)
         point:SetFile(file)
@@ -870,6 +798,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             box:SetBuildManager(me)
         elseif editor not= undefined
             code = editor:GetText()
+            editor:SetBreakpointManager(breakpointManager)
         end
 
         UpdateCodeEditorBehavior updater
