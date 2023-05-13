@@ -149,6 +149,79 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                 editor:SetClass(clazz)
             end
         end
+
+        if not isStandardLibrary and compilerResult not= undefined
+            CompilerErrorManager errors = compilerResult:compilerErrorManager
+            //box:SetCompilerErrorManager(errors)
+            if errors = undefined
+                return now
+            end
+
+            text pathToCompare = file:GetAbsolutePath()
+            if helpPathComparison not= undefined
+                pathToCompare = helpPathComparison
+            end
+
+//            if not errors:IsCompilationErrorFree()
+//                i = 0
+//                Iterator<CompilerError> iterator = errors:GetIterator()
+//                repeat while iterator:HasNext()
+//                    CompilerError error = iterator:Next()
+//
+//                    //first check if this is a multi-line error. 
+//                    //If it is, highlight the entire line, but no more.
+//                    if error:GetAbsolutePath() = pathToCompare
+//                        integer line = error:GetLineNumber()
+//                        integer lineEnd = error:GetLineNumberEnd()
+//
+//                        integer index = error:GetIndex()
+//                        integer indexEnd = error:GetIndexEnd()
+//
+//                        //change the index to just be the end of the line
+//                        if line not= lineEnd
+//                            text value = box:GetLine(line - 1)
+//                            indexEnd = index + value:GetSize()
+//                        end
+//                        TextStyle style
+//                        TextUnderline underline
+//                        underline:SetColor(errorLineColor)
+//                        underline:SetErrorFlag(true)
+//                        style:SetHighlight(underline)
+//                        style:SetIndex(index)
+//                        if indexEnd - index + 1 > 0
+//                            style:SetSize(indexEnd - index + 1)
+//                        else
+//                            style:SetSize(1)
+//                        end
+//                        box:AddTextStyle("Errors" + i, style)
+//                    end
+//                    i = i + 1
+//                end
+//            end
+
+            HashTable<integer, Hint> hintLocations
+            if errors:HasHints()
+                Iterator<Hint> hinterator = errors:GetHintIterator()
+                i = 0
+                repeat while hinterator:HasNext()
+                    Hint hint = hinterator:Next()
+                    
+                    text value = hint:GetAbsolutePath()
+                    //Only put in the green line if it's a use statement hint
+                    if file not= undefined and value = pathToCompare// and hint is UseHint
+                        integer index = hint:GetIndex()
+                        integer indexEnd = hint:GetIndexEnd()
+                        
+                        hintLocations:Add(hint:GetLineNumber(), hint)
+                    end
+                    i = i + 1
+                end
+                //statusGutter:SetHintLocations(hintLocations)
+            end
+
+            //Now we have to figure out what to tell the blocks about them.
+            a = 5
+        end
         
     end
 
