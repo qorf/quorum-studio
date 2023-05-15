@@ -39,6 +39,8 @@ use Libraries.Game.GameStateManager
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Game.Graphics.ColorGroup
 use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Interface.Controls.Blocks.RootBlock
+use Libraries.Interface.Controls.Blocks.Block
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
     File path
@@ -162,67 +164,93 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                 pathToCompare = helpPathComparison
             end
 
-//            if not errors:IsCompilationErrorFree()
-//                i = 0
-//                Iterator<CompilerError> iterator = errors:GetIterator()
-//                repeat while iterator:HasNext()
-//                    CompilerError error = iterator:Next()
-//
-//                    //first check if this is a multi-line error. 
-//                    //If it is, highlight the entire line, but no more.
-//                    if error:GetAbsolutePath() = pathToCompare
-//                        integer line = error:GetLineNumber()
-//                        integer lineEnd = error:GetLineNumberEnd()
-//
-//                        integer index = error:GetIndex()
-//                        integer indexEnd = error:GetIndexEnd()
-//
-//                        //change the index to just be the end of the line
-//                        if line not= lineEnd
-//                            text value = box:GetLine(line - 1)
-//                            indexEnd = index + value:GetSize()
-//                        end
-//                        TextStyle style
-//                        TextUnderline underline
-//                        underline:SetColor(errorLineColor)
-//                        underline:SetErrorFlag(true)
-//                        style:SetHighlight(underline)
-//                        style:SetIndex(index)
-//                        if indexEnd - index + 1 > 0
-//                            style:SetSize(indexEnd - index + 1)
-//                        else
-//                            style:SetSize(1)
-//                        end
-//                        box:AddTextStyle("Errors" + i, style)
-//                    end
-//                    i = i + 1
-//                end
-//            end
+            Iterator<Hint> hintIterator = errors:GetHintsAtKey(pathToCompare)
+            Iterator<CompilerError> errorIterator = errors:GetErrorsAtKey(pathToCompare)
 
-            HashTable<integer, Hint> hintLocations
-            if errors:HasHints()
-                Iterator<Hint> hinterator = errors:GetHintIterator()
-                i = 0
-                repeat while hinterator:HasNext()
-                    Hint hint = hinterator:Next()
-                    
-                    text value = hint:GetAbsolutePath()
-                    //Only put in the green line if it's a use statement hint
-                    if file not= undefined and value = pathToCompare// and hint is UseHint
-                        integer index = hint:GetIndex()
-                        integer indexEnd = hint:GetIndexEnd()
-                        
-                        hintLocations:Add(hint:GetLineNumber(), hint)
-                    end
-                    i = i + 1
-                end
-                //statusGutter:SetHintLocations(hintLocations)
+            Hint nextHint = undefined
+            CompilerError nextError = undefined
+            if errors:HasHints() and hintIterator:HasNext()
+                nextHint = hintIterator:Next()
             end
 
-            //Now we have to figure out what to tell the blocks about them.
+            if errors:HasErrors() and errorIterator:HasNext()
+                nextError = errorIterator:Next()
+            end
+            RootBlock root = editor:GetRootBlock()
+            boolean done = false
+            boolean hintsDone = false
+            boolean errorsDone = false
+            Block block = root
+            if root not= undefined
+                block = block:GetNextNavigableBlock() //skip the root
+            end
+            repeat while block not= undefined and not done
+                integer blockStart = block:GetStartIndex()
+                integer blockEnd = block:GetEndIndex()
+                integer blockStartLine = block:GetStartLine()
+                integer blockEndLine = block:GetEndLine()
+
+                block:EmptyHints()
+                block:EmptyErrors()
+                
+                if nextHint not= undefined
+                    integer hintStartLine = nextHint:GetLineNumber()
+                    integer hintEndLine = nextHint:GetLineNumberEnd()
+
+                    if hintStartLine = blockStartLine
+                        block:Add(nextHint)
+                    else
+                        //If the hints being processed are before the block, crawl up
+                        //until we find one or we are finished.
+                        repeat while hintIterator:HasNext() and hintEndLine < blockStartLine
+                            nextHint = hintIterator:Next()
+                            hintStartLine = nextHint:GetLineNumber()
+                            hintEndLine = nextHint:GetLineNumberEnd()
+
+                            if hintStartLine = blockStartLine
+                                block:Add(nextHint)
+                            end
+                        end
+                        if not hintIterator:HasNext() and hintEndLine < blockStartLine
+                            nextHint = undefined
+                        end
+                    end
+                end
+
+                if nextError not= undefined
+                    integer errorStartLine = nextError:GetLineNumber()
+                    integer errorEndLine = nextError:GetLineNumberEnd()
+
+                    if errorStartLine = blockStartLine
+                        block:Add(nextError)
+                    else
+                        //If the hints being processed are before the block, crawl up
+                        //until we find one or we are finished.
+                        repeat while errorIterator:HasNext() and errorEndLine < blockStartLine
+                            nextError = errorIterator:Next()
+                            errorStartLine = nextError:GetLineNumber()
+                            errorEndLine = nextError:GetLineNumberEnd()
+
+                            if errorStartLine = blockStartLine
+                                block:Add(nextError)
+                            end
+                        end
+                        if not errorIterator:HasNext()  and errorEndLine < blockStartLine
+                            nextError = undefined
+                        end
+                    end
+                end
+
+                Block next = block:GetNextNavigableBlock()
+                if next = undefined or next = block
+                    done = true
+                else 
+                    block = next
+                end
+            end
+
             a = 5
         end
-        
     end
 
     action Run(CodeTextBox box)
