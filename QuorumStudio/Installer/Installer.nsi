@@ -10,9 +10,9 @@
 ;General
 
     ;Name and file
-    !define PRODUCT_VERSION "4.6.0.0"
+    !define PRODUCT_VERSION "4.9.4.0"
     !define REGISTRY_KEY "Software\QuorumStudio"
-    !define VERSION "4.6.0"
+    !define VERSION "4.9.4"
 
     VIProductVersion "${PRODUCT_VERSION}"
     VIFileVersion "${PRODUCT_VERSION}"
