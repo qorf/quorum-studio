@@ -45,6 +45,7 @@ use Libraries.Language.Compile.CompilerErrorManager
 use Libraries.Language.Compile.Parsing.QuorumLexer
 use Libraries.Language.Compile.Parsing.QuorumParser
 use Libraries.Language.Compile.Context.StartContext
+use Libraries.Interface.Behaviors.Controls.CodeEditorFocusChangedListener
 
 class CodeEditorTabPane is TabPane, TabChangeListener
     KeyboardEvent keys
@@ -57,6 +58,7 @@ class CodeEditorTabPane is TabPane, TabChangeListener
     File queuedFileOpen = undefined
     integer queuedLine = 0
     boolean firstTimeBlockEditorOpened = true
+    CodeEditorFocusChangedListener codeEditorFocusChanged
 
     on create
         LayoutProperties properties = GetDefaultLayoutProperties()
@@ -258,6 +260,8 @@ class CodeEditorTabPane is TabPane, TabChangeListener
         CodeEditor editor2
         editor = editor2
         editor:SetBlockListener(listener)
+        editor:AddFocusListener(codeEditorFocusChanged)
+        
 
         integer size = 15
         editor:SetPercentageWidth(1)

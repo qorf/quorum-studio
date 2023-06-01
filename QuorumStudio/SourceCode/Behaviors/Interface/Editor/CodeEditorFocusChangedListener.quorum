@@ -1,0 +1,41 @@
+package Libraries.Interface.Behaviors.Controls
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Events.FocusListener
+use Libraries.Interface.Events.FocusEvent
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Item
+use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.System.File
+
+class CodeEditorFocusChangedListener is FocusListener
+
+    action GainedFocus(FocusEvent event)
+        GameStateManager gameStateManager
+        QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
+        StudioFocusManager focusManager = studio:GetStudioFocusManager()
+        ProjectManager projectManager = studio:GetProjectManager()
+        
+        Item item = event:GetNewFocus()
+        if not (item is CodeEditor)
+            return now
+        end
+
+        CodeEditor editor = cast(CodeEditor, item)
+        File file = editor:GetFile()
+
+        if file = undefined
+            return now
+        end
+        Project project = projectManager:IsProjectSourceFile(file)
+
+        if project not= undefined
+            focusManager:SetProjectFocus(project)
+        end
+    end
+end
