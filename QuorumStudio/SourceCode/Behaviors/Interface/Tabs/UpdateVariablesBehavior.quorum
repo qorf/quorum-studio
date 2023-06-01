@@ -22,6 +22,7 @@ use Libraries.Game.GameStateManager
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Development.Environment.Configuration.OptionsConstants
 use Libraries.Game.Graphics.ColorGroup
+use Libraries.Interface.Controls.Blocks.CodeEditor
 
 class UpdateVariablesBehavior is Behavior
     boolean finished = false
@@ -153,6 +154,12 @@ class UpdateVariablesBehavior is Behavior
                     manager:SetDebuggerLineTextBox(cast(CodeTextBox, box))
                     box:SetCaretPositionToLine(debuggerLine - 1)
                     box:GoToLine(debuggerLine - 1)
+                    codeEditorTabPane:Select(tab)
+                end
+
+                CodeEditor editor = tab:GetBlockEditor()
+                if editor not= undefined
+                    editor:SelectBlockAtLine(debuggerLine - 1)
                     codeEditorTabPane:Select(tab)
                 end
             end
