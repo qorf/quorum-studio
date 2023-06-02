@@ -44,6 +44,21 @@ class ProjectManager
         return undefined
     end
 
+    action IsProjectStandardLibraryFile(File file) returns Project
+        Iterator<QuorumProject> projects = GetIterator()
+        repeat while projects:HasNext()
+            QuorumProject project = projects:Next()
+            boolean compiler = project:IsCompilerProject()
+            File location = project:GetLocation()
+            text path = location:GetAbsolutePath() + "/Library/Standard/Libraries"
+            text filePath = file:GetAbsolutePath()
+            if compiler and filePath:StartsWith(path)
+                return project
+            end
+        end
+        return undefined
+    end
+
     private action FireEvent(QuorumProject project, boolean opened)
         i = 0
         repeat while i < listeners:GetSize()

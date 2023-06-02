@@ -41,6 +41,10 @@ use Libraries.Game.Graphics.ColorGroup
 use Libraries.Interface.Controls.Blocks.CodeEditor
 use Libraries.Interface.Controls.Blocks.RootBlock
 use Libraries.Interface.Controls.Blocks.Block
+use Libraries.Interface.Controls.Support.GutterAnnotation
+use Libraries.Development.Versioning.DiffEdit
+use Libraries.Development.Versioning.GitConstants
+use Libraries.Interface.Controls.AnnotationLineGutter
 
 class UpdateCodeEditorBehavior is QuorumStudioBehavior
     File path
@@ -71,6 +75,7 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
     CodeEditor editor = undefined
     DiffResult diffResult = undefined
     OptionsConstants optionsConstants
+    GitConstants gitConstants
 
     /*
         
@@ -134,6 +139,10 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         elseif compilerResult not= undefined
             table = compilerResult:symbolTable
         end
+
+        AnnotationLineGutter annotationGutter = editor:GetAnnotationLineGutter()
+        HashTable<integer, GutterAnnotation> annotationHash = ConvertToAnnotation()
+        annotationGutter:SetAnnotations(annotationHash)
 
         File f = path
         //output "Fired from the parsing and indexing loop in blocks"
@@ -251,6 +260,44 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
 
             a = 5
         end
+    end
+    Color color
+    Color hintColor = color:CustomColor(246/255.0, 217/255.0, 87/255.0,1)
+    Color gitModifiedColor = color:CustomColor(160/255.0, 200/255.0, 255/255.0,1)
+    Color gitAddedColor = color:CustomColor(150/255.0, 255/255.0, 150/255.0,1)
+    Color gitRemovedColor = color:CustomColor(255/255.0, 160/255.0, 180/255.0,1)
+
+    private action ConvertToAnnotation returns HashTable<integer, GutterAnnotation>
+        if diffResult = undefined
+            return undefined
+        end
+        HashTable<integer, GutterAnnotation> table
+        Array<DiffEdit> edits = diffResult:GetEdits()
+        i = 0
+        repeat while i < edits:GetSize()
+            DiffEdit edit = edits:Get(i)
+            integer type = edit:GetEditType()
+            
+            if type = gitConstants:EDIT_INSERT
+                GutterAnnotation annotation
+                annotation:SetColor(gitAddedColor)
+                annotation:SetLine(i)
+                table:Add(i, annotation)
+            elseif type = gitConstants:EDIT_CHANGE
+                GutterAnnotation annotation
+                annotation:SetColor(gitModifiedColor)
+                annotation:SetLine(i)
+                table:Add(i, annotation)
+            elseif type = gitConstants:EDIT_EQUAL and edit:HasDeletion()
+                GutterAnnotation annotation
+                annotation:SetColor(gitRemovedColor)
+                annotation:SetLine(i)
+                table:Add(i, annotation)
+            end
+            i = i + 1
+        end
+
+        return table
     end
 
     action Run(CodeTextBox box)

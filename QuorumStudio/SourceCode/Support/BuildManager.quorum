@@ -832,6 +832,20 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             req:SetCurrentText(code)
             DiffResult res = git:RequestDiff(repository, req)
             updater:SetDiffResult(res)
+        //if the project is undefined, are we reading the standard library?
+        elseif project = undefined and library
+            //this is probably the compiler, so check
+            ProjectManager pm = GetProjectManager()
+            project = cast(QuorumProject, pm:IsProjectStandardLibraryFile(theFileCompiled))
+            if project not= undefined and project:HasGitSupport()
+                Git git = project:GetGit()
+                Repository repository = project:GetGitRepository()
+                DiffRequest req
+                req:SetFile(theFileCompiled)
+                req:SetCurrentText(code)
+                DiffResult res = git:RequestDiff(repository, req)
+                updater:SetDiffResult(res)
+            end
         end
         
         updater:SetPath(info:recompile)
