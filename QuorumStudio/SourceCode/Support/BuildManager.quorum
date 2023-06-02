@@ -79,6 +79,7 @@ use Libraries.Containers.MultipleLineText
 use Libraries.Interface.Selections.CodeEditorSelection
 use Libraries.Interface.Controls.Blocks.Block
 use Libraries.Language.Debug.BreakpointManager
+use Libraries.Interface.Controls.LineNumberGutter
 
 class BuildManager is DebuggerListener, ProcessListener, ProjectListener, MobileListener
     Library library
@@ -105,6 +106,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
     HashTable<text, CompilerResult> recentCompilerResults
 
     CodeTextBox debuggerLineTextBox = undefined
+    CodeEditor debuggerLineCodeEditor = undefined
     //this compiler can be used to store and clear out single file compiles
     //it uses a magic key for compilation
     text SINGLE_FILE_COMPILE_KEY = "Magic_ld93jfhf83p2nflk_Star_Wars_Rules_dh9238fdcsllsdoi9348fnkjsnd"
@@ -141,6 +143,14 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
 
     action SetDebuggerLineTextBox(CodeTextBox box)
         debuggerLineTextBox = box
+    end
+
+    action GetDebuggerLineCodeEditor returns CodeEditor
+        return debuggerLineCodeEditor
+    end
+
+    action SetDebuggerLineCodeEditor(CodeEditor editor)
+        me:debuggerLineCodeEditor = editor
     end
     
     action GetLastGoodResult(text projectPath) returns CompilerResult
@@ -349,12 +359,21 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         logger:Log("Stopping Debugger")
         debugger:Stop()
         debuggingProgram = undefined
+        RemoveDebuggerVisuals()
+
+        debuggingProgram = undefined
+        pulseBehavior:SetFinished(true)
+    end
+
+    private action RemoveDebuggerVisuals
         if debuggerLineTextBox not= undefined
             debuggerLineTextBox:RemoveTextStyle("Debugger")
         end
 
-        debuggingProgram = undefined
-        pulseBehavior:SetFinished(true)
+        if debuggerLineCodeEditor not= undefined
+            LineNumberGutter gutter = debuggerLineCodeEditor:GetLineNumberGutter()
+            gutter:SetDebuggerLine(-1)
+        end
     end
 
     /*
@@ -362,9 +381,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         exists, but should be removed, like in a continue call.
     */
     action RemoveDebuggerLine
-        if debuggerLineTextBox not= undefined
-            debuggerLineTextBox:RemoveTextStyle("Debugger")
-        end
+        RemoveDebuggerVisuals()
     end
 
     action Run(DebuggerStepEvent event)
@@ -449,6 +466,8 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         if tab not= undefined
             CodeTextBox box = tab:GetTextBox()
             update:SetOldTextBox(box)
+            CodeEditor editor = tab:GetBlockEditor()
+            update:SetOldCodeEditor(editor)
         end
         variablesTab:AddBehavior(update)
 
