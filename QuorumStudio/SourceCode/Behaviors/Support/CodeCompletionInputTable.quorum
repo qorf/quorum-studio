@@ -42,7 +42,12 @@ class CodeCompletionInputTable is InputTable
                     Block block = editor:GetSelection():GetBlock()
                     if block not= undefined
                         table = block:GetInputTable()
-                        event:SetItem(block)
+                        if table = undefined
+                            table = editor:GetInputTable()
+                            event:SetItem(editor)
+                        else
+                            event:SetItem(block)
+                        end
                     else
                         table = editor:GetInputTable()
                         event:SetItem(editor)
