@@ -86,7 +86,7 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         tabPane:SetPercentageWidth(1.0)
         tabPane:SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FILL)
 
-        tabPane:Add(CreateLoginTab())
+        tabPane:Add(CreatePropertiesTab())
         Add(tabPane)
         Load()
     end
@@ -173,12 +173,13 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         return initialized
     end
 
-    private action CreateLoginTab returns Tab
+    private action CreatePropertiesTab returns Tab
         Tab tab
         tab:SetName("Properties")
         tab:DisplayCloseButton(false)
 
         StackedRowPage page
+        page:SetSkipLabelsInFocus(true)
         Banner banner = page:AddBanner("Settings", 
             "A set of properties for controlling aspects of Quorum Studio")
         banner:PositionFromTop()
@@ -198,8 +199,8 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         libraryField = page:AddTextField("Library Location")
 
         Grouping framesGrouping = page:AddGrouping("Frames")
-        framesGrouping:AddLabel("Frame Rate")
-        frameRateField = framesGrouping:AddTextField("Frame Rate")
+        page:AddLabel("Frame Rate")
+        frameRateField = page:AddTextField("Frame Rate")
         
         
         Grouping buttonGroup = page:AddGrouping("Confirm")
