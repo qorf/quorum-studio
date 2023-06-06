@@ -13,6 +13,7 @@ use Libraries.Language.Compile.CompilerError
 use Libraries.Development.Environment.Studio.Interface.OutputTab
 use Libraries.Interface.Accessibility
 use Libraries.Game.GameStateManager
+use Libraries.System.Properties
 
 class SetErrorsBehavior is Behavior
 
@@ -84,13 +85,38 @@ class SetErrorsBehavior is Behavior
                 end
             else
                 errorTab:Empty()
-                text errorMessage = "I found " + errors:GetErrorAmount() + " errors and have listed them in the errors tab."
-                out:Append(errorMessage)
+                integer amount = errors:GetErrorAmount()
+                text errorMessage = ""
+                if amount = 1
+                    errorMessage = "I found an error."
+                else
+                    errorMessage = "I found " + errors:GetErrorAmount() + 
+                        " errors."
+                end
+
+                boolean first = true
                 Iterator<CompilerError> iterator = errors:GetIterator()
                 repeat while iterator:HasNext()
                     CompilerError error = iterator:Next()
+                    if first and error not= undefined
+                        integer line = error:GetLineNumber()
+                        text message = error:GetErrorMessage()
+                        errorMessage = errorMessage + " Line " + line + ", " + message
+                        first = false
+                    end
                     errorTab:AddError(error)
                 end
+
+                Properties prop
+                if prop:IsWindows()
+                    errorMessage = errorMessage + " Press control 3 to go to the errors tab." +
+                    " or control G to go to the line in the editor."
+                else
+                    errorMessage = errorMessage + " Press command 3 to go to the errors tab " +
+                    " or command G to go to the line in the editor."
+                end
+
+                out:Append(errorMessage)
                 errorTab:Resize()
                 outputTabs:Select(errorTab, false)
 
