@@ -40,6 +40,8 @@ use Libraries.Interface.Controls.Blocks.CodeEditor
 use Libraries.Interface.Forms.Grouping
 use Libraries.Interface.Pages.StackedRowPage
 use Libraries.Interface.Forms.Banner
+use Libraries.Interface.Selections.CodeEditorSelection
+use Libraries.Interface.Controls.Blocks.Block
 
 class FindDialog is Dialog, TextChangeListener, SelectionListener
     boolean initialized = false
@@ -68,6 +70,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
     FindBehavior findBehavior   
     NextBehavior nextBehavior
     PreviousBehavior previousBehavior
+    Block selectedBlock = undefined
 
     on create
         wholeWordMatchCaseBehavior:SetDialog(me)
@@ -205,7 +208,8 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         findBehavior:SetCodeEditor(editor)
         previous:SetBehavior(previousBehavior)
         next:SetBehavior(nextBehavior)   
-        wholeWordMatchCaseBehavior:SetCodeEditor(editor) 
+        wholeWordMatchCaseBehavior:SetCodeEditor(editor)
+        editor:AddSelectionListener(me)
     end
 
     action SetTextBox(CodeTextBox code)
@@ -356,6 +360,17 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
                     SetTextBox(cast(CodeTextBox, box))
                     UpdateTextBox()
                 end
+
+                //when the code editor hides, it changes the focus, which because the selection
+                //doesn't match the focus, requires we ignore these requests while this dialog is hiding.
+                CodeEditor editor = t:GetBlockEditor()
+                if editor not= undefined and not isHiding
+                    CodeEditorSelection blockSelection = editor:GetSelection()
+                    if blockSelection not= undefined
+                        Block block = blockSelection:GetBlock()
+                        selectedBlock = block
+                    end
+                end
             end
         end
     end
@@ -377,9 +392,17 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
                     c:SetIsDialogOpen(false)
                     c:DialogClosed()
                 end
+                //Note the CodeEditor changes its focus/selection before this point
+                //so putting this here for that case would do nothing.
             end
             i = i + 1
         end
+    end
+
+    boolean isHiding = false
+    action Hide
+        isHiding = true
+        parent:Libraries.Interface.Controls.Dialog:Hide()
     end
 
     //Removes any highlights in the textBox, empties the arrays and textFields and resets the selection index.
@@ -387,5 +410,10 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         showing = false
         CloseFindDialogs()
         SetTextChangeListenerOn(false)
+
+        if selectedBlock not= undefined
+            selectedBlock:Focus()
+        end
+        isHiding = false
     end
 end
