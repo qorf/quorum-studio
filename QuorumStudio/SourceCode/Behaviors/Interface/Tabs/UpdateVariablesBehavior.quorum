@@ -148,6 +148,7 @@ class UpdateVariablesBehavior is Behavior
             OptionsConstants const
             Color debugColor = cast(Color, io:GetColorProperty(const:EDITOR_BREAKPOINT_HIT_COLOR))
 
+            Tab old = codeEditorTabPane:GetSelectedTab()
             Tab tab1 = codeEditorTabPane:OpenNewTab(newFile)
             if not (tab1 is EditorTab)
                 return now
@@ -174,8 +175,14 @@ class UpdateVariablesBehavior is Behavior
 
                 CodeEditor editor = tab:GetBlockEditor()
                 if editor not= undefined
+                    
+                    if old = undefined or 
+                        (old:GetHashCode() not= tab:GetHashCode())
+                        codeEditorTabPane:Select(tab)
+                        editor:Resize()
+                    end
+                    editor:GoToLine(debuggerLine - 1)
                     editor:SelectDebuggerLine(debuggerLine - 1)
-                    codeEditorTabPane:Select(tab)
                     manager:SetDebuggerLineCodeEditor(editor)
                 end
             end
