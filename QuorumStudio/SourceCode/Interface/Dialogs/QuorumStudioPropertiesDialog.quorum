@@ -128,11 +128,16 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         //and there's hardly a guarantee it's valid even if the structure is the same
         //Just check if it's a valid folder and move on
         text location = libraryField:GetText()
-        File file
-        file:SetAbsolutePath(location)
-        if file:Exists() and file:IsDirectory()
-            options:SetStandardLibraryOverrideRawLocation(location)
-        else //if it's not valid, turn off the override
+        if location not= undefined and location not= ""
+            File file
+            file:SetAbsolutePath(location)
+            if file:Exists() and file:IsDirectory()
+                options:SetStandardLibraryOverrideRawLocation(location)
+            else //if it's not valid, turn off the override
+                options:SetOverridingStandardLibrary(false)
+            end
+        else
+            options:SetStandardLibraryOverrideRawLocation("")
             options:SetOverridingStandardLibrary(false)
         end
     end
