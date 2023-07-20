@@ -124,6 +124,44 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         me:path = path
     end
 
+    action GenerateHintBucket(Iterator<Hint> iterator) returns HashTable<integer, Array<Hint>>
+        if iterator = undefined return undefined end
+        HashTable<integer, Array<Hint>> bucket
+        repeat while iterator:HasNext()
+            Hint hint = iterator:Next()
+            integer line = hint:GetLineNumber() - 1
+
+            if bucket:HasKey(line)
+                Array<Hint> hints = bucket:GetValue(line)
+                hints:Add(hint)
+            else
+                Array<Hint> hints
+                hints:Add(hint)
+                bucket:Set(line, hints)
+            end
+        end
+        return bucket
+    end
+
+    action GenerateCompilerErrorBucket(Iterator<CompilerError> iterator) returns HashTable<integer, Array<CompilerError>>
+        if iterator = undefined return undefined end
+        HashTable<integer, Array<CompilerError>> bucket
+        repeat while iterator:HasNext()
+            CompilerError error = iterator:Next()
+            integer line = error:GetLineNumber() - 1
+
+            if bucket:HasKey(line)
+                Array<CompilerError> errors = bucket:GetValue(line)
+                errors:Add(error)
+            else
+                Array<CompilerError> errors
+                errors:Add(error)
+                bucket:Set(line, errors)
+            end
+        end
+        return bucket
+    end
+
     action Run(CodeEditor editor)
         if editor = undefined
             return now
@@ -145,7 +183,6 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
         annotationGutter:SetAnnotations(annotationHash)
 
         File f = path
-        //output "Fired from the parsing and indexing loop in blocks"
         if table not= undefined
             Class clazz = table:GetClassInFile(f:GetAbsolutePath())
 
@@ -176,15 +213,9 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
             Iterator<Hint> hintIterator = errors:GetHintsAtKey(pathToCompare)
             Iterator<CompilerError> errorIterator = errors:GetErrorsAtKey(pathToCompare)
 
-            Hint nextHint = undefined
-            CompilerError nextError = undefined
-            if errors:HasHints() and hintIterator not= undefined and hintIterator:HasNext()
-                nextHint = hintIterator:Next()
-            end
+            HashTable<integer, Array<Hint>> hintBucket = GenerateHintBucket(hintIterator)
+            HashTable<integer, Array<CompilerError>> errorBucket = GenerateCompilerErrorBucket(errorIterator)
 
-            if errors:HasErrors() and errorIterator not= undefined and errorIterator:HasNext()
-                nextError = errorIterator:Next()
-            end
             RootBlock root = editor:GetRootBlock()
             boolean done = false
             boolean hintsDone = false
@@ -202,51 +233,23 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                 block:EmptyHints()
                 block:EmptyErrors()
                 
-                if nextHint not= undefined
-                    integer hintStartLine = nextHint:GetLineNumber()
-                    integer hintEndLine = nextHint:GetLineNumberEnd()
-
-                    if hintStartLine - 1 = blockStartLine
-                        block:Add(nextHint)
-                    else
-                        //If the hints being processed are before the block, crawl up
-                        //until we find one or we are finished.
-                        repeat while hintIterator:HasNext() and hintEndLine < blockStartLine
-                            nextHint = hintIterator:Next()
-                            hintStartLine = nextHint:GetLineNumber()
-                            hintEndLine = nextHint:GetLineNumberEnd()
-
-                            if hintStartLine - 1 = blockStartLine
-                                block:Add(nextHint)
-                            end
-                        end
-                        if not hintIterator:HasNext() and hintEndLine < blockStartLine
-                            nextHint = undefined
-                        end
+                if hintBucket not= undefined
+                    Array<Hint> hintsAtLine = hintBucket:GetValue(blockStartLine)
+                    integer i = 0
+                    repeat while hintsAtLine not= undefined and i < hintsAtLine:GetSize()
+                        Hint hint = hintsAtLine:Get(i)
+                        block:Add(hint)
+                        i = i + 1
                     end
                 end
 
-                if nextError not= undefined
-                    integer errorStartLine = nextError:GetLineNumber()
-                    integer errorEndLine = nextError:GetLineNumberEnd()
-
-                    if errorStartLine - 1 = blockStartLine
-                        block:Add(nextError)
-                    else
-                        //If the hints being processed are before the block, crawl up
-                        //until we find one or we are finished.
-                        repeat while errorIterator:HasNext() and errorEndLine < blockStartLine
-                            nextError = errorIterator:Next()
-                            errorStartLine = nextError:GetLineNumber()
-                            errorEndLine = nextError:GetLineNumberEnd()
-
-                            if errorStartLine - 1 = blockStartLine
-                                block:Add(nextError)
-                            end
-                        end
-                        if not errorIterator:HasNext()  and errorEndLine < blockStartLine
-                            nextError = undefined
-                        end
+                if errorBucket not= undefined
+                    Array<CompilerError> errorsAtLine = errorBucket:GetValue(blockStartLine)
+                    i = 0
+                    repeat while errorsAtLine not= undefined and i < errorsAtLine:GetSize()
+                        CompilerError error = errorsAtLine:Get(i)
+                        block:Add(error)
+                        i = i + 1
                     end
                 end
 
@@ -257,8 +260,6 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
                     block = next
                 end
             end
-
-            a = 5
         end
     end
     Color color
