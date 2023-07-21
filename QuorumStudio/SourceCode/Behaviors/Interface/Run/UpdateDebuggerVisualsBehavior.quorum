@@ -1,0 +1,44 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Controls.Blocks.CodeEditor
+
+class UpdateDebuggerVisualsBehavior is Behavior
+    TextBox textbox = undefined
+    CodeEditor editor = undefined
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action Run(BehaviorEvent event)
+        if textbox not= undefined
+            textbox:RemoveTextStyle("Debugger")
+        end
+
+        if editor not= undefined
+            editor:ClearDebuggerLine()
+        end
+    end
+
+    action IsFinished returns boolean
+        return true
+    end
+
+    action GetTextbox returns TextBox
+        return textbox
+    end
+
+    action SetTextbox(TextBox textbox)
+        me:textbox = textbox
+    end
+
+    action GetEditor returns CodeEditor
+        return editor
+    end
+
+    action SetEditor(CodeEditor editor)
+        me:editor = editor
+    end
+end

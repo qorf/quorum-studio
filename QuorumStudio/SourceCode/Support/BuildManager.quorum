@@ -80,6 +80,7 @@ use Libraries.Interface.Selections.CodeEditorSelection
 use Libraries.Interface.Controls.Blocks.Block
 use Libraries.Language.Debug.BreakpointManager
 use Libraries.Interface.Controls.LineNumberGutter
+use Libraries.Development.Environment.Studio.Behaviors.UpdateDebuggerVisualsBehavior
 
 class BuildManager is DebuggerListener, ProcessListener, ProjectListener, MobileListener
     Library library
@@ -366,12 +367,17 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
     end
 
     private action RemoveDebuggerVisuals
+        UpdateDebuggerVisualsBehavior behave
         if debuggerLineTextBox not= undefined
-            debuggerLineTextBox:RemoveTextStyle("Debugger")
+            behave:SetTextbox(debuggerLineTextBox)
+            behave:SetEditor(undefined)
+            debuggerLineTextBox:AddBehavior(behave)
         end
 
         if debuggerLineCodeEditor not= undefined
-            debuggerLineCodeEditor:ClearDebuggerLine()
+            behave:SetTextbox(undefined)
+            behave:SetEditor(debuggerLineCodeEditor)
+            debuggerLineCodeEditor:AddBehavior(behave)
         end
     end
 
