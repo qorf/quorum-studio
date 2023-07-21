@@ -11,12 +11,231 @@ use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Development.Environment.Studio.Interface.CallStackTab
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Interface.Item
+use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.System.File
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Game.GameStateManager
+use Libraries.Language.Compile.CompilerResult
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Language.Compile.Symbol.Class
+use Libraries.Containers.Iterator
+use Libraries.Language.Compile.Symbol.Variable
+use Libraries.Language.Compile.Symbol.Type
+use Libraries.Language.Compile.Symbol.Action
+use Libraries.Language.Compile.Symbol.ActionCallResolution
+use Libraries.Language.Compile.QualifiedName
+use Libraries.Language.Compile.Library
+use Libraries.Language.Compile.Symbol.SymbolTable
+use Libraries.Language.Compile.Location
+use Libraries.Interface.Controls.Blocks.Block
+use Libraries.Interface.Controls.Blocks.BlockItem
 
 class NavigateToDeclarationBehavior is EditorBehavior
+    GameStateManager gameStateManager
+
     action Run(Item item)
         if item not= undefined and item is CodeTextBox
             CodeTextBox box = cast(CodeTextBox, item)
             box:NavigateToDeclaration()
+        elseif item not= undefined and item is CodeEditor
+            CodeEditor editor = cast(CodeEditor, item)
+            NavigateInCodeEditor(editor)
+        elseif item not= undefined and item is Block
+            Block block = cast(Block, item)
+            CodeEditor editor = block:GetEditor()
+            NavigateInCodeEditor(editor)
+        elseif item not= undefined and item is BlockItem
+            BlockItem blockItem = cast(BlockItem, item)
+            Block block = blockItem:GetBlock()
+            CodeEditor editor = block:GetEditor()
+            NavigateInCodeEditor(editor)
         end
+    end
+
+    action NavigateInCodeEditor(CodeEditor editor)
+        File file = editor:GetFile()
+        integer position = editor:GetCaretPosition()
+        if file = undefined
+            return now
+        end
+        
+        QuorumStudio studio = cast(QuorumStudio, gameStateManager:GetGame())
+        ProjectManager projectManager = studio:GetProjectManager()
+        Project project = projectManager:IsProjectSourceFile(file)
+        BuildManager manager = studio:GetBuildManager()
+        if project not= undefined
+            CompilerResult result = manager:GetRecentCompilerResult(project:GetLocation():GetAbsolutePath())
+            if result not= undefined
+                ActuallyNavigateToDeclaration(result, file, position)
+            end
+        else //is this file in the standard library
+            ActuallyNavigateToDeclaration(undefined, file, position)
+        end
+    end
+
+    private action ActuallyNavigateToDeclaration(CompilerResult result, File file, integer position)
+        QuorumStudio qs = cast(QuorumStudio, gameStateManager:GetGame())
+        CodeEditorTabPane pane = qs:GetTabPane()
+        SymbolTable table = undefined
+        if result not= undefined
+            table = result:symbolTable
+        else
+            BuildManager build = qs:GetBuildManager()
+            Library library = build:GetLibrary()
+            table = library:GetSymbolTable()
+        end
+
+        if table not= undefined
+            Class clazz = table:GetClassInFile(file:GetAbsolutePath())
+            if clazz = undefined
+                return now
+            end
+            
+            
+            Iterator<QualifiedName> parents = clazz:GetUnresolvedParents()
+            repeat while parents:HasNext()
+                QualifiedName momName = parents:Next()
+                if momName not= undefined and IsInLocation(position, momName)
+                    Class mom = clazz:GetValidUseName(momName:GetName())
+                    if mom not= undefined
+                        Jump(mom:GetFile(), 0, 0, pane)
+                        return now
+                    end
+                end
+            end
+
+            Iterator<Variable> fields = clazz:GetVariables()
+            if CheckForJump(fields, table, position)
+                return now
+            end
+
+            Action constructor = clazz:GetConstructor()
+            if constructor not= undefined
+                if IsInLocation(position, constructor)
+                    //check for local variables
+
+                    Iterator<Variable> variables = constructor:GetAllLocalVariables()
+                    if CheckForJump(variables, table, position)
+                        return now
+                    end
+                end
+
+                Iterator<ActionCallResolution> calls = constructor:GetActionCalls()
+                repeat while calls:HasNext()
+                    ActionCallResolution call = calls:Next()
+                    if IsInLocation(position, call:location)
+                        Class parentClass = call:resolvedAction:GetParentClass()
+                        if parentClass not= undefined
+                            Jump(parentClass:GetFile(), call:resolvedAction:GetIndex(), call:resolvedAction:GetLineNumber(), pane)
+                            return now
+                        end
+                    end
+                end
+            end
+
+            Iterator<Action> actions = clazz:GetActions()
+            repeat while actions:HasNext()
+                Action act = actions:Next()
+                Type returnType = act:GetReturnType()
+                if returnType not= undefined and not returnType:IsVoid()
+                    if IsInLocation(position, act:GetReturnLocation())
+                        text key = returnType:GetStaticKey()
+                        Class jumpToClass = table:GetClass(key)
+                        if jumpToClass not= undefined
+                            Jump(jumpToClass:GetFile(), 0, 0, pane)
+                            return now
+                        end
+                    end
+                end
+
+                if IsInLocation(position, act)
+                    //check for variables
+                    Iterator<Variable> parameters = act:GetParameterIterator()
+                    if CheckForJump(parameters, table, position)
+                        return now
+                    end
+
+                    Iterator<Variable> variables = act:GetAllLocalVariables()
+                    if CheckForJump(variables, table, position)
+                        return now
+                    end
+                end
+
+                Iterator<ActionCallResolution> calls = act:GetActionCalls()
+                repeat while calls:HasNext()
+                    ActionCallResolution call = calls:Next()
+                    if IsInLocation(position, call:location)
+                        Class parentClass = call:resolvedAction:GetParentClass()
+                        if parentClass not= undefined
+                            Jump(parentClass:GetFile(), call:resolvedAction:GetIndex(), call:resolvedAction:GetLineNumber(), pane)
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    private action Jump(File file, integer position, integer line, CodeEditorTabPane pane)
+        Tab tab1 = pane:OpenNewTab(file)
+        if not (tab1 is EditorTab)
+            return now
+        end
+        EditorTab tab = cast(EditorTab, tab1)
+        pane:Select(tab)
+        CodeTextBox box = tab:GetTextBox()
+        if box not= undefined
+            box:SetCaretPosition(position)
+            box:GoToLine(line)
+        end
+
+        CodeEditor editor = tab:GetBlockEditor()
+        if editor not= undefined
+            editor:SelectBlockAtTextLine(line - 1)
+        end      
+    end
+
+    private action IsInLocation(integer position, Location location) returns boolean
+        if location not= undefined and position >= location:GetIndex() and position < location:GetIndexEnd() + 1
+            return true
+        end
+        return false
+    end
+
+    private action CheckForJump(Iterator<Variable> variables, SymbolTable table, integer position) returns boolean
+        QuorumStudio qs = cast(QuorumStudio, gameStateManager:GetGame())
+        CodeEditorTabPane pane = qs:GetTabPane()
+
+        repeat while variables:HasNext()
+            Variable var = variables:Next()
+            Location location = var:GetTypeLocation()
+            if IsInLocation(position, location) 
+                //found the variable's type
+                Type type = var:GetType()
+                text key = type:GetStaticKey()
+                Class jumpToClass = table:GetClass(key)
+                if jumpToClass not= undefined
+                    Jump(jumpToClass:GetFile(), 0, 0, pane)
+                    return true
+                else 
+                    return false
+                end
+            end
+
+            Iterator<Location> locations = var:GetUseLocationIterator(var:GetFile())
+            repeat while locations not= undefined and locations:HasNext()
+                location = locations:Next()
+
+                if IsInLocation(position, location) and var not= undefined
+                    Location loc = var:GetTypeLocation()
+                    
+                    if loc not= undefined
+                        Jump(loc:GetFile(), loc:GetIndex(), loc:GetLineNumber(), pane)
+                        return true
+                    end
+                end
+            end
+        end
+        return false
     end
 end
