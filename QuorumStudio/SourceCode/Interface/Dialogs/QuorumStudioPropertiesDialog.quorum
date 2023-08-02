@@ -47,6 +47,8 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
     TextField libraryField = undefined
     Checkbox framesPerSecondCheckbox = undefined
     Checkbox blockModeCheckbox = undefined
+    TextField blockHeightField = undefined
+    TextField blockWidthField = undefined
 
     TabPane tabPane
 
@@ -123,6 +125,20 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         end
         options:SetFrameRateLimit(frameRate)
         
+        number blockHeight = 1
+        check
+            blockHeight = cast(number, blockHeightField:GetText())
+        detect error
+        end
+        options:SetBlocksHeightScaling(blockHeight)
+        
+        number blockWidth = 1
+        check
+            blockWidth = cast(number, blockWidthField:GetText())
+        detect error
+        end
+        options:SetBlocksScopeWidthScaling(blockWidth)
+        
         //for this one, there's a series of different checks we could do here,
         //but realistically, the user could put this pointing to basically anything
         //and there's hardly a guarantee it's valid even if the structure is the same
@@ -167,6 +183,12 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
             blockModeCheckbox:SetToggleState(false)
         end
         
+        number blockHeight = options:GetBlocksHeightScaling()
+        blockHeightField:SetText("" + blockHeight)
+        
+        number blockWidth = options:GetBlocksScopeWidthScaling()
+        blockWidthField:SetText("" + blockWidth)
+        
         number frames = options:GetFrameRateLimit()
         frameRateField:SetText("" + frames)
 
@@ -199,6 +221,12 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         blockModeCheckbox = blocksGrouping:AddCheckbox("Blocks")
         framesPerSecondCheckbox = blocksGrouping:AddCheckbox("Display Frames")
         overrideLibraryCheckbox = blocksGrouping:AddCheckbox("Override Library")
+        
+        page:AddLabel("Blocks Height Scaling")
+        blockHeightField = page:AddTextField("Blocks Height Scaling")
+        
+        page:AddLabel("Blocks Scope Width Scaling")
+        blockWidthField = page:AddTextField("Blocks Scope Width Scaling")
         
         page:AddLabel("Override Library Path")
         libraryField = page:AddTextField("Library Location")

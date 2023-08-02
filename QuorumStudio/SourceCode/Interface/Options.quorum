@@ -55,6 +55,8 @@ class Options is ProjectListener
     constant text LIBRARY = "Library"
     constant text MAXIMIZE_WINDOW = "Maximize Window"
     constant text BETA = "Beta"
+    constant text BLOCKS_HEIGHT_SCALING = "Blocks Height Scaling"
+    constant text BLOCKS_SCOPE_WIDTH_SCALING = "Blocks Scope Width Scaling"
     constant text BLOCK_MODE = "Block Mode"
     constant text LOCAL_PASSWORD_ENCRYPTION_KEY = "KbPdSgVkYp3s6v9y$B&E)H@McQfThWmZ"
     public constant text QUORUM_WEBSITE_PASSWORD_KEY = "QUORUM-WEBSITE_3948Y 93F8 34F93 94F8Y3P4F34FOI3U4F&&__"
@@ -89,6 +91,8 @@ class Options is ProjectListener
     LightQuorumStudio lightMode
     DarkQuorumStudio darkMode
     boolean blockMode = true
+    number blocksHeightScaling = 1
+    number blocksScopeWidthScaling = 1
 
     action IsOverridingStandardLibrary returns boolean
         return overrideLibraryLocation
@@ -313,6 +317,22 @@ class Options is ProjectListener
 
     action SetFrameRateLimit(number frames)
         frameRate = frames
+    end
+    
+    action GetBlocksHeightScaling returns number
+        return blocksHeightScaling
+    end
+    
+    action SetBlocksHeightScaling(number scaling)
+        blocksHeightScaling = scaling
+    end
+    
+action GetBlocksScopeWidthScaling returns number
+        return blocksScopeWidthScaling
+    end
+    
+    action SetBlocksScopeWidthScaling(number scaling)
+        blocksScopeWidthScaling = scaling
     end
 
     action SetMainApplication(QuorumStudio studio)
@@ -563,6 +583,8 @@ class Options is ProjectListener
         notation:Add(LIBRARY, libraryOverridePath)
         notation:Add(BETA, specialBetaBuild)
         notation:Add(BLOCK_MODE, blockMode)
+        notation:Add(BLOCKS_HEIGHT_SCALING, blocksHeightScaling)
+        notation:Add(BLOCKS_SCOPE_WIDTH_SCALING, blocksScopeWidthScaling)
 
         GameStateManager gameStateManager
         notation:Add(MAXIMIZE_WINDOW, gameStateManager:GetGame():IsWindowMaximized())
@@ -687,6 +709,32 @@ class Options is ProjectListener
                 GameStateManager manager
                 DesktopConfiguration configuration = manager:GetGame():GetDesktopConfiguration()
                 configuration:targetFramesPerSecond = cast(integer, me:frameRate)
+            end
+        elseif key = BLOCKS_HEIGHT_SCALING
+            if object:IsNumber()
+number value = object:GetNumber()
+                number min = 0.05
+                number max = 5
+                if value < min
+                    me:blocksHeightScaling = min
+                elseif value > max
+                    me:blocksHeightScaling = max
+                else
+                    me:blocksHeightScaling = value
+                end
+            end
+        elseif key = BLOCKS_SCOPE_WIDTH_SCALING
+if object:IsNumber()
+                number value = object:GetNumber()
+                number min = 0.05
+                number max = 5
+                if value < min
+                    me:blocksScopeWidthScaling = min
+                elseif value > max
+                    me:blocksScopeWidthScaling = max
+                else
+                    me:blocksScopeWidthScaling = value
+                end
             end
         elseif key = SCALE
             if object:IsNumber()
