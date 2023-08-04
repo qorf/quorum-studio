@@ -1,0 +1,30 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Events.DragAndDropEvent
+use Libraries.Game.InputSet
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Game.GameStateManager
+
+
+class NavigationPartitionDragBehavior is Behavior
+    
+    GameStateManager manager
+    number clickOffset = 0
+    
+    action Run(BehaviorEvent event)
+        DragAndDropEvent dragEvent = event:GetDragAndDropEvent()
+        
+        InputSet set = event:GetInputSet()
+        if set:GetInputTrigger() = set:BEGIN
+            clickOffset = dragEvent:GetStartX() - dragEvent:GetSource():GetGlobalX()
+        elseif dragEvent:GetMovementX() not= 0
+            QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+            Control pane = studio:GetTreeNavigatorPane()
+            pane:SetPixelWidth((dragEvent:GetX() - clickOffset) / pane:GetInterfaceScale())
+            pane:RequestLayout()
+        end
+    end
+end

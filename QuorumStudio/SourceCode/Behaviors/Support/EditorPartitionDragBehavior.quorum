@@ -1,0 +1,36 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Events.DragAndDropEvent
+use Libraries.Game.InputSet
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Item2D
+
+
+class EditorPartitionDragBehavior is Behavior
+    
+    GameStateManager manager
+    number clickOffset = 0
+    
+    action Run(BehaviorEvent event)
+        DragAndDropEvent dragEvent = event:GetDragAndDropEvent()
+        
+        InputSet set = event:GetInputSet()
+        if set:GetInputTrigger() = set:BEGIN
+            Item2D item = cast(Item2D, dragEvent:GetSource())
+            clickOffset = item:GetGlobalY() + item:GetHeight() - dragEvent:GetStartY()
+        elseif dragEvent:GetMovementX() not= 0
+            QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+            Control editor = studio:GetTabPane()
+            Item2D pane = editor:GetParent()
+            
+            number target = 1.0 - (dragEvent:GetY() - pane:GetGlobalY() + clickOffset) / pane:GetHeight()
+            editor:SetPercentageHeight(target)
+            
+            editor:RequestLayout()
+        end
+    end
+end

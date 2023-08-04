@@ -73,6 +73,9 @@ use Libraries.Interface.Controls.Scenes.SceneTree
 use Libraries.Interface.Controls.Scenes.ScenePalette
 use Libraries.Interface.Behaviors.Controls.ScrollableControlMouseScrollBehavior
 use Libraries.Interface.Behaviors.Controls.ScrollBarDragBehavior
+use Libraries.Interface.Views.ControlShaderView
+use Libraries.Development.Environment.Studio.Behaviors.NavigationPartitionDragBehavior
+use Libraries.Development.Environment.Studio.Behaviors.EditorPartitionDragBehavior
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 5
@@ -94,6 +97,13 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     Control mainContentPane
     // inputOutputPane contains both the code editor and the output area.
     Control inputOutputPane
+    
+    // This represents the area between the project/navigation pane and the input/output pane that can be dragged.
+    Control navigationPartition
+    
+    // This represents the area between the code editor and the output region on the right side.
+    Control editorPartition
+    
     Color color
     
     //Color background
@@ -545,6 +555,30 @@ codeCompletionTable:Add(tabSet, menuRunBehavior)
         codeCompletionTable:Add(releaseUpArrow, emptyBehavior)
 
         AddInputTable(codeCompletionTable)
+        
+        
+        InputTable navigationPartitionTable
+        navigationPartitionTable:SetIdentifier("NavigationPartition")
+        
+        InputSet dragSet
+        dragSet:SetDragItemInput()
+        InputSet dragContinueSet = dragSet:Copy()
+        dragContinueSet:SetInputTrigger(dragContinueSet:CONTINUE)
+        NavigationPartitionDragBehavior navigationDrag
+        
+        navigationPartitionTable:Add(dragSet, navigationDrag)
+navigationPartitionTable:Add(dragContinueSet, navigationDrag)
+        AddInputTable(navigationPartitionTable)
+        
+        
+InputTable editorPartitionTable
+        editorPartitionTable:SetIdentifier("EditorPartition")
+        
+EditorPartitionDragBehavior editorDrag
+        
+editorPartitionTable:Add(dragSet, editorDrag)
+editorPartitionTable:Add(dragContinueSet, editorDrag)
+        AddInputTable(editorPartitionTable)
     end
 
     action Load
@@ -633,10 +667,34 @@ codeCompletionTable:Add(tabSet, menuRunBehavior)
         inputOutputPane:SetLayout(inputOutputLayout)
         inputOutputPane:SetName("Input Output")
 
+        // Setup the partitions.
+        CreateNavigationPartition()
+        CreateEditorPartition()
+        
         mainContentPane:Add(treeNavigatorPane)
+        mainContentPane:Add(navigationPartition)
         inputOutputPane:Add(codeTabs)
+        inputOutputPane:Add(editorPartition)
         inputOutputPane:Add(outputWindow)
         mainContentPane:Add(inputOutputPane)
+    end
+    
+    action CreateNavigationPartition
+        LayoutProperties navigationProperties = navigationPartition:GetDefaultLayoutProperties()
+        navigationProperties:SetPixelWidth(4)
+        navigationProperties:SetVerticalLayoutMode(navigationProperties:FILL)
+        
+        navigationPartition:SetInputGroup("NavigationPartition")
+        navigationPartition:SetName("Navigation Pane Partition")
+    end
+    
+    action CreateEditorPartition
+        LayoutProperties editorProperties = editorPartition:GetDefaultLayoutProperties()
+        editorProperties:SetPixelHeight(4)
+        editorProperties:SetPercentageWidth(1.0)
+        
+        editorPartition:SetInputGroup("EditorPartition")
+        editorPartition:SetName("Editor Partition")
     end
 
     action CreateCodeEditor
@@ -806,4 +864,9 @@ codeCompletionTable:Add(tabSet, menuRunBehavior)
             SetFocus(projectTree)
         end
     end
+    
+    action GetTreeNavigatorPane returns Control
+        return treeNavigatorPane
+    end
+
 end
