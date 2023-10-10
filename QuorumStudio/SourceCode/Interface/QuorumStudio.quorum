@@ -76,6 +76,7 @@ use Libraries.Interface.Behaviors.Controls.ScrollBarDragBehavior
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Development.Environment.Studio.Behaviors.NavigationPartitionDragBehavior
 use Libraries.Development.Environment.Studio.Behaviors.EditorPartitionDragBehavior
+use Libraries.Interface.Controls.Blocks.BlockPalette
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 5
@@ -92,6 +93,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     ProjectTree projectTree
     SceneTree sceneTree
     ScenePalette scenePalette
+    BlockPalette blockPalette
     CodeEditorTabPane codeTabs
     OutputEditorTabPane outputWindow
     Control mainContentPane
@@ -301,6 +303,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     action GetScenePalette returns ScenePalette
         return scenePalette
+    end
+    
+    action GetBlockPalette returns BlockPalette
+        return blockPalette
     end
 
     action GetToolbar returns Toolbar
@@ -769,10 +775,23 @@ editorPartitionTable:Add(dragContinueSet, editorDrag)
         scenePalette:SetPointLightTexture(resources:GetLightTexture())
         scenePalette:SetAudio3DTexture(resources:GetAudioTexture())
         scenePalette:LoadDefaultAssets()
+        
+        Tab blockPaletteTab
+blockPaletteTab:SetName("Blocks")
+        blockPaletteTab:DisplayCloseButton(false)
+        
+BlockPalette palette
+        palette:SetPercentageHeight(1.0)
+        palette:SetPercentageWidth(1.0)
+        //palette:SetViewAreaLayout(layout)
 
+        palette:Setup()
+me:blockPalette = palette
         paletteTab:SetRelatedItem(palettePane)
         paletteTab:SetFocusTarget(scenePalette)
         treeTabPane:Add(paletteTab)
+        blockPaletteTab:SetRelatedItem(palette)
+        treeTabPane:Add(blockPaletteTab)
 
         treeTabPane:Select(projectsTab)
     end

@@ -81,6 +81,7 @@ use Libraries.Interface.Controls.Blocks.Block
 use Libraries.Language.Debug.BreakpointManager
 use Libraries.Interface.Controls.LineNumberGutter
 use Libraries.Development.Environment.Studio.Behaviors.UpdateDebuggerVisualsBehavior
+use Libraries.Interface.Controls.Blocks.BlockPalette
 
 class BuildManager is DebuggerListener, ProcessListener, ProjectListener, MobileListener
     Library library
@@ -588,6 +589,10 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             if request:table = undefined
                 result:SetIsValidCodeCompletion(false)
             end
+GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        BlockPalette palette = studio:GetBlockPalette()
+            palette:SetNewCodeCompletion(result)
             return result
         detect e
             logger:Log(e:GetStackTraceMessage())
