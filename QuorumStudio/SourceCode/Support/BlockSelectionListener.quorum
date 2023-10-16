@@ -1,0 +1,36 @@
+package Libraries.Development.Environment.Studio
+use Libraries.Interface.Events.SelectionListener
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Selections.Selection
+use Libraries.Interface.Selections.CodeEditorSelection
+use Libraries.Interface.Controls.Blocks.Block
+use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Interface.Controls.Blocks.BlockPalette
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Interface.Controls.Blocks.AssignmentBlock
+
+class BlockSelectionListener is SelectionListener
+
+    action SelectionChanged(SelectionEvent event)
+        Selection selection = event:GetSelection()
+        if selection not= undefined
+            text className = ""
+            CodeEditorSelection blockSelection = cast(CodeEditorSelection, selection)
+            Block block = blockSelection:GetBlock()
+            if block is AssignmentBlock
+                AssignmentBlock assign = cast(AssignmentBlock, block)
+                className = assign:GetClassName()
+            end
+            if block not= undefined
+                GameStateManager manager
+                QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+                BlockPalette palette = studio:GetBlockPalette()
+                BuildManager builder = studio:GetBuildManager()
+                output className
+                palette:UpdateSuggestion(className, builder:RequestBlockSuggestion())
+            end
+        end
+    end
+
+end

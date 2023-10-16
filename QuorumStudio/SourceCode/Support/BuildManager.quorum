@@ -519,6 +519,71 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         Index()
     end
 
+    action RequestBlockSuggestion returns CodeCompletionRequest
+        if not library:IsScanned()
+            return undefined
+        else 
+        end
+        
+        //check to see what the current file open is
+        CodeEditorTabPane code = GetCodeEditorTabPane()
+        TabPaneSelection selection = code:GetSelection()
+
+        EditorTab tab = cast(EditorTab, selection:GetTab())
+        if tab = undefined
+            return undefined
+        end
+
+        File file = tab:GetFile()
+        //get the file the tab is using
+        if file = undefined
+            return undefined
+        end
+
+        QuorumProject project = cast(QuorumProject, projectManager:IsProjectSourceFile(file))
+        Compiler compiler = undefined
+        text resultKey = undefined
+        if project = undefined
+            compiler = standardLibraryCompiler
+            resultKey = SINGLE_FILE_COMPILE_KEY
+        else
+            compiler = project:GetCompiler()
+            File location = project:GetLocation()
+            resultKey = location:GetAbsolutePath()
+        end
+
+        CodeTextBox box = tab:GetTextBox()
+        CodeEditor blockBox = tab:GetBlockEditor()
+        integer index = -1
+        text source = ""
+        if box not= undefined
+            source = box:GetText()
+            index = box:GetCaretPosition()
+        elseif blockBox not= undefined
+            MultipleLineText lines = blockBox:GetCode()
+            source = lines:GetText()
+            index = blockBox:GetCaretPosition()
+        end
+
+        CodeCompletionRequest request
+        request:fileKey = file:GetAbsolutePath()
+
+        Class libraryClass = GetStandardLibraryPath(file)
+        text path = file:GetAbsolutePath()
+        text libraryClassPath = undefined
+        if libraryClass not= undefined
+            request:fileKey = libraryClass:GetFile():GetAbsolutePath()
+        end
+
+        request:library = library
+        request:source = source
+        request:caretLocation = index
+        request:result = recentCompilerResults:GetValue(resultKey)
+        request:lastCompiledResult = goodCompilerResults:GetValue(resultKey)
+     
+        return request
+    end
+
     action RequestCodeCompletion returns CodeCompletionResult
         if not library:IsScanned()
             return undefined
@@ -589,13 +654,13 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             if request:table = undefined
                 result:SetIsValidCodeCompletion(false)
             end
-GameStateManager manager
-        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
-        BlockPalette palette = studio:GetBlockPalette()
+            GameStateManager manager
+            QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+            BlockPalette palette = studio:GetBlockPalette()
             palette:SetNewCodeCompletion(result)
             return result
         detect e
-            logger:Log(e:GetStackTraceMessage())
+                logger:Log(e:GetStackTraceMessage())
         end
         return undefined
     end
