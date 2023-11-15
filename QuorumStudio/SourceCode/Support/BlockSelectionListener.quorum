@@ -15,19 +15,14 @@ class BlockSelectionListener is SelectionListener
     action SelectionChanged(SelectionEvent event)
         Selection selection = event:GetSelection()
         if selection not= undefined
-            text className = ""
             CodeEditorSelection blockSelection = cast(CodeEditorSelection, selection)
             Block block = blockSelection:GetBlock()
-            if block is AssignmentBlock
-                AssignmentBlock assign = cast(AssignmentBlock, block)
-                className = assign:GetClassName()
-            end
             if block not= undefined
                 GameStateManager manager
                 QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
                 BlockPalette palette = studio:GetBlockPalette()
                 BuildManager builder = studio:GetBuildManager()
-                palette:UpdateSuggestion(className, builder:RequestBlockSuggestion())
+                palette:UpdateSuggestion(block, builder:RequestBlockSuggestion())
             end
         end
     end
