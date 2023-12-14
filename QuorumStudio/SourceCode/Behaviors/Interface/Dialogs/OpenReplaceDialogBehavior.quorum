@@ -34,10 +34,13 @@ class OpenReplaceDialogBehavior is QuorumStudioBehavior
                 dialog:ResetFindFocus()
             end
         elseif tabbedItem is CodeEditor
-            return now
-//            CodeEditor editor = cast(CodeEditor, tabbedItem)
-//            dialog:SetCodeEditor(editor)
-//            dialog:Show()
+            CodeEditor editor = cast(CodeEditor, tabbedItem)
+            dialog:SetCodeEditor(editor)
+            if dialog:IsShowing()
+                dialog:ResetFindFocus()
+            else
+                dialog:Show()
+            end
         end
     end
 end

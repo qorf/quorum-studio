@@ -15,6 +15,16 @@ use Libraries.Interface.Controls.Blocks.CodeEditor
 
 class PreviousBehavior is QuorumStudioBehavior
 
+    FindDialog dialog = undefined
+
+    action SetDialog(FindDialog dialog)
+        me:dialog = dialog
+    end
+
+    action GetDialog returns FindDialog
+        return dialog
+    end
+
     action Run(BehaviorEvent event)
         GameStateManager gameManager
         QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
@@ -27,6 +37,9 @@ class PreviousBehavior is QuorumStudioBehavior
         elseif tab is CodeEditor
             CodeEditor editor = cast(CodeEditor, tab)
             editor:PreviousFindSelection()
+            if dialog not= undefined
+                dialog:UpdateMatches(editor:GetCurrentFindIndex(), editor:GetFindMatches())
+            end
         end
 
     end

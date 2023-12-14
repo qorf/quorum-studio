@@ -33,6 +33,7 @@ use Libraries.Interface.Events.SelectionEvent
 use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Interface.Controls.Tab
 use Libraries.Game.Graphics.Color
+use Libraries.Interface.Controls.Blocks.EditRegion
 
 
 class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
@@ -71,6 +72,8 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
     on create
         SetModal(false)
         SetBehavior(nextBehavior)
+        nextBehavior:SetDialog(me)
+        previousBehavior:SetDialog(me)
     end
 
     action OnShow()
@@ -96,7 +99,14 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
                 findButton:Activate()
             end
         elseif editor not= undefined
-            
+            if editor:GetSelection() not= undefined
+                if editor:GetSelection():GetBlockItem() is EditRegion
+                    EditRegion region = cast(EditRegion, editor:GetSelection():GetBlockItem())
+                    findField:SetText(region:GetSelectedText())
+                findField:SetCaretPosition(findField:GetSize())
+                end
+            end
+                
         end
 
         findField:Focus()
@@ -303,6 +313,7 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
                     findButton:Activate()
                 end
             end
+            return now
         end
 
         if textBox not= undefined
@@ -316,6 +327,22 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
                         UpdateTextBox()
                     end
                 end
+                return now
+            end
+        end
+        
+        if editor not= undefined
+            if event:GetControl():Equals(cast(Object, editor))
+                if textChangeListenerOn
+                    if event:GetEventType() = event:ADDED
+                        UpdateTextBox()
+                    elseif event:GetEventType() = event:DELETED
+                        UpdateTextBox()
+                    elseif event:GetEventType() = event:MODIFIED   
+                        UpdateTextBox()
+                    end
+                end
+                return now
             end
         end
     end
@@ -330,6 +357,11 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
                 if box not= undefined
                     textBox:RemoveFindReplaceStyles()
                     SetTextBox(cast(CodeTextBox, box))
+                    UpdateTextBox()
+                end
+                CodeEditor editor = t:GetBlockEditor()
+                if editor not= undefined
+                    SetCodeEditor(editor)
                     UpdateTextBox()
                 end
             end

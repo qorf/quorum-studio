@@ -77,6 +77,8 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
         wholeWordMatchCaseBehavior:SetDialog(me)
         tabPane:AddSelectionListener(me)
         findBehavior:SetDialog(me)
+        nextBehavior:SetDialog(me)
+        previousBehavior:SetDialog(me)
         SetModal(false)
         SetBehavior(nextBehavior)
     end
@@ -337,6 +339,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
                     findButton:Activate()
                 end
             end
+            return now
         end
 
         if textBox not= undefined
@@ -350,6 +353,22 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
                         UpdateTextBox()
                     end
                 end
+                return now
+            end
+        end
+
+        if editor not= undefined
+            if event:GetControl():Equals(cast(Object, editor))
+                if textChangeListenerOn
+                    if event:GetEventType() = event:ADDED
+                        UpdateTextBox()
+                    elseif event:GetEventType() = event:DELETED
+                        UpdateTextBox()
+                    elseif event:GetEventType() = event:MODIFIED   
+                        UpdateTextBox()
+                    end
+                end
+                return now
             end
         end
     end
