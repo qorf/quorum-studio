@@ -5,16 +5,30 @@ use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Development.Environment.Studio.Interface.FindDialog
 use Libraries.Interface.Controls.Dialog
 use Libraries.Development.Environment.Studio.Interface.ReplaceDialog
-use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Behaviors.Controls.TextBoxPasteFromClipboardBehavior
 use Libraries.Interface.Item
+use Libraries.Interface.Controls.Blocks.Block
+use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Interface.Behaviors.Blocks.CodeEditorPasteFromClipboardBehavior
 
 class PasteBehavior is EditorBehavior
     TextBoxPasteFromClipboardBehavior behave
+    CodeEditorPasteFromClipboardBehavior blockBehave
 
     action Run(Item item)
         BehaviorEvent newEvent
-        newEvent:SetItem(item)
-        behave:Run(newEvent)
+        if item is TextBox
+            newEvent:SetItem(item)
+            behave:Run(newEvent)
+        elseif item is CodeEditor
+            newEvent:SetItem(item)
+            blockBehave:Run(newEvent)
+        elseif item is Block
+            Block block = cast(Block, item)
+            CodeEditor editor = block:GetEditor()
+            newEvent:SetItem(editor)
+            blockBehave:Run(newEvent)
+        end
     end
 end
