@@ -43,8 +43,9 @@ use Libraries.Interface.Forms.Banner
 use Libraries.Interface.Selections.CodeEditorSelection
 use Libraries.Interface.Controls.Blocks.Block
 use Libraries.Interface.Controls.Blocks.EditRegion
+use Libraries.Interface.Events.TabChangeListener
 
-class FindDialog is Dialog, TextChangeListener, SelectionListener
+class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeListener
     boolean initialized = false
     boolean showing = false
     boolean textChangeListenerOn = true
@@ -375,7 +376,18 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
 
     action SelectionChanged(SelectionEvent event) 
         if showing
-            TabPaneSelection selection = tabPane:GetSelection()
+            if event:GetSelection() is CodeEditorSelection
+//when the code editor hides, it changes the focus, which because the selection
+                //doesn't match the focus, requires we ignore these requests while this dialog is hiding.
+                if editor not= undefined and not isHiding
+                    CodeEditorSelection blockSelection = cast(CodeEditorSelection, event:GetSelection())
+                    if blockSelection not= undefined
+                        Block block = blockSelection:GetBlock()
+                        selectedBlock = block
+                    end
+                end
+            elseif event:GetSelection() is TabPaneSelection
+TabPaneSelection selection = tabPane:GetSelection()
             Tab tab = selection:GetTab()
             if tab not= undefined and tab is EditorTab
                 EditorTab t = cast(EditorTab, tab)
@@ -384,18 +396,14 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener
                     textBox:RemoveFindReplaceStyles()
                     SetTextBox(cast(CodeTextBox, box))
                     UpdateTextBox()
+                        return now
                 end
-
-                //when the code editor hides, it changes the focus, which because the selection
-                //doesn't match the focus, requires we ignore these requests while this dialog is hiding.
-                CodeEditor editor = t:GetBlockEditor()
-                if editor not= undefined and not isHiding
-                    CodeEditorSelection blockSelection = editor:GetSelection()
-                    if blockSelection not= undefined
-                        Block block = blockSelection:GetBlock()
-                        selectedBlock = block
+                    CodeEditor editor = t:GetBlockEditor()
+                    if editor not= undefined
+                        SetCodeEditor(editor)
+                        UpdateTextBox()
                     end
-                end
+            end
             end
         end
     end
