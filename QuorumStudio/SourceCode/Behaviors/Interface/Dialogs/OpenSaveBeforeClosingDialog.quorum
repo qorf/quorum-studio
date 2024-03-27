@@ -6,6 +6,7 @@ use Libraries.Interface.Events.BehaviorEvent
 class OpenSaveBeforeClosingDialog is QuorumStudioBehavior
     SaveBeforeClosingDialog dialog = undefined
     boolean exitFlag = true
+    boolean singleItemWording = false
 
     action GetExitFlag returns boolean
         return exitFlag  
@@ -18,6 +19,7 @@ class OpenSaveBeforeClosingDialog is QuorumStudioBehavior
     action Setup
         if dialog = undefined   
             SaveBeforeClosingDialog saveDialog   
+            saveDialog:SetSingleItemWording(singleItemWording)
             dialog = saveDialog
             dialog:Initialize() 
         end
@@ -32,4 +34,9 @@ class OpenSaveBeforeClosingDialog is QuorumStudioBehavior
     action GetDialog returns SaveBeforeClosingDialog
         return dialog
     end
+    
+    action SetSingleItemWording(boolean singleItemWording)
+        me:singleItemWording = singleItemWording
+    end
+
 end
