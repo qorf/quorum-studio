@@ -18,7 +18,7 @@ use Libraries.Game.DesktopApplication
 use Libraries.Game.DesktopConfiguration
 use Libraries.Security.Cryptography
 use Libraries.Development.Environment.Projects.Credentials
-use Libraries.System.Logger
+use Libraries.System.Logging.SharedLogger
 use Libraries.System.Blueprints.FileWriterBlueprint
 use Libraries.Interface.Options.LightModeOptions
 use Libraries.Interface.Options.DarkModeOptions
@@ -26,6 +26,7 @@ use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Game.Graphics.Color
 use Libraries.Interface.Options.LightQuorumStudio
 use Libraries.Interface.Options.DarkQuorumStudio
+use Libraries.System.Logging.FileLogger
 
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
@@ -74,7 +75,7 @@ class Options is ProjectListener
     boolean overrideLibraryLocation = false
     text libraryOverridePath = ""
     text interfaceOptionsMode = "Light"
-    Logger logger
+    SharedLogger logger
 
     HashTable<text, Credentials> passwords
     HashTable<text, text> projects 
@@ -208,10 +209,13 @@ class Options is ProjectListener
             logLocation:Write("Quorum Studio Log
 ")
         end
-        logger:SetFile(logLocation)
+        FileLogger fileLogger
+        fileLogger:SetFile(logLocation)
+        logger:SetLogger(fileLogger)
+        logger:SetLoggingTime(true)
         //SetInterfaceOptions()
     end
-
+    
     action SetInterfaceOptions
         InterfaceOptions options = undefined
         if interfaceOptionsMode = undefined or interfaceOptionsMode = "Light"
