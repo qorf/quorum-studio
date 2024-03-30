@@ -22,6 +22,11 @@ class EditorTab is Tab, TextChangeListener
     number timeSinceDirty = 1
     boolean parseDirty = true
     BlockSelectionListener blockSuggestionListener
+    
+    integer exitFlag = 0
+    public constant integer CANCEL_CLOSE = 0
+    public constant integer DISCARD_CHANGES = 1
+    public constant integer SAVE_CHANGES = 2
 
     action GetFile returns File
         return file
@@ -184,6 +189,14 @@ GameStateManager manager
         tabContextMenu:Add(closeAllOtherTabsMenuItem)
 
         return tabContextMenu
+    end
+
+    action SetExitFlag(integer exitFlag)
+        me:exitFlag = exitFlag
+    end
+
+    action GetExitFlag returns integer
+        return exitFlag
     end
 
 end

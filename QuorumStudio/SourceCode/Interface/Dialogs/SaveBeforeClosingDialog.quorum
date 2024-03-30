@@ -27,6 +27,8 @@ class SaveBeforeClosingDialog is Dialog
     SaveChangesBehavior saveBehavior
     DiscardChangesBehavior discardBehavior
     CancelExitBehavior cancelBehavior
+    
+    boolean singleItemWording = false
 
     on create
         saveBehavior:SetDialog(me)
@@ -93,14 +95,22 @@ class SaveBeforeClosingDialog is Dialog
         buttonMargin:SetPixelHeight(1)
         buttonContainer:Add(buttonMargin)
 
-        saveButton:SetName("Save All")
+        if singleItemWording
+            saveButton:SetName("Save")
+        else
+                saveButton:SetName("Save All")
+end
         saveButton:SetBehavior(saveBehavior) //sets the selection to save all integer value
         saveButton:SetNextFocus(discardButton)
         saveButton:SetPreviousFocus(cancelButton)
         saveButton:SetRightMargin(50)
         buttonContainer:Add(saveButton) 
 
-        discardButton:SetName("Discard All")
+        if singleItemWording
+            discardButton:SetName("Don't Save")
+        else
+            discardButton:SetName("Discard All")
+        end
         discardButton:SetBehavior(discardBehavior)   //sets the selection to discard changes integer value
         discardButton:SetNextFocus(cancelButton)
         discardButton:SetPreviousFocus(saveButton)
@@ -142,4 +152,9 @@ class SaveBeforeClosingDialog is Dialog
         discardBehavior:SetDialog(me)
         discardButton:SetBehavior(discardBehavior)
     end
+    
+    action SetSingleItemWording(boolean singleItemWording)
+        me:singleItemWording = singleItemWording
+    end
+
 end

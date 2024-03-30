@@ -1,0 +1,25 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.SaveBeforeClosingDialog
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Interface.Controls.Tab
+
+class DiscardSingleTabBehavior is DiscardChangesBehavior
+    SaveBeforeClosingDialog dialog = undefined
+    EditorTab tab = undefined
+    action SetDialog(SaveBeforeClosingDialog dialog)
+        me:dialog = dialog
+    end
+    
+    action SetTab(EditorTab tab)
+        me:tab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        tab:SetExitFlag(tab:DISCARD_CHANGES)
+        if dialog not= undefined dialog:Hide() end
+        tab:GetTabPane():Remove(cast(Tab, tab))
+    end
+end

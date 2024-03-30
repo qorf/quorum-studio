@@ -46,6 +46,12 @@ use Libraries.Language.Compile.Parsing.QuorumLexer
 use Libraries.Language.Compile.Parsing.QuorumParser
 use Libraries.Language.Compile.Context.StartContext
 use Libraries.Interface.Behaviors.Controls.CodeEditorFocusChangedListener
+use Libraries.Development.Environment.Studio.Behaviors.OpenSaveBeforeClosingDialog
+use Libraries.Development.Environment.Studio.Behaviors.SaveAndCloseBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DiscardAndCloseBehavior
+use Libraries.Development.Environment.Studio.Interface.SaveBeforeClosingDialog
+use Libraries.Development.Environment.Studio.Behaviors.SaveAndCloseSingleTabBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DiscardSingleTabBehavior
 
 class CodeEditorTabPane is TabPane, TabChangeListener
     KeyboardEvent keys
@@ -99,6 +105,40 @@ class CodeEditorTabPane is TabPane, TabChangeListener
             end
         end
     end
+    
+    action Remove(Tab tab)
+if tab not= undefined
+            EditorTab editorTab = undefined
+            if tab is EditorTab
+                editorTab = cast(EditorTab, tab)
+            else
+                parent:TabPane:Remove(tab)
+            end
+            if editorTab:IsDirty() and editorTab:GetExitFlag() = editorTab:CANCEL_CLOSE
+                OpenSaveBeforeClosingDialog behave
+                behave:SetSingleItemWording(true)
+                behave:Setup()
+
+                //set custom save/discard actions
+                
+                SaveAndCloseSingleTabBehavior save
+                save:SetTab(editorTab)
+                
+                DiscardSingleTabBehavior discard
+                discard:SetTab(editorTab)
+                SaveBeforeClosingDialog dialog = behave:GetDialog()
+                dialog:SetSaveBehavior(save)
+dialog:SetDiscardBehavior(discard)
+                behave:Run()
+                return now
+            elseif editorTab:GetExitFlag() = editorTab:DISCARD_CHANGES
+                // dont save the tab will just get removed
+            elseif editorTab:GetExitFlag() = editorTab:SAVE_CHANGES
+                editorTab:Save()
+                                    end
+end
+                parent:TabPane:Remove(tab)
+end
 
     action GainedFocus(FocusEvent event)
         TabPaneSelection selection = GetSelection()
