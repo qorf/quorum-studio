@@ -73,6 +73,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
     NextBehavior nextBehavior
     PreviousBehavior previousBehavior
     Block selectedBlock = undefined
+    integer selectedLine = -1
 
     on create
         wholeWordMatchCaseBehavior:SetDialog(me)
@@ -384,6 +385,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
                     if blockSelection not= undefined
                         Block block = blockSelection:GetBlock()
                         selectedBlock = block
+                        selectedLine = block:GetStartLine()
                     end
                 end
             elseif event:GetSelection() is TabPaneSelection
@@ -444,8 +446,9 @@ TabPaneSelection selection = tabPane:GetSelection()
         CloseFindDialogs()
         SetTextChangeListenerOn(false)
 
-        if selectedBlock not= undefined
-            selectedBlock:Focus()
+        if selectedLine not= -1
+            editor:SelectBlockAtTextLine(selectedLine)
+            editor:GoToLine(selectedLine)
         end
         isHiding = false
     end
