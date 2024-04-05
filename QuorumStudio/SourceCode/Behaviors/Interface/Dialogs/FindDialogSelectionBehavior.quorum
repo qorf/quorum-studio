@@ -30,17 +30,12 @@ class FindDialogSelectionBehavior is QuorumStudioBehavior
         QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
         Item focusItem = studio:GetCurrentFocus()
         
-        if item is MenuItem and focusItem is TextBox
-            if focusItem is CodeTextBox
-                CodeTextBox textBox = cast(CodeTextBox, focusItem)
+        if focusItem is Block or focusItem is EditRegion or focusItem is CodeEditor
                 Button control
                 control:SetBehavior(findBehavior)
                 control:Activate()
                 return now
-            else
-                return now
-            end
-        elseif focusItem is Block or focusItem is EditRegion or focusItem is CodeEditor
+        elseif item is MenuItem and focusItem is CodeTextBox
             Button control
             control:SetBehavior(findBehavior)
             control:Activate()
