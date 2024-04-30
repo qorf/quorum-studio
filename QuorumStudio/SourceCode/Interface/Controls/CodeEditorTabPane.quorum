@@ -107,13 +107,8 @@ class CodeEditorTabPane is TabPane, TabChangeListener
     end
     
     action Remove(Tab tab)
-if tab not= undefined
-            EditorTab editorTab = undefined
-            if tab is EditorTab
-                editorTab = cast(EditorTab, tab)
-            else
-                parent:TabPane:Remove(tab)
-            end
+if tab is EditorTab
+            EditorTab editorTab = cast(EditorTab, tab)
             if editorTab:IsDirty() and editorTab:GetExitFlag() = editorTab:CANCEL_CLOSE
                 OpenSaveBeforeClosingDialog behave
                 behave:SetSingleItemWording(true)

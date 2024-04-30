@@ -27,6 +27,8 @@ use Libraries.Game.Graphics.Color
 use Libraries.Interface.Options.LightQuorumStudio
 use Libraries.Interface.Options.DarkQuorumStudio
 use Libraries.System.Logging.FileLogger
+use Libraries.Game.ScreenResolution
+use Libraries.Game.DesktopDisplay
 
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
@@ -118,12 +120,46 @@ class Options is ProjectListener
     action GetStandardLibraryOutputOverrideLocation returns text
         return libraryOverridePath + "/Compiled"
     end
+    
+    action CalculateDefaultScreenValues
+        GameStateManager manager
+        
+        // Try to get the current screen resolution from the Game, and set width/height to 75% of the resolution.
+        if manager:GetGame() not= undefined
+            ScreenResolution resolution = undefined
+            if manager:GetGameDisplay() is DesktopDisplay
+                DesktopDisplay display = cast(DesktopDisplay, manager:GetGameDisplay())
+                resolution = display:GetDesktopResolution()
+            end
+            
+            if resolution not= undefined
+                integer width = cast(integer, resolution:GetWidth() * 0.75)
+                integer height = cast(integer, resolution:GetHeight() * 0.75)
+                if width < 100
+                    width = 100
+                end
+                if height < 100
+                    height = 100
+                end
+                SetWidth(width)
+                SetHeight(height)
+            end
+        end
+        
+        Properties properties
+        // If we're on Mac, interface scaling of 2 is a good default.
+        if properties:IsMac()
+            SetInterfaceScale(2)
+        end
+        
+    end
+    
 
     on create
         Properties prop
         text value = prop:GetEnvironmentVariable("APPDATA")
         text projLocation = ""
-
+        
         //If we're on windows, we need to place our config files into app data
         //to avoid requiring admin access in the installed version
         if prop:IsWindows() and placeConfigInAppDataOnWindows
