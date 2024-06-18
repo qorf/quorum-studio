@@ -29,6 +29,7 @@ use Libraries.Interface.Options.DarkQuorumStudio
 use Libraries.System.Logging.FileLogger
 use Libraries.Game.ScreenResolution
 use Libraries.Game.DesktopDisplay
+use Libraries.System.SystemHelper
 
 class Options is ProjectListener
     constant text OPTIONS_FILE = "Configuration/Options.json"
@@ -225,6 +226,7 @@ class Options is ProjectListener
             logLocation = newLogLocation
 
             projLocation = prop:GetEnvironmentVariable("HOME")
+            
         else
             File file
             file:SetPath("Configuration")
@@ -250,6 +252,14 @@ class Options is ProjectListener
         logger:SetLogger(fileLogger)
         logger:SetLoggingTime(true)
         //SetInterfaceOptions()
+    end
+    
+    action OpenLogFile
+        if logLocation not= undefined
+and logLocation:IsFile()
+            SystemHelper helper
+            helper:OpenInDefaultTextEditor(logLocation)
+        end
     end
     
     action SetInterfaceOptions
