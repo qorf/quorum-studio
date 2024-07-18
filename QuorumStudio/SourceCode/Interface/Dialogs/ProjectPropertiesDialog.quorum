@@ -75,6 +75,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     RadioButton standardProjectButton = undefined
     RadioButton legoProjectButton = undefined
     RadioButton webBrowserProjectButton = undefined
+    RadioButton pythonSpikeButton = undefined
 
     List javaClassList = undefined
     List jarList = undefined
@@ -227,6 +228,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             webBrowserProjectButton:SetToggleState(true)
         elseif projectType = project:LEGO_COMPILE_TYPE
             legoProjectButton:SetToggleState(true)
+        elseif projectType = project:PYTHON_SPIKE_COMPILER_TYPE
+            pythonSpikeButton:SetToggleState(true)
         end
 
         javaClassList:Empty()
@@ -529,6 +532,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             project:SetProjectCompileType(project:JAVASCRIPT_COMPILE_TYPE)
         elseif legoProjectButton:GetToggleState() = true
             project:SetProjectCompileType(project:LEGO_COMPILE_TYPE)
+        elseif pythonSpikeButton:GetToggleState() = true
+            project:SetProjectCompileType(project:PYTHON_SPIKE_COMPILER_TYPE)
         end
 
         project:SetJavaClassDependencies(ListToArray(javaClassList))
@@ -680,7 +685,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         Grouping projectTypeGroup = page:AddGrouping("Project Type")
         standardProjectButton = projectTypeGroup:AddRadioButton("Standard")
         webBrowserProjectButton = projectTypeGroup:AddRadioButton("Browser")
-        legoProjectButton = projectTypeGroup:AddRadioButton("LEGO")
+        legoProjectButton = projectTypeGroup:AddRadioButton("LEGO EV3")
+        pythonSpikeButton = projectTypeGroup:AddRadioButton("LEGO Spike")
         
         //Create all of the plugins lists and buttons for controlling them
         page:AddLabel("Plugin Folders")

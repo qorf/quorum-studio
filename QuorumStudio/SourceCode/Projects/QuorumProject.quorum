@@ -64,6 +64,8 @@ class QuorumProject is Project
     public constant text DOCUMENTATION_COMPILE_TYPE = "DocumentationType"
     /* This property is set for Project type if it is compiled to Documentation. */
     public constant text DOCUMENTATION_STANDARD_LIBRARY_TYPE = "DocumentationStandardLibraryType"
+    /* This property is for converting to micropython compiled as Spike excepts it.*/
+    public constant text PYTHON_SPIKE_COMPILER_TYPE = "PythonSpikeType"
 
     /* This property stores all of the dependencies on jar files for the system. */
     public constant text JAR_DEPENDENCIES = "JarDependencies"
@@ -750,7 +752,8 @@ class QuorumProject is Project
             value = IPHONE_COMPILE_TYPE or
             value = ANDROID_COMPILE_TYPE or
             value = DOCUMENTATION_COMPILE_TYPE or
-            value = DOCUMENTATION_STANDARD_LIBRARY_TYPE
+            value = DOCUMENTATION_STANDARD_LIBRARY_TYPE or
+            value = PYTHON_SPIKE_COMPILER_TYPE
             return true
         end
 
@@ -790,6 +793,19 @@ class QuorumProject is Project
         end
         text value = property:GetFirstValue()
         if value = SERVER_COMPILE_TYPE
+            return true
+        else
+            return false
+        end
+    end
+    
+action IsPythonSpikeType returns boolean
+        ProjectProperty property = GetProperty(PROJECT_TYPE)
+        if property = undefined
+            return false
+        end
+        text value = property:GetFirstValue()
+        if value = PYTHON_SPIKE_COMPILER_TYPE
             return true
         else
             return false
@@ -1334,7 +1350,8 @@ class QuorumProject is Project
            type = IPHONE_COMPILE_TYPE or
            type = ANDROID_COMPILE_TYPE  or 
            type = DOCUMENTATION_COMPILE_TYPE or
-           type = DOCUMENTATION_STANDARD_LIBRARY_TYPE
+           type = DOCUMENTATION_STANDARD_LIBRARY_TYPE or
+           type = PYTHON_SPIKE_COMPILER_TYPE
            return true
         end
 
