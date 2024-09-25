@@ -66,7 +66,10 @@ class QuorumProject is Project
     public constant text DOCUMENTATION_STANDARD_LIBRARY_TYPE = "DocumentationStandardLibraryType"
     /* This property is for converting to micropython compiled as Spike excepts it.*/
     public constant text PYTHON_SPIKE_COMPILER_TYPE = "PythonSpikeType"
-
+    
+    /* This property is for LEGO spike Program slot. */
+public constant text PYTHON_SPIKE_PROGRAM_SLOT = "PythonSpikeProgramSlot"
+    
     /* This property stores all of the dependencies on jar files for the system. */
     public constant text JAR_DEPENDENCIES = "JarDependencies"
     /* This property stores all of the dependencies on javascript files for the system. */
@@ -112,6 +115,7 @@ class QuorumProject is Project
     public constant text IOS_DEFAULT_BUNDLE = "org.quorumlanguage"
     //this can be set, but should never be stored.
     private text iosDeviceUniqueID = ""
+    private integer pythonSpikeProgramSlot = 0
     
 
     /* This property checks if this is the Quorum compiler. If it is, the project
@@ -799,6 +803,30 @@ class QuorumProject is Project
         end
     end
     
+    
+action SetPythonSpikeProgramSlot(integer pythonSpikeProgramSlot)
+SetPropertyValue(PYTHON_SPIKE_PROGRAM_SLOT, "" + pythonSpikeProgramSlot)
+    end
+    
+    action GetPythonSpikeProgramSlot returns integer
+ProjectProperty property = GetProperty(PYTHON_SPIKE_PROGRAM_SLOT)
+        if property = undefined
+            return 0
+        end
+        check
+text value = property:GetFirstValue()
+            integer slot = cast(integer, value)
+            if slot > 10
+                slot = 10
+            elseif slot < 0
+                slot = 0
+            end
+            return slot
+        detect error
+        end
+        return 0
+    end
+    
 action IsPythonSpikeType returns boolean
         ProjectProperty property = GetProperty(PROJECT_TYPE)
         if property = undefined
@@ -1089,6 +1117,16 @@ action IsPythonSpikeType returns boolean
             end
 
             AddProperty(key, object:GetText())
+        elseif key = PYTHON_SPIKE_PROGRAM_SLOT
+            if not object:IsText()
+logger:Log(textMessage)
+                return now
+            end
+            text value = object:GetText()
+            check
+                SetPythonSpikeProgramSlot(cast(integer, value))
+detect error
+            end
         elseif key = PROJECT_VERSION
             if not object:IsText()
                 logger:Log(textMessage)
@@ -1439,4 +1477,5 @@ action IsPythonSpikeType returns boolean
     action GetIOSDeviceSignature returns text
         return iosDeviceUniqueID
     end
+
 end
