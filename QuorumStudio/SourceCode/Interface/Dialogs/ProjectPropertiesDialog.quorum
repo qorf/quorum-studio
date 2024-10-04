@@ -136,7 +136,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     TextField passwordTeams
     TextField nameTeams
     TextField emailTeams
-
+    
+    //variables for the SPIKE tab
+TextField spikeProgramSlot
     // Behaviors used by the OK and Cancel buttons.
     ProjectPropertiesOkBehavior okBehavior
     DialogCancelBehavior cancelBehavior
@@ -199,6 +201,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         tabPane:Add(CreateGamesTab())
         tabPane:Add(CreateAndroidTab())
         tabPane:Add(CreateiOSTab())
+        tabPane:Add(CreateSpikeTab())
         tabPane:Add(CreateTeamsTab())
         Add(tabPane)
     end
@@ -408,6 +411,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         else
             iosResourcesField:SetText("media")
         end
+        integer spikeSlot = project:GetPythonSpikeProgramSlot()
+        spikeProgramSlot:SetText("" + spikeSlot)
 
         if project:HasGitSupport() 
             Credentials credentials = options:GetPassword(project:GetLocation():GetAbsolutePath())
@@ -637,6 +642,13 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
             project:SetIOSAssetsPath(iosAssetsPath)
         else
             project:SetIOSAssetsPath("/" + iosAssetsPath)
+        end
+        
+        check
+                    text value = spikeProgramSlot:GetText()
+integer slot = cast(integer, value)
+            project:SetPythonSpikeProgramSlot(slot)
+        detect error
         end
 
         project:Save()
@@ -917,6 +929,33 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
         Button ok = buttonGroup:AddButton("Ok")
         buttonGroup:PositionFromBottom() 
         tab:SetFocusTarget(banner)
+        tab:SetRelatedItem(page)
+
+        ok:SetBehavior(okBehavior)
+        cancel:SetBehavior(cancelBehavior)
+        return tab
+    end
+    
+    
+private action CreateSpikeTab returns Tab
+        Tab tab
+        tab:SetFocusTarget(spikeProgramSlot)
+        tab:SetName("Spike")
+        tab:DisplayCloseButton(false)
+
+        StackedRowPage page
+        Banner banner = page:AddBanner("LEGO Spike (tm)", 
+            "Enter the LEGO Spike slot")
+        banner:PositionFromTop()
+        
+        page:AddLabel("Slot (0 - 10)")
+        spikeProgramSlot = page:AddTextField("Program Slot")
+
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancel = buttonGroup:AddButton("Cancel")
+        Button ok = buttonGroup:AddButton("Ok")
+        buttonGroup:PositionFromBottom()
+        tab:SetFocusTarget(banner) 
         tab:SetRelatedItem(page)
 
         ok:SetBehavior(okBehavior)

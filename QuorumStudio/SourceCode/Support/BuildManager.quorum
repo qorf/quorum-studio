@@ -82,6 +82,7 @@ use Libraries.Language.Debug.BreakpointManager
 use Libraries.Interface.Controls.LineNumberGutter
 use Libraries.Development.Environment.Studio.Behaviors.UpdateDebuggerVisualsBehavior
 use Libraries.Interface.Controls.Blocks.Palette.BlockPalette
+use Libraries.Robots.Spike.Spike
 
 class BuildManager is DebuggerListener, ProcessListener, ProjectListener, MobileListener
     Library library
@@ -1658,9 +1659,41 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         if project:IsLegoType() or project:IsAndroidType() or project:IsIphoneType() or project:IsJavascriptType()
             return now
         end
+        
+        //if it's spike, get the file and send it to the robot.
+        
 
         CompilerResult result = info:result
         CompilerErrorManager errors = result:compilerErrorManager
+        
+if project:IsPythonSpikeType()
+            if errors:IsCompilationErrorFree()
+                                integer slot = project:GetPythonSpikeProgramSlot()
+out:Append("Sending " + project:GetName() + " to Spike.")
+                CompilerRequest request = info:request
+                if request:writePythonToDisk
+                    text pythonPath = project:GetLocation():GetAbsolutePath() + "/Run/" + project:GetExecutableName() + ".py"
+Spike spike
+boolean success = spike:Connect()
+                    if not success
+out:Append("Could not connect to Spike. Is it plugged in through with its cable?")
+                        return now
+                    else
+                        File pythonFile
+                        pythonFile:SetAbsolutePath(pythonPath)
+out:Append("Connected to Spike")
+out:Append("Copying file: " + pythonFile:GetFileName() + ".")
+    spike:CopyToSlot(pythonFile, slot)
+    output spike:GetOutput()
+    spike:Close()
+out:Append("Connection Closed. Run Slot " + slot + " on the robot")
+                    end
+                end
+                
+            end
+            return now
+        end
+        
         if errors:IsCompilationErrorFree()
             out:Append("Running " + project:GetName())
             Process runner
