@@ -1673,17 +1673,37 @@ out:Append("Sending " + project:GetName() + " to Spike.")
                 CompilerRequest request = info:request
                 if request:writePythonToDisk
                     text pythonPath = project:GetLocation():GetAbsolutePath() + "/Run/" + project:GetExecutableName() + ".py"
+                    text micropath = project:GetLocation():GetAbsolutePath() + "/Run/" + project:GetExecutableName() + ".mpy"
+File pythonFile
+                                        File microFile
+pythonFile:SetAbsolutePath(pythonPath)
+                    microFile:SetAbsolutePath(micropath)
+                    boolean micro = false
+                    check
+if microFile:Exists()
+                            microFile:Delete()
+                        end
+ConvertToMicropython(pythonFile)
+                        if microFile:Exists()
+                            micro = true
+                        end
+                    detect error
+                    end
 Spike spike
 boolean success = spike:Connect()
                     if not success
 out:Append("Could not connect to Spike. Is it plugged in through with its cable?")
                         return now
                     else
-                        File pythonFile
-                        pythonFile:SetAbsolutePath(pythonPath)
 out:Append("Connected to Spike")
-out:Append("Copying file: " + pythonFile:GetFileName() + ".")
+                        if micro
+out:Append("Copying compiled file: " + microFile:GetFileName() + ".")
+    spike:CopyToSlot(microFile, slot)
+                        else
+out:Append("Copying interpreted file: " + pythonFile:GetFileName() + ".")
     spike:CopyToSlot(pythonFile, slot)
+                        end
+
     output spike:GetOutput()
     spike:Close()
 out:Append("Connection Closed. Run Slot " + slot + " on the robot")
@@ -1693,6 +1713,8 @@ out:Append("Connection Closed. Run Slot " + slot + " on the robot")
             end
             return now
         end
+        
+        
         
         if errors:IsCompilationErrorFree()
             out:Append("Running " + project:GetName())
@@ -1752,6 +1774,56 @@ out:Append("Connection Closed. Run Slot " + slot + " on the robot")
             
         end
     end
+    
+action ConvertToMicropython(File file)
+        Process runner
+runner:AddListener(me)
+            Properties properties
+            text os = properties:GetOperatingSystemName()
+        text micropython = FindMicropythonCompiler()
+if os:Contains("Mac OS X")
+                runner:SetDirectory(file:GetParentDirectory())
+                Array<text> flags
+                flags:Add("-march=armv7m")
+                flags:Add("-O3")
+                flags:Add(file:GetFileName())
+                runner:SetName(micropython)
+                runner:SetParameters(flags)
+                runner:Run()
+            elseif os:Contains("Windows")
+                Array<text> flags
+flags:Add("-march=armv7m")
+                flags:Add("-O3")
+                flags:Add(file:GetFileName())
+                runner:SetName(micropython)
+                runner:SetParameters(flags)
+                runner:Run()
+end
+    end
+    
+    
+private action FindMicropythonCompiler returns text
+        //first check if there's a JDK underneath quorum studio. By default this is JDK 11
+        File file
+        text local = file:GetAbsolutePath() + "/External/python/"
+Properties properties
+            text os = properties:GetOperatingSystemName()
+        text arch = properties:GetProperty("os.arch")
+        
+if os:Contains("Mac OS X")
+            if arch = "aarch64"    
+                local = local + "Mac/mpy-cross"
+                else
+                //I think this is a universal binary, but we'll need to test.
+                //leaving this here in case it is not
+local = local + "Mac/mpy-cross"
+            end
+            elseif os:Contains("Windows")
+local = local + "Windows/mpy-cross.exe"
+end
+        
+        return local
+    end
 
     action AddInputToProcess(BuildInformation info, text value)
         QuorumProject project = info:project
@@ -1765,6 +1837,8 @@ out:Append("Connection Closed. Run Slot " + slot + " on the robot")
             debugger:SendInput(value)
         end
     end
+    
+    
 
     action StopAll
         Iterator<text> iterator = processes:GetKeyIterator()
