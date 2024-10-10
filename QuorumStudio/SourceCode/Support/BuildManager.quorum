@@ -1783,6 +1783,12 @@ runner:AddListener(me)
         text micropython = FindMicropythonCompiler()
                 runner:SetDirectory(file:GetParentDirectory())
         
+        /*These flags are as follows:
+armv7m: the Spike architecture, I think 
+-O3 (the letter O, not a zero). This flag is for optimization
+
+I suspect that if we support other devices, which I assume we might at some point, 
+we will need to get project properties for the type of device.*/
                 Array<text> flags
                 flags:Add("-march=armv7m")
                 flags:Add("-O3")
@@ -1792,9 +1798,11 @@ runner:AddListener(me)
                 runner:Run()
     end
     
-    
+    /*This action checks if there are architecture reasonable micropython
+compilers under External/python in Quorum Studio. If there are then it will
+return a text value of its location based on the architecture. If not it will
+return undefined.*/
 private action FindMicropythonCompiler returns text
-        //first check if there's a JDK underneath quorum studio. By default this is JDK 11
         File file
         text local = file:GetAbsolutePath() + "/External/python/"
 Properties properties
@@ -1810,6 +1818,10 @@ local = local + "Mac/mpy-cross"
             end
             elseif properties:IsWindows()
 local = local + "Windows/mpy-cross.exe"
+        else
+            //linux and other operating systems are not supported.
+//they could be, though
+            return undefined
 end
         
         return local
