@@ -1436,7 +1436,6 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         else
             out:Append("No assets requested for copying")
         end
-
         out:Append("Requesting build from Android System. This can take a few minutes. Please wait.")
         Process build = android:GetAPKDebugBuildProcess()
         build:AddListener(android)
@@ -1775,27 +1774,27 @@ out:Append("Connection Closed. Run Slot " + slot + " on the robot")
         end
     end
     
-action ConvertToMicropython(File file)
+  action ConvertToMicropython(File file)
         Process runner
-runner:AddListener(me)
-            Properties properties
-            text os = properties:GetOperatingSystemName()
+        runner:AddListener(me)
+        Properties properties
+        text os = properties:GetOperatingSystemName()
         text micropython = FindMicropythonCompiler()
-                runner:SetDirectory(file:GetParentDirectory())
+        runner:SetDirectory(file:GetParentDirectory())
         
         /*These flags are as follows:
-armv7m: the Spike architecture, I think 
--O3 (the letter O, not a zero). This flag is for optimization
+          armv7m: the Spike architecture, I think 
+          -O3 (the letter O, not a zero). This flag is for optimization
 
-I suspect that if we support other devices, which I assume we might at some point, 
-we will need to get project properties for the type of device.*/
-                Array<text> flags
-                flags:Add("-march=armv7m")
-                flags:Add("-O3")
-                flags:Add(file:GetFileName())
-                runner:SetName(micropython)
-                runner:SetParameters(flags)
-                runner:Run()
+          I suspect that if we support other devices, which I assume we might at some point, 
+          we will need to get project properties for the type of device.*/
+          Array<text> flags
+          flags:Add("-march=armv7m")
+          flags:Add("-O3")
+          flags:Add(file:GetFileName())
+          runner:SetName(micropython)
+          runner:SetParameters(flags)
+          runner:Run()
     end
     
     /*This action checks if there are architecture reasonable micropython
@@ -1805,24 +1804,24 @@ return undefined.*/
 private action FindMicropythonCompiler returns text
         File file
         text local = file:GetAbsolutePath() + "/External/python/"
-Properties properties
+        Properties properties
         text arch = properties:GetProperty("os.arch")
         
-if properties:IsMac()
+        if properties:IsMac()
             if arch = "aarch64"    
-                local = local + "Mac/mpy-cross"
-                else
+              local = local + "Mac/mpy-cross"
+            else
                 //I think this is a universal binary, but we'll need to test.
                 //leaving this here in case it is not
-local = local + "Mac/mpy-cross"
+              local = local + "Mac/mpy-cross"
             end
             elseif properties:IsWindows()
-local = local + "Windows/mpy-cross.exe"
+            local = local + "Windows/mpy-cross.exe"
         else
             //linux and other operating systems are not supported.
-//they could be, though
-            return undefined
-end
+            //they could be, though
+          return undefined
+        end
         
         return local
     end
