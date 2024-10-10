@@ -1781,8 +1781,8 @@ runner:AddListener(me)
             Properties properties
             text os = properties:GetOperatingSystemName()
         text micropython = FindMicropythonCompiler()
-if os:Contains("Mac OS X")
                 runner:SetDirectory(file:GetParentDirectory())
+        
                 Array<text> flags
                 flags:Add("-march=armv7m")
                 flags:Add("-O3")
@@ -1790,15 +1790,6 @@ if os:Contains("Mac OS X")
                 runner:SetName(micropython)
                 runner:SetParameters(flags)
                 runner:Run()
-            elseif os:Contains("Windows")
-                Array<text> flags
-flags:Add("-march=armv7m")
-                flags:Add("-O3")
-                flags:Add(file:GetFileName())
-                runner:SetName(micropython)
-                runner:SetParameters(flags)
-                runner:Run()
-end
     end
     
     
@@ -1807,10 +1798,9 @@ private action FindMicropythonCompiler returns text
         File file
         text local = file:GetAbsolutePath() + "/External/python/"
 Properties properties
-            text os = properties:GetOperatingSystemName()
         text arch = properties:GetProperty("os.arch")
         
-if os:Contains("Mac OS X")
+if properties:IsMac()
             if arch = "aarch64"    
                 local = local + "Mac/mpy-cross"
                 else
@@ -1818,7 +1808,7 @@ if os:Contains("Mac OS X")
                 //leaving this here in case it is not
 local = local + "Mac/mpy-cross"
             end
-            elseif os:Contains("Windows")
+            elseif properties:IsWindows()
 local = local + "Windows/mpy-cross.exe"
 end
         
