@@ -1805,17 +1805,11 @@ private action FindMicropythonCompiler returns text
         File file
         text local = file:GetAbsolutePath() + "/External/python/"
         Properties properties
-        text arch = properties:GetProperty("os.arch")
         
         if properties:IsMac()
-            if arch = "aarch64"    
-              local = local + "Mac/mpy-cross"
-            else
-                //I think this is a universal binary, but we'll need to test.
-                //leaving this here in case it is not
-              local = local + "Mac/mpy-cross"
-            end
-            elseif properties:IsWindows()
+            // The Mac binary is for aarch64 and x86-64
+            local = local + "Mac/mpy-cross"
+        elseif properties:IsWindows()
             local = local + "Windows/mpy-cross.exe"
         else
             //linux and other operating systems are not supported.
