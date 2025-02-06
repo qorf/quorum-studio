@@ -79,6 +79,7 @@ use Libraries.Development.Environment.Studio.Behaviors.EditorPartitionDragBehavi
 use Libraries.Interface.Controls.Blocks.Palette.BlockPalette
 use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Game.Graphics.Font
+use Libraries.Development.Environment.Configuration.IconConstants
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 6
@@ -794,8 +795,20 @@ editorPartitionTable:Add(dragContinueSet, editorDrag)
             BlockPalette palette
             palette:SetPercentageHeight(1.0)
             palette:SetPercentageWidth(1.0)
-            palette:SetFontPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
-            palette:LoadIconFont()
+            
+            IconConstants iconConstants
+            File iconFile
+            iconFile:SetPath(iconConstants:ICON_FONT_LOCATION)
+            Font fontAwesome
+            fontAwesome:LoadFont(iconFile)
+            
+            palette:SetIconFont(fontAwesome)
+            palette:SetIconFontSize(iconConstants:ICON_FONT_DEFAULT_SIZE)
+            palette:SetBasicIconUnicode(iconConstants:BASIC_ICON_UNICODE)
+            palette:SetControlIconUnicode(iconConstants:CONTROL_ICON_UNICODE)
+            palette:SetActionIconUnicode(iconConstants:ACTION_ICON_UNICODE)
+            palette:SetSuggestionIconUnicode(iconConstants:SUGGESTIONS_ICON_UNICODE)
+            
             if codeTabs:GetSize() > 0
                 Tab tab = codeTabs:Get(0)
                 if tab is EditorTab
