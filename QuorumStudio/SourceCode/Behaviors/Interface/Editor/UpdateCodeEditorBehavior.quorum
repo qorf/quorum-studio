@@ -167,9 +167,6 @@ class UpdateCodeEditorBehavior is QuorumStudioBehavior
             return now
         end
         
-        output "TO-DO: REMOVE DUMMY BOX"
-        integer box = 0
-        
 File file = editor:GetFile()
         boolean isStandardLibrary = false
         Library library = manager:GetLibrary()
@@ -228,13 +225,13 @@ File file = editor:GetFile()
         //reset the lexer and go forward
         Array<Token> mainFileTokens
         mainFileTokens:SetMaxSize(500)
-        constant text DEBUGGER_STYLE = "Debugger"
-        output "TO-DO: Get debugger style, empty text styles"
-        //TextStyle debuggerStyle = editor:GetTextStyle(DEBUGGER_STYLE)
-        //editor:EmptyTextStyles()
+        editor:EmptyTextStyles()
 
         TokenIterator<Token> tokenIterator = lexer:GetIterator()
         tokenIterator:SetReadingAllChannels(true)
+        
+        Block searchBlock = editor:GetRootBlock()
+        Block foundBlock = undefined
 
         i = 0
         repeat while tokenIterator:HasNext()
@@ -243,23 +240,31 @@ File file = editor:GetFile()
                 if IsKeyword(token)
                     TextStyle style = GetTextStyle(token)
                     style:SetColor(keywordColor)
-                    output "TO-DO: Add Keyword style to editor"
-                    //editor:AddTextStyle("Lexer" + i, style)
+                    foundBlock = editor:AddTextStyle("Lexer" + i, style, searchBlock)
+                    if foundBlock not= undefined
+                        searchBlock = foundBlock
+                    end
                 elseif IsStructure(token)
                     TextStyle style = GetTextStyle(token)
                     style:SetColor(structureColor)
-output "TO-DO: Add structure style to editor"
-                    //editor:AddTextStyle("Lexer" + i, style)
+foundBlock = editor:AddTextStyle("Lexer" + i, style, searchBlock)
+                    if foundBlock not= undefined
+                        searchBlock = foundBlock
+                    end
                 elseif IsText(token)
                     TextStyle style = GetTextStyle(token)
                     style:SetColor(textColor)
-output "TO-DO: Add Text style to editor"
-                    //editor:AddTextStyle("Lexer" + i, style)
+foundBlock = editor:AddTextStyle("Lexer" + i, style, searchBlock)
+                    if foundBlock not= undefined
+                        searchBlock = foundBlock
+                    end
                 elseif IsComment(token)
                     TextStyle style = GetTextStyle(token)
                     style:SetColor(commentColor)
-output "TO-DO: Add Comment style to editor"
-                    //editor:AddTextStyle("Lexer" + i, style)
+foundBlock = editor:AddTextStyle("Lexer" + i, style, searchBlock)
+                    if foundBlock not= undefined
+                        searchBlock = foundBlock
+                    end
                 end
                 mainFileTokens:Add(token)
             else
@@ -276,6 +281,7 @@ output "TO-DO: Add Comment style to editor"
             table = compilerResult:symbolTable
         end
 
+        searchBlock = editor:GetRootBlock()
         if table not= undefined
             Class clazzInFile = table:GetClassInFile(path:GetAbsolutePath())
             if clazzInFile not= undefined
@@ -294,8 +300,10 @@ output "TO-DO: Add Comment style to editor"
                             style:SetIndex(start)
                             style:SetSize(finish - start + 1)
                             style:SetColor(fieldColor)
-output "TO-DO: Add Semantics style to editor"
-                            //editor:AddTextStyle("Semantics" + i, style)
+foundBlock = editor:AddTextStyle("Semantics" + i, style, searchBlock)
+                    if foundBlock not= undefined
+                        searchBlock = foundBlock
+                    end
                             i = i + 1
                         end
                     end
@@ -307,8 +315,7 @@ output "TO-DO: Add Semantics style to editor"
                     style:SetIndex(start)
                     style:SetSize(finish - start + 1)
                     style:SetColor(fieldColor)
-output "TO-DO: Add SemanticsName style to editor"
-                    //editor:AddTextStyle("SemanticsName", style)
+foundBlock = editor:AddTextStyle("SemanticsName", style)
                 end
             end
         end
