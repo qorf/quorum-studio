@@ -9,6 +9,14 @@ action Compare(Object a, Object b) returns integer
 
         text leftName = left:GetName()
         text rightName = right:GetName()
+        
+        check
+            integer leftNumber = cast(integer, leftName)
+            integer rightNumber = cast(integer, rightName)
+            return leftNumber:Compare(rightNumber)
+        detect error
+            // Do nothing, one or both of the values isn't an integer.
+        end
 
         return leftName:Compare(rightName)
     end
