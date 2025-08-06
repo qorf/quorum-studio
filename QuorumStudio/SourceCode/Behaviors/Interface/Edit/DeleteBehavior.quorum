@@ -15,6 +15,7 @@ use Libraries.Interface.Controls.Tree
 use Libraries.Interface.Controls.Scenes.SceneTree
 use Libraries.Interface.Controls.Scenes.SceneTreeItem
 use Libraries.Interface.Controls.Scenes.SceneEditor
+use Libraries.Interface.Item
 
 class DeleteBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
@@ -28,6 +29,15 @@ class DeleteBehavior is QuorumStudioBehavior
 
         if activeTree:Equals(studio:GetProjectTree())
             ProjectTree tree = cast(ProjectTree, activeTree)
+            Item focus = studio:GetFocus()
+            Item parentItem = focus
+            repeat until parentItem is ProjectTree
+if parentItem = undefined
+                return now
+            end
+                parentItem = parentItem:GetAccessibleParent()
+            end
+            
             TreeSelection selection = tree:GetSelection()
             if not selection:IsEmpty()
                 TreeItem treeItem = selection:GetTreeItem()
