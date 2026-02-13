@@ -1,13 +1,30 @@
 package Libraries.Development
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Game.DesktopConfiguration
+use Libraries.System.Console
+use Libraries.Containers.Array
 
 class Main
     QuorumStudio studio
 
     action Main
+        Console console
+        boolean vulkan = true
+        Array<text> args = console:GetConsoleArguments()
+        if not args:IsEmpty()
+            text platform = args:Get(0)
+            output "Platform"
+            if platform = "vulkan"
+                output "Vulkan"
+                vulkan = true
+            elseif platform = "opengl"
+                output "Opengl"
+                vulkan = false
+            end
+        end
         DesktopConfiguration config = studio:GetDesktopConfiguration()
         config:resizable = true
+        config:useVulkan = vulkan
         studio:Start()
     end
 end
