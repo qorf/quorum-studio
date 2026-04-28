@@ -34,6 +34,9 @@ use Libraries.Interface.Forms.Grouping
 use Libraries.Interface.Pages.StackedRowPage
 use Libraries.Interface.Forms.Banner
 use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Layouts.FormRowLayout
+use Libraries.Interface.Layouts.StackLayout
+use Libraries.Interface.Layouts.LayoutProperties
 
 
 class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
@@ -210,17 +213,26 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         Banner banner = page:AddBanner("Settings", 
             "A set of properties for controlling aspects of Quorum Studio")
         banner:PositionFromTop()
+        page:LeftAlignContent()
         
         //add radio buttons
         page:AddLabel("Color Mode")
         Grouping projectTypeGroup = page:AddGrouping("Color Mode Grouping")
         lightModeButton = projectTypeGroup:AddRadioButton("Light Mode")
         darkModeButton = projectTypeGroup:AddRadioButton("Dark Mode")
+        StackLayout groupLayout
+        projectTypeGroup:SetLayout(groupLayout)
+        projectTypeGroup:SetLeftPadding(15)
+        
         
         Grouping blocksGrouping = page:AddGrouping("Checks")
         blockModeCheckbox = blocksGrouping:AddCheckbox("Blocks")
         framesPerSecondCheckbox = blocksGrouping:AddCheckbox("Display Frames")
         overrideLibraryCheckbox = blocksGrouping:AddCheckbox("Override Library")
+        StackLayout checksLayout
+        LayoutProperties props
+        blocksGrouping:SetHorizontalLayoutMode(props:FIT_CONTENTS)
+        blocksGrouping:SetLayout(checksLayout)
         
         page:AddLabel("Blocks Height Scaling")
         blockHeightField = page:AddTextField("Blocks Height Scaling")
