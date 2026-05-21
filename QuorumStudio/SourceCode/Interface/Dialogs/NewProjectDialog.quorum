@@ -30,6 +30,15 @@ use Libraries.Containers.HashTable
 use Libraries.Interface.Forms.Page
 use Libraries.Interface.Events.SelectionListener
 use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Layouts.FormRowLayout
+use Libraries.Interface.Forms.FormPanel
+use Libraries.Interface.Controls.Tree
+use Libraries.Interface.Forms.FormScrollPane
+use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Controls.ScrollPane
+use Libraries.Interface.Selections.TreeSelection
 
 class NewProjectDialog is Dialog, SelectionListener
     boolean initialized = false
@@ -40,7 +49,7 @@ class NewProjectDialog is Dialog, SelectionListener
     Resources resources
     HashTable<text, text> templateHash
 
-    constant text CONSOLE = "Console"
+    constant text BLANK = "Blank"
     constant text APP = "App"
     constant text GAMES = "Game"
     constant text SCENE = "Scene"
@@ -70,6 +79,11 @@ constant text LEGO_SPIKE_MOVE = "Lego Spike"
     TextField nameField = undefined
     TextField locationField = undefined
     Button cancelButton = undefined
+    Tree templateTree = undefined
+    Label templateDescription = undefined
+    
+    Page templatePage = undefined
+    Page projectNamePage = undefined
 
     // Names for the nameField and locationField
     constant text NAME_FIELD_ID = "Name"
@@ -108,63 +122,113 @@ constant text LEGO_SPIKE_MOVE = "Lego Spike"
         SetName("New Project Dialog")
         SetPercentageWidth(0.50)
         SetPercentageHeight(0.75)
-
-        FlowLayout tabLayout
-        tabPane:SetViewAreaLayout(tabLayout)
-        tabPane:SetPercentageWidth(1.0)
-        tabPane:AddSelectionListener(me)
-        tabPane:SetVerticalLayoutMode(parent:Control:FILL)
-
-        tabPane:Add(CreateGeneralTab())
-        tabPane:Add(CreateGamesTab())
-        tabPane:Add(CreateDataScienceTab())
-        tabPane:Add(CreateSoundTab())
-        tabPane:Add(CreateOtherTab())
-        Add(tabPane)
-
+        
+        SetupDefaultPage()
+        templateTree:AddSelectionListener(me)
+        templatePage = GetDefaultPage()
+        StackedRowPage temp
+        projectNamePage = temp
+        AddBottomPageElements(projectNamePage)
         PrepareTemplateHash()
     end
 
     action SelectionChanged(SelectionEvent selection)
         // Get the currently selected Page from the Tabs
-        Tab tab = tabPane:GetSelectedTab()
+        TreeSelection treeSelection = templateTree:GetSelection() 
 
-        /*
-        During selection, first the old tab is deselected, and there's a brief
-        period where there's no selected tab. We only care when a new tab becomes
-        selected, so ignore the empty case.
-        */
-        if tab = undefined
+        if treeSelection = undefined
             return now
         end
+        
+TreeItem selected = treeSelection:GetTreeItem()
 
-        Page page = cast(Page, tab:GetRelatedItem())
-
+        if selected = undefined
+            return now
+        end
+        
+        if selected:IsSubtree()
+            return now
+        end
+        
+        text templateName = selected:GetName()
+        
+        if templateName = BLANK
+            descriptionLabel = "This a blank template for starting from scratch"
+        elseif templateName = APP
+            descriptionLabel = "APP"
+            elseif templateName = GAMES
+            descriptionLabel = "GAMES"
+        elseif templateName = SCENE
+            descriptionLabel = "This a blank template for starting from scratch"
+        elseif templateName = MOBILE
+            descriptionLabel = "This a blank template for starting from scratch"
+        elseif templateName = IMAGE_SHEET
+            descriptionLabel = "This a blank template for starting from scratch"
+            elseif templateName = PHYSICS2D
+            descriptionLabel = "This a blank template for starting from scratch"
+            elseif templateName = PHYSICS3D
+            descriptionLabel = "This a blank template for starting from scratch"
+            elseif templateName = SKYBOX
+            descriptionLabel = "This a blank template for starting from scratch"
+            elseif templateName = SCENE2D
+            descriptionLabel = "This a blank template for starting from scratch"
+            elseif templateName = SCENE3D
+            descriptionLabel = "This a blank template for starting from scratch"
+            elseif templateName = BAR_CHART
+            descriptionLabel = "This a blank template for starting from scratch"
+            elseif templateName = PIE_CHART
+            descriptionLabel = "This a blank template for starting from scratch"
+            elseif templateName = SCATTERPLOT
+            descriptionLabel = "This a blank template for starting from scratch"
+            elseif templateName = DESCRIPTIVES
+            descriptionLabel = "This a blank template for starting from scratch"
+            elseif templateName = CORRELATIONS
+            descriptionLabel = "This a blank template for starting from scratch"
+            elseif templateName = COMPARE_MEANS
+            descriptionLabel = "This a blank template for starting from scratch"
+            elseif templateName = PLAY_SOUND
+            descriptionLabel = "This a blank template for starting from scratch"
+        elseif templateName = SINE_WAVE
+            descriptionLabel = "This a blank template for starting from scratch"
+        elseif templateName = MIDI
+            descriptionLabel = "This a blank template for starting from scratch"
+        elseif templateName = DATABASE
+            descriptionLabel = "This a blank template for starting from scratch"
+        elseif templateName = LEGO_MINDSTORMS
+            descriptionLabel = "This a blank template for starting from scratch"
+        elseif templateName = LEGO_SPIKE_MOVE
+            descriptionLabel = "This a blank template for starting from scratch"
+        elseif templateName = DOCUMENT
+            descriptionLabel = "This a blank template for starting from scratch"
+        elseif templateName = INTERNET_SERVICE
+            descriptionLabel = "This a blank template for starting from scratch"
+        end
+        
         // Get the fields from the new page. They all share the same name but are across different pages.
-        TextField newNameField = page:GetTextField(NAME_FIELD_ID)
-        TextField newLocationField = page:GetTextField(LOCATION_FIELD_ID)
-
+        //TextField newNameField = page:GetTextField(NAME_FIELD_ID)
+        //TextField newLocationField = page:GetTextField(LOCATION_FIELD_ID)
+//
         // Update the text of the fields to match the previous ones, if we had a previous selection
-        if nameField not= undefined
-            newNameField:SetText(nameField:GetText())
-        end
-
-        if locationField not= undefined
-            newLocationField:SetText(locationField:GetText())
-        end
-
-        cancelButton = page:GetButton(CANCEL_BUTTON)
-
+        //if nameField not= undefined
+            //newNameField:SetText(nameField:GetText())
+        //end
+//
+        //if locationField not= undefined
+            //newLocationField:SetText(locationField:GetText())
+        //end
+//
+        //cancelButton = page:GetButton(CANCEL_BUTTON)
+//
         // Make sure we store the current fields for future updates and retrieving info when the project is created.
-        nameField = newNameField
-        locationField = newLocationField
+        //nameField = newNameField
+        //locationField = newLocationField
     end
 
     /*
         Compares the location of any template project on the system
     */
     action PrepareTemplateHash
-        templateHash:Add(CONSOLE,"Templates/New/Blank")
+        templateHash:Add(BLANK,"Templates/New/Blank")
         templateHash:Add(APP,"Templates/New/Form")
         templateHash:Add(GAMES,"Templates/New/Game")
         templateHash:Add(SCENE,"Templates/Scenes/Blank")
@@ -224,272 +288,6 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         browseButton:SetBehavior(browseBehavior)
     end
 
-    private action CreateGeneralTab returns Tab
-        Tab tab
-        tab:SetName("General")
-        tab:DisplayCloseButton(false)
-
-        StackedRowPage page 
-        page:SetSkipLabelsInFocus(true)
-        Banner banner = page:AddBanner("General", 
-            "A set of default projects to enjoy")
-        banner:PositionFromTop()
-        
-        Grouping labels = page:AddGrouping("Labels")
-        labels:SetSkipLabelsInFocus(true)
-        labels:AddLabel(CONSOLE)
-        labels:AddLabel(APP)
-        labels:AddLabel(GAMES)
-        
-        Grouping appsGrouping = page:AddGrouping("Buttons")
-        ToggleButton button1 = appsGrouping:AddToggleButton(CONSOLE)
-        ToggleButton button2 = appsGrouping:AddToggleButton(APP)
-        ToggleButton button3 = appsGrouping:AddToggleButton(GAMES)
-
-        Grouping labels2 = page:AddGrouping("Labels2")
-        labels2:SetSkipLabelsInFocus(true)
-        labels2:AddLabel(SCENE)
-        labels2:AddLabel("Mobile")
-
-        Grouping appsGrouping2 = page:AddGrouping("Buttons2")
-        ToggleButton button4 = appsGrouping2:AddToggleButton(SCENE)
-        ToggleButton button5 = appsGrouping2:AddToggleButton(MOBILE)
-
-        //set displays to icons
-        SetButtonTextToAwesomeFontUnicode(61728, button1)
-        SetButtonTextToAwesomeFontUnicode(58772, button2)
-        SetButtonTextToAwesomeFontUnicode(61723, button3)
-        SetButtonTextToAwesomeFontUnicode(63193, button4)
-        SetButtonTextToAwesomeFontUnicode(62415, button5)
-
-        NewProjectToggleButtonBehavior toggleBehavior
-        toggleBehavior:SetDialog(me)
-        button1:SetBehavior(toggleBehavior)
-        button2:SetBehavior(toggleBehavior)
-        button3:SetBehavior(toggleBehavior)
-        button4:SetBehavior(toggleBehavior)
-        button5:SetBehavior(toggleBehavior)
-
-        // Add the fields and buttons at the bottom of the page
-        AddBottomPageElements(page)
-        tab:SetFocusTarget(banner:GetTitleLabel())
-        tab:SetRelatedItem(page)
-
-        return tab
-    end
-    
-    private action CreateGamesTab returns Tab
-        Tab tab
-        tab:SetName("Games")
-        tab:DisplayCloseButton(false)
-
-        StackedRowPage page 
-        page:SetSkipLabelsInFocus(true)
-        Banner banner = page:AddBanner("Games", 
-            "Create games for your desktop, web, or mobile device")
-        banner:PositionFromTop()
-        
-        Grouping labels = page:AddGrouping("Labels")
-        labels:SetSkipLabelsInFocus(true)
-        labels:AddLabel(IMAGE_SHEET)
-        labels:AddLabel(PHYSICS2D)
-        labels:AddLabel(PHYSICS3D)
-        
-        Grouping appsGrouping = page:AddGrouping("Buttons")
-        ToggleButton button1 = appsGrouping:AddToggleButton(IMAGE_SHEET)
-        ToggleButton button2 = appsGrouping:AddToggleButton(PHYSICS2D)
-        ToggleButton button3 = appsGrouping:AddToggleButton(PHYSICS3D)
-
-        Grouping labels2 = page:AddGrouping("Labels2")
-        labels2:SetSkipLabelsInFocus(true)
-        labels2:AddLabel(SKYBOX)
-        labels2:AddLabel(SCENE2D)
-        labels2:AddLabel(SCENE3D)
-
-        Grouping appsGrouping2 = page:AddGrouping("Buttons2")
-        ToggleButton button4 = appsGrouping2:AddToggleButton(SKYBOX)
-        ToggleButton button5 = appsGrouping2:AddToggleButton(SCENE2D)
-        ToggleButton button6 = appsGrouping2:AddToggleButton(SCENE3D)
-
-        //set displays to icons
-        SetButtonTextToAwesomeFontUnicode(62210, button1)
-        SetButtonTextToAwesomeFontUnicode(58062, button2)
-        SetButtonTextToAwesomeFontUnicode(61874, button3)
-        SetButtonTextToAwesomeFontUnicode(63055, button4)
-        SetButtonTextToAwesomeFontUnicode(63202, button5)
-        SetButtonTextToAwesomeFontUnicode(61875, button6)
-
-        NewProjectToggleButtonBehavior toggleBehavior
-        toggleBehavior:SetDialog(me)
-        button1:SetBehavior(toggleBehavior)
-        button2:SetBehavior(toggleBehavior)
-        button3:SetBehavior(toggleBehavior)
-        button4:SetBehavior(toggleBehavior)
-        button5:SetBehavior(toggleBehavior)
-        button6:SetBehavior(toggleBehavior)
-
-        // Add the fields and buttons at the bottom of the page
-        AddBottomPageElements(page)
-
-        tab:SetFocusTarget(banner:GetTitleLabel())
-        tab:SetRelatedItem(page)
-
-        return tab
-    end
-
-    private action CreateDataScienceTab returns Tab
-        Tab tab
-        tab:SetName("Data Science")
-        tab:DisplayCloseButton(false)
-
-        StackedRowPage page
-        page:SetSkipLabelsInFocus(true)
-        Banner banner = page:AddBanner("Data Science", 
-            "Make charts, play with data, or test your hypotheses")
-        banner:PositionFromTop()
-        
-        Grouping labels = page:AddGrouping("Labels")
-        labels:SetSkipLabelsInFocus(true)
-        labels:AddLabel(BAR_CHART)
-        labels:AddLabel(PIE_CHART)
-        labels:AddLabel(SCATTERPLOT)
-        
-        Grouping appsGrouping = page:AddGrouping("Buttons")
-        ToggleButton button1 = appsGrouping:AddToggleButton(BAR_CHART)
-        ToggleButton button2 = appsGrouping:AddToggleButton(PIE_CHART)
-        ToggleButton button3 = appsGrouping:AddToggleButton(SCATTERPLOT)
-
-        Grouping labels2 = page:AddGrouping("Labels2")
-        labels2:SetSkipLabelsInFocus(true)
-        labels2:AddLabel(DESCRIPTIVES)
-        labels2:AddLabel(CORRELATIONS)
-        labels2:AddLabel(COMPARE_MEANS)
-
-        Grouping appsGrouping2 = page:AddGrouping("Buttons2")
-        ToggleButton button4 = appsGrouping2:AddToggleButton(DESCRIPTIVES)
-        ToggleButton button5 = appsGrouping2:AddToggleButton(CORRELATIONS)
-        ToggleButton button6 = appsGrouping2:AddToggleButton(COMPARE_MEANS)
-
-        //set displays to icons
-        SetButtonTextToAwesomeFontUnicode(58483, button1)
-        SetButtonTextToAwesomeFontUnicode(61952, button2)
-        SetButtonTextToAwesomeFontUnicode(61953, button3)
-        SetButtonTextToAwesomeFontUnicode(58658, button4)
-        SetButtonTextToAwesomeFontUnicode(61646, button5)
-        SetButtonTextToAwesomeFontUnicode(62782, button6)
-
-        NewProjectToggleButtonBehavior toggleBehavior
-        toggleBehavior:SetDialog(me)
-        button1:SetBehavior(toggleBehavior)
-        button2:SetBehavior(toggleBehavior)
-        button3:SetBehavior(toggleBehavior)
-        button4:SetBehavior(toggleBehavior)
-        button5:SetBehavior(toggleBehavior)
-        button6:SetBehavior(toggleBehavior)
-
-        // Add the fields and buttons at the bottom of the page
-        AddBottomPageElements(page)
-
-        tab:SetFocusTarget(banner:GetTitleLabel())
-        tab:SetRelatedItem(page)
-
-        return tab
-    end
-
-    private action CreateSoundTab returns Tab
-        Tab tab
-        tab:SetName("Sound")
-        tab:DisplayCloseButton(false)
-
-        StackedRowPage page
-        page:SetSkipLabelsInFocus(true)
-        Banner banner = page:AddBanner("Sound", 
-            "Sound it out with files or digital signal processing")
-        banner:PositionFromTop()
-        
-        Grouping labels = page:AddGrouping("Labels")
-        labels:SetSkipLabelsInFocus(true)
-        labels:AddLabel(PLAY_SOUND)
-        labels:AddLabel(SINE_WAVE)
-        labels:AddLabel(MIDI)
-
-        
-        Grouping appsGrouping = page:AddGrouping("Buttons")
-        ToggleButton button1 = appsGrouping:AddToggleButton(PLAY_SOUND)
-        ToggleButton button2 = appsGrouping:AddToggleButton(SINE_WAVE)
-        ToggleButton button3 = appsGrouping:AddToggleButton(MIDI)
-
-        //set displays to icons
-        SetButtonTextToAwesomeFontUnicode(61764, button1)
-        SetButtonTextToAwesomeFontUnicode(63550, button2)
-        SetButtonTextToAwesomeFontUnicode(61441, button3)
-
-        NewProjectToggleButtonBehavior toggleBehavior
-        toggleBehavior:SetDialog(me)
-        button1:SetBehavior(toggleBehavior)
-        button2:SetBehavior(toggleBehavior)
-        button3:SetBehavior(toggleBehavior)
-
-        // Add the fields and buttons at the bottom of the page
-        AddBottomPageElements(page)
-
-        tab:SetFocusTarget(banner:GetTitleLabel())
-        tab:SetRelatedItem(page)
-
-        return tab
-    end
-
-    private action CreateOtherTab returns Tab
-        Tab tab
-        tab:SetName("Other")
-        tab:DisplayCloseButton(false)
-
-        StackedRowPage page
-        page:SetSkipLabelsInFocus(true)
-        Banner banner = page:AddBanner("Other Projects", 
-            "Other fun ideas for Quorum projects")
-        banner:PositionFromTop()
-        
-        Grouping labels = page:AddGrouping("Labels")
-        labels:SetSkipLabelsInFocus(true)
-        labels:AddLabel(DATABASE)
-        labels:AddLabel(LEGO_MINDSTORMS)
-        labels:AddLabel(DOCUMENT)
-        labels:AddLabel(INTERNET_SERVICE)
-labels:AddLabel(LEGO_SPIKE_MOVE)
-
-        
-        Grouping appsGrouping = page:AddGrouping("Buttons")
-        ToggleButton button1 = appsGrouping:AddToggleButton(DATABASE)
-        ToggleButton button2 = appsGrouping:AddToggleButton(LEGO_MINDSTORMS)
-        ToggleButton button3 = appsGrouping:AddToggleButton(DOCUMENT)
-        ToggleButton button4 = appsGrouping:AddToggleButton(INTERNET_SERVICE)
-ToggleButton button5 = appsGrouping:AddToggleButton(LEGO_SPIKE_MOVE)
-
-        //set displays to icons
-        SetButtonTextToAwesomeFontUnicode(61888, button1)
-        SetButtonTextToAwesomeFontUnicode(58762, button2)
-        SetButtonTextToAwesomeFontUnicode(61485, button3)
-        SetButtonTextToAwesomeFontUnicode(63231, button4)
-SetButtonTextToAwesomeFontUnicode(58762, button5)
-
-        NewProjectToggleButtonBehavior toggleBehavior
-        toggleBehavior:SetDialog(me)
-        button1:SetBehavior(toggleBehavior)
-        button2:SetBehavior(toggleBehavior)
-        button3:SetBehavior(toggleBehavior)
-        button4:SetBehavior(toggleBehavior)
-button5:SetBehavior(toggleBehavior)
-
-        // Add the fields and buttons at the bottom of the page
-        AddBottomPageElements(page)
-
-        tab:SetFocusTarget(banner:GetTitleLabel())
-        tab:SetRelatedItem(page)
-
-        return tab
-    end
-
     action GetLocation returns text
         return locationField:GetText()
     end
@@ -545,19 +343,20 @@ button5:SetBehavior(toggleBehavior)
     end
 
     action OnHide
-        nameField:Empty()
-        locationField:Empty()
+        //nameField:Empty()
+        //locationField:Empty()
     end
 
     action OnShow
-        tabPane:Focus()
-
-        Tab tab = tabPane:GetSelectedTab()
-        if not tab:Equals(tabPane:Get(0))
-            tab:Activate()
-        end
-
-        locationField:SetText(studio:GetProjectsFolder():GetAbsolutePath())
+        SetCurrentPage(templatePage)
+        templateTree:Focus()
+//
+        //Tab tab = tabPane:GetSelectedTab()
+        //if not tab:Equals(tabPane:Get(0))
+            //tab:Activate()
+        //end
+//
+        //locationField:SetText(studio:GetProjectsFolder():GetAbsolutePath())
     end
 
     action GetSelectedProject returns text
@@ -568,4 +367,130 @@ button5:SetBehavior(toggleBehavior)
         templatePath = templateHash:GetValue(selectedProject)
         me:selectedProject = selectedProject
     end
+    
+    action SetupDefaultPage()
+        Page page1 = InitializeDefaultPage()
+        Color color
+        LayoutProperties properties
+        page1:SetScrollRegionResizing(page1:parent:ScrollPane:MANUAL_REGION_SIZING)
+        //Control scrollRegion = page1:GetScrollableRegion()
+        //ScrollPaneRenderer renderer = cast(ScrollPaneRenderer, scrollRegion)
+        LayoutProperties regionProps = page1:GetScrollRegionProperties()
+        regionProps:SetPercentageHeight(1)
+        regionProps:SetPercentageWidth(1)
+        
+        //page1:SetBackgroundColor(color:Gray())
+        FormRowLayout leftLayout
+        ControlShaderView panelShader
+        panelShader:Initialize()
+        
+        FormPanel leftPanel
+        leftPanel:SetLayout(leftLayout)
+        leftPanel:SetPercentageHeight(1.0)
+        leftPanel:SetPercentageWidth(0.5)
+        
+        FormScrollPane treeContainer
+        treeContainer:SetPercentageHeight(0.85)
+        treeContainer:SetView2D(panelShader)
+        treeContainer:SetBackgroundColor(color:White())
+        leftPanel:Add(treeContainer)
+        me:templateTree = treeContainer:AddTree("TemplateTree")
+        
+        FormPanel rightPanel
+        rightPanel:SetPercentageHeight(1.0)
+        rightPanel:SetPercentageWidth(0.5)
+        FormRowLayout rightLayout
+        rightPanel:SetLayout(rightLayout)
+        
+        FormPanel iconPanel
+        iconPanel:SetPercentageHeight(0.5)
+        ControlShaderView iconPanelShader
+        iconPanelShader:Initialize()
+        iconPanel:SetView2D(iconPanelShader)
+        iconPanel:SetBackgroundColor(color:White())
+        iconPanel:SetCornerPixelRounding(10,10,10,10)
+        iconPanel:SetBorderThickness(1)
+        rightPanel:Add(iconPanel)
+        
+        FormPanel labelContainer
+        ControlShaderView labelContainerShader
+        labelContainerShader:Initialize()
+        labelContainer:SetView2D(labelContainerShader)
+        FormRowLayout labelLayout
+        labelContainer:SetLayout(labelLayout)
+        labelContainer:SetPercentageHeight(0.3)
+        labelContainer:SetBackgroundColor(color:White())
+        labelContainer:SetBorderThickness(1)
+        labelContainer:SetCornerPixelRounding(10,10,10,10)
+        me:templateDescription = labelContainer:AddLabel("TemplateDescription")
+        templateDescription:SetText(" This a blank template for starting from scratch")
+        
+        rightPanel:Add(labelContainer)
+        Grouping nextGroup
+        nextGroup:PositionFromBottom()
+        nextGroup:AddButton("Next")
+        rightPanel:Add(nextGroup)
+        
+        FlowLayout outerLayout
+        outerLayout:SetSingleLine(true)
+        page1:SetLayout(outerLayout)
+        page1:Add(leftPanel)
+        page1:Add(rightPanel)
+        //page1:SetCornerRounding(10,10,0,0)
+        page1:SetBorderThickness(1)
+        page1:SetBorderColor(GetBorderColor())
+        
+        SetupTemplateTree(templateTree)
+    end
+    
+    action SetupTemplateTree(Tree tree)
+        TreeItem generalTemplates = MakeTreeItem("General")
+        generalTemplates:Add(MakeTreeItem("Blank"))
+        generalTemplates:Add(MakeTreeItem("App"))
+        generalTemplates:Add(MakeTreeItem("Game"))
+        generalTemplates:Add(MakeTreeItem("Scene"))
+        generalTemplates:Add(MakeTreeItem("Mobile"))
+        tree:Add(generalTemplates)
+        
+        TreeItem gameTemplates = MakeTreeItem("Games")
+        gameTemplates:Add(MakeTreeItem("ImageSheets"))
+        gameTemplates:Add(MakeTreeItem("2D Physics"))
+        gameTemplates:Add(MakeTreeItem("3D Physics"))
+        gameTemplates:Add(MakeTreeItem("Skybox"))
+        gameTemplates:Add(MakeTreeItem("2D Scene"))
+        gameTemplates:Add(MakeTreeItem("3D Scene"))
+        tree:Add(gameTemplates)
+        
+        TreeItem dataTemplates  = MakeTreeItem("Data Science")
+        dataTemplates:Add(MakeTreeItem("Bar Chart"))
+        dataTemplates:Add(MakeTreeItem("Pie Chart"))
+        dataTemplates:Add(MakeTreeItem("Scatter Plot"))
+        dataTemplates:Add(MakeTreeItem("Descriptive Statistics"))
+        dataTemplates:Add(MakeTreeItem("Correlations"))
+        dataTemplates:Add(MakeTreeItem("Compare Means"))
+        tree:Add(dataTemplates)
+        
+        TreeItem soundTemplates = MakeTreeItem("Sound")
+        soundTemplates:Add(MakeTreeItem("Play Sound"))
+        soundTemplates:Add(MakeTreeItem("Sine Wave"))
+        soundTemplates:Add(MakeTreeItem("MIDI"))
+        tree:Add(soundTemplates)
+        
+        TreeItem otherTemplates = MakeTreeItem("Other")
+        otherTemplates:Add(MakeTreeItem("Database"))
+        otherTemplates:Add(MakeTreeItem("Lego EV3"))
+        otherTemplates:Add(MakeTreeItem("Document"))
+        otherTemplates:Add(MakeTreeItem("Networking"))
+        otherTemplates:Add(MakeTreeItem("Lego Spike"))
+        tree:Add(otherTemplates)
+    end
+    
+    action MakeTreeItem(text name) returns TreeItem
+        TreeItem item
+        Color color
+        item:SetBackgroundColor(color:White())
+        item:SetName(name)
+        return item
+    end
+    
 end
