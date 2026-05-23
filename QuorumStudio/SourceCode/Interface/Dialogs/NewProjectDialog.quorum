@@ -39,6 +39,12 @@ use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Controls.TreeItem
 use Libraries.Interface.Controls.ScrollPane
 use Libraries.Interface.Selections.TreeSelection
+use Libraries.Development.Environment.Studio.Behaviors.NewProjectNextBehavior
+use Libraries.Interface.Controls.Icon
+use Libraries.Development.Environment.Studio.Behaviors.NewProjectBackBehavior
+use Libraries.Interface.Layouts.ManualLayout
+use Libraries.Containers.Iterator
+use Libraries.Containers.Array
 
 class NewProjectDialog is Dialog, SelectionListener
     boolean initialized = false
@@ -80,7 +86,9 @@ constant text LEGO_SPIKE_MOVE = "Lego Spike"
     TextField locationField = undefined
     Button cancelButton = undefined
     Tree templateTree = undefined
+    Array<TreeItem> initialSelection
     Label templateDescription = undefined
+    Icon templateVisual = undefined
     
     Page templatePage = undefined
     Page projectNamePage = undefined
@@ -95,6 +103,8 @@ constant text LEGO_SPIKE_MOVE = "Lego Spike"
     DialogCancelBehavior cancelBehavior
     NewProjectBrowseBehavior browseBehavior
     NewProjectOkBehavior okBehavior
+    NewProjectNextBehavior nextBehavior
+    NewProjectBackBehavior backBehavior
     text selectedProject = ""
     
     //set by the browseBehavior, used by the okayBehavior to set the QuorumProject location
@@ -112,7 +122,11 @@ constant text LEGO_SPIKE_MOVE = "Lego Spike"
         cancelBehavior:SetDialog(me)
         okBehavior:SetDialog(me)
         okBehavior:SetMainApplication(studio)
-        SetBehavior(okBehavior)
+        nextBehavior:SetDialog(me)
+        nextBehavior:SetMainApplication(studio)
+        backBehavior:SetDialog(me)
+        backBehavior:SetMainApplication(studio)
+        SetBehavior(nextBehavior)
 
         SetVerticalLayoutMode(parent:Control:STANDARD)
     end
@@ -128,12 +142,13 @@ constant text LEGO_SPIKE_MOVE = "Lego Spike"
         templatePage = GetDefaultPage()
         StackedRowPage temp
         projectNamePage = temp
+        ApplyDefaultStyleToPage(projectNamePage)
+        projectNamePage:LeftAlignContent()
         AddBottomPageElements(projectNamePage)
         PrepareTemplateHash()
     end
 
     action SelectionChanged(SelectionEvent selection)
-        // Get the currently selected Page from the Tabs
         TreeSelection treeSelection = templateTree:GetSelection() 
 
         if treeSelection = undefined
@@ -151,77 +166,61 @@ TreeItem selected = treeSelection:GetTreeItem()
         end
         
         text templateName = selected:GetName()
-        
+        SetTemplateImage(templateName, templateVisual)
+        selectedProject = templateName
+        templatePath = templateHash:GetValue(selectedProject)
         if templateName = BLANK
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A blank template for starting from scratch.")
         elseif templateName = APP
-            descriptionLabel = "APP"
+            templateDescription:SetText("Get started making Apps using the Form Library.")
             elseif templateName = GAMES
-            descriptionLabel = "GAMES"
+            templateDescription:SetText("A template to get started making games using the Quorum Game Library.")
         elseif templateName = SCENE
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A project to get started with using Scenes.")
         elseif templateName = MOBILE
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A project for making apps that can run on mobile devices.")
         elseif templateName = IMAGE_SHEET
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A project for learning how to use image sheets with the Game Library.")
             elseif templateName = PHYSICS2D
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A template for learning how to simulate physics in 2D space.")
             elseif templateName = PHYSICS3D
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A template for learning how to simulate physics in 3D space.")
             elseif templateName = SKYBOX
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A project for learning how to use Skyboxes to create immersive backgrounds for games.")
             elseif templateName = SCENE2D
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A project to get started with using Scenes.")
             elseif templateName = SCENE3D
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A project to get started with using Scenes in 3D.")
             elseif templateName = BAR_CHART
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("Create a Bar Chart using Quorum Charts.")
             elseif templateName = PIE_CHART
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("Create a Pie Chart using Quorum Charts.")
             elseif templateName = SCATTERPLOT
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("Create a Scatter Plot using Quorum Charts.")
             elseif templateName = DESCRIPTIVES
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("Get started using DataFrames to get information about data.")
             elseif templateName = CORRELATIONS
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A project to get correlations from data using the Statistics Library.")
             elseif templateName = COMPARE_MEANS
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A project to compare means from data using the Statistics Library.")
             elseif templateName = PLAY_SOUND
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A project to learn to how get your programs to make sound.")
         elseif templateName = SINE_WAVE
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("Use the audio library to make sounds from different sine waves and frequencies.")
         elseif templateName = MIDI
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("Get sounds from using the Musical Instrument Digital Interface (MIDI)." )
         elseif templateName = DATABASE
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("Get started using Quorum to query from a database.")
         elseif templateName = LEGO_MINDSTORMS
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A template to use Quorum to control a Lego EV3 robot.")
         elseif templateName = LEGO_SPIKE_MOVE
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A template to use Quorum to control a Lego Spike robot.")
         elseif templateName = DOCUMENT
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("A template to build your project as an HTML document.")
         elseif templateName = INTERNET_SERVICE
-            descriptionLabel = "This a blank template for starting from scratch"
+            templateDescription:SetText("Get started using Quorum to send and recieve network requests.")
         end
-        
-        // Get the fields from the new page. They all share the same name but are across different pages.
-        //TextField newNameField = page:GetTextField(NAME_FIELD_ID)
-        //TextField newLocationField = page:GetTextField(LOCATION_FIELD_ID)
-//
-        // Update the text of the fields to match the previous ones, if we had a previous selection
-        //if nameField not= undefined
-            //newNameField:SetText(nameField:GetText())
-        //end
-//
-        //if locationField not= undefined
-            //newLocationField:SetText(locationField:GetText())
-        //end
-//
-        //cancelButton = page:GetButton(CANCEL_BUTTON)
-//
-        // Make sure we store the current fields for future updates and retrieving info when the project is created.
-        //nameField = newNameField
-        //locationField = newLocationField
+        //templateDescription:RequestVerticesUpdate()
     end
 
     /*
@@ -254,6 +253,40 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         templateHash:Add(DOCUMENT,"Templates/Other/Document")
         templateHash:Add(INTERNET_SERVICE,"Templates/Other/InternetServices")
     end
+    
+    action SetTemplateImage(text templateName, Icon templateImage) 
+        text value = ""
+        Color color
+        templateImage:LoadRectangle(50,50, color:Red())
+        //61728
+        
+        if templateName = BLANK
+        elseif templateName = APP
+            elseif templateName = GAMES
+        elseif templateName = SCENE
+        elseif templateName = MOBILE
+        elseif templateName = IMAGE_SHEET
+            elseif templateName = PHYSICS2D
+            elseif templateName = PHYSICS3D
+            elseif templateName = SKYBOX
+            elseif templateName = SCENE2D
+            elseif templateName = SCENE3D
+            elseif templateName = BAR_CHART
+            elseif templateName = PIE_CHART
+            elseif templateName = SCATTERPLOT
+            elseif templateName = DESCRIPTIVES
+            elseif templateName = CORRELATIONS
+            elseif templateName = COMPARE_MEANS
+            elseif templateName = PLAY_SOUND
+        elseif templateName = SINE_WAVE
+        elseif templateName = MIDI
+        elseif templateName = DATABASE
+        elseif templateName = LEGO_MINDSTORMS
+        elseif templateName = LEGO_SPIKE_MOVE
+        elseif templateName = DOCUMENT
+        elseif templateName = INTERNET_SERVICE
+        end
+    end
 
     private action SetButtonTextToAwesomeFontUnicode(integer unicode, Button button)
         text value = ""
@@ -270,20 +303,28 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
     and cancel buttons.
     */
     private action AddBottomPageElements(Page page)
+        page:AddLabel("Selected Template: " + selectedProject)
         page:AddLabel("Project Name")
         TextField nameField = page:AddTextField(NAME_FIELD_ID)
 
-        page:AddLabel("Project Location")
-        Grouping locationGrouping = page:AddGrouping("Location")
-        TextField locationField = locationGrouping:AddTextField(LOCATION_FIELD_ID)
+        Grouping locationGrouping = page:AddGrouping("Location Group")
+        locationGrouping:AddLabel("Project Location")
+        //Grouping locationGrouping = page:AddGrouping("Location")
         Button browseButton = locationGrouping:AddButton("Browse...")
+        TextField locationField = page:AddTextField(LOCATION_FIELD_ID)
 
         Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button backButton = buttonGroup:AddButton("Back")
         Button cancelButton = buttonGroup:AddButton("Cancel")
         Button okButton = buttonGroup:AddButton("Ok")
         buttonGroup:PositionFromBottom()
+        
+        me:nameField = nameField
+        me:locationField = locationField
+        me:cancelButton = cancelButton
 
         cancelButton:SetBehavior(cancelBehavior)
+        backButton:SetBehavior(backBehavior)
         okButton:SetBehavior(okBehavior)
         browseButton:SetBehavior(browseBehavior)
     end
@@ -343,20 +384,26 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
     end
 
     action OnHide
-        //nameField:Empty()
-        //locationField:Empty()
+        nameField:Empty()
+        locationField:Empty()
     end
 
     action OnShow
         SetCurrentPage(templatePage)
+        SetBehavior(nextBehavior)
+        Iterator<TreeItem> categories = templateTree:GetTreeItems()
+        repeat while categories:HasNext()
+            TreeItem category = categories:Next()
+            category:Close()
+        end
+        categories:Rewind()
+        TreeItem firstItem = categories:Next()
+        firstItem:Open()
+        
+        templateTree:Select(initialSelection)
         templateTree:Focus()
-//
-        //Tab tab = tabPane:GetSelectedTab()
-        //if not tab:Equals(tabPane:Get(0))
-            //tab:Activate()
-        //end
-//
-        //locationField:SetText(studio:GetProjectsFolder():GetAbsolutePath())
+        
+        locationField:SetText(studio:GetProjectsFolder():GetAbsolutePath())
     end
 
     action GetSelectedProject returns text
@@ -370,6 +417,7 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
     
     action SetupDefaultPage()
         Page page1 = InitializeDefaultPage()
+        page1:SetName("Template Page")
         Color color
         LayoutProperties properties
         page1:SetScrollRegionResizing(page1:parent:ScrollPane:MANUAL_REGION_SIZING)
@@ -392,9 +440,16 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         FormScrollPane treeContainer
         treeContainer:SetPercentageHeight(0.85)
         treeContainer:SetView2D(panelShader)
+        treeContainer:SetCornerPixelRounding(10,10,10,10)
+        treeContainer:SetBorderThickness(1)
         treeContainer:SetBackgroundColor(color:White())
+        //treeContainer:GetScrollableRegion():SetBorderThickness(1)
+        //treeContainer:GetScrollableRegion():SetCornerPixelRounding(10,10,10,10)
         leftPanel:Add(treeContainer)
+        // set the tree field
         me:templateTree = treeContainer:AddTree("TemplateTree")
+        templateTree:SetTopMargin(15)
+        templateTree:SetLeftMargin(15)
         
         FormPanel rightPanel
         rightPanel:SetPercentageHeight(1.0)
@@ -407,9 +462,22 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         ControlShaderView iconPanelShader
         iconPanelShader:Initialize()
         iconPanel:SetView2D(iconPanelShader)
+        ManualLayout iconPanelLayout
+        iconPanel:SetLayout(iconPanelLayout)
         iconPanel:SetBackgroundColor(color:White())
         iconPanel:SetCornerPixelRounding(10,10,10,10)
         iconPanel:SetBorderThickness(1)
+        
+        Icon temp
+        me:templateVisual = temp
+        templateVisual:SetPercentageHeight(0.9)
+        templateVisual:SetPercentageWidth(0.9)
+        templateVisual:SetPercentageOriginX(0.5)
+        templateVisual:SetPercentageOriginY(0.5)
+        templateVisual:SetPercentageX(0.5)
+        templateVisual:SetPercentageY(0.5)
+        
+        iconPanel:Add(templateVisual)
         rightPanel:Add(iconPanel)
         
         FormPanel labelContainer
@@ -418,18 +486,21 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         labelContainer:SetView2D(labelContainerShader)
         FormRowLayout labelLayout
         labelContainer:SetLayout(labelLayout)
-        labelContainer:SetPercentageHeight(0.3)
+        labelContainer:LeftAlignContent()
+        labelContainer:SetPercentageHeight(0.333)
         labelContainer:SetBackgroundColor(color:White())
         labelContainer:SetBorderThickness(1)
         labelContainer:SetCornerPixelRounding(10,10,10,10)
+        // set the label field
         me:templateDescription = labelContainer:AddLabel("TemplateDescription")
-        templateDescription:SetText(" This a blank template for starting from scratch")
+        templateDescription:SetText("This a blank template for starting from scratch")
         
         rightPanel:Add(labelContainer)
         Grouping nextGroup
         nextGroup:PositionFromBottom()
-        nextGroup:AddButton("Next")
+        Button nextButton = nextGroup:AddButton("Next")
         rightPanel:Add(nextGroup)
+        nextButton:SetBehavior(me:nextBehavior)
         
         FlowLayout outerLayout
         outerLayout:SetSingleLine(true)
@@ -437,7 +508,7 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         page1:Add(leftPanel)
         page1:Add(rightPanel)
         //page1:SetCornerRounding(10,10,0,0)
-        page1:SetBorderThickness(1)
+        page1:SetBorderThickness(GetBorderThickness())
         page1:SetBorderColor(GetBorderColor())
         
         SetupTemplateTree(templateTree)
@@ -445,43 +516,46 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
     
     action SetupTemplateTree(Tree tree)
         TreeItem generalTemplates = MakeTreeItem("General")
-        generalTemplates:Add(MakeTreeItem("Blank"))
-        generalTemplates:Add(MakeTreeItem("App"))
-        generalTemplates:Add(MakeTreeItem("Game"))
-        generalTemplates:Add(MakeTreeItem("Scene"))
-        generalTemplates:Add(MakeTreeItem("Mobile"))
+        initialSelection:Add(generalTemplates)
+        TreeItem blank = MakeTreeItem(BLANK)
+        initialSelection:Add(blank)
+        generalTemplates:Add(blank)
+        generalTemplates:Add(MakeTreeItem(APP))
+        generalTemplates:Add(MakeTreeItem(GAMES))
+        generalTemplates:Add(MakeTreeItem(SCENE))
+        generalTemplates:Add(MakeTreeItem(MOBILE))
         tree:Add(generalTemplates)
         
         TreeItem gameTemplates = MakeTreeItem("Games")
-        gameTemplates:Add(MakeTreeItem("ImageSheets"))
-        gameTemplates:Add(MakeTreeItem("2D Physics"))
-        gameTemplates:Add(MakeTreeItem("3D Physics"))
-        gameTemplates:Add(MakeTreeItem("Skybox"))
-        gameTemplates:Add(MakeTreeItem("2D Scene"))
-        gameTemplates:Add(MakeTreeItem("3D Scene"))
+        gameTemplates:Add(MakeTreeItem(IMAGE_SHEET))
+        gameTemplates:Add(MakeTreeItem(PHYSICS2D))
+        gameTemplates:Add(MakeTreeItem(PHYSICS3D))
+        gameTemplates:Add(MakeTreeItem(SKYBOX))
+        gameTemplates:Add(MakeTreeItem(SCENE2D))
+        gameTemplates:Add(MakeTreeItem(SCENE3D))
         tree:Add(gameTemplates)
         
         TreeItem dataTemplates  = MakeTreeItem("Data Science")
-        dataTemplates:Add(MakeTreeItem("Bar Chart"))
-        dataTemplates:Add(MakeTreeItem("Pie Chart"))
-        dataTemplates:Add(MakeTreeItem("Scatter Plot"))
-        dataTemplates:Add(MakeTreeItem("Descriptive Statistics"))
-        dataTemplates:Add(MakeTreeItem("Correlations"))
-        dataTemplates:Add(MakeTreeItem("Compare Means"))
+        dataTemplates:Add(MakeTreeItem(BAR_CHART))
+        dataTemplates:Add(MakeTreeItem(PIE_CHART))
+        dataTemplates:Add(MakeTreeItem(SCATTERPLOT))
+        dataTemplates:Add(MakeTreeItem(DESCRIPTIVES))
+        dataTemplates:Add(MakeTreeItem(CORRELATIONS))
+        dataTemplates:Add(MakeTreeItem(COMPARE_MEANS))
         tree:Add(dataTemplates)
         
         TreeItem soundTemplates = MakeTreeItem("Sound")
-        soundTemplates:Add(MakeTreeItem("Play Sound"))
-        soundTemplates:Add(MakeTreeItem("Sine Wave"))
-        soundTemplates:Add(MakeTreeItem("MIDI"))
+        soundTemplates:Add(MakeTreeItem(PLAY_SOUND))
+        soundTemplates:Add(MakeTreeItem(SINE_WAVE))
+        soundTemplates:Add(MakeTreeItem(MIDI))
         tree:Add(soundTemplates)
         
         TreeItem otherTemplates = MakeTreeItem("Other")
-        otherTemplates:Add(MakeTreeItem("Database"))
-        otherTemplates:Add(MakeTreeItem("Lego EV3"))
-        otherTemplates:Add(MakeTreeItem("Document"))
-        otherTemplates:Add(MakeTreeItem("Networking"))
-        otherTemplates:Add(MakeTreeItem("Lego Spike"))
+        otherTemplates:Add(MakeTreeItem(DATABASE))
+        otherTemplates:Add(MakeTreeItem(LEGO_MINDSTORMS))
+        otherTemplates:Add(MakeTreeItem(DOCUMENT))
+        otherTemplates:Add(MakeTreeItem(INTERNET_SERVICE))
+        otherTemplates:Add(MakeTreeItem(LEGO_SPIKE_MOVE))
         tree:Add(otherTemplates)
     end
     
@@ -489,8 +563,21 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         TreeItem item
         Color color
         item:SetBackgroundColor(color:White())
+        item:SetBehavior(nextBehavior)
         item:SetName(name)
         return item
     end
     
+    action GetProjectNamePage returns Page
+        return projectNamePage
+    end
+
+    action GetTemplatePage returns Page
+        return templatePage
+    end
+
+    action GetOkBehavior returns NewProjectOkBehavior
+        return okBehavior
+    end
+
 end
