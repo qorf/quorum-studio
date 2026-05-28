@@ -21,6 +21,8 @@ use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Containers.Iterator
 use Libraries.Interface.Pages.StackedRowPage
 use Libraries.Interface.Forms.Banner
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Layouts.StackLayout
 
 class FindInProjectDialog is Dialog
     boolean initialized = false
@@ -70,16 +72,16 @@ class FindInProjectDialog is Dialog
         SetName("Find In Project")
         SetPercentageWidth(0.3)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:STANDARD)
-        SetPercentageHeight(0.6)
+        SetPercentageHeight(0.35)
         LoadDialogPage()
     end
 
     action LoadDialogPage
-        StackedRowPage page
-        page:SetVerticalLayoutMode(parent:Control:FILL)
-        Banner banner = page:AddBanner("Find In Project", 
-            "Find items within a folder")
-        banner:PositionFromTop()
+        Page page = InitializeDefaultPage()
+        page:LeftAlignContent()
+        //Banner banner = page:AddBanner("Find In Project", 
+//            "Find items within a folder")
+        //banner:PositionFromTop()
 
         //add radio buttons
         page:AddLabel("Contains Text")
@@ -87,6 +89,8 @@ class FindInProjectDialog is Dialog
 
         page:AddLabel("Settings")
         Grouping settings = page:AddGrouping("Settings")
+        StackLayout settingsLayout
+        settings:SetLayout(settingsLayout)
         wholeWordCheckbox = settings:AddCheckbox("Whole Word")
         matchCaseCheckbox = settings:AddCheckbox("Match Case")
         
@@ -97,8 +101,6 @@ class FindInProjectDialog is Dialog
 
         cancelButton:SetBehavior(cancelBehavior)
         okayButton:SetBehavior(findBehavior)
-
-        Add(page)
     end
 
     action GetQuery returns text

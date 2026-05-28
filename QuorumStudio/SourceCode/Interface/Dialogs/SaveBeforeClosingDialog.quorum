@@ -13,6 +13,8 @@ use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
 
 class SaveBeforeClosingDialog is Dialog
     GameStateManager manager
@@ -46,87 +48,46 @@ class SaveBeforeClosingDialog is Dialog
 
         SetName("Save Before Closing")
         SetPixelWidth(450)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)    
+        SetPixelHeight(150)
 
-        ControlShaderView view
-        view:Initialize()
         
-        Control panel
-        LayoutProperties properties = GetDefaultLayoutProperties()
-        FlowLayout newFileLayout
-        panel:SetLayout(newFileLayout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(110)
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetBorderThickness(1)
-        panel:Add(CreateSaveChangesControl())
-        panel:SetView2D(view)
-        Add(panel)
+        CreateSaveChangesControl()
     end
 
-    private action CreateSaveChangesControl returns Control
-        Color color
-        Control control
-        FlowLayout layout
-        control:SetLayout(layout)
-        control:SetBorderThickness(1)
-        control:SetBorderColor(color:Black())
-        control:SetPercentageWidth(1.0)
-        control:SetVerticalLayoutMode(control:FIT_CONTENTS)
+    private action CreateSaveChangesControl
+        Page page = InitializeDefaultPage()
         
-        Label warningLabel
+        Color color
+        
+        Label warningLabel = page:AddLabel("Unsaved")
+        warningLabel:SetFontSize(14)
         warningLabel:SetText("You have unsaved changes , would you like to save before closing?")
-        warningLabel:SetTopMargin(20)
-        warningLabel:SetLeftMargin(10)
-        warningLabel:SetRightMargin(10)
-        warningLabel:SetPercentageWidth(1.0)
-        control:Add(warningLabel)
 
-        Control buttonContainer
-        FlowLayout buttonLayout
-        buttonContainer:SetLayout(buttonLayout)
-        buttonContainer:SetPercentageWidth(1.0)
-        buttonContainer:SetVerticalLayoutMode(buttonContainer:FIT_CONTENTS)
-        buttonContainer:SetTopMargin(50)
-        buttonContainer:SetBottomMargin(20)
+        Grouping buttonGrouping = page:AddGrouping("Confirm Group")
+        buttonGrouping:PositionFromBottom()
 
-        Control buttonMargin
-        buttonMargin:SetPercentageWidth(0.2)
-        buttonMargin:SetPixelHeight(1)
-        buttonContainer:Add(buttonMargin)
-
+        saveButton = buttonGrouping:AddButton("Save")
         if singleItemWording
             saveButton:SetName("Save")
         else
                 saveButton:SetName("Save All")
 end
-        saveButton:SetBehavior(saveBehavior) //sets the selection to save all integer value
-        saveButton:SetNextFocus(discardButton)
-        saveButton:SetPreviousFocus(cancelButton)
-        saveButton:SetRightMargin(50)
-        buttonContainer:Add(saveButton) 
+        saveButton:SetBehavior(saveBehavior) 
+        saveButton:SetFontSize(14)
 
+        discardButton = buttonGrouping:AddButton("Don't Save")
         if singleItemWording
             discardButton:SetName("Don't Save")
         else
             discardButton:SetName("Discard All")
         end
-        discardButton:SetBehavior(discardBehavior)   //sets the selection to discard changes integer value
-        discardButton:SetNextFocus(cancelButton)
-        discardButton:SetPreviousFocus(saveButton)
-        discardButton:SetRightMargin(50)
-        buttonContainer:Add(discardButton)
+        discardButton:SetBehavior(discardBehavior)   
+        discardButton:SetFontSize(14)
 
+        cancelButton = buttonGrouping:AddButton("Cancel")
         cancelButton:SetName("Cancel")
-        cancelButton:SetBehavior(cancelBehavior) //sets the selection to cancel exit integer value
-        cancelButton:SetNextFocus(saveButton)
-        cancelButton:SetPreviousFocus(cancelButton)
-        buttonContainer:Add(cancelButton)
-
-        buttonContainer:Add(buttonMargin)
-        control:Add(buttonContainer)
-        
-        return control
+        cancelButton:SetBehavior(cancelBehavior) 
+        cancelButton:SetFontSize(14)
     end
 
     action OnHide()

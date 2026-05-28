@@ -11,6 +11,7 @@ use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Forms.Page
 
 class ErrorDialog is Dialog
     Label lineLabel
@@ -24,68 +25,25 @@ class ErrorDialog is Dialog
     on create
         SetModal(true)
         SetName("Error")
-        lineLabel:SetFocusable(true)
-        lineLabel:SetName(error)
-        lineLabel:SetText(error)
         Setup()
     end
 
     private action Setup
         SetPercentageWidth(0.50) 
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        SetPixelHeight(150)
         defaultCancelBehavior:SetDialog(me)
 
-        SetNextFocus(lineLabel)
-        SetPreviousFocus(ok)
+Page page = InitializeDefaultPage()
 
-        ControlShaderView view
-        view:Initialize()
-
-        integer leftMargin = 40
-        LayoutProperties props = lineLabel:GetDefaultLayoutProperties()
-        props:SetPercentageOriginX(0.5)
-        props:SetPercentageOriginY(0.5)
-        props:SetPercentageX(0.3)
-        props:SetPercentageY(0.5)
-        lineLabel:SetPercentageWidth(1.0)
-        lineLabel:SetLeftMargin(leftMargin)
-        lineLabel:SetRightMargin(10000) //is there a better way?
-        lineLabel:SetNextFocus(cancel)
-        lineLabel:SetPreviousFocus(cancel)
-
-        props = cancel:GetDefaultLayoutProperties()
-        props:SetPercentageOriginX(0.5)
-        props:SetPercentageOriginY(0.5)
-        props:SetPercentageX(0.7)
-        props:SetPercentageY(0.5)
+        lineLabel = page:AddLabel(error)
+        cancel = page:AddButton("OK")
         
         cancel:SetName("OK")
-        cancel:SetTopMargin(50)
-        cancel:SetFontSize(14)
-        cancel:SetLeftMargin(leftMargin)
-        cancel:SetHorizontalLayoutMode(props:STANDARD)
-        cancel:SetPercentageWidth(0.25)
-        cancel:SetFocusable(true)
-        cancel:SetNextFocus(lineLabel)
         cancel:SetBehavior(defaultCancelBehavior)
-        cancel:SetPreviousFocus(lineLabel)
-
-
-        FlowLayout findLayout
-        panel:SetLayout(findLayout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(80)
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetBorderThickness(1)
-
-        panel:Add(lineLabel)
-        panel:Add(cancel)
-        panel:SetView2D(view)
-        Add(panel)
     end
 
     action OnShow
-        cancel:Focus()
+        GetDefaultPage():GetFirstFocusableItem():Focus()
     end
 
     action GetError returns text

@@ -24,6 +24,8 @@ use Libraries.Concurrency.ThreadRunner
 use Libraries.Development.Environment.Studio.Behaviors.ThreadedBehavior
 use Libraries.Development.Environment.Studio.Behaviors.CommitDialogOkButtonBehavior
 use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
 
 class CommitDialog is Dialog
     ThreadRunner gitRunner = undefined
@@ -39,80 +41,38 @@ class CommitDialog is Dialog
     DialogCancelBehavior cancelBehavior
     on create
         SetModal(true)
-        parent:Item:visible = false
+        
     end
 
     action Setup
         if initialized
-            lineTextField:SetText("")
             return now
         end
         initialized = true
+        LayoutProperties properties
 
         SetName("Commit Dialog")
         SetPercentageWidth(0.50) 
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        SetPixelHeight(175)
+        
         okBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
         SetBehavior(okBehavior)
 
-        SetNextFocus(lineLabel)
-        SetPreviousFocus(ok)
+        Page page = InitializeDefaultPage()
+        page:LeftAlignContent()
+        lineLabel = page:AddLabel("Message: ")
+        lineTextField = page:AddTextField("Commit Message")
 
-        ControlShaderView view
-        view:Initialize()
-
-        lineLabel:SetText("Message: ")
-        lineLabel:SetNextFocus(lineTextField)
-        lineLabel:SetPreviousFocus(ok)        
-
+        Grouping buttonGroup = page:AddGrouping("Buttons")
         //setup the ok button
-        ok:SetName("Commit")
-        ok:SetFontSize(14)
-        ok:SetLeftMargin(10)
-        ok:SetRightMargin(10)
-        ok:SetBottomMargin(10)
-        ok:SetTopMargin(15)
-        ok:SetHorizontalLayoutMode(ok:parent:Libraries.Interface.Controls.Control:STANDARD)
-        ok:SetPercentageWidth(0.3)
-        ok:SetFocusable(true)
-        ok:SetNextFocus(lineTextField)
+        ok = buttonGroup:AddButton("Commit")
         ok:SetBehavior(okBehavior)
-        ok:SetPreviousFocus(cancel)
 
-        cancel:SetName("Cancel")
-        cancel:SetFontSize(14)
-        cancel:SetLeftMargin(200)
-        cancel:SetBottomMargin(10)
-        cancel:SetTopMargin(15)
-        cancel:SetHorizontalLayoutMode(ok:parent:Libraries.Interface.Controls.Control:STANDARD)
-        cancel:SetPercentageWidth(0.3)
-        cancel:SetFocusable(true)
-        cancel:SetNextFocus(ok)
+        cancel = buttonGroup:AddButton("Cancel")
         cancel:SetBehavior(cancelBehavior)
-        cancel:SetPreviousFocus(lineTextField)
+        buttonGroup:PositionFromBottom()
 
-        lineTextField:SetName("Commit Message")
-        lineTextField:SetHorizontalLayoutMode(lineTextField:parent:Libraries.Interface.Controls.Control:FILL)
-        lineTextField:SetFocusable(true)
-        lineTextField:SetNextFocus(cancel)
-        lineTextField:SetPreviousFocus(ok)
-
-        LayoutProperties properties
-        Control panel
-        FlowLayout findLayout
-        panel:SetLayout(findLayout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(70)
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetBorderThickness(1)
-
-        panel:Add(lineLabel)
-        panel:Add(lineTextField)
-        panel:Add(cancel)
-        panel:Add(ok)
-        panel:SetView2D(view)
-        Add(panel)
     end
 
     action GetMessage returns text
@@ -121,12 +81,12 @@ class CommitDialog is Dialog
 
     action OnShow
         lineTextField:Focus()
-        parent:Item:visible = true
+        lineTextField:SetText("")
     end
     
     action OnHide
-        parent:Item:visible = false
     end
+    
     action GetGitRunner returns ThreadRunner
         return gitRunner
     end

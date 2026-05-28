@@ -20,6 +20,9 @@ use Libraries.Game.InputSet
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Game.InputTable
 use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Forms.FormPanel
 
 class GoToLineDialog is Dialog, TextChangeListener
     boolean initialized = false
@@ -44,53 +47,31 @@ class GoToLineDialog is Dialog, TextChangeListener
 
         SetName("Go To Line Dialog")
         SetPixelWidth(400)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        SetPixelHeight(135)
         okBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
         SetBehavior(okBehavior)
 
-        SetNextFocus(lineLabel)
-        SetPreviousFocus(ok)
+        LayoutProperties properties
+        Page page = InitializeDefaultPage() 
+        page:LeftAlignContent()
+        
+        FormPanel goToPanel
+        FlowLayout goToLayout
+        goToPanel:SetLayout(goToLayout)
+        page:Add(goToPanel)
+        lineLabel = goToPanel:AddLabel("Go To Line")
+        lineLabel:SetHorizontalLayoutMode(properties:STANDARD)
+        lineLabel:SetPercentageWidth(0.2)
+        lineLabel:SetFontSize(14)
+        lineLabel:SetLeftMargin(20)
+        lineLabel:SetPositionOnBaseLine(false)
 
-        ControlShaderView view
-        view:Initialize()
-
-        lineLabel:SetText("Go To Line")
-        lineLabel:SetNextFocus(lineTextField)
-        lineLabel:SetPreviousFocus(ok)
-
-        //setup the ok button
-        ok:SetName("Go To")
-        ok:SetFontSize(14)
-        ok:SetLeftMargin(10)
-        ok:SetRightMargin(10)
-        ok:SetBottomMargin(10)
-        ok:SetTopMargin(15)
-        ok:SetHorizontalLayoutMode(ok:parent:Libraries.Interface.Controls.Control:STANDARD)
-        ok:SetPercentageWidth(0.3)
-        ok:SetFocusable(true)
-        ok:SetNextFocus(lineTextField)
-        ok:SetBehavior(okBehavior)
-        ok:SetPreviousFocus(cancel)
-
-        cancel:SetName("Cancel")
-        cancel:SetFontSize(14)
-        cancel:SetLeftMargin(200)
-        cancel:SetBottomMargin(10)
-        cancel:SetTopMargin(15)
-        cancel:SetHorizontalLayoutMode(ok:parent:Libraries.Interface.Controls.Control:STANDARD)
-        cancel:SetPercentageWidth(0.3)
-        cancel:SetFocusable(true)
-        cancel:SetNextFocus(ok)
-        cancel:SetBehavior(cancelBehavior)
-        cancel:SetPreviousFocus(lineTextField)
-
-        lineTextField:SetName("Go To Line")
-        lineTextField:SetHorizontalLayoutMode(lineTextField:parent:Libraries.Interface.Controls.Control:FILL)
-        lineTextField:SetFocusable(true)
-        lineTextField:SetNextFocus(cancel)
-        lineTextField:SetPreviousFocus(ok)
-
+        lineTextField = goToPanel:AddTextField("Go To Line Field")
+lineTextField:SetFontSize(14)
+        lineTextField:SetHorizontalLayoutMode(properties:STANDARD)
+        lineTextField:SetPercentageWidth(0.7)
+        
         InputSet enterSet
         InputSet numEnterSet
         KeyboardEvent keys
@@ -101,25 +82,20 @@ class GoToLineDialog is Dialog, TextChangeListener
         table:Add(enterSet, okBehavior)
         table:Add(numEnterSet, okBehavior)
         
-
         lineTextField:SetText("")
         lineTextField:AddTextChangeListener(me)
+        
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        buttonGroup:PositionFromBottom()
+        cancel= buttonGroup:AddButton("Cancel")
+        cancel:SetFontSize(14)
+        cancel:SetBehavior(cancelBehavior)
+        
+//setup the ok button
+        ok = buttonGroup:AddButton("Go To")
+        ok:SetFontSize(14)
+        ok:SetBehavior(okBehavior)
 
-        LayoutProperties properties
-        Control panel
-        FlowLayout findLayout
-        panel:SetLayout(findLayout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(50)
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetBorderThickness(1)
-
-        panel:Add(lineLabel)
-        panel:Add(lineTextField)
-        panel:Add(cancel)
-        panel:Add(ok)
-        panel:SetView2D(view)
-        Add(panel)
     end
 
     action TextChanged(TextChangeEvent event)

@@ -28,23 +28,27 @@ use Libraries.Development.Environment.Studio.Behaviors.CloneDialogOkButtonBehavi
 use Libraries.Development.Environment.Studio.Behaviors.OpenBrowseFoldersBehavior
 use Libraries.Development.Environment.Studio.Behaviors.BrowseForCloneLocationBehavior
 use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.FormPanel
+use Libraries.Interface.Forms.Grouping
 
 class CloneDialog is Dialog
     ThreadRunner gitRunner = undefined
     ThreadedBehavior threadedCloneRequestBehavior = undefined
     CloneRequestBehavior cloneRequestBehavior = undefined
     boolean initialized = false
-    Button ok
-    Button cancel
-    Button browseButton
-    TextField urlTextField
-    TextField browseTextField
-    TextField usernameTextField
-    TextField passwordTextField
-    Label urlLabel
-    Label browseLabel
-    Label usernameLabel
-    Label passwordLabel
+    
+    Button ok = undefined
+    Button cancel = undefined
+    Button browseButton = undefined
+    TextField urlTextField = undefined
+    TextField browseTextField = undefined
+    TextField usernameTextField = undefined
+    TextField passwordTextField = undefined
+    Label urlLabel = undefined
+    Label browseLabel = undefined
+    Label usernameLabel = undefined
+    Label passwordLabel = undefined
 
     CloneDialogOkButtonBehavior okBehavior
     DialogCancelBehavior cancelBehavior
@@ -52,204 +56,146 @@ class CloneDialog is Dialog
 
     on create
         SetModal(true)
-        parent:Item:visible = false
+        SetVerticalLayoutMode(parent:Control:STANDARD)
     end
 
     action Setup
-        if initialized
-            urlTextField:SetText("")
-            browseTextField:SetText("")
-            usernameTextField:SetText("")
-            passwordTextField:SetText("")
+if initialized
             return now
         end
         initialized = true
-        passwordTextField:SetPassword(true)
 
         browseBehavior:SetDialog(me)
         SetName("Clone Dialog")
-        SetPixelWidth(400)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        SetPercentageWidth(0.45)
+        SetPixelHeight(250)
+        SetCornerRounding(0.1,0.1,0.1,0.1)
 
         okBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
         SetBehavior(okBehavior)
 
-        SetNextFocus(urlLabel)
-        SetPreviousFocus(ok)
-
-        ControlShaderView view
-        view:Initialize()
+        Page page = InitializeDefaultPage()
+        page:LeftAlignContent()
 
         number leftMargin = 20
 
-        Control urlContainer
+        LayoutProperties properties
+        
+        FormPanel urlContainer
         urlContainer:SetPercentageWidth(1.0)
-        urlContainer:SetVerticalLayoutMode(urlContainer:FIT_CONTENTS)        
+        urlContainer:SetVerticalLayoutMode(properties:FIT_CONTENTS)        
         FlowLayout urlLayout
         urlContainer:SetLayout(urlLayout)
-        urlContainer:SetTopMargin(20)
-        urlContainer:SetRightMargin(20)
+        //urlContainer:SetTopMargin(20)
+        //urlContainer:SetRightMargin(20)
 
+        urlLabel = urlContainer:AddLabel("Clone")
         urlLabel:SetText("Clone")
-        urlLabel:SetHorizontalLayoutMode(urlContainer:STANDARD)
+        urlLabel:SetPositionOnBaseLine(false)
+        urlLabel:SetHorizontalLayoutMode(properties:STANDARD)
         urlLabel:SetLeftMargin(leftMargin)
         urlLabel:SetPercentageWidth(0.15)
-        urlLabel:SetNextFocus(urlTextField)
-        urlLabel:SetPreviousFocus(ok)
 
-        urlTextField:SetName("Clone")
-        urlTextField:SetHorizontalLayoutMode(urlTextField:parent:Libraries.Interface.Controls.Control:FILL)
-        urlTextField:SetFocusable(true)
-        urlTextField:SetNextFocus(browseTextField)
-        urlTextField:SetPreviousFocus(ok)
+        urlTextField = urlContainer:AddTextField("Clone Field")
+        urlTextField:SetHorizontalLayoutMode(properties:STANDARD)
+        urlTextField:SetPercentageWidth(0.75)
+        urlTextField:SetBorderThickness(1.5)
+        
+        page:Add(urlContainer)
 
-        urlContainer:Add(urlLabel)
-        urlContainer:Add(urlTextField)
-
-        Control locationContainer
+        FormPanel locationContainer
         locationContainer:SetPercentageWidth(1.0)
-        locationContainer:SetVerticalLayoutMode(locationContainer:FIT_CONTENTS)
+        locationContainer:SetVerticalLayoutMode(properties:FIT_CONTENTS)
         FlowLayout locationLayout
         locationContainer:SetLayout(locationLayout)
         locationContainer:SetTopMargin(20)
         locationContainer:SetRightMargin(20)
 
-        browseLabel:SetText("Location")
+        browseLabel = locationContainer:AddLabel("Location")
+        browseLabel:SetPositionOnBaseLine(false)
         browseLabel:SetLeftMargin(leftMargin)
-        browseLabel:SetHorizontalLayoutMode(locationContainer:STANDARD)
+        browseLabel:SetHorizontalLayoutMode(properties:STANDARD)
         browseLabel:SetPercentageWidth(0.15)
-        browseLabel:SetNextFocus(browseTextField)
-        browseLabel:SetPreviousFocus(urlTextField)
 
-        browseTextField:SetName("Location")
-        browseTextField:SetPercentageWidth(0.45)
-        browseTextField:SetHorizontalLayoutMode(urlTextField:parent:Libraries.Interface.Controls.Control:STANDARD)
-        browseTextField:SetFocusable(true)
-        browseTextField:SetNextFocus(browseButton)
-        browseTextField:SetPreviousFocus(urlTextField)
+        browseTextField = locationContainer:AddTextField("Location Field")
+        browseTextField:SetPercentageWidth(0.4)
+        browseTextField:SetHorizontalLayoutMode(properties:STANDARD)
+        browseTextField:SetBorderThickness(1.5)
 
         Control browseSpacer
-        browseSpacer:SetPixelWidth(10)
+        browseSpacer:SetPercentageWidth(0.05)
         browseSpacer:SetPixelHeight(1)
-
-        browseButton:SetName("Browse...")
-        browseButton:SetHorizontalLayoutMode(browseButton:parent:Libraries.Interface.Controls.Control:FILL)
-        browseButton:SetFocusable(true)
-        browseButton:SetNextFocus(usernameTextField)
-        browseButton:SetPreviousFocus(browseTextField)
-        browseButton:SetBehavior(browseBehavior)
-
-        locationContainer:Add(browseLabel)
-        locationContainer:Add(browseTextField)
         locationContainer:Add(browseSpacer)
-        locationContainer:Add(browseButton)
 
-        Control usernameContainer
+        browseButton = locationContainer:AddButton("Browse...")
+        browseButton:SetVerticalLayoutMode(properties:FIT_FONT)
+        browseButton:SetHorizontalLayoutMode(properties:STANDARD)
+        browseButton:SetPercentageWidth(0.3)
+        browseButton:SetFontSize(14)
+        browseButton:SetBehavior(browseBehavior)
+        browseButton:SetBorderThickness(1.1)
+        
+        page:Add(locationContainer)
+
+        FormPanel usernameContainer
         usernameContainer:SetPercentageWidth(1.0)
-        usernameContainer:SetVerticalLayoutMode(usernameContainer:FIT_CONTENTS)
+        usernameContainer:SetVerticalLayoutMode(properties:FIT_CONTENTS)
         FlowLayout usernameLayout
         usernameContainer:SetLayout(usernameLayout)
         usernameContainer:SetTopMargin(20)
         usernameContainer:SetRightMargin(20)
 
-        usernameLabel:SetText("Username")
+        usernameLabel = usernameContainer:AddLabel("Username")
+        usernameLabel:SetPositionOnBaseLine(false)
         usernameLabel:SetLeftMargin(leftMargin)
-        usernameLabel:SetNextFocus(usernameTextField)
-        usernameLabel:SetPreviousFocus(browseButton)
-        usernameLabel:SetHorizontalLayoutMode(usernameContainer:STANDARD)
+        usernameLabel:SetHorizontalLayoutMode(properties:STANDARD)
         usernameLabel:SetPercentageWidth(0.15)
 
-        usernameTextField:SetName("Username")
-        usernameTextField:SetHorizontalLayoutMode(urlTextField:parent:Libraries.Interface.Controls.Control:FILL)
-        usernameTextField:SetFocusable(true)
-        usernameTextField:SetNextFocus(passwordTextField)
-        usernameTextField:SetPreviousFocus(browseButton)
+        usernameTextField = usernameContainer:AddTextField("Username Field")
+        usernameTextField:SetHorizontalLayoutMode(properties:STANDARD)
+        usernameTextField:SetPercentageWidth(0.75)
+        usernameTextField:SetBorderThickness(1.5)
+        
+        page:Add(usernameContainer)
 
-        usernameContainer:Add(usernameLabel)
-        usernameContainer:Add(usernameTextField)
-
-        Control passwordContainer
+        FormPanel passwordContainer
         passwordContainer:SetPercentageWidth(1.0)
-        passwordContainer:SetVerticalLayoutMode(passwordContainer:FIT_CONTENTS)
+        passwordContainer:SetVerticalLayoutMode(properties:FIT_CONTENTS)
         FlowLayout passwordLayout
         passwordContainer:SetLayout(passwordLayout)
         passwordContainer:SetTopMargin(20)
         passwordContainer:SetRightMargin(20)
 
-        passwordLabel:SetText("Password")
-        passwordLabel:SetHorizontalLayoutMode(passwordContainer:STANDARD)
+        passwordLabel = passwordContainer:AddLabel("Password")
+        passwordLabel:SetHorizontalLayoutMode(properties:STANDARD)
+        passwordLabel:SetPositionOnBaseLine(false)
         passwordLabel:SetPercentageWidth(0.15)
         passwordLabel:SetLeftMargin(leftMargin)
-        passwordLabel:SetNextFocus(passwordTextField)
-        passwordLabel:SetPreviousFocus(browseTextField)
 
-        passwordTextField:SetName("Password")
-        passwordTextField:SetHorizontalLayoutMode(urlTextField:parent:Libraries.Interface.Controls.Control:FILL)
-        passwordTextField:SetFocusable(true)
-        passwordTextField:SetNextFocus(cancel)
-        passwordTextField:SetPreviousFocus(browseTextField)
-
-        passwordContainer:Add(passwordLabel)
-        passwordContainer:Add(passwordTextField)
-
-        Control buttonContainer
-        buttonContainer:SetPercentageWidth(1.0)
-        buttonContainer:SetVerticalLayoutMode(buttonContainer:FIT_CONTENTS)
-        FlowLayout buttonLayout
-        buttonContainer:SetLayout(buttonLayout)
-        buttonContainer:SetTopMargin(20)
-        buttonContainer:SetBottomMargin(20)
+        passwordTextField = passwordContainer:AddTextField("Password Field")
+        passwordTextField:SetPassword(true)
+        passwordTextField:SetHorizontalLayoutMode(properties:STANDARD)
+        passwordTextField:SetPercentageWidth(0.75)
+        passwordTextField:SetBorderThickness(1.5)
         
-        Control spacer1
-        spacer1:SetPercentageWidth(0.2)
-        spacer1:SetPixelHeight(1)
+        page:Add(passwordContainer)
 
+        Grouping buttonContainer = page:AddGrouping("Button Container")
+        buttonContainer:PositionFromBottom()
+        
+        cancel = buttonContainer:AddButton("Cancel")
         cancel:SetName("Cancel")
         cancel:SetFontSize(14)
-        cancel:SetHorizontalLayoutMode(ok:parent:Libraries.Interface.Controls.Control:STANDARD)
         cancel:SetPercentageWidth(0.25)
-        cancel:SetFocusable(true)
-        cancel:SetNextFocus(ok)
         cancel:SetBehavior(cancelBehavior)
-        cancel:SetPreviousFocus(passwordTextField)
-
-        Control spacer2
-        spacer2:SetPercentageWidth(0.1)
-        spacer2:SetPixelHeight(1)
 
         //setup the ok button
-        ok:SetName("Clone")
+        ok = buttonContainer:AddButton("Clone")
         ok:SetFontSize(14)
-        ok:SetHorizontalLayoutMode(ok:parent:Libraries.Interface.Controls.Control:STANDARD)
         ok:SetPercentageWidth(0.25)
-        ok:SetFocusable(true)
-        ok:SetNextFocus(urlTextField)
         ok:SetBehavior(okBehavior)
-        ok:SetPreviousFocus(cancel)
 
-        buttonContainer:Add(spacer1)
-        buttonContainer:Add(cancel)
-        buttonContainer:Add(spacer2)
-        buttonContainer:Add(ok)
-
-        LayoutProperties properties
-        Control panel
-        FlowLayout findLayout
-        panel:SetLayout(findLayout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetVerticalLayoutMode(panel:FIT_CONTENTS)
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetBorderThickness(2)
-
-        panel:Add(urlContainer)
-        panel:Add(locationContainer)
-        panel:Add(usernameContainer)
-        panel:Add(passwordContainer)
-        panel:Add(buttonContainer)
-
-        panel:SetView2D(view)
-        Add(panel)
     end
 
     action UpdateFolderName(text name)
@@ -273,13 +219,16 @@ class CloneDialog is Dialog
     end
 
     action OnShow
-        urlTextField:Focus()
-        parent:Item:visible = true
+        GetDefaultPage():GetFirstFocusableItem():Focus()
+        urlTextField:SetText("")
+            browseTextField:SetText("")
+            usernameTextField:SetText("")
+            passwordTextField:SetText("")
     end
     
     action OnHide
-        parent:Item:visible = false
     end
+    
     action GetGitRunner returns ThreadRunner
         return gitRunner
     end
