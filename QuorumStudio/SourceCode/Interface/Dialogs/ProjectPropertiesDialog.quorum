@@ -58,6 +58,9 @@ use Libraries.Interface.Forms.Grouping
 use Libraries.Interface.Forms.Banner
 use Libraries.Interface.Layouts.ManualLayout
 use Libraries.Interface.Pages.StackedRowPage
+use Libraries.Interface.Layouts.StackLayout
+use Libraries.Interface.Forms.FormPanel
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesCopyLocationBehavior
 
 class ProjectPropertiesDialog is Dialog, MouseWheelListener
 
@@ -69,18 +72,20 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     File sourceLocation = undefined
 
     // Variables for the Project Information tab.
-    TextField programLocationField = undefined
+    Label programLocationLabel = undefined
     TextField programNameField = undefined
     TextField programVersionField = undefined
     RadioButton standardProjectButton = undefined
     RadioButton legoProjectButton = undefined
     RadioButton webBrowserProjectButton = undefined
     RadioButton pythonSpikeButton = undefined
+    Button copyButton = undefined
 
     List javaClassList = undefined
     List jarList = undefined
     List quorumSourcesList = undefined
 
+    ProjectPropertiesCopyLocationBehavior copyBehavior
     ProjectPropertiesAddJavaClassFolderBehavior addJavaClassBehavior
     RemoveListItemBehavior removeJavaClassBehavior
     EmptyListBehavior clearJavaClassesBehavior
@@ -168,10 +173,12 @@ TextField spikeProgramSlot
         iosResourcesBrowseBehavior:SetAndroid(false)
         okBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
+        copyBehavior:SetDialog(me)
         SetBehavior(okBehavior)
 
         GameStateManager manager
         QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        copyBehavior:SetMainApplication(studio)
         options = studio:GetOptions()
 
         SetVerticalLayoutMode(parent:Control:STANDARD)
@@ -203,6 +210,7 @@ TextField spikeProgramSlot
         tabPane:Add(CreateiOSTab())
         tabPane:Add(CreateSpikeTab())
         tabPane:Add(CreateTeamsTab())
+        tabPane:Add(CreatePluginsTab())
         Add(tabPane)
     end
 
@@ -213,7 +221,7 @@ TextField spikeProgramSlot
 
         SetName(project:GetName() + " Properties")
 
-        programLocationField:SetText(project:GetLocation():GetAbsolutePath())
+        programLocationLabel:SetText(project:GetLocation():GetAbsolutePath())
         text executableName = project:GetProperty(project:EXECUTABLE_NAME):GetFirstValue()
 
         if executableName not= undefined
@@ -515,6 +523,9 @@ TextField spikeProgramSlot
         return project
     end
 
+    action GetProjectLocation returns text
+        return project:GetLocation():GetAbsolutePath()
+    end
 
     action SetAndroidResourcesLocation(text location)
         androidResourcesField:SetText(location)
@@ -673,18 +684,30 @@ integer slot = cast(integer, value)
 
     private action CreateProjectInfoTab returns Tab
         Tab projectInfoTab
-        projectInfoTab:SetFocusTarget(programLocationField)
-        projectInfoTab:SetName("Project Information")
+        projectInfoTab:SetName("General")
         projectInfoTab:DisplayCloseButton(false)
 
         StackedRowPage page
+        page:LeftAlignContent()
         page:SetPercentageHeight(1.0)
-        Banner banner = page:AddBanner("Projects", "General Project Properties for locations and dependencies")
-        banner:PositionFromTop()
         
-        page:AddLabel("Project Location")
-        Grouping resourceGroup = page:AddGrouping("Location")
-        programLocationField = resourceGroup:AddTextField("Location")
+        LayoutProperties properties
+        
+        FormPanel locationPanel
+        FlowLayout flow
+        locationPanel:SetLayout(flow)
+        locationPanel:SetVerticalLayoutMode(properties:FIT_CONTENTS)
+        page:Add(locationPanel)
+        Label locationLabel = locationPanel:AddLabel("Project Location")
+        Control locationSpacer
+        locationSpacer:SetPercentageWidth(0.02)
+        locationSpacer:SetPixelWidth(1)
+        locationPanel:Add(locationSpacer)
+        copyButton = locationPanel:AddButton("Copy")
+        copyButton:SetHorizontalLayoutMode(properties:FIT_CONTENTS)
+        copyButton:SetVerticalLayoutMode(properties:FIT_FONT)
+        copyButton:SetBehavior(copyBehavior)
+        programLocationLabel = page:AddLabel("Location")
         
         page:AddLabel("Project Name")
         programNameField = page:AddTextField("Name")
@@ -695,13 +718,49 @@ integer slot = cast(integer, value)
         //add radio buttons
         page:AddLabel("Project Type")
         Grouping projectTypeGroup = page:AddGrouping("Project Type")
+        StackLayout stackLayout
+        projectTypeGroup:SetLayout(stackLayout)
         standardProjectButton = projectTypeGroup:AddRadioButton("Standard")
+        standardProjectButton:SetTopMargin(10)
+        standardProjectButton:SetLeftMargin(10)
+        standardProjectButton:SetFontSize(18)
         webBrowserProjectButton = projectTypeGroup:AddRadioButton("Browser")
+        webBrowserProjectButton:SetLeftMargin(10)
+        webBrowserProjectButton:SetTopMargin(5)
+        webBrowserProjectButton:SetFontSize(18)
         legoProjectButton = projectTypeGroup:AddRadioButton("LEGO EV3")
+        legoProjectButton:SetLeftMargin(10)
+        legoProjectButton:SetTopMargin(5)
+        legoProjectButton:SetFontSize(18)
         pythonSpikeButton = projectTypeGroup:AddRadioButton("LEGO Spike")
+        pythonSpikeButton:SetLeftMargin(10)
+        pythonSpikeButton:SetTopMargin(5)
+        pythonSpikeButton:SetFontSize(18)
+        
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancelButton = buttonGroup:AddButton("Cancel")
+        Button okayButton = buttonGroup:AddButton("Ok")
+        buttonGroup:PositionFromBottom() 
+
+        cancelButton:SetBehavior(cancelBehavior)
+        okayButton:SetBehavior(okBehavior)
+
+        projectInfoTab:SetFocusTarget(locationLabel)
+        projectInfoTab:SetRelatedItem(page)
+        return projectInfoTab
+    end
+    
+    private action CreatePluginsTab returns Tab
+    Tab pluginsTab
+        pluginsTab:SetName("Plugins")
+        pluginsTab:DisplayCloseButton(false)
+
+        StackedRowPage page
+        page:LeftAlignContent()
+        page:SetPercentageHeight(1.0)
         
         //Create all of the plugins lists and buttons for controlling them
-        page:AddLabel("Plugin Folders")
+        Label pluginLabel = page:AddLabel("Plugin Folders")
         javaClassList = page:AddList("Plugins")
         
         Grouping pluginGroup = page:AddGrouping("Plugins")
@@ -765,22 +824,21 @@ integer slot = cast(integer, value)
         cancelButton:SetBehavior(cancelBehavior)
         okayButton:SetBehavior(okBehavior)
 
-        projectInfoTab:SetFocusTarget(banner)
-        projectInfoTab:SetRelatedItem(page)
-        return projectInfoTab
+        pluginsTab:SetFocusTarget(pluginLabel)
+        pluginsTab:SetRelatedItem(page)
+        return pluginsTab
     end
 
     private action CreateGamesTab returns Tab
         Tab tab
         tab:SetFocusTarget(enableImageSheets)
-        tab:SetName("Games")
+        tab:SetName("Image Sheets")
         tab:DisplayCloseButton(false)
 
         StackedRowPage page
-        Banner banner = page:AddBanner("Image Sheets", "Properties for 2D Image Sheets")
-        banner:PositionFromTop()
+        page:LeftAlignContent()
         
-        page:AddLabel("Image Sheet Properties")
+        Label imageSheetLabel = page:AddLabel("Image Sheet Properties")
         enableImageSheets = page:AddCheckbox("Enable Image Sheets")
         buildImageSheetsOnCompile = page:AddCheckbox("Rebuild Image Sheets every compile")
         
@@ -831,7 +889,7 @@ integer slot = cast(integer, value)
         cancelButton:SetBehavior(okBehavior)
         okButton:SetBehavior(okBehavior)
 
-        tab:SetFocusTarget(banner)
+        tab:SetFocusTarget(imageSheetLabel)
         tab:SetRelatedItem(page)
         return tab
     end
@@ -842,6 +900,7 @@ integer slot = cast(integer, value)
         tab:DisplayCloseButton(false)
 
         StackedRowPage page
+        page:LeftAlignContent()
         Banner banner = page:AddBanner("Apple Device Settings", "Pick a simulator or enter security credentials for physical devices")
         banner:PositionFromTop()
         
@@ -893,6 +952,7 @@ integer slot = cast(integer, value)
         tab:DisplayCloseButton(false)
 
         StackedRowPage page
+        page:LeftAlignContent()
         Banner banner = page:AddBanner("Android Device Settings", "Enter credentials for physical devices")
         banner:PositionFromTop()
         
@@ -944,6 +1004,7 @@ private action CreateSpikeTab returns Tab
         tab:DisplayCloseButton(false)
 
         StackedRowPage page
+        page:LeftAlignContent()
         Banner banner = page:AddBanner("LEGO Spike (tm)", 
             "Enter the LEGO Spike slot")
         banner:PositionFromTop()
@@ -970,6 +1031,7 @@ private action CreateSpikeTab returns Tab
         tab:DisplayCloseButton(false)
 
         StackedRowPage page
+        page:LeftAlignContent()
         Banner banner = page:AddBanner("Version Control Settings", 
             "Enter credentials for Github or Bitbucket. Passwords should be credentials keys, not account passwords, for these services")
         banner:PositionFromTop()

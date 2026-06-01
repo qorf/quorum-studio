@@ -37,6 +37,7 @@ use Libraries.Interface.Controls.Checkbox
 use Libraries.Interface.Layouts.FormRowLayout
 use Libraries.Interface.Layouts.StackLayout
 use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Forms.Page
 
 
 class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
@@ -62,12 +63,8 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
     Options options = undefined
 
     action OnShow
-        tabPane:Focus()
-        Tab tab = tabPane:GetSelectedTab()
-        if not tab:Equals(tabPane:Get(0))
-            tab:Activate()
-        end
-    end
+        GetDefaultPage():GetFirstFocusableItem():Focus()
+end
 
     on create
         okBehavior:SetDialog(me)
@@ -84,15 +81,9 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         SetName("Quorum Studio Properties")
         SetPercentageWidth(0.50)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:STANDARD)
-        SetPercentageHeight(0.75)
+        SetPercentageHeight(0.65)
         
-        FlowLayout tabLayout
-        tabPane:SetViewAreaLayout(tabLayout)
-        tabPane:SetPercentageWidth(1.0)
-        tabPane:SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FILL)
-
-        tabPane:Add(CreatePropertiesTab())
-        Add(tabPane)
+        CreatePropertiesPage()
         Load()
     end
 
@@ -203,16 +194,9 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         return initialized
     end
 
-    private action CreatePropertiesTab returns Tab
-        Tab tab
-        tab:SetName("Properties")
-        tab:DisplayCloseButton(false)
-
-        StackedRowPage page
+    private action CreatePropertiesPage
+        Page page = InitializeDefaultPage()
         page:SetSkipLabelsInFocus(true)
-        Banner banner = page:AddBanner("Settings", 
-            "A set of properties for controlling aspects of Quorum Studio")
-        banner:PositionFromTop()
         page:LeftAlignContent()
         
         //add radio buttons
@@ -227,7 +211,7 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         
         Grouping blocksGrouping = page:AddGrouping("Checks")
         blockModeCheckbox = blocksGrouping:AddCheckbox("Blocks")
-        framesPerSecondCheckbox = blocksGrouping:AddCheckbox("Display Frames")
+        framesPerSecondCheckbox = blocksGrouping:AddCheckbox("Display Framerate")
         overrideLibraryCheckbox = blocksGrouping:AddCheckbox("Override Library")
         StackLayout checksLayout
         LayoutProperties props
@@ -246,7 +230,6 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         page:AddLabel("Frame Rate")
         frameRateField = page:AddTextField("Frame Rate")
         
-        
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancelButton = buttonGroup:AddButton("Cancel")
         Button okayButton = buttonGroup:AddButton("Ok")
@@ -254,11 +237,6 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
 
         cancelButton:SetBehavior(cancelBehavior)
         okayButton:SetBehavior(okBehavior)
-
-        tab:SetFocusTarget(banner:GetTitleLabel())
-        tab:SetRelatedItem(page)
-
-        return tab
     end
 
     action OnHide()

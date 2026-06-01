@@ -44,6 +44,11 @@ use Libraries.Interface.Selections.CodeEditorSelection
 use Libraries.Interface.Controls.Blocks.Block
 use Libraries.Interface.Controls.Blocks.EditRegion
 use Libraries.Interface.Events.TabChangeListener
+use Libraries.Interface.Forms.Page
+use Libraries.Game.Graphics.Font
+use Libraries.System.File
+use Libraries.Interface.Forms.FormPanel
+use Libraries.Interface.Layouts.StackLayout
 
 class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeListener
     boolean initialized = false
@@ -66,6 +71,8 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
     Button previous = undefined
     Button next = undefined
     Button findButton
+    
+    Font fontAwesome
 
     //FindDialog Control Behaviors
     WholeWordMatchCaseBehavior wholeWordMatchCaseBehavior
@@ -76,6 +83,10 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
     integer selectedLine = -1
 
     on create
+        File file
+        file:SetPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
+        fontAwesome:LoadFont(file)
+        
         wholeWordMatchCaseBehavior:SetDialog(me)
         tabPane:AddSelectionListener(me)
         findBehavior:SetDialog(me)
@@ -133,46 +144,88 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
 
     action Initialize
         initialized = true
-        SetPercentageWidth(0.3)
-        SetPercentageHeight(0.4)
+        SetPercentageWidth(0.36)
+        SetPercentageHeight(0.21)
 
         SetName("Find")
-        SetVerticalLayoutMode(parent:Control:FILL)
 
-        ControlShaderView view
-        view:Initialize()
-        Add(CreateFindControl())
+        CreateFindControl()
     end
 
-    private action CreateFindControl returns Control
-        StackedRowPage page
+    private action CreateFindControl
+        Page page = InitializeDefaultPage()
         
-        findField = page:AddTextField("Find Field")
+        LayoutProperties properties
+        
+        FormPanel horizontalContainer
+        FlowLayout horizontalLayout
+        horizontalContainer:SetLayout(horizontalLayout)
+        horizontalContainer:SetPercentageWidth(0.95)
+        horizontalContainer:SetVerticalLayoutMode(properties:FIT_CONTENTS)
+        
+        page:Add(horizontalContainer)
+        findField = horizontalContainer:AddTextField("Find Field")
+        findField:SetHorizontalLayoutMode(properties:STANDARD)
+        findField:SetPercentageWidth(0.45)
         findField:AddTextChangeListener(me)
         findButton:SetBehavior(findBehavior)
         
+        Control spacer
+        spacer:SetPercentageWidth(0.03)
+        spacer:SetPixelHeight(1)
+        horizontalContainer:Add(spacer)
+        
+        previous = horizontalContainer:AddButton("Previous")
+        SetButtonTextToAwesomeFontUnicode(61523, previous)
+        previous:SetVerticalLayoutMode(properties:FIT_FONT)
+        previous:SetHorizontalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        previous:SetPercentageWidth(1.0)
+        
+        Control spacer2
+        spacer2:SetPercentageWidth(0.01)
+        spacer2:SetPixelHeight(1)
+        horizontalContainer:Add(spacer2)
+        
+        next = horizontalContainer:AddButton("Next")
+        next:SetVerticalLayoutMode(properties:FIT_FONT)
+        next:SetHorizontalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        next:SetPercentageWidth(1.0)
+        SetButtonTextToAwesomeFontUnicode(61524, next)
+
+        Control spacer3
+        spacer3:SetPercentageWidth(0.03)
+        spacer3:SetPixelHeight(1)
+        horizontalContainer:Add(spacer3)
+        
+        previous:SetBehavior(previousBehavior)
+        next:SetBehavior(nextBehavior)
+        
+        matches = horizontalContainer:AddLabel("Matches")
+        matches:SetPositionOnBaseLine(false)
+        
         Grouping options = page:AddGrouping("Checkbox Options")
+        StackLayout stackLayout
+        options:SetLayout(stackLayout)
         wholeWord = options:AddCheckbox("Whole")
         matchCase = options:AddCheckbox("Match")
         wholeWord:SetLayoutRows(1)
+        wholeWord:SetTopMargin(5)
         matchCase:SetLayoutRows(1)
 
         wholeWord:SetBehavior(wholeWordMatchCaseBehavior)
         matchCase:SetBehavior(wholeWordMatchCaseBehavior)
 
-        Banner banner = page:AddBanner("Matches")
-        matches = banner:GetTitleLabel()
 
         SetMatchesLabel(matches)
-        Grouping buttonGroup = page:AddGrouping("Confirm")
-        previous = buttonGroup:AddButton("Previous")
-        next = buttonGroup:AddButton("Next")
-        buttonGroup:PositionFromBottom() 
+    end
+    
+    private action SetButtonTextToAwesomeFontUnicode(integer unicode, Button button)
+        text value = ""
+        value = value:GetUnicodeValue(unicode)
 
-        previous:SetBehavior(previousBehavior)
-        next:SetBehavior(nextBehavior) 
-
-        return page
+        button:SetFontSize(16)
+        button:SetFont(fontAwesome)
+        button:SetLabelText(value)
     end
 
     action IsInitialized returns boolean

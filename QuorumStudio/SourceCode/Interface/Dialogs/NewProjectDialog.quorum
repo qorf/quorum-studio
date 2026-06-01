@@ -45,6 +45,7 @@ use Libraries.Development.Environment.Studio.Behaviors.NewProjectBackBehavior
 use Libraries.Interface.Layouts.ManualLayout
 use Libraries.Containers.Iterator
 use Libraries.Containers.Array
+use Libraries.Interface.Controls.CharacterIcon
 
 class NewProjectDialog is Dialog, SelectionListener
     boolean initialized = false
@@ -88,7 +89,9 @@ constant text LEGO_SPIKE_MOVE = "Lego Spike"
     Tree templateTree = undefined
     Array<TreeItem> initialSelection
     Label templateDescription = undefined
-    Icon templateVisual = undefined
+    CharacterIcon templateVisual = undefined
+    CharacterIcon secondTemplateVisual = undefined
+    Label secondPageLabel = undefined
     
     Page templatePage = undefined
     Page projectNamePage = undefined
@@ -105,7 +108,7 @@ constant text LEGO_SPIKE_MOVE = "Lego Spike"
     NewProjectOkBehavior okBehavior
     NewProjectNextBehavior nextBehavior
     NewProjectBackBehavior backBehavior
-    text selectedProject = ""
+    text selectedProject = BLANK
     
     //set by the browseBehavior, used by the okayBehavior to set the QuorumProject location
     File locationPath
@@ -142,9 +145,7 @@ constant text LEGO_SPIKE_MOVE = "Lego Spike"
         templatePage = GetDefaultPage()
         StackedRowPage temp
         projectNamePage = temp
-        ApplyDefaultStyleToPage(projectNamePage)
-        projectNamePage:LeftAlignContent()
-        AddBottomPageElements(projectNamePage)
+        SetupSecondPageElements(projectNamePage)
         PrepareTemplateHash()
     end
 
@@ -166,9 +167,9 @@ TreeItem selected = treeSelection:GetTreeItem()
         end
         
         text templateName = selected:GetName()
-        SetTemplateImage(templateName, templateVisual)
         selectedProject = templateName
         templatePath = templateHash:GetValue(selectedProject)
+        SetTemplateImage(templateName, templateVisual)
         if templateName = BLANK
             templateDescription:SetText("A blank template for starting from scratch.")
         elseif templateName = APP
@@ -220,7 +221,6 @@ TreeItem selected = treeSelection:GetTreeItem()
         elseif templateName = INTERNET_SERVICE
             templateDescription:SetText("Get started using Quorum to send and recieve network requests.")
         end
-        //templateDescription:RequestVerticesUpdate()
     end
 
     /*
@@ -254,38 +254,200 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         templateHash:Add(INTERNET_SERVICE,"Templates/Other/InternetServices")
     end
     
-    action SetTemplateImage(text templateName, Icon templateImage) 
-        text value = ""
+    action SetTemplateImage(text templateName, CharacterIcon templateImage) 
         Color color
-        templateImage:LoadRectangle(50,50, color:Red())
+        //templateImage:LoadRectangle(50,50, color:Red())
+        //templateImage:Load(fontAwesome:GetGlyph(templateName:GetUnicodeValue(61728)):texture)
+        //templateImage:RequestVerticesUpdate()
         //61728
         
         if templateName = BLANK
+            templateImage:Load("Resources/Graphics/Interface/QuorumLogo.png")
+            templateImage:SetPercentageHeight(0.9)
+            templateImage:SetPercentageWidth(0.9)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
         elseif templateName = APP
+            templateImage:Load("Templates/Images/app.png")
+            number aspectRatio = templateImage:GetHeight() / cast(number, templateImage:GetWidth())
+            templateImage:SetPercentageWidth(1/aspectRatio)
+            templateImage:SetPercentageHeight(1)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
             elseif templateName = GAMES
+            templateImage:Load("Templates/Images/skyhopper.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
         elseif templateName = SCENE
+            templateImage:Load("Templates/Images/scene.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
         elseif templateName = MOBILE
+            templateImage:SetFontSize(75)
+            templateImage:SetIconColor(color:Black())
+            templateImage:LoadCharacter(62415, fontAwesome)
+            templateImage:SetPercentageHeight(0)
+            templateImage:SetPercentageWidth(0)
+            templateImage:SetPixelHeight(templateImage:GetHeight())
+            templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = IMAGE_SHEET
+            templateImage:Load("Templates/Images/imagesheets.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
             elseif templateName = PHYSICS2D
+            templateImage:Load("Templates/Images/physics2d.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
             elseif templateName = PHYSICS3D
+            templateImage:Load("Templates/Images/physics3d.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
             elseif templateName = SKYBOX
+            templateImage:Load("Templates/Images/skybox.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
             elseif templateName = SCENE2D
+            templateImage:Load("Templates/Images/scene.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
             elseif templateName = SCENE3D
+            templateImage:Load("Templates/Images/scene3d.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
             elseif templateName = BAR_CHART
+            templateImage:Load("Templates/Images/barChart.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
             elseif templateName = PIE_CHART
+            templateImage:Load("Templates/Images/pieChart.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
             elseif templateName = SCATTERPLOT
+            templateImage:Load("Templates/Images/scatterplot.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
             elseif templateName = DESCRIPTIVES
+            //58658
+            templateImage:SetFontSize(75)
+            templateImage:SetIconColor(color:Black())
+            templateImage:LoadCharacter(58658, fontAwesome)
+            templateImage:SetPercentageHeight(0)
+            templateImage:SetPercentageWidth(0)
+            templateImage:SetPixelHeight(templateImage:GetHeight())
+            templateImage:SetPixelWidth(templateImage:GetWidth())
             elseif templateName = CORRELATIONS
+            templateImage:Load("Templates/Images/correlations.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
             elseif templateName = COMPARE_MEANS
+            templateImage:Load("Templates/Images/boxPlot.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
             elseif templateName = PLAY_SOUND
+            templateImage:SetFontSize(75)
+            templateImage:SetIconColor(color:Black())
+            templateImage:LoadCharacter(61764, fontAwesome)
+            templateImage:SetPercentageHeight(0)
+            templateImage:SetPercentageWidth(0)
+            templateImage:SetPixelHeight(templateImage:GetHeight())
+            templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = SINE_WAVE
+            templateImage:SetFontSize(75)
+            templateImage:SetIconColor(color:Black())
+            templateImage:LoadCharacter(63550, fontAwesome)
+            templateImage:SetPercentageHeight(0)
+            templateImage:SetPercentageWidth(0)
+            templateImage:SetPixelHeight(templateImage:GetHeight())
+            templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = MIDI
+            templateImage:SetFontSize(75)
+            templateImage:SetIconColor(color:Black())
+            templateImage:LoadCharacter(61441, fontAwesome)
+            templateImage:SetPercentageHeight(0)
+            templateImage:SetPercentageWidth(0)
+            templateImage:SetPixelHeight(templateImage:GetHeight())
+            templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = DATABASE
+            templateImage:SetFontSize(75)
+            templateImage:SetIconColor(color:Black())
+            templateImage:LoadCharacter(61888, fontAwesome)
+            templateImage:SetPercentageHeight(0)
+            templateImage:SetPercentageWidth(0)
+            templateImage:SetPixelHeight(templateImage:GetHeight())
+            templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = LEGO_MINDSTORMS
+            templateImage:SetFontSize(75)
+            templateImage:SetIconColor(color:Black())
+            templateImage:LoadCharacter(62788, fontAwesome)
+            templateImage:SetPercentageHeight(0)
+            templateImage:SetPercentageWidth(0)
+            templateImage:SetPixelHeight(templateImage:GetHeight())
+            templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = LEGO_SPIKE_MOVE
+            templateImage:SetFontSize(75)
+            templateImage:SetIconColor(color:Black())
+            templateImage:LoadCharacter(62788, fontAwesome)
+            templateImage:SetPercentageHeight(0)
+            templateImage:SetPercentageWidth(0)
+            templateImage:SetPixelHeight(templateImage:GetHeight())
+            templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = DOCUMENT
+            templateImage:SetFontSize(75)
+            templateImage:SetIconColor(color:Black())
+            templateImage:LoadCharacter(58658, fontAwesome)
+            templateImage:SetPercentageHeight(0)
+            templateImage:SetPercentageWidth(0)
+            templateImage:SetPixelHeight(templateImage:GetHeight())
+            templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = INTERNET_SERVICE
+            templateImage:SetFontSize(75)
+            templateImage:SetIconColor(color:Black())
+            templateImage:LoadCharacter(63231, fontAwesome)
+            templateImage:SetPercentageHeight(0)
+            templateImage:SetPercentageWidth(0)
+            templateImage:SetPixelHeight(templateImage:GetHeight())
+            templateImage:SetPixelWidth(templateImage:GetWidth())
         end
+        templateImage:RequestLayout()
     end
 
     private action SetButtonTextToAwesomeFontUnicode(integer unicode, Button button)
@@ -302,15 +464,76 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
     the file name and location fields, browse button, and confirm
     and cancel buttons.
     */
-    private action AddBottomPageElements(Page page)
-        page:AddLabel("Selected Template: " + selectedProject)
+    private action SetupSecondPageElements(Page page)
+        ApplyDefaultStyleToPage(page)
+        page:LeftAlignContent()
+        
+        
+        FormPanel labelPanel
+        FormRowLayout labelLayout
+        labelPanel:SetLayout(labelLayout)
+        me:secondPageLabel = labelPanel:AddLabel("Selected Template: " + selectedProject)
+        
+        page:Add(labelPanel)
+        
+        Color color
+        LayoutProperties properties
+        
+        FormPanel evenBiggerPanel
+        evenBiggerPanel:SetPercentageWidth(0.9)
+        evenBiggerPanel:SetPercentageHeight(0.4)
+        ManualLayout biggerLayout
+        evenBiggerPanel:SetLayout(biggerLayout)
+        
+        FormPanel iconPanel
+        
+        iconPanel:SetPercentageHeight(0.8)
+        iconPanel:SetPercentageWidth(0.3)
+        iconPanel:SetVerticalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        ControlShaderView iconPanelShader
+        iconPanelShader:Initialize()
+        iconPanel:SetView2D(iconPanelShader)
+        ManualLayout iconPanelLayout
+        iconPanel:SetLayout(iconPanelLayout)
+        iconPanel:SetBackgroundColor(color:White())
+        iconPanel:SetCornerPixelRounding(10,10,10,10)
+        iconPanel:SetBorderThickness(1.5)
+        
+        evenBiggerPanel:Add(iconPanel)
+        iconPanel:SetPercentageOriginX(0.5)
+        iconPanel:SetPercentageX(0.5)
+        page:Add(evenBiggerPanel)
+        
+        CharacterIcon temp
+        me:secondTemplateVisual = temp
+        secondTemplateVisual:SetPercentageHeight(0.9)
+        secondTemplateVisual:SetPercentageWidth(0.9)
+        secondTemplateVisual:SetPercentageOriginX(0.5)
+        secondTemplateVisual:SetPercentageOriginY(0.5)
+        secondTemplateVisual:SetPercentageX(0.5)
+        secondTemplateVisual:SetPercentageY(0.5)
+        //SetTemplateImage(selectedProject, secondTemplateVisual)
+        
+        iconPanel:Add(secondTemplateVisual)
+        
         page:AddLabel("Project Name")
         TextField nameField = page:AddTextField(NAME_FIELD_ID)
 
-        Grouping locationGrouping = page:AddGrouping("Location Group")
-        locationGrouping:AddLabel("Project Location")
+        FormPanel locationGrouping
+        FlowLayout locationLayout
+        locationGrouping:SetLayout(locationLayout)
+        Label locationLabel = locationGrouping:AddLabel("Project Location")
+        locationLabel:SetPositionOnBaseLine(false)
+        locationLabel:SetHorizontalLayoutMode(properties:STANDARD)
+        locationLabel:SetPercentageWidth(0.7)
         //Grouping locationGrouping = page:AddGrouping("Location")
         Button browseButton = locationGrouping:AddButton("Browse...")
+        browseButton:SetHorizontalLayoutMode(properties:STANDARD)
+        browseButton:SetVerticalLayoutMode(properties:FIT_FONT)
+        browseButton:SetFontSize(14)
+        browseButton:SetPercentageWidth(0.3)
+        
+        page:Add(locationGrouping)
         TextField locationField = page:AddTextField(LOCATION_FIELD_ID)
 
         Grouping buttonGroup = page:AddGrouping("Confirm")
@@ -327,6 +550,11 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         backButton:SetBehavior(backBehavior)
         okButton:SetBehavior(okBehavior)
         browseButton:SetBehavior(browseBehavior)
+    end
+    
+    action UpdateSecondPage
+        me:secondPageLabel:SetText("Selected Template: " + selectedProject)
+        SetTemplateImage(selectedProject, me:secondTemplateVisual)
     end
 
     action GetLocation returns text
@@ -402,6 +630,7 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         
         templateTree:Select(initialSelection)
         templateTree:Focus()
+        //SetTemplateImage(BLANK, templateVisual)
         
         locationField:SetText(studio:GetProjectsFolder():GetAbsolutePath())
     end
@@ -468,7 +697,7 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         iconPanel:SetCornerPixelRounding(10,10,10,10)
         iconPanel:SetBorderThickness(1)
         
-        Icon temp
+        CharacterIcon temp
         me:templateVisual = temp
         templateVisual:SetPercentageHeight(0.9)
         templateVisual:SetPercentageWidth(0.9)
@@ -476,6 +705,7 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         templateVisual:SetPercentageOriginY(0.5)
         templateVisual:SetPercentageX(0.5)
         templateVisual:SetPercentageY(0.5)
+        //SetTemplateImage(BLANK, templateVisual)
         
         iconPanel:Add(templateVisual)
         rightPanel:Add(iconPanel)

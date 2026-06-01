@@ -34,6 +34,12 @@ use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Interface.Controls.Tab
 use Libraries.Game.Graphics.Color
 use Libraries.Interface.Controls.Blocks.EditRegion
+use Libraries.Interface.Forms.Page
+use Libraries.Game.Graphics.Font
+use Libraries.Interface.Forms.FormPanel
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.System.File
+use Libraries.Interface.Layouts.StackLayout
 
 
 class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
@@ -60,6 +66,8 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
     Button replace = undefined
     Button replaceAll = undefined
     Button findButton
+    
+    Font fontAwesome
 
     //ReplaceDialog Control Behaviors
     WholeWordMatchCaseBehavior wholeWordMatchCaseBehavior
@@ -70,6 +78,10 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
     FindBehavior findBehavior
 
     on create
+        File file
+        file:SetPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
+        fontAwesome:LoadFont(file)
+        
         SetModal(false)
         SetBehavior(nextBehavior)
         nextBehavior:SetDialog(me)
@@ -140,15 +152,12 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
 
     action Initialize
         initialized = true
-        SetPercentageWidth(0.3)
-        SetPercentageHeight(0.4)
+        SetPercentageWidth(0.36)
+        SetPercentageHeight(0.25)
 
         SetName("Find and Replace")
-        SetVerticalLayoutMode(parent:Control:FILL)
 
-        ControlShaderView view
-        view:Initialize()
-        Add(CreateReplaceControl())
+        CreateReplaceControl()
 
         findField:AddTextChangeListener(me)
         wholeWordMatchCaseBehavior:SetDialog(me)
@@ -157,16 +166,93 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
         findBehavior:SetDialog(me)
     end
 
-    private action CreateReplaceControl returns Control
-        StackedRowPage page
+    private action CreateReplaceControl
+        Page page = InitializeDefaultPage()
         
-        findField = page:AddTextField("Find Field")
+        LayoutProperties properties
+        
+        FormPanel horizontalContainer
+        FlowLayout horizontalLayout
+        horizontalContainer:SetLayout(horizontalLayout)
+        horizontalContainer:SetPercentageWidth(0.9)
+        horizontalContainer:SetVerticalLayoutMode(properties:FIT_CONTENTS)
+        
+        page:Add(horizontalContainer)
+        findField = horizontalContainer:AddTextField("Find Field")
+        findField:SetHorizontalLayoutMode(properties:STANDARD)
+        findField:SetPercentageWidth(0.5)
         findField:AddTextChangeListener(me)
         findButton:SetBehavior(findBehavior)
+        
+        Control spacer
+        spacer:SetPercentageWidth(0.02)
+        spacer:SetPixelHeight(1)
+        horizontalContainer:Add(spacer)
+        
+        previous = horizontalContainer:AddButton("Previous")
+        SetButtonTextToAwesomeFontUnicode(61523, previous)
+        previous:SetVerticalLayoutMode(properties:FIT_FONT)
+        previous:SetHorizontalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        previous:SetPercentageWidth(1.0)
+        
+        Control spacer2
+        spacer2:SetPercentageWidth(0.01)
+        spacer2:SetPixelHeight(1)
+        horizontalContainer:Add(spacer2)
+        
+        next = horizontalContainer:AddButton("Next")
+        next:SetVerticalLayoutMode(properties:FIT_FONT)
+        next:SetHorizontalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        next:SetPercentageWidth(1.0)
+        SetButtonTextToAwesomeFontUnicode(61524, next)
 
-        replaceField = page:AddTextField("Replace Field")
+        Control spacer3
+        spacer3:SetPercentageWidth(0.02)
+        spacer3:SetPixelHeight(1)
+        horizontalContainer:Add(spacer3)
+        
+        previous:SetBehavior(previousBehavior)
+        next:SetBehavior(nextBehavior)
+        
+        matches = horizontalContainer:AddLabel("Matches")
+        matches:SetPositionOnBaseLine(false)
+        SetMatchesLabel(matches)
+
+        
+        FormPanel replaceContainer
+        FlowLayout replaceLayout
+        replaceContainer:SetLayout(replaceLayout)
+replaceContainer:SetPercentageWidth(0.9)
+        replaceContainer:SetVerticalLayoutMode(properties:FIT_CONTENTS)
+        page:Add(replaceContainer)
+        
+        replaceField = replaceContainer:AddTextField("Replace Field")
+replaceField:SetHorizontalLayoutMode(properties:STANDARD)
+        replaceField:SetPercentageWidth(0.5)
+        
+        Control replaceSpacer
+        replaceSpacer:SetPercentageWidth(0.03)
+        replaceSpacer:SetPixelHeight(1)
+        replaceContainer:Add(replaceSpacer)
+        
+        replace = replaceContainer:AddButton("Replace")
+        replace:SetFontSize(14)
+        replace:SetHorizontalLayoutMode(properties:FIT_CONTENTS)
+        replace:SetVerticalLayoutMode(properties:FIT_FONT)
+        
+        Control replaceSpacer2
+        replaceSpacer2:SetPercentageWidth(0.02)
+        replaceSpacer2:SetPixelHeight(1)
+        replaceContainer:Add(replaceSpacer2)
+        
+        replaceAll = replaceContainer:AddButton("Replace All")
+        replaceAll:SetFontSize(14)
+        replaceAll:SetHorizontalLayoutMode(properties:FIT_CONTENTS)
+        replaceAll:SetVerticalLayoutMode(properties:FIT_FONT)
         
         Grouping options = page:AddGrouping("Checkbox Options")
+        StackLayout stackLayout
+        options:SetLayout(stackLayout)
         wholeWord = options:AddCheckbox("Whole")
         matchCase = options:AddCheckbox("Match")
         wholeWord:SetLayoutRows(1)
@@ -175,25 +261,26 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
         wholeWord:SetBehavior(wholeWordMatchCaseBehavior)
         matchCase:SetBehavior(wholeWordMatchCaseBehavior)
 
-        Banner banner = page:AddBanner("Matches")
-        matches = banner:GetTitleLabel()
-        SetMatchesLabel(matches)
+        //Banner banner = page:AddBanner("Matches")
+        //matches = banner:GetTitleLabel()
 
-        Grouping replaceGroup = page:AddGrouping("Confirm")
-        replace = replaceGroup:AddButton("Replace")
-        replaceAll = replaceGroup:AddButton("Replace All")
-
-        Grouping buttonGroup = page:AddGrouping("Confirm")
-        previous = buttonGroup:AddButton("Previous")
-        next = buttonGroup:AddButton("Next")
+        //Grouping buttonGroup = page:AddGrouping("Confirm")
+        //previous = buttonGroup:AddButton("Previous")
+        //next = buttonGroup:AddButton("Next")
 
         replace:SetBehavior(replaceBehavior) 
         replaceAll:SetBehavior(replaceAllBehavior) 
         previous:SetBehavior(previousBehavior)
         next:SetBehavior(nextBehavior) 
+    end
+    
+    private action SetButtonTextToAwesomeFontUnicode(integer unicode, Button button)
+        text value = ""
+        value = value:GetUnicodeValue(unicode)
 
-        return page
-
+        button:SetFontSize(16)
+        button:SetFont(fontAwesome)
+        button:SetLabelText(value)
     end
 
     action IsInitialized returns boolean
