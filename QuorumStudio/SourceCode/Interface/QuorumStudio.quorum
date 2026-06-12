@@ -140,7 +140,15 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     public boolean enabledScenes3D = true
 
     action GetDisplayName returns text
-        return NAME
+        text name = NAME
+        
+        DesktopConfiguration config = GetDesktopConfiguration()
+        boolean vulkan = config:useVulkan
+        if vulkan
+            name = name + " (Vulkan Beta)"
+        end
+        
+        return name
     end
 
     action IsNewer(integer newMajorVersion, integer newMinorVersion, integer newBuildVersion) returns boolean
@@ -179,7 +187,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         DateTime time
         logger:Log("Starting Quorum Studio")
         DesktopConfiguration config = GetDesktopConfiguration()
-        config:title = NAME
+        config:title = GetDisplayName()
         StartGame()
     end
 
