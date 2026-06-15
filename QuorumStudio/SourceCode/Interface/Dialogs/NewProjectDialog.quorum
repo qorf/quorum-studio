@@ -82,6 +82,8 @@ class NewProjectDialog is Dialog, SelectionListener
 constant text LEGO_SPIKE_MOVE = "Lego Spike"
     constant text DOCUMENT = "Document"
     constant text INTERNET_SERVICE = "Networking"
+    constant text SKY_HOPPER = "SkyHopper"
+    constant text PETTING_ZOO_HERO = "PettingZooHero"
     
     //Dialog Controls
     TextField nameField = undefined
@@ -221,6 +223,10 @@ TreeItem selected = treeSelection:GetTreeItem()
             templateDescription:SetText("A template to build your project as an HTML document.")
         elseif templateName = INTERNET_SERVICE
             templateDescription:SetText("Get started using Quorum to send and recieve network requests.")
+        elseif templateName = SKY_HOPPER
+            templateDescription:SetText("Jump through the sky in this platform building game adventure.")
+        elseif templateName = PETTING_ZOO_HERO
+            templateDescription:SetText("Create a puzzle adventure to stop adorable creatures from getting too hangry.")
         end
     end
 
@@ -253,6 +259,8 @@ TreeItem selected = treeSelection:GetTreeItem()
 templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         templateHash:Add(DOCUMENT,"Templates/Other/Document")
         templateHash:Add(INTERNET_SERVICE,"Templates/Other/InternetServices")
+        templateHash:Add(SKY_HOPPER,"Templates/Games/SkyHopper")
+        templateHash:Add(PETTING_ZOO_HERO,"Templates/Games/SkyHopper")
     end
     
     action SetTemplateImage(text templateName, CharacterIcon templateImage) 
@@ -276,7 +284,7 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
             templateImage:SetPixelHeight(0)
             templateImage:SetPixelWidth(0)
             elseif templateName = GAMES
-            templateImage:Load("Templates/Images/skyhopper.png")
+            templateImage:Load("Templates/Images/melvin.png")
             number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
             templateImage:SetPercentageHeight(0.98/aspectRatio)
             templateImage:SetPercentageWidth(0.98)
@@ -437,6 +445,20 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
             templateImage:SetPercentageWidth(0)
             templateImage:SetPixelHeight(templateImage:GetHeight())
             templateImage:SetPixelWidth(templateImage:GetWidth())
+        elseif templateName = SKY_HOPPER
+            templateImage:Load("Templates/Images/skyhopper.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
+        elseif templateName = PETTING_ZOO_HERO
+            templateImage:Load("Templates/Images/zoo.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
         end
         templateImage:RequestLayout()
     end
@@ -752,12 +774,14 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         tree:Add(generalTemplates)
         
         TreeItem gameTemplates = MakeTreeItem("Games")
-        gameTemplates:Add(MakeTreeItem(IMAGE_SHEET))
         gameTemplates:Add(MakeTreeItem(PHYSICS2D))
         gameTemplates:Add(MakeTreeItem(PHYSICS3D))
-        gameTemplates:Add(MakeTreeItem(SKYBOX))
         gameTemplates:Add(MakeTreeItem(SCENE2D))
         gameTemplates:Add(MakeTreeItem(SCENE3D))
+        gameTemplates:Add(MakeTreeItem(IMAGE_SHEET))
+        gameTemplates:Add(MakeTreeItem(PETTING_ZOO_HERO))
+        gameTemplates:Add(MakeTreeItem(SKYBOX))
+        gameTemplates:Add(MakeTreeItem(SKY_HOPPER))
         tree:Add(gameTemplates)
         
         TreeItem dataTemplates  = MakeTreeItem("Data Science")
