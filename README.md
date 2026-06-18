@@ -13,11 +13,12 @@ This repository contains the source code for the Quorum Studio Programming envir
 
 In order to Build Quorum Studio, we need several components. To build it, we do the following steps:
 
-1. Download [IntelliJ](https://www.jetbrains.com/idea/). This is not strictily necessary if we want to compile from the console, but provides support for Gradle built in, which Quorum Studio needs for its plugins.
+1. Download [IntelliJ](https://www.jetbrains.com/idea/). This is not strictly necessary if we want to compile from the console, but provides support for Gradle built in, which Quorum Studio needs for its plugins.
 2. Clone the [quorum-debugger](https://github.com/qorf/quorum-debugger)
 3. Open the quorum-degugger repository and build the project by running the gradle script
-4. Open the QuorumStudioPlugins folder as an IntelliJ project and run the Gradle script
-5. Once all plugins are built, open Quorum Studio in Quorum Studio, then build it
+4. Run a submodule command if running from scratch: git submodule update --init --recursive
+5. Open the QuorumStudioPlugins folder as an IntelliJ project and run the Gradle script
+6. Once all plugins are built, open Quorum Studio in Quorum Studio, then build it
 
 
 # Double Bootstrapping Quorum Studio from a source-based Quorum Compiler #
