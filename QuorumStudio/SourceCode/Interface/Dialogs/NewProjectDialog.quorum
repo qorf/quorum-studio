@@ -84,6 +84,8 @@ constant text LEGO_SPIKE_MOVE = "Lego Spike"
     constant text INTERNET_SERVICE = "Networking"
     constant text SKY_HOPPER = "SkyHopper"
     constant text PETTING_ZOO_HERO = "PettingZooHero"
+    constant text ACCESSIBLE_ANIMATION = "AccessibleAnimation"
+    constant text TRIGGER_ANIMATION = "TriggerAnimation"
     
     //Dialog Controls
     TextField nameField = undefined
@@ -227,6 +229,10 @@ TreeItem selected = treeSelection:GetTreeItem()
             templateDescription:SetText("Jump through the sky in this platform building game adventure.")
         elseif templateName = PETTING_ZOO_HERO
             templateDescription:SetText("Create a puzzle adventure to stop adorable creatures from getting too hangry.")
+        elseif templateName = ACCESSIBLE_ANIMATION
+            templateDescription:SetText("Experiment with accessibility support for an animated model.")
+        elseif templateName = TRIGGER_ANIMATION
+            templateDescription:SetText("Learn how to trigger an animation in a 3D model.")
         end
     end
 
@@ -261,6 +267,8 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         templateHash:Add(INTERNET_SERVICE,"Templates/Other/InternetServices")
         templateHash:Add(SKY_HOPPER,"Templates/Games/SkyHopper")
         templateHash:Add(PETTING_ZOO_HERO,"Templates/Games/SkyHopper")
+        templateHash:Add(ACCESSIBLE_ANIMATION,"Templates/Games/AccessibleAnimation")
+        templateHash:Add(TRIGGER_ANIMATION,"Templates/Games/TriggerAnimation")
     end
     
     action SetTemplateImage(text templateName, CharacterIcon templateImage) 
@@ -454,6 +462,20 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
             templateImage:SetPixelWidth(0)
         elseif templateName = PETTING_ZOO_HERO
             templateImage:Load("Templates/Images/zoo.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
+        elseif templateName = ACCESSIBLE_ANIMATION
+            templateImage:Load("Templates/Images/accessibleAnimate.png")
+            number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
+            templateImage:SetPercentageHeight(0.98/aspectRatio)
+            templateImage:SetPercentageWidth(0.98)
+            templateImage:SetPixelHeight(0)
+            templateImage:SetPixelWidth(0)
+            elseif templateName = TRIGGER_ANIMATION
+            templateImage:Load("Templates/Images/animate.png")
             number aspectRatio = templateImage:GetWidth() / cast(number, templateImage:GetHeight())
             templateImage:SetPercentageHeight(0.98/aspectRatio)
             templateImage:SetPercentageWidth(0.98)
@@ -773,15 +795,19 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         generalTemplates:Add(MakeTreeItem(MOBILE))
         tree:Add(generalTemplates)
         
+        
+        // ACCESSIBLE_ANIMATION TRIGGER_ANIMATION
         TreeItem gameTemplates = MakeTreeItem("Games")
         gameTemplates:Add(MakeTreeItem(PHYSICS2D))
         gameTemplates:Add(MakeTreeItem(PHYSICS3D))
         gameTemplates:Add(MakeTreeItem(SCENE2D))
         gameTemplates:Add(MakeTreeItem(SCENE3D))
+        gameTemplates:Add(MakeTreeItem(ACCESSIBLE_ANIMATION))
         gameTemplates:Add(MakeTreeItem(IMAGE_SHEET))
         gameTemplates:Add(MakeTreeItem(PETTING_ZOO_HERO))
         gameTemplates:Add(MakeTreeItem(SKYBOX))
         gameTemplates:Add(MakeTreeItem(SKY_HOPPER))
+        gameTemplates:Add(MakeTreeItem(TRIGGER_ANIMATION))
         tree:Add(gameTemplates)
         
         TreeItem dataTemplates  = MakeTreeItem("Data Science")
