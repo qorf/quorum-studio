@@ -3,6 +3,45 @@
 Part of `../QuorumStudio.md`. It needs steps 3, 4 and 6. It's the
 groundwork for every brush (steps 8 to 11), and it changes no heights.
 
+## Status: applied 2026-10-20 (not built or run yet)
+
+**Library (`MakeAWish`):**
+- SC/Items/`EditorTerrain`: holds a `TerrainBrush`, the chosen tool
+  (`SetToolNumber`, 1 to 9 as in the in-game editor, 0 for none; mapped to
+  `TerrainBrush:SetTool`), and the brush's place (`SetBrushPosition`,
+  `IsBrushOnGround`, `DescribeBrush`).
+- SC/`SceneEditor`: `SetTerrainTool`, `IsTerrainBrushActive`,
+  `MoveTerrainBrush` (relative to the camera, flat on the ground),
+  `ResizeTerrainBrush` (×1.15 a step, 0.5 to 64), `MoveTerrainBrushToPointer`
+  (the click's pick ray, then `TerrainData:RayCast`), the ring
+  (`UpdateBrushPreview`: one `TerrainBrushPreview`, editor-tagged, placed
+  only when the brush moved or resized), and the Brush section.
+  Moving the brush by keys says the tool, place, ground height and size
+  when the key is let go.
+- **New** SC/`TerrainBrushMouseListener`: the ring follows the pointer.
+- SC/Items/Highlights/`TerrainSelectionHighlight`: with a tool chosen, its
+  move keys move the brush and its size keys size it; up and down do
+  nothing. When the terrain stops being selected, the tool is left.
+- **New** SC/Dialogs/`TerrainBrushPropertiesDialog`: the **Brush** section
+  (between Terrain and Physics): a tool radio group (No tool, then the
+  nine), and size, strength and falloff fields.
+- **New** L/Interface/Behaviors/Scenes/Selection/`TerrainChooseToolBehavior`,
+  bound to Alt+1 to Alt+9 (step 6's keys) in the selected-item table.
+- `SelectionCancelBehavior`: Escape first leaves the tool.
+- `SelectScene3DItemBehavior`: a click does nothing while a tool is
+  chosen (reserved for strokes).
+- `SelectionScaleBehavior`: no "Scaled up" message for a terrain.
+
+**Differences from the plan:**
+- **Every tool can be chosen,** though none strokes yet; choosing one shows
+  the ring and moves it. Strokes come one tool at a time, from step 8.
+- **The arrows move the brush smoothly while held,** like a selection,
+  rather than a step per press as in the in-game editor.
+- **Shift for 8 times as far** isn't done: Shift+arrows aren't bound in the
+  scene editor, so it would need new keys (to ask about with step 8).
+- **The pick ray** is the same overload the selection click uses, with no
+  mirroring; test 1 below checks it.
+
 ## What the user sees
 
 - **Choosing a tool:** select a terrain, then choose a tool in the

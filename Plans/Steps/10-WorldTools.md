@@ -7,6 +7,26 @@ Part of `../QuorumStudio.md`. Generating the whole world needs only steps
 Without them, the auto-paint options are disabled, and the reason is
 given.
 
+## Status: applied 2026-10-20 (not built or run yet)
+
+- **New `SC/Dialogs/TerrainGeneratePropertiesDialog`** (the Generate
+  section, after Brush) with `Behaviors/Scenes/Properties/TerrainGenerateButtonBehavior`:
+  - for the whole terrain: preset (radio), seed with "New seed", height,
+    "Auto paint afterward", Generate, "Erode whole terrain", "Auto paint
+    whole terrain";
+  - **at the brush** (placed with any tool): stamp shape, stamp mode
+    ("Usual for the shape", add, subtract, raise), stamp height, turn,
+    "Stamp here", "Erode here", "Auto paint here". These are in this
+    section rather than the Brush section, which is long already. No keys.
+- **`SceneEditor`:** `GenerateTerrain`, `ErodeTerrain`, `AutoPaintTerrain`,
+  `StampTerrain`, `ErodeTerrainAtBrush`, `AutoPaintTerrainAtBrush`, each a
+  `TerrainStroke` operation that goes into the undo list as a
+  `SceneEditorTerrainEdit`; `GetTerrainGenerator`.
+- **Auto paint and fewer than four materials:** `TerrainData:FoldSplatLayers`
+  gives the rules for missing layers to layer 1. Layer 1 is flat ground,
+  2 slopes, 3 hollows, 4 low ground. It needs two or more materials.
+- **`EditorTerrain:GetSampleEdge`** for the whole terrain's samples.
+
 ## What exists (library, W/`TerrainGenerator`)
 
 - **Presets** for the whole world: rolling hills, mountains, plateaus,

@@ -53,8 +53,6 @@ README update.
 
 - **Library and Studio** are at the same commits as above (`2a4bf3a2a`,
   `c57ea108`): steps 1 to 3 and the Terrain icon are all present.
-- **Studio's `Run/QuorumStandardLibrary.jar` is from 2026-10-19** and has no
-  terrain classes. Rebuild the library, then Studio, before testing step 3.
 - **The physics checkout had `AT/SourceCode/Worlds`** (the 18 old copies)
   and no `TerrainSceneCheck.quorum`: the first machine's physics changes
   for steps 1 and 2 never reached `origin/MakeAWish`. AllTerrainVehicle
@@ -102,25 +100,64 @@ README update.
      (`SC/Dialogs/Item3DPropertiesDialog`) for every item.
 3. **Step 5 applied 2026-10-20** (`Steps/05-TerrainProperties.md`): the
    Terrain and Physics sections in the panel, and a fix so a terrain added
-   in Studio is saved with collision on. Then **step 6** (keys) before any
-   brush.
+   in Studio is saved with collision on.
+4. **Steps 6 and 7 applied 2026-10-20** (reviewed by the user first):
+   - **6:** every scene-editor key comes from `SceneEditorKeys` (library) and,
+     in Studio, from the key map (`StudioSceneEditorKeys`), so a user's key
+     map file can change it; a key missing from an old file takes its
+     default instead of the file being thrown away;
+   - **7:** Alt+1 to Alt+9 (or the Brush section) choose a terrain tool; a
+     ring shows the brush, the pointer and arrows move it, Alt+= / Alt+-
+     size it, Escape leaves the tool. No strokes yet: step 8, one tool at a
+     time.
+5. **Step 8, raise and lower, applied 2026-10-20:** Space held or a left
+   drag makes a stroke; Alt+] / Alt+[ change the strength; Escape cancels
+   a stroke; Studio's Undo and Redo take a stroke back and forward; saving
+   the scene saves the terrain. Two fixes went in first: the terrain's
+   highlight is a border instead of a solid slab, and the Vulkan lighting
+   pass no longer shrinks a 3D view that is smaller than the window.
+6. **Step 9 applied 2026-10-20:** material files (`Material:Load/Save`),
+   `TerrainMaterial` files, the scene's `"Material"`, a Materials section
+   in the panel (add, choose, remove layers, tile size, blend softness, with
+   undo), and the Paint tool with a paint layer choice. Blend paint is next.
+   **First test:** add one texture set in Studio and check the ground shows
+   it (texture places, the risk in the step).
+7. **Steps 10 and 11 applied 2026-10-20:** a Generate section (presets
+   with seed and height, auto paint, erode and auto paint the whole
+   terrain; at the brush: stamp, erode, auto paint), the Add and Remove
+   region tools (Alt+8, Alt+9; add region works past the ground's edge),
+   and "Grow by one region on every side" in the Terrain section. All
+   undoable. Saving leaves a removed region out of `terrain.json` but
+   keeps its files (the user's decision).
 
 ## How to build and try Studio
 
 1. Build the standard library from `quorum-language` (`MakeAWish`).
-2. Build the Studio project (`quorum-studio/QuorumStudio`). Its
-   `Run/QuorumStandardLibrary.jar` must come from `MakeAWish`; check that
-   it contains `TerrainBlueprint`:
-
-   ```bash
-   unzip -l /Users/stefika/Repositories/quorum-studio/QuorumStudio/Run/QuorumStandardLibrary.jar | grep TerrainBlueprint
-   ```
+2. Build the Studio project (`quorum-studio/QuorumStudio`). Studio
+   manages its own copy of the library; it isn't part of this plan.
 3. **Run Studio with the project folder as its working directory,** the
    way the user normally runs it. Studio finds its images by paths relative
    to `quorum-studio/QuorumStudio`, so starting it from inside `Run/` loses
    its icons. The development build starts in Vulkan.
 4. **The installed `/Applications/QuorumStudio.app` is old** (jars from
    2026-08-05). It has none of this work.
+
+8. **Step 12 applied 2026-10-20:** fuller report location for the brush,
+   the height on each arrow move, "Describe the area" in the Brush section,
+   and stroke results such as "Raised by up to 2.4". No Help menu changes.
+
+9. **Step 13 applied 2026-10-20:** `TerrainItem` updates itself each
+   frame; collision is Full, Dynamic or Disabled; a terrain can stream in
+   games; the Physics section sets both. QuincyWorld's `Main.quorum` drives
+   the toy car (copied to `QuincyWorld/Car`) on the scene's terrain.
+
+**The test project for terrain** is
+`/Users/stefik/Repositories/worlds/QuincyWorld` (from 2026-10-20). Its scene
+had two terrain entries naming the same `Terrains/Terrain1` folder, so two
+terrains drew in one place; the duplicate entry was removed, the folder
+moved to `Scenes/Terrains/Terrain1`, and `Main.quorum` now calls
+`SetMultisampling3D`. The scene loader now leaves out a second terrain
+naming the same files.
 
 **Checking step 2 without Studio:** `AT/SourceCode/TerrainSceneCheck.quorum`.
 Set it as the main file and run it twice: the first run makes the terrain

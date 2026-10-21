@@ -3,6 +3,36 @@
 Part of `../QuorumStudio.md`. It needs step 2. Parts of it can be done any
 time after that.
 
+## Status: applied 2026-10-20 (not built or run yet)
+
+- **`TerrainItem` updates itself:** its `Update(seconds)`, which the layer
+  calls each frame, makes ground textures ready and keeps a streaming
+  terrain around the camera, or an item set with `SetFollowItem`. A game
+  needs no terrain code. (`EditorTerrain` overrides it to do nothing; the
+  editor updates its terrains itself.)
+- **Collision modes:** `TerrainItem:SetCollisionMode`/`GetCollisionMode`
+  (WorldTerrain's FULL, DYNAMIC, DISABLED); `SetCollision(boolean)` maps to
+  FULL or DISABLED. The scene has `"Collision": "Full"`, `"Dynamic"` or
+  `"Disabled"`, and still `"Physics Enabled"` for older readers.
+- **Streaming:** `TerrainItem:SetStreaming(stream, radius)` before `Load`;
+  `Load` then only notes the folder, and the first update calls
+  `WorldTerrain:StartStreaming`. Saving a streaming terrain keeps unloaded
+  regions listed. The scene has `"Streaming": true` and `"Draw Radius"`,
+  written only for a streaming terrain.
+- **The Physics section:** collision is three choices (every region, only
+  near moving bodies, none); "Stream regions in games" and a draw radius.
+  `EditorTerrain` keeps these for the scene and never streams or collides.
+- **The drive test is in QuincyWorld:** `SourceCode/Main.quorum` loads the
+  scene, finds its terrain, and drives the toy car on it with
+  `Camera:Follow` (arrows drive, Space brakes, R resets). From
+  AllTerrainVehicle, only the car came: `Car/ToyCarCentered.gltf` and the
+  nine files it names, and DriveOpen's chassis, wheel and reset code.
+  AllTerrainVehicle is unchanged.
+- **The car is steadier than DriveOpen's** (the user found it flipped
+  easily): wheels 1.6 to each side instead of 1.12, roll influence 0,
+  friction slip 6, steering 0.35, angular damping 0.9. The numbers are
+  fields at the top of `Main`, for tuning.
+
 ## What a game does with a terrain from Studio
 
 ```quorum
@@ -60,12 +90,16 @@ end
    - `COLLISION_DISABLED`.
    - Step 5's "Collision" check box becomes these three choices once
      streaming exists.
-3. **Studio's library copy:** games run from Studio use Studio's own copy
-   of the standard library (`Library/Standard`, dated 2026-09-25), and the
-   editor uses `Run/QuorumStandardLibrary.jar`. Both are rebuilt from
-   `MakeAWish` before scenes with terrain run from Studio.
-4. **AllTerrainVehicle's DriveOpen** could load its world from a scene made
-   in Studio, as the real-world test. Optional, after steps 8 to 10.
+3. **The drive test:** done in QuincyWorld instead (see Status), moving
+   only the car from AllTerrainVehicle (the user, 2026-10-20).
+
+**Studio's copy of the library isn't part of this plan:** Quorum Studio
+already manages it (the user, 2026-10-20).
+
+**The test project** for terrain in games is
+`/Users/stefik/Repositories/worlds/QuincyWorld` (the user, 2026-10-20). Its
+`Main.quorum` loads `Scenes/Scene.qs`, which has one terrain in
+`Scenes/Terrains/Terrain1`.
 
 ## Tests
 

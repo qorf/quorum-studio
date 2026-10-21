@@ -8,6 +8,43 @@ step 7.
   over;
 - every new key can be overridden.
 
+## Status: applied 2026-10-20 (not built or run yet)
+
+**Library (`MakeAWish`):**
+- **New** L/Interface/`SceneEditorKeys`: one action per scene-editor key
+  (51), each returning today's key exactly, Mac or Windows/Linux as
+  `DefaultInputSets` chose it; plus the terrain keys of Part B
+  (`GetTerrainToolKey(1 to 9)` Alt+1 to Alt+9, `GetTerrainBrushUseKey` Space,
+  `GetTerrainStrengthUpKey` Alt+], `GetTerrainStrengthDownKey` Alt+[), and
+  `GetCursorSizeUpKey` / `GetCursorSizeDownKey`.
+- `DefaultInputSets:SetupSceneEditorInput(GameInput, SceneEditorKeys)`: every
+  keyboard key in it comes from the keys object. The one-argument version
+  passes the defaults. Mouse and drag inputs are unchanged.
+- `Game:ReplaceSceneEditorInput(SceneEditorKeys)`.
+- `SceneEditorInputTable` now names itself `"SceneEditor"`.
+
+**Studio (`MakeAWish`):**
+- **New** QS/Interface/`StudioSceneEditorKeys is SceneEditorKeys`: every key
+  from the key map, falling back to the library's default.
+- `QuorumStudio:SetupInputTables` calls `ReplaceSceneEditorInput` with it,
+  after the key map is loaded.
+- `KeyMap`: 14 new key names and getters (cursor size, the nine tools,
+  brush use, strength), and `GetMappedKey`.
+- **`MacKeyMap` and `WindowsKeyMap`:** every scene-editor key the library
+  binds (44) now returns the library's own default, so the key map's
+  defaults match the real bindings by construction (the old mismatches,
+  such as Mac scale X down, are gone). The keyboard camera keys keep their
+  key-map defaults, since the library doesn't bind them.
+- **`RemapKeyMap`:** a key missing from a user's key map file now takes this
+  platform's default, instead of the whole file being rejected (which threw
+  away the user's code-editor keys). The key map version stays 2.0.
+- `KeyMapLoader`: forwards the new getters.
+
+**Not done (from the plan):**
+- the keyboard camera bindings (optional);
+- Space and the strength keys are defined and overridable, but bound with
+  step 8's strokes.
+
 ## Today
 
 - **The real bindings are hard-coded in the library:**
@@ -112,7 +149,7 @@ focus is on the terrain's highlight. These keys then apply:
 
 **Keys a later tool may need** (each asked about with its step; defaults
 are only suggestions):
-- **Paint layer:** next layer, Alt+L.
+- **Paint layer:** next layer, Alt+L. **Added with step 9** (2026-10-20).
 - **Flatten:** take the height under the brush, Alt+T; toggle the flatten
   mode, Alt+Shift+F. Alt+F is the existing "focus camera", so plain Alt+F
   is avoided.

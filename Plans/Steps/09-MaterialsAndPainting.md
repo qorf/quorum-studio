@@ -11,6 +11,57 @@ designed with step 2:
 - every file is plain `.json`, and says what it is in its `"Format"`;
 - paths inside a file are relative to that file.
 
+## Status: applied 2026-10-20 (not built or run yet)
+
+**Library (`MakeAWish`):**
+- **`Material`:** `Load(File)`, `Save(File)`, `GetFile`, `GetName`/`SetName`,
+  and `GetRelativePath(folder, target)`. Maps are kept as full paths and
+  written relative to the file.
+- **New W/`TerrainMaterial`:** layers, blend softness, `Load`/`Save`,
+  `SaveMaterials`, `Copy`/`CopyFrom`, `HasMixedPlainTileSizes`, and
+  `ApplyTo(WorldTerrain)`, which only loads a layer again when its Material
+  changed (texture sets aren't cached by the renderer, and each load packs
+  the set and takes new texture places).
+- **`WorldTerrain:RefreshLayers`:** makes the layer table again, for a
+  changed tile size.
+- **`TerrainItem`:** `SetMaterial`, `GetMaterial`, `RefreshMaterial`,
+  `LoadMaterial`, `GetMaterialFile`/`SetMaterialFile`.
+- **`TerrainData`:** `RemoveSplatLayer(layer)` (its weight to layer 1, the
+  layers after it move down) and `ClearSplat`. Saving a region that is no
+  longer painted writes the cleared weights over its old splat image,
+  rather than deleting it: **saving never deletes files** (the user's rule,
+  2026-10-20).
+- **`SceneProperties:MATERIAL`;** `DefaultSceneManager` reads it (before
+  the terrain loads, so models are made once; one TerrainMaterial per file
+  per scene) and writes it.
+- **The editor:**
+  - new `SC/Dialogs/TerrainMaterialsPropertiesDialog` (the Materials
+    section, between Terrain and Brush) and
+    `Behaviors/Scenes/Properties/TerrainMaterialButtonBehavior`;
+  - `SceneEditor`: `AddTerrainLayer`, `ChooseTerrainLayer`,
+    `RemoveTerrainLayer`, `SetTerrainLayerTileSize`,
+    `SetTerrainBlendSoftness`, `TerrainMaterialEdited`,
+    `CountTerrainsUsing`, `GetEditorTerrains`; `CanStrokeWithTool` now
+    takes the terrain, and Paint strokes work with two or more layers,
+    shown five times a second during a stroke and fully at its end;
+  - new `Interface/Undo/SceneEditorTerrainMaterialEdit`;
+  - `EditorTerrain`: material files saved with the scene
+    (`SetMaterialChanged`), `GetLayerCount`, `CopyAllRegions`;
+  - the Brush section has a "Paint layer" choice; adding a layer makes it
+    the one painted;
+  - **Alt+L** (the user's choice, 2026-10-20) moves to the next paint layer
+    with a material: `SceneEditorKeys:GetTerrainNextLayerKey`,
+    `TerrainNextLayerBehavior`, `SceneEditor:NextTerrainPaintLayer`. In
+    Studio it is `TERRAIN_NEXT_LAYER_KEY` in the key map (KeyMap, Mac and
+    Windows defaults, RemapKeyMap, KeyMapLoader, StudioSceneEditorKeys), so
+    it can be overridden.
+
+**Not done:**
+- Blend paint (next, one tool at a time);
+- tile size and blend softness changes aren't undoable (adding, choosing
+  and removing layers are);
+- two terrains sharing a terrain material each load its texture sets.
+
 ## The files
 
 ```
@@ -129,9 +180,9 @@ order, and how they blend. Terrains can share one.
   - its tile size, saved into its material file;
   - **Remove**.
     - Removing a layer moves its painted weight to layer 1.
-    - Removing the last layer goes back to no materials and no splat: the
-      terrain's splat files are deleted on save, and `"Material"` leaves
-      the scene.
+    - Removing the last layer goes back to no materials and no splat: on
+      save, the terrain's splat images are overwritten with the cleared
+      weights (never deleted), and `"Material"` leaves the scene.
 - **Blend softness,** saved into the terrain-material file.
 - **Shared files:** editing a material or terrain material changes it
   wherever it's used. The section says "Used by 2 terrains in this scene"

@@ -6,6 +6,41 @@ Part of `../QuorumStudio.md`. It needs step 7.
 write-up. **Raise and lower come first** (recommended). Smooth, flatten and
 ramp follow, in that order.
 
+## Status: raise and lower applied 2026-10-20 (not built or run yet)
+
+**Library (`MakeAWish`):**
+- **`SceneEditor`:** `BeginTerrainStroke(terrain, byMouse, key)`,
+  `EndTerrainStroke`, `CancelTerrainStroke`, `IsTerrainStroking`,
+  `CanStrokeWithTool` (1 and 2 only), `ChangeTerrainStrength`, and
+  `TerrainEdited` (called after an undo or redo). A stroke is kept going
+  from `Update`, once a frame, while its key (polled with an
+  `InputMonitor`) or the left mouse button is held; each frame applies the
+  stroke and calls `WorldTerrain:Rebuild()`. At its end the stroke goes
+  into the edit manager, the terrain is marked changed, and the Terrain
+  section's heights are refreshed. Choosing another tool, or losing the
+  selection, ends a stroke first.
+- **New `Interface/Undo/SceneEditorTerrainEdit`:** wraps the stroke's
+  `TerrainStrokeEdit`, and has the editor redraw the terrain after Undo and
+  Redo.
+- **New behaviors** (`Behaviors/Scenes/Selection`): `TerrainBrushUseBehavior`
+  (Space by default) and `TerrainStrengthBehavior` (Alt+] and Alt+[), bound
+  in the selection table from `SceneEditorKeys`, so Studio's key map
+  overrides them.
+- **`SelectScene3DItemBehavior`:** with a tool chosen, a left click moves
+  the brush under the pointer and starts a stroke.
+- **`TerrainBrushMouseListener`:** the brush follows the pointer while
+  dragging too.
+- **`SelectionCancelBehavior`:** Escape cancels a stroke first, then leaves
+  the tool.
+
+**Studio:** nothing new; the keys were already in the key map (step 6).
+
+**Not done:**
+- the edit manager's memory cap (small terrains don't need it yet);
+- the selection border isn't reshaped after a stroke, so ground raised at
+  the terrain's edge can cover it until the terrain is selected again;
+- the frame budget is still to be measured (see Risks).
+
 ## What exists (library, W/)
 
 - **`TerrainTool`:** `SCULPT` with `ADD` (raise) and `SUBTRACT` (lower),

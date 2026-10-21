@@ -104,6 +104,12 @@ A game loads it with `LoadScene`, like any model.
    and `MATERIALS_FOLDER`. A scene that still names a terrain at the old
    top-level `Terrains/...` finds it under `Scenes/` if it was moved there,
    and saves the new path.
+10. **Saving never deletes files** (decided 2026-10-20): unused files stay
+    in the project. A removed region is left out of `terrain.json`, and its
+    images stay; a cleared region's splat image is written over with the
+    cleared weights.
+11. **Studio's Help menu is not changed, for any reason** (the user,
+    2026-10-20).
 
 ## What exists today
 
@@ -158,14 +164,14 @@ A game loads it with `LoadScene`, like any model.
 | 3 | Terrain in the scene editor: palette, selection, tree, saving | `Steps/03-SceneEditorTerrain.md` | yes | icon (optional, not done) | **Applied 2026-10-20**; build and Studio test remain (the user) |
 | 4 | The Properties panel, docked on the right, for every item | `Steps/04-PropertiesPanel.md` | yes | layout | **Applied 2026-10-20**; build and Studio test remain (the user). The six dialogs dock in the panel unchanged, instead of being split into sections |
 | 5 | Terrain sections in the Properties panel: info and physics | `Steps/05-TerrainProperties.md` | yes | no | **Applied 2026-10-20**; build and Studio test remain (the user). Also fixes terrains being saved with collision off |
-| 6 | Overridable scene-editor keys, and the terrain keys | `Steps/06-Keys.md` | yes | key map | Plan |
-| 7 | Picking the ground and the brush cursor | `Steps/07-PickingAndBrushCursor.md` | yes | no | Plan |
-| 8 | Sculpt brushes: raise, lower, smooth, flatten, ramp | `Steps/08-SculptBrushes.md` | yes | no | Plan (one tool at a time) |
-| 9 | Materials (as `.json` files) and painting: add and remove materials on a terrain, and paint them | `Steps/09-MaterialsAndPainting.md` | yes | no | Plan |
-| 10 | World tools: presets, stamps, erosion, auto paint | `Steps/10-WorldTools.md` | yes | no | Plan |
-| 11 | Regions: add and remove | `Steps/11-Regions.md` | yes | no | Plan |
-| 12 | Accessibility: describing the ground, spoken values | `Steps/12-Accessibility.md` | yes | no | Plan (with every step) |
-| 13 | Terrain in games: loading scenes, streaming, collision, cameras | `Steps/13-Games.md` | yes | no | Plan |
+| 6 | Overridable scene-editor keys, and the terrain keys | `Steps/06-Keys.md` | yes | key map | **Applied 2026-10-20**; build and Studio test remain (the user) |
+| 7 | Picking the ground and the brush cursor | `Steps/07-PickingAndBrushCursor.md` | yes | no | **Applied 2026-10-20**; build and Studio test remain (the user) |
+| 8 | Sculpt brushes: raise, lower, smooth, flatten, ramp | `Steps/08-SculptBrushes.md` | yes | no | **Raise and lower applied 2026-10-20**; build and Studio test remain (the user). Smooth, flatten and ramp next, one at a time |
+| 9 | Materials (as `.json` files) and painting: add and remove materials on a terrain, and paint them | `Steps/09-MaterialsAndPainting.md` | yes | no | **Applied 2026-10-20** (materials, files and Paint; Blend paint next); build and Studio test remain (the user). Test the texture places first |
+| 10 | World tools: presets, stamps, erosion, auto paint | `Steps/10-WorldTools.md` | yes | no | **Applied 2026-10-20**; build and Studio test remain (the user) |
+| 11 | Regions: add and remove | `Steps/11-Regions.md` | yes | no | **Applied 2026-10-20**; build and Studio test remain (the user). Removed regions' files are kept, unlisted (the user's decision) |
+| 12 | Accessibility: describing the ground, spoken values | `Steps/12-Accessibility.md` | yes | no | **Applied 2026-10-20**; build and screen reader test remain (the user). No Help menu changes |
+| 13 | Terrain in games: loading scenes, streaming, collision, cameras | `Steps/13-Games.md` | yes | no | **Applied 2026-10-20**: self-updating TerrainItem, collision modes, streaming in scenes, the QuincyWorld drive test; build and run remain (the user) |
 
 **Order and dependencies:**
 - **1 → 2 → 3** gives a working basic terrain.
