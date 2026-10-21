@@ -151,6 +151,12 @@ README update.
    games; the Physics section sets both. QuincyWorld's `Main.quorum` drives
    the toy car (copied to `QuincyWorld/Car`) on the scene's terrain.
 
+10. **Step 14 applied 2026-10-20:** Details... on each material layer
+    shows and changes each map's file, the normal map's convention,
+    roughness, metallic and the name, with undo; materials are shared by
+    file across a scene; adding a material knows Poly Haven's and other
+    common names and says which maps it found.
+
 **The test project for terrain** is
 `/Users/stefik/Repositories/worlds/QuincyWorld` (from 2026-10-20). Its scene
 had two terrain entries naming the same `Terrains/Terrain1` folder, so two

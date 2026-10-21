@@ -172,6 +172,7 @@ A game loads it with `LoadScene`, like any model.
 | 11 | Regions: add and remove | `Steps/11-Regions.md` | yes | no | **Applied 2026-10-20**; build and Studio test remain (the user). Removed regions' files are kept, unlisted (the user's decision) |
 | 12 | Accessibility: describing the ground, spoken values | `Steps/12-Accessibility.md` | yes | no | **Applied 2026-10-20**; build and screen reader test remain (the user). No Help menu changes |
 | 13 | Terrain in games: loading scenes, streaming, collision, cameras | `Steps/13-Games.md` | yes | no | **Applied 2026-10-20**: self-updating TerrainItem, collision modes, streaming in scenes, the QuincyWorld drive test; build and run remain (the user) |
+| 14 | Material details: see and choose the file for each map, and its values | `Steps/14-MaterialDetails.md` | yes | no | **Applied 2026-10-20**; build and Studio test remain (the user) |
 
 **Order and dependencies:**
 - **1 → 2 → 3** gives a working basic terrain.
@@ -181,6 +182,7 @@ A game loads it with `LoadScene`, like any model.
 - **8 to 11** each need 7.
 - **12** goes along with every step.
 - **13** needs 2.
+- **14** needs 9.
 
 ## Before anything else: risks to check in Studio (Stage 0)
 
