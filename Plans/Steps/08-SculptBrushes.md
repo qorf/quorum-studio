@@ -41,6 +41,46 @@ ramp follow, in that order.
   the terrain's edge can cover it until the terrain is selected again;
 - the frame budget is still to be measured (see Risks).
 
+**2026-10-21:** **Smooth** strokes are on (`CanStrokeWithTool` allows
+tool 3; the stroke says "Smoothed, changing heights by up to ..."). The
+editor's brushes start at **strength 2.5** (`EditorTerrain`'s
+`DEFAULT_STRENGTH`), since the library's default of 1 felt slow (the
+user). The library's own default is unchanged.
+
+**Flatten and ramp are on too (2026-10-21):**
+- **Flatten** starts by evening the ground to the height where each stroke
+  begins. The Brush section's "Flatten to" choice switches to "This height",
+  with a Height field and "Use the height under the brush"
+  (`SceneEditor:SetTerrainFlattenToStart`, `SetTerrainFlattenHeight`,
+  `TakeTerrainFlattenHeight`).
+- **Ramp** needs its two ends: "Set ramp start" and "Set ramp end" in the
+  Brush section set them at the brush, each at the ground's height there
+  (`EditorTerrain:SetRampPoint`, `HasRamp`, `DescribeRamp`;
+  `SceneEditor:SetTerrainRampPoint`). A ramp stroke before both are set
+  says what to do. The section shows the ramp's ends.
+- **Keys (the user's choice, 2026-10-21):** **Alt+G** sets the ramp's next
+  end at the brush (start, then end; after both, a new start), and
+  **Alt+M** takes the flatten height from under the brush. Alt+R and Alt+T,
+  suggested in step 6, are Studio's Run and Team menus, so they weren't
+  used. Both are overridable: `SceneEditorKeys:GetTerrainRampPointKey` and
+  `GetTerrainTakeHeightKey`, `TerrainRampPointBehavior`,
+  `TerrainTakeHeightBehavior`, and Studio's `TERRAIN_RAMP_POINT_KEY` and
+  `TERRAIN_TAKE_HEIGHT_KEY`.
+- The Brush section's "Paint layer" label is on its own line, above its
+  four choices.
+- **Ramp is two clicks, not a stroke (the user's design, 2026-10-21):**
+  - the first click (or Space, or Alt+G) marks the start: a **green ring**
+    there (a second `TerrainBrushPreview`, `SetRingColor`);
+  - while the start is marked, a **green outline** (new W/`TerrainRampPreview`)
+    runs from the start, at its height, to the brush, at the ground's height
+    there, as wide as the brush, and the **brush ring turns red**;
+  - the second click makes the whole ramp at once
+    (`SceneEditor:ApplyTerrainRamp`): across its middle the ground is set to
+    the slope, fading back over the brush's outer edge. One undoable edit;
+    the ramp is then cleared for the next one;
+  - "New ramp" clears a marked start; "Set ramp start" and "Set ramp end"
+    do the same as the two clicks.
+
 ## What exists (library, W/)
 
 - **`TerrainTool`:** `SCULPT` with `ADD` (raise) and `SUBTRACT` (lower),

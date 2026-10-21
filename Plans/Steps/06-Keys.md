@@ -150,10 +150,11 @@ focus is on the terrain's highlight. These keys then apply:
 **Keys a later tool may need** (each asked about with its step; defaults
 are only suggestions):
 - **Paint layer:** next layer, Alt+L. **Added with step 9** (2026-10-20).
-- **Flatten:** take the height under the brush, Alt+T; toggle the flatten
-  mode, Alt+Shift+F. Alt+F is the existing "focus camera", so plain Alt+F
-  is avoided.
-- **Ramp:** start and end points, Alt+R.
+- **Flatten:** take the height under the brush, **Alt+M** (added
+  2026-10-21; Alt+T is Studio's Team menu). The flatten mode is a panel
+  choice, with no key.
+- **Ramp:** start and end points, **Alt+G** (added 2026-10-21; Alt+R is
+  Studio's Run menu).
 - **Slope limit:** Alt+G. Grid uses Cmd/Ctrl+G and its modifiers, so plain
   Alt+G needs a check.
 - **Stamps:** next stamp, press stamp, stamp height and turn. Panel only,
