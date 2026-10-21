@@ -1,0 +1,273 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Game.InputSet
+use Libraries.Interface.SceneEditorKeys
+
+/*
+    StudioSceneEditorKeys gives the scene editor the keys from Quorum Studio's
+    key map, so a user's key map file can change them (step 6). A key the key
+    map doesn't have uses the scene editor's own default. QuorumStudio gives
+    it to Game:ReplaceSceneEditorInput once the key map is loaded.
+
+    The keyboard camera keys in the key map aren't bound by the scene editor
+    yet, so they aren't here.
+*/
+class StudioSceneEditorKeys is SceneEditorKeys
+    KeyMap keyMap = undefined
+
+    /*
+        Sets the key map the keys come from.
+
+        Attribute: Parameter map Studio's loaded key map
+    */
+    action SetKeyMap(KeyMap map)
+        keyMap = map
+    end
+
+    /*
+        Returns the key map the keys come from.
+
+        Attribute: Returns The key map
+    */
+    action GetKeyMap returns KeyMap
+        return keyMap
+    end
+
+    /*
+        Returns the key map's key, or the default when the key map has none.
+    */
+    private action Choose(InputSet fromMap, InputSet fallback) returns InputSet
+        if fromMap = undefined
+            return fallback
+        end
+        return fromMap
+    end
+
+    action GetCameraFocusKey returns InputSet
+        return Choose(keyMap:GetCameraFocusKey(), parent:SceneEditorKeys:GetCameraFocusKey())
+    end
+
+    action GetSelectionMoveLeft2DKey returns InputSet
+        return Choose(keyMap:GetSelectionMoveLeft2DKey(), parent:SceneEditorKeys:GetSelectionMoveLeft2DKey())
+    end
+
+    action GetSelectionMoveRight2DKey returns InputSet
+        return Choose(keyMap:GetSelectionMoveRight2DKey(), parent:SceneEditorKeys:GetSelectionMoveRight2DKey())
+    end
+
+    action GetSelectionMoveUp2DKey returns InputSet
+        return Choose(keyMap:GetSelectionMoveUp2DKey(), parent:SceneEditorKeys:GetSelectionMoveUp2DKey())
+    end
+
+    action GetSelectionMoveDown2DKey returns InputSet
+        return Choose(keyMap:GetSelectionMoveDown2DKey(), parent:SceneEditorKeys:GetSelectionMoveDown2DKey())
+    end
+
+    action GetSelectionMoveLeft3DKey returns InputSet
+        return Choose(keyMap:GetSelectionMoveLeft3DKey(), parent:SceneEditorKeys:GetSelectionMoveLeft3DKey())
+    end
+
+    action GetSelectionMoveRight3DKey returns InputSet
+        return Choose(keyMap:GetSelectionMoveRight3DKey(), parent:SceneEditorKeys:GetSelectionMoveRight3DKey())
+    end
+
+    action GetSelectionMoveUp3DKey returns InputSet
+        return Choose(keyMap:GetSelectionMoveUp3DKey(), parent:SceneEditorKeys:GetSelectionMoveUp3DKey())
+    end
+
+    action GetSelectionMoveDown3DKey returns InputSet
+        return Choose(keyMap:GetSelectionMoveDown3DKey(), parent:SceneEditorKeys:GetSelectionMoveDown3DKey())
+    end
+
+    action GetSelectionMoveForward3DKey returns InputSet
+        return Choose(keyMap:GetSelectionMoveForward3DKey(), parent:SceneEditorKeys:GetSelectionMoveForward3DKey())
+    end
+
+    action GetSelectionMoveBackward3DKey returns InputSet
+        return Choose(keyMap:GetSelectionMoveBackward3DKey(), parent:SceneEditorKeys:GetSelectionMoveBackward3DKey())
+    end
+
+    action GetSelectionRotateForward2DKey returns InputSet
+        return Choose(keyMap:GetSelectionRotateForward2DKey(), parent:SceneEditorKeys:GetSelectionRotateForward2DKey())
+    end
+
+    action GetSelectionRotateBackward2DKey returns InputSet
+        return Choose(keyMap:GetSelectionRotateBackward2DKey(), parent:SceneEditorKeys:GetSelectionRotateBackward2DKey())
+    end
+
+    action GetSelectionRotateYawLeftKey returns InputSet
+        return Choose(keyMap:GetSelectionRotateYawLeftKey(), parent:SceneEditorKeys:GetSelectionRotateYawLeftKey())
+    end
+
+    action GetSelectionRotateYawRightKey returns InputSet
+        return Choose(keyMap:GetSelectionRotateYawRightKey(), parent:SceneEditorKeys:GetSelectionRotateYawRightKey())
+    end
+
+    action GetSelectionRotatePitchUpKey returns InputSet
+        return Choose(keyMap:GetSelectionRotatePitchUpKey(), parent:SceneEditorKeys:GetSelectionRotatePitchUpKey())
+    end
+
+    action GetSelectionRotatePitchDownKey returns InputSet
+        return Choose(keyMap:GetSelectionRotatePitchDownKey(), parent:SceneEditorKeys:GetSelectionRotatePitchDownKey())
+    end
+
+    action GetSelectionRotateRollLeftKey returns InputSet
+        return Choose(keyMap:GetSelectionRotateRollLeftKey(), parent:SceneEditorKeys:GetSelectionRotateRollLeftKey())
+    end
+
+    action GetSelectionRotateRollRightKey returns InputSet
+        return Choose(keyMap:GetSelectionRotateRollRightKey(), parent:SceneEditorKeys:GetSelectionRotateRollRightKey())
+    end
+
+    action GetSelectionScaleUpKey returns InputSet
+        return Choose(keyMap:GetSelectionScaleUpKey(), parent:SceneEditorKeys:GetSelectionScaleUpKey())
+    end
+
+    action GetSelectionScaleDownKey returns InputSet
+        return Choose(keyMap:GetSelectionScaleDownKey(), parent:SceneEditorKeys:GetSelectionScaleDownKey())
+    end
+
+    action GetSelectionScaleXUpKey returns InputSet
+        return Choose(keyMap:GetSelectionScaleXUpKey(), parent:SceneEditorKeys:GetSelectionScaleXUpKey())
+    end
+
+    action GetSelectionScaleXDownKey returns InputSet
+        return Choose(keyMap:GetSelectionScaleXDownKey(), parent:SceneEditorKeys:GetSelectionScaleXDownKey())
+    end
+
+    action GetSelectionScaleYUpKey returns InputSet
+        return Choose(keyMap:GetSelectionScaleYUpKey(), parent:SceneEditorKeys:GetSelectionScaleYUpKey())
+    end
+
+    action GetSelectionScaleYDownKey returns InputSet
+        return Choose(keyMap:GetSelectionScaleYDownKey(), parent:SceneEditorKeys:GetSelectionScaleYDownKey())
+    end
+
+    action GetSelectionScaleZUpKey returns InputSet
+        return Choose(keyMap:GetSelectionScaleZUpKey(), parent:SceneEditorKeys:GetSelectionScaleZUpKey())
+    end
+
+    action GetSelectionScaleZDownKey returns InputSet
+        return Choose(keyMap:GetSelectionScaleZDownKey(), parent:SceneEditorKeys:GetSelectionScaleZDownKey())
+    end
+
+    action GetSelectionDeleteKey returns InputSet
+        return Choose(keyMap:GetSelectionDeleteKey(), parent:SceneEditorKeys:GetSelectionDeleteKey())
+    end
+
+    action GetSelectionDeleteKey2 returns InputSet
+        return Choose(keyMap:GetSelectionDeleteKey2(), parent:SceneEditorKeys:GetSelectionDeleteKey2())
+    end
+
+    action GetSelectionCancelKey returns InputSet
+        return Choose(keyMap:GetSelectionCancelKey(), parent:SceneEditorKeys:GetSelectionCancelKey())
+    end
+
+    action GetNewItemCancelKey returns InputSet
+        return Choose(keyMap:GetNewItemCancelKey(), parent:SceneEditorKeys:GetNewItemCancelKey())
+    end
+
+    action GetNewItemConfirmKey returns InputSet
+        return Choose(keyMap:GetNewItemConfirmKey(), parent:SceneEditorKeys:GetNewItemConfirmKey())
+    end
+
+    action GetReportLocationKey returns InputSet
+        return Choose(keyMap:GetReportLocationKey(), parent:SceneEditorKeys:GetReportLocationKey())
+    end
+
+    action GetReportCameraDirectionKey returns InputSet
+        return Choose(keyMap:GetReportCameraDirectionKey(), parent:SceneEditorKeys:GetReportCameraDirectionKey())
+    end
+
+    action GetReportItemsInViewKey returns InputSet
+        return Choose(keyMap:GetReportItemsInViewKey(), parent:SceneEditorKeys:GetReportItemsInViewKey())
+    end
+
+    action GetToggleGridKey returns InputSet
+        return Choose(keyMap:GetToggleGridKey(), parent:SceneEditorKeys:GetToggleGridKey())
+    end
+
+    action GetIncreaseGridUnitKey returns InputSet
+        return Choose(keyMap:GetIncreaseGridUnitKey(), parent:SceneEditorKeys:GetIncreaseGridUnitKey())
+    end
+
+    action GetDecreaseGridUnitKey returns InputSet
+        return Choose(keyMap:GetDecreaseGridUnitKey(), parent:SceneEditorKeys:GetDecreaseGridUnitKey())
+    end
+
+    action GetFocusPropertiesKey returns InputSet
+        return Choose(keyMap:GetFocusPropertiesKey(), parent:SceneEditorKeys:GetFocusPropertiesKey())
+    end
+
+    action GetUnfocusPropertiesKey1 returns InputSet
+        return Choose(keyMap:GetUnfocusPropertiesKey1(), parent:SceneEditorKeys:GetUnfocusPropertiesKey1())
+    end
+
+    action GetUnfocusPropertiesKey2 returns InputSet
+        return Choose(keyMap:GetUnfocusPropertiesKey2(), parent:SceneEditorKeys:GetUnfocusPropertiesKey2())
+    end
+
+    action GetOpenFindDialogKey returns InputSet
+        return Choose(keyMap:GetOpenVisualEditorFindDialogKey(), parent:SceneEditorKeys:GetOpenFindDialogKey())
+    end
+
+    action GetCloseFindDialogKey1 returns InputSet
+        return Choose(keyMap:GetCloseVisualEditorFindDialogKey1(), parent:SceneEditorKeys:GetCloseFindDialogKey1())
+    end
+
+    action GetCloseFindDialogKey2 returns InputSet
+        return Choose(keyMap:GetCloseVisualEditorFindDialogKey2(), parent:SceneEditorKeys:GetCloseFindDialogKey2())
+    end
+
+    action GetSelectionResetScaleKey returns InputSet
+        return Choose(keyMap:GetSelectionResetScaleKey(), parent:SceneEditorKeys:GetSelectionResetScaleKey())
+    end
+
+    action GetCursorSelectItemsKey returns InputSet
+        return Choose(keyMap:GetCursorSelectItemsKey(), parent:SceneEditorKeys:GetCursorSelectItemsKey())
+    end
+
+    action GetCursorSizeUpKey returns InputSet
+        return Choose(keyMap:GetCursorSizeUpKey(), parent:SceneEditorKeys:GetCursorSizeUpKey())
+    end
+
+    action GetCursorSizeDownKey returns InputSet
+        return Choose(keyMap:GetCursorSizeDownKey(), parent:SceneEditorKeys:GetCursorSizeDownKey())
+    end
+
+    action GetTerrainBrushUseKey returns InputSet
+        return Choose(keyMap:GetTerrainBrushUseKey(), parent:SceneEditorKeys:GetTerrainBrushUseKey())
+    end
+
+    action GetTerrainStrengthUpKey returns InputSet
+        return Choose(keyMap:GetTerrainStrengthUpKey(), parent:SceneEditorKeys:GetTerrainStrengthUpKey())
+    end
+
+    action GetTerrainStrengthDownKey returns InputSet
+        return Choose(keyMap:GetTerrainStrengthDownKey(), parent:SceneEditorKeys:GetTerrainStrengthDownKey())
+    end
+
+    action GetTerrainToolKey(integer tool) returns InputSet
+        InputSet fromMap = undefined
+        if tool = 1
+            fromMap = keyMap:GetTerrainTool1Key()
+        elseif tool = 2
+            fromMap = keyMap:GetTerrainTool2Key()
+        elseif tool = 3
+            fromMap = keyMap:GetTerrainTool3Key()
+        elseif tool = 4
+            fromMap = keyMap:GetTerrainTool4Key()
+        elseif tool = 5
+            fromMap = keyMap:GetTerrainTool5Key()
+        elseif tool = 6
+            fromMap = keyMap:GetTerrainTool6Key()
+        elseif tool = 7
+            fromMap = keyMap:GetTerrainTool7Key()
+        elseif tool = 8
+            fromMap = keyMap:GetTerrainTool8Key()
+        elseif tool = 9
+            fromMap = keyMap:GetTerrainTool9Key()
+        end
+        return Choose(fromMap, parent:SceneEditorKeys:GetTerrainToolKey(tool))
+    end
+end

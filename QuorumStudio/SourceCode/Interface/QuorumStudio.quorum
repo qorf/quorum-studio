@@ -79,6 +79,7 @@ use Libraries.Development.Environment.Studio.Behaviors.EditorPartitionDragBehavi
 use Libraries.Development.Environment.Studio.Behaviors.PropertiesPartitionDragBehavior
 use Libraries.Interface.Controls.Blocks.Palette.BlockPalette
 use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Studio.Interface.StudioSceneEditorKeys
 use Libraries.Game.Graphics.Font
 use Libraries.Development.Environment.Configuration.IconConstants
 
@@ -616,6 +617,12 @@ editorPartitionTable:Add(dragContinueSet, editorDrag)
         propertiesPartitionTable:Add(dragSet, propertiesDrag)
         propertiesPartitionTable:Add(dragContinueSet, propertiesDrag)
         AddInputTable(propertiesPartitionTable)
+
+        // The scene editor's keys come from Studio's key map, so a user's key
+        // map file can change them (step 6). The key map is loaded by now.
+        StudioSceneEditorKeys sceneKeys
+        sceneKeys:SetKeyMap(resources:GetKeyMap())
+        ReplaceSceneEditorInput(sceneKeys)
     end
 
     action Load

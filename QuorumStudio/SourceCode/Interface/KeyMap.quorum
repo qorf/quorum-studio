@@ -169,6 +169,21 @@ class KeyMap
     constant text CURSOR_SELECT_ITEMS_KEY = "CURSOR_SELECT_ITEMS_KEY"
     constant text SELECT_SCENE_ITEM_KEY = "SELECT_SCENE_ITEM_KEY"
     constant text SELECTION_HIGHLIGHT_DRAG_KEY = "SELECTION_HIGHLIGHT_DRAG_KEY"
+    // The scene editor's cursor size, and the terrain keys (step 6).
+    constant text CURSOR_SIZE_UP_KEY = "CURSOR_SIZE_UP_KEY"
+    constant text CURSOR_SIZE_DOWN_KEY = "CURSOR_SIZE_DOWN_KEY"
+    constant text TERRAIN_TOOL_1_KEY = "TERRAIN_TOOL_1_KEY"
+    constant text TERRAIN_TOOL_2_KEY = "TERRAIN_TOOL_2_KEY"
+    constant text TERRAIN_TOOL_3_KEY = "TERRAIN_TOOL_3_KEY"
+    constant text TERRAIN_TOOL_4_KEY = "TERRAIN_TOOL_4_KEY"
+    constant text TERRAIN_TOOL_5_KEY = "TERRAIN_TOOL_5_KEY"
+    constant text TERRAIN_TOOL_6_KEY = "TERRAIN_TOOL_6_KEY"
+    constant text TERRAIN_TOOL_7_KEY = "TERRAIN_TOOL_7_KEY"
+    constant text TERRAIN_TOOL_8_KEY = "TERRAIN_TOOL_8_KEY"
+    constant text TERRAIN_TOOL_9_KEY = "TERRAIN_TOOL_9_KEY"
+    constant text TERRAIN_BRUSH_USE_KEY = "TERRAIN_BRUSH_USE_KEY"
+    constant text TERRAIN_STRENGTH_UP_KEY = "TERRAIN_STRENGTH_UP_KEY"
+    constant text TERRAIN_STRENGTH_DOWN_KEY = "TERRAIN_STRENGTH_DOWN_KEY"
 
     //File Menu Actions
     blueprint action GetNewProjectKey returns InputSet
@@ -328,6 +343,20 @@ class KeyMap
     blueprint action GetCursorSelectItemsKey returns InputSet
     blueprint action GetSelectSceneItemKey returns InputSet
     blueprint action GetSelectionHighlightDragKey returns InputSet
+    blueprint action GetCursorSizeUpKey returns InputSet
+    blueprint action GetCursorSizeDownKey returns InputSet
+    blueprint action GetTerrainTool1Key returns InputSet
+    blueprint action GetTerrainTool2Key returns InputSet
+    blueprint action GetTerrainTool3Key returns InputSet
+    blueprint action GetTerrainTool4Key returns InputSet
+    blueprint action GetTerrainTool5Key returns InputSet
+    blueprint action GetTerrainTool6Key returns InputSet
+    blueprint action GetTerrainTool7Key returns InputSet
+    blueprint action GetTerrainTool8Key returns InputSet
+    blueprint action GetTerrainTool9Key returns InputSet
+    blueprint action GetTerrainBrushUseKey returns InputSet
+    blueprint action GetTerrainStrengthUpKey returns InputSet
+    blueprint action GetTerrainStrengthDownKey returns InputSet
 
     action GetVersionKey returns text
         return VERSION_KEY
@@ -335,6 +364,22 @@ class KeyMap
 
     action GetKeyMapVersion returns number
         return version
+    end
+
+    /*
+        Returns a copy of the key stored for a name, or undefined if there is
+        none. RemapKeyMap uses it to fill in a default for a key that a
+        user's key map file doesn't have.
+    */
+    action GetMappedKey(text key) returns InputSet
+        if not map:HasKey(key)
+            return undefined
+        end
+        InputSet set = map:GetValue(key)
+        if set = undefined
+            return undefined
+        end
+        return set:Copy()
     end
 
     action GetSupportedKeysIterator returns Iterator<text>
@@ -512,6 +557,20 @@ class KeyMap
         map:Add(CURSOR_SELECT_ITEMS_KEY, GetCursorSelectItemsKey())
         map:Add(SELECT_SCENE_ITEM_KEY, GetSelectSceneItemKey())
         map:Add(SELECTION_HIGHLIGHT_DRAG_KEY, GetSelectionHighlightDragKey())
+        map:Add(CURSOR_SIZE_UP_KEY, GetCursorSizeUpKey())
+        map:Add(CURSOR_SIZE_DOWN_KEY, GetCursorSizeDownKey())
+        map:Add(TERRAIN_TOOL_1_KEY, GetTerrainTool1Key())
+        map:Add(TERRAIN_TOOL_2_KEY, GetTerrainTool2Key())
+        map:Add(TERRAIN_TOOL_3_KEY, GetTerrainTool3Key())
+        map:Add(TERRAIN_TOOL_4_KEY, GetTerrainTool4Key())
+        map:Add(TERRAIN_TOOL_5_KEY, GetTerrainTool5Key())
+        map:Add(TERRAIN_TOOL_6_KEY, GetTerrainTool6Key())
+        map:Add(TERRAIN_TOOL_7_KEY, GetTerrainTool7Key())
+        map:Add(TERRAIN_TOOL_8_KEY, GetTerrainTool8Key())
+        map:Add(TERRAIN_TOOL_9_KEY, GetTerrainTool9Key())
+        map:Add(TERRAIN_BRUSH_USE_KEY, GetTerrainBrushUseKey())
+        map:Add(TERRAIN_STRENGTH_UP_KEY, GetTerrainStrengthUpKey())
+        map:Add(TERRAIN_STRENGTH_DOWN_KEY, GetTerrainStrengthDownKey())
     end
 
     /*

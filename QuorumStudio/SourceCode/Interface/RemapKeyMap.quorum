@@ -5,6 +5,7 @@ use Libraries.System.File
 use Libraries.Data.Formats.JavaScriptObjectNotation
 use Libraries.Containers.HashTable
 use Libraries.Containers.Iterator
+use Libraries.System.Properties
 
 class RemapKeyMap is KeyMap
     KeyboardEvent keys
@@ -29,13 +30,21 @@ class RemapKeyMap is KeyMap
                 end
             end
 
+            // A key the file doesn't have, such as one added to Studio since
+            // the file was written, uses this platform's default, so the
+            // user's other keys are kept (step 6).
+            KeyMap defaults = GetPlatformDefaults()
             Iterator<text> iterator = GetSupportedKeysIterator()
             repeat while iterator:HasNext()
                 text key = iterator:Next()
                 if key not= GetVersionKey()
                     boolean value = LoadKey(note, key)
                     if not value
-                        return false
+                        InputSet fallback = defaults:GetMappedKey(key)
+                        if fallback = undefined
+                            return false
+                        end
+                        parent:KeyMap:map:Add(key, fallback)
                     end
                 end
             end
@@ -45,6 +54,25 @@ class RemapKeyMap is KeyMap
         end
 
         return false
+    end
+
+    /*
+        Returns this platform's default key map, loaded, the same way
+        KeyMapLoader chooses it.
+    */
+    private action GetPlatformDefaults returns KeyMap
+        Properties properties
+        text systemName = properties:GetOperatingSystemName()
+        KeyMap defaults = undefined
+        if systemName:Contains("Windows")
+            WindowsKeyMap windowsMap
+            defaults = windowsMap
+        else
+            MacKeyMap macMap
+            defaults = macMap
+        end
+        defaults:Load()
+        return defaults
     end
 
     action LoadKey(JavaScriptObjectNotation note, text key) returns boolean
@@ -631,5 +659,61 @@ class RemapKeyMap is KeyMap
 
     action GetSelectionHighlightDragKey returns InputSet
         return GetInputSetCopy(parent:KeyMap:SELECTION_HIGHLIGHT_DRAG_KEY)
+    end
+
+    action GetCursorSizeUpKey returns InputSet
+        return GetInputSetCopy(parent:KeyMap:CURSOR_SIZE_UP_KEY)
+    end
+
+    action GetCursorSizeDownKey returns InputSet
+        return GetInputSetCopy(parent:KeyMap:CURSOR_SIZE_DOWN_KEY)
+    end
+
+    action GetTerrainTool1Key returns InputSet
+        return GetInputSetCopy(parent:KeyMap:TERRAIN_TOOL_1_KEY)
+    end
+
+    action GetTerrainTool2Key returns InputSet
+        return GetInputSetCopy(parent:KeyMap:TERRAIN_TOOL_2_KEY)
+    end
+
+    action GetTerrainTool3Key returns InputSet
+        return GetInputSetCopy(parent:KeyMap:TERRAIN_TOOL_3_KEY)
+    end
+
+    action GetTerrainTool4Key returns InputSet
+        return GetInputSetCopy(parent:KeyMap:TERRAIN_TOOL_4_KEY)
+    end
+
+    action GetTerrainTool5Key returns InputSet
+        return GetInputSetCopy(parent:KeyMap:TERRAIN_TOOL_5_KEY)
+    end
+
+    action GetTerrainTool6Key returns InputSet
+        return GetInputSetCopy(parent:KeyMap:TERRAIN_TOOL_6_KEY)
+    end
+
+    action GetTerrainTool7Key returns InputSet
+        return GetInputSetCopy(parent:KeyMap:TERRAIN_TOOL_7_KEY)
+    end
+
+    action GetTerrainTool8Key returns InputSet
+        return GetInputSetCopy(parent:KeyMap:TERRAIN_TOOL_8_KEY)
+    end
+
+    action GetTerrainTool9Key returns InputSet
+        return GetInputSetCopy(parent:KeyMap:TERRAIN_TOOL_9_KEY)
+    end
+
+    action GetTerrainBrushUseKey returns InputSet
+        return GetInputSetCopy(parent:KeyMap:TERRAIN_BRUSH_USE_KEY)
+    end
+
+    action GetTerrainStrengthUpKey returns InputSet
+        return GetInputSetCopy(parent:KeyMap:TERRAIN_STRENGTH_UP_KEY)
+    end
+
+    action GetTerrainStrengthDownKey returns InputSet
+        return GetInputSetCopy(parent:KeyMap:TERRAIN_STRENGTH_DOWN_KEY)
     end
 end
