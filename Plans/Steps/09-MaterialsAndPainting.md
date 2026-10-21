@@ -16,9 +16,9 @@ designed with step 2:
 ```
 MyProject/
     Scenes/World.qs                               the terrain entry gets "Material"
-    Terrains/Terrain1/terrain.json                unchanged
-    Terrains/Terrain1/region_0_0_splat.png        written once a region is painted
-    Materials/Meadow.json                         a terrain material (made by the editor)
+    Scenes/Terrains/Terrain1/terrain.json                unchanged
+    Scenes/Terrains/Terrain1/region_0_0_splat.png        written once a region is painted
+    Scenes/Materials/Meadow.json                         a terrain material (made by the editor)
     Textures/Ground037_1K-PNG/Ground037.json      a material (made by the editor, beside its set)
 ```
 
@@ -98,7 +98,7 @@ order, and how they blend. Terrains can share one.
 ### The scene's terrain entry gets `"Material"`
 
 ```json
-    "Material": "Materials/Meadow.json"
+    "Material": "Scenes/Materials/Meadow.json"
 ```
 
 - It's relative to the project, like every scene path. It's written only
@@ -118,8 +118,8 @@ order, and how they blend. Terrains can share one.
     example `Ground037_1K-PNG_Color.png`). The new one is written beside the
     set;
   - the first material added makes the terrain's terrain-material file in
-    the project's `Materials/` (named after the terrain, for example
-    `Materials/Terrain1.json`), refers to it from the scene, and covers the
+    the project's `Scenes/Materials/` (named after the terrain, for example
+    `Scenes/Materials/Terrain1.json`), refers to it from the scene, and covers the
     whole ground. Every sample's weight goes to layer 1;
   - layers 2 to 4 are added the same way, up to four. A new layer shows
     nowhere until painted.
@@ -205,7 +205,7 @@ order, and how they blend. Terrains can share one.
   has no splat files.
 - **Adding Ground037:**
   - the ground shows it everywhere;
-  - `Materials/Terrain1.json` and `Ground037.json` exist;
+  - `Scenes/Materials/Terrain1.json` and `Ground037.json` exist;
   - the scene has `"Material"`;
   - save, reopen and the game all show it.
 - **Adding Rocks002 and painting it:** rocks under the ring; undo and redo;

@@ -76,6 +76,7 @@ use Libraries.Interface.Behaviors.Controls.ScrollBarDragBehavior
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Development.Environment.Studio.Behaviors.NavigationPartitionDragBehavior
 use Libraries.Development.Environment.Studio.Behaviors.EditorPartitionDragBehavior
+use Libraries.Development.Environment.Studio.Behaviors.PropertiesPartitionDragBehavior
 use Libraries.Interface.Controls.Blocks.Palette.BlockPalette
 use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Game.Graphics.Font
@@ -390,7 +391,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         //if in Vulkan mode, use multi-sampling
         DesktopConfiguration config = GetDesktopConfiguration()
         if config:useVulkan
-            SetMultisampling(4)
+            SetMultisampling2D(4)
+            SetMultisampling3D(4)
         end
 
         AddResizeListener(me)
@@ -606,6 +608,14 @@ EditorPartitionDragBehavior editorDrag
 editorPartitionTable:Add(dragSet, editorDrag)
 editorPartitionTable:Add(dragContinueSet, editorDrag)
         AddInputTable(editorPartitionTable)
+
+        // The drag bar between a scene and its Properties panel (step 4).
+        InputTable propertiesPartitionTable
+        propertiesPartitionTable:SetIdentifier("PropertiesPartition")
+        PropertiesPartitionDragBehavior propertiesDrag
+        propertiesPartitionTable:Add(dragSet, propertiesDrag)
+        propertiesPartitionTable:Add(dragContinueSet, propertiesDrag)
+        AddInputTable(propertiesPartitionTable)
     end
 
     action Load

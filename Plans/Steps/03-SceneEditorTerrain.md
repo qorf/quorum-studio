@@ -85,7 +85,7 @@ The additions below are corrections found on 2026-10-20.
   at once:
   - 2 × 2 regions of 64 samples, 1 unit apart, so 128 × 128 units centered
     on the origin;
-  - saved into the project in `Terrains/Terrain1/` (then `Terrain2`, ...);
+  - saved into the project in `Scenes/Terrains/Terrain1/` (then `Terrain2`, ...);
   - selected, and announced.
 - **Selecting it:** from the scene tree, by clicking the ground, or with
   the cursor's Enter.

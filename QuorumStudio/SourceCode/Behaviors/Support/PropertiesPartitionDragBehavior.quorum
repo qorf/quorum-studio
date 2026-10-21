@@ -1,0 +1,46 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Events.DragAndDropEvent
+use Libraries.Game.InputSet
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Game.GameStateManager
+
+/*
+    Resizes the Properties panel of the selected scene tab, as its drag bar
+    is dragged. The panel's left edge follows the pointer.
+*/
+class PropertiesPartitionDragBehavior is Behavior
+
+    GameStateManager manager
+
+    action Run(BehaviorEvent event)
+        DragAndDropEvent dragEvent = event:GetDragAndDropEvent()
+        InputSet set = event:GetInputSet()
+        if set:GetInputTrigger() = set:BEGIN or dragEvent:GetMovementX() = 0
+            return now
+        end
+
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        CodeEditorTabPane pane = studio:GetTabPane()
+        TabPaneSelection selection = pane:GetSelection()
+        if selection = undefined
+            return now
+        end
+        Tab tab = selection:GetTab()
+        if not (tab is VisualEditorTab)
+            return now
+        end
+
+        VisualEditorTab visualTab = cast(VisualEditorTab, tab)
+        Control container = visualTab:GetSceneContainer()
+        number rightEdge = container:GetGlobalX() + container:GetWidth()
+        visualTab:SetPropertiesWidth((rightEdge - dragEvent:GetX()) / container:GetInterfaceScale())
+    end
+end

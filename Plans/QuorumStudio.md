@@ -73,6 +73,10 @@ A game loads it with `LoadScene`, like any model.
    - **For a terrain:** its size and regions, and collision and friction
      (step 5). Later: its materials (step 9), brush settings (step 7) and
      generation (step 10).
+   - **How (step 4's write-up):** the existing properties dialogs dock in
+     the panel instead of floating. Every later section is another
+     `PropertiesDialog`, added with `SceneEditor:AddPropertiesDialog`; the
+     panel shows all that apply, in order, each as a named group.
 7. **Materials are files** (decided 2026-10-20), as in other engines.
    - **A material file** describes one material: a texture set or a
      texture, with its tile size.
@@ -88,6 +92,18 @@ A game loads it with `LoadScene`, like any model.
 8. **A new terrain is flat, with no splat and no materials** (decided
    2026-10-20). Adding and removing materials, and painting them, are
    step 9.
+9. **A scene's own files go under the project's `Scenes` folder**
+   (decided 2026-10-20). `Scenes` holds the `.qs` files, and under it:
+   - `Scenes/Terrains/`: one folder per terrain (`Terrain1`, `Terrain2`, ...),
+     with its `terrain.json` and region images;
+   - `Scenes/Materials/`: material and terrain-material files (step 9).
+
+   The editor makes them there, and the scene refers to them by
+   project-relative paths, such as `Scenes/Terrains/Terrain1/terrain.json`.
+   The folder names are `SceneProperties:SCENES_FOLDER`, `TERRAINS_FOLDER`
+   and `MATERIALS_FOLDER`. A scene that still names a terrain at the old
+   top-level `Terrains/...` finds it under `Scenes/` if it was moved there,
+   and saves the new path.
 
 ## What exists today
 
@@ -140,8 +156,8 @@ A game loads it with `LoadScene`, like any model.
 | 1 | Worlds classes into the library | `Steps/01-WorldsInLibrary.md` | yes | no | **Files moved and folder fix applied 2026-10-20**; build, tests and commit remain (the user) |
 | 2 | `TerrainItem`, terrain in scene files, no splat until painted | `Steps/02-TerrainItem.md` | yes | no | **Applied 2026-10-20**; build and `TerrainSceneCheck` remain (the user) |
 | 3 | Terrain in the scene editor: palette, selection, tree, saving | `Steps/03-SceneEditorTerrain.md` | yes | icon (optional, not done) | **Applied 2026-10-20**; build and Studio test remain (the user) |
-| 4 | The Properties panel, docked on the right, for every item | `Steps/04-PropertiesPanel.md` | yes | layout | Plan |
-| 5 | Terrain sections in the Properties panel: info and physics | `Steps/05-TerrainProperties.md` | yes | no | Plan |
+| 4 | The Properties panel, docked on the right, for every item | `Steps/04-PropertiesPanel.md` | yes | layout | **Applied 2026-10-20**; build and Studio test remain (the user). The six dialogs dock in the panel unchanged, instead of being split into sections |
+| 5 | Terrain sections in the Properties panel: info and physics | `Steps/05-TerrainProperties.md` | yes | no | **Applied 2026-10-20**; build and Studio test remain (the user). Also fixes terrains being saved with collision off |
 | 6 | Overridable scene-editor keys, and the terrain keys | `Steps/06-Keys.md` | yes | key map | Plan |
 | 7 | Picking the ground and the brush cursor | `Steps/07-PickingAndBrushCursor.md` | yes | no | Plan |
 | 8 | Sculpt brushes: raise, lower, smooth, flatten, ramp | `Steps/08-SculptBrushes.md` | yes | no | Plan (one tool at a time) |

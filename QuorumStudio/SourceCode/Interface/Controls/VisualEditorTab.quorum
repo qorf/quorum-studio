@@ -33,6 +33,9 @@ use Libraries.Interface.Controls.Scenes.Items.EditorAudio3D
 use Libraries.Interface.Controls.Scenes.SceneTree
 use Libraries.Interface.Controls.Scenes.ScenePalette
 use Libraries.Interface.Controls.Scenes.SceneEditor
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Controls.Scenes.PropertiesPanel
 
 class VisualEditorTab is Tab
 
@@ -40,6 +43,15 @@ class VisualEditorTab is Tab
     File projectLocation = undefined
     SceneEditor editor = undefined
     GameStateManager manager
+
+    // The scene editor, a drag bar, and the Properties panel, side by side.
+    Control sceneContainer
+    Control propertiesPartition
+    PropertiesPanel propertiesPanel
+    number propertiesWidth = 300
+    constant number PARTITION_WIDTH = 4
+    constant number MINIMUM_PROPERTIES_WIDTH = 150
+    constant number MAXIMUM_PROPERTIES_WIDTH = 800
 
     action GetFile returns File
         return file
@@ -64,10 +76,78 @@ class VisualEditorTab is Tab
         editor:SetProjectLocation(projectLocation)
         editor:SetName(file:GetPath())
 
-        SetRelatedItem(editor)
+        // The editor on the left, then a drag bar, then the Properties
+        // panel on the right. The editor takes the width the other two
+        // leave (SetPropertiesWidth).
+        FlowLayout layout
+        sceneContainer:SetLayout(layout)
+        sceneContainer:SetPercentageWidth(1.0)
+        sceneContainer:SetPercentageHeight(1.0)
+        sceneContainer:SetName("Scene")
+
+        propertiesPartition:SetPixelWidth(PARTITION_WIDTH)
+        propertiesPartition:SetVerticalLayoutMode(propertiesPartition:FILL)
+        propertiesPartition:SetInputGroup("PropertiesPartition")
+        propertiesPartition:SetName("Properties Partition")
+
+        sceneContainer:Add(editor)
+        sceneContainer:Add(propertiesPartition)
+        sceneContainer:Add(propertiesPanel)
+        SetPropertiesWidth(propertiesWidth)
+
+        SetRelatedItem(sceneContainer)
         SetFocusTarget(editor)
 
+        // Docked before loading, so the dialogs never float.
+        editor:SetPropertiesPanel(propertiesPanel)
         editor:Load()
+    end
+
+    /*
+        Sets the width of the Properties panel, in pixels before the
+        interface scale, from 150 to 800. The scene takes the rest.
+
+        Attribute: Parameter width The panel's width
+    */
+    action SetPropertiesWidth(number width)
+        if width < MINIMUM_PROPERTIES_WIDTH
+            width = MINIMUM_PROPERTIES_WIDTH
+        elseif width > MAXIMUM_PROPERTIES_WIDTH
+            width = MAXIMUM_PROPERTIES_WIDTH
+        end
+        propertiesWidth = width
+        propertiesPanel:SetPixelWidth(width)
+        // The editor's width is the whole width, less the bar and panel.
+        editor:SetPixelWidth(-(width + PARTITION_WIDTH))
+        sceneContainer:RequestLayout()
+    end
+
+    /*
+        Returns the width of the Properties panel, in pixels before the
+        interface scale.
+
+        Attribute: Returns The panel's width
+    */
+    action GetPropertiesWidth returns number
+        return propertiesWidth
+    end
+
+    /*
+        Returns the control holding the editor, the drag bar and the panel.
+
+        Attribute: Returns The container
+    */
+    action GetSceneContainer returns Control
+        return sceneContainer
+    end
+
+    /*
+        Returns the tab's Properties panel.
+
+        Attribute: Returns The panel
+    */
+    action GetPropertiesPanel returns PropertiesPanel
+        return propertiesPanel
     end
 
     action Save
@@ -102,11 +182,7 @@ class VisualEditorTab is Tab
     end
 
     action GetSceneEditor returns SceneEditor
-        Item2D value = GetRelatedItem()
-        if value is SceneEditor
-            return cast(SceneEditor, value)
-        else
-            return undefined
-        end
+        // The related item is now the container around the editor.
+        return editor
     end
 end

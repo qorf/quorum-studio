@@ -44,7 +44,7 @@ The guide is `Terrain/TerrainEditorInstructions.md`.
 
 | Step | When | What is said |
 |---|---|---|
-| 3 | Adding a terrain | "Placed Terrain, flat, 128 by 128 units, saved in Terrains/Terrain1." |
+| 3 | Adding a terrain | "Placed Terrain, flat, 128 by 128 units, saved in Scenes/Terrains/Terrain1." |
 | 3 | Trying to move it | "A terrain stays at the origin." |
 | 9 | Adding a material | "Added Rocks002 as layer 2, tiles 2.5 units. Paint it with the Paint tool." |
 | 7 | Moving the brush | "Height 3.2" (short), or the full report with Ctrl+Shift+1 |

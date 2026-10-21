@@ -49,8 +49,8 @@ manager code in §4 and §5 also applies, changed as below.
 ```
 MyProject/
     Scenes/World.qs                     the scene: refers to the terrain
-    Terrains/Terrain1/terrain.json      the terrain's data: unchanged format (version 2)
-    Terrains/Terrain1/region_0_0.png    heights, one image per region
+    Scenes/Terrains/Terrain1/terrain.json      the terrain's data: unchanged format (version 2)
+    Scenes/Terrains/Terrain1/region_0_0.png    heights, one image per region
 ```
 
 **A new terrain has no `region_*_splat.png` files.** They're written only
@@ -63,7 +63,7 @@ once a region has been painted (see "No splat until painted").
     "Class": "Terrain",
     "Name": "Terrain",
     "Description": "Ground for the scene, made of height map regions.",
-    "File": "Terrains/Terrain1/terrain.json",
+    "File": "Scenes/Terrains/Terrain1/terrain.json",
     "Physics Enabled": true,
     "Friction": 0.8
 }
