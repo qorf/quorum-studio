@@ -413,6 +413,13 @@ class IOSSupport is ProcessListener
         return result
     end
 
+    /*
+        The app's Info.plist. Since iOS 27, apps must use the scene life cycle or
+        they won't launch (Apple's TN3187), so it names the scene delegate in the
+        standard library's iOS plugin (IOSSceneDelegate, whose Objective-C name is
+        QuorumSceneDelegate). GetRoboVMXML force-links that class, since iOS finds
+        it only by this name.
+    */
     private action GetPList(BuildInformation info) returns text
         text result = ""
         QuorumProject project = info:project
@@ -463,6 +470,23 @@ result =
     <array>
         <string>UIInterfaceOrientationPortrait</string>
     </array>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+        <key>UISceneConfigurations</key>
+        <dict>
+            <key>UIWindowSceneSessionRoleApplication</key>
+            <array>
+                <dict>
+                    <key>UISceneConfigurationName</key>
+                    <string>Default Configuration</string>
+                    <key>UISceneDelegateClassName</key>
+                    <string>QuorumSceneDelegate</string>
+                </dict>
+            </array>
+        </dict>
+    </dict>
 </dict>
 </plist>
 "
@@ -513,6 +537,9 @@ result =
     <framework>AVFoundation</framework>
   </weakFrameworks>
   <iosInfoPList>Info.plist.xml</iosInfoPList>
+  <forceLinkClasses>
+    <pattern>plugins.quorum.Libraries.Game.IOSSceneDelegate</pattern>
+  </forceLinkClasses>
 </config>
 "
         return result
