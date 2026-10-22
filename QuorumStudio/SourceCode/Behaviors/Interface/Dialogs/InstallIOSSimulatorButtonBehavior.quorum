@@ -1,0 +1,23 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.InstallIOSSimulatorDialog
+
+/* The Download (or Stop) button in InstallIOSSimulatorDialog. */
+class InstallIOSSimulatorButtonBehavior is QuorumStudioBehavior
+    InstallIOSSimulatorDialog dialog = undefined
+
+    action SetDialog(InstallIOSSimulatorDialog dialog)
+        me:dialog = dialog
+    end
+
+    action GetDialog returns InstallIOSSimulatorDialog
+        return dialog
+    end
+
+    action Run(BehaviorEvent event)
+        if dialog not= undefined
+            dialog:DownloadOrStop()
+        end
+    end
+end

@@ -1,0 +1,47 @@
+package Libraries.Development.Environment.Studio.Mobile
+use Libraries.System.ProcessListener
+use Libraries.System.ProcessEvent
+
+/*
+    Collects what a command prints, and its exit code, for the short Xcode
+    commands AppleDevicesReader runs (xcrun simctl, xcode-select, xcodebuild).
+*/
+class AppleCommandOutput is ProcessListener
+    text standardOutput = ""
+    text errors = ""
+    integer exit = -1
+
+    action ProcessStarted(ProcessEvent event)
+    end
+
+    action ProcessStopped(ProcessEvent event)
+        exit = event:GetExit()
+    end
+
+    action Error(ProcessEvent event)
+        text line = event:GetOutput()
+        if line not= undefined
+            errors = errors + line + line:GetLineFeed()
+        end
+    end
+
+    action Output(ProcessEvent event)
+        text line = event:GetOutput()
+        if line not= undefined
+            standardOutput = standardOutput + line + line:GetLineFeed()
+        end
+    end
+
+    action GetOutput returns text
+        return standardOutput
+    end
+
+    action GetErrors returns text
+        return errors
+    end
+
+    /* The command's exit code: 0 when it worked, -1 when it couldn't run. */
+    action GetExit returns integer
+        return exit
+    end
+end

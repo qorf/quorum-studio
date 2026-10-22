@@ -70,7 +70,8 @@ use Libraries.Development.Versioning.DiffRequest
 use Libraries.Development.Versioning.DiffResult
 use Libraries.Language.Compile.CodeCompletionItem
 use Libraries.Development.Environment.Studio.Mobile.IOSSupport
-use Libraries.Development.Environment.Studio.Mobile.AppleNativeCompileListener
+use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
+use Libraries.Development.Environment.Studio.Behaviors.ShowInstallIOSSimulatorBehavior
 use Libraries.System.Logging.SharedLogger
 use Libraries.Development.Environment.Projects.Project
 use Libraries.System.Process
@@ -95,6 +96,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
     BuildInformation debuggingProgram = undefined
     CodeEditorTabPane editors = undefined
     OutputEditorTabPane outputTabs = undefined
+    ShowInstallIOSSimulatorBehavior showIOSSimulatorInstaller
     HashTable<text, Process> processes
     HashTable<text, OutputTab> outputTabsForProcesses
     ProjectManager projectManager = undefined
@@ -1305,8 +1307,13 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         File iosLocation
         iosLocation:SetPath("External/Mobile")
 
-        //Setup IOS and tell it where to find the JDK
+        //Check Xcode and the device before anything is copied or Gradle starts.
         IOSSupport ios
+        if not PrepareIOSDevice(project, ios, out)
+            return now
+        end
+
+        //Setup IOS and tell it where to find the JDK
         ios:AddListener(me)
         ios:Setup(project, runDirectory:GetAbsolutePath(), jarName)
         text value = FindJava()
@@ -1316,13 +1323,12 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         value = javaHome:GetAbsolutePath()
         ios:SetJava(value)
 
-        //If there is already a mobile folder, we only need to copy the jars to the right spot.
+        //The jars and natives are used from Run in place (see IOSSupport), so only
+        //a new Mobile folder needs copying. An older one gets the current Gradle settings.
         if ios:HasMobileFolder()
-            out:Append("Folder detected, copying Quorum files. Clean and build to start fresh on iOS devices.")
-            ios:CopyLibraries()
+            ios:UpdateGradleSettings(iosLocation:GetAbsolutePath())
         else
             ios:CopyAndRename(iosLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName)
-            ios:CopyLibraries()
         end
 
         out:Append("Converting Quorum to iOS. This can take a few minutes.")
@@ -1339,7 +1345,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
 
         File location = project:GetLocation()
         text processLocation = location:GetAbsolutePath()
-        if processes:HasKey(value) //kill it, if you have to
+        if processes:HasKey(processLocation) //kill it, if you have to
             Process old = processes:RemoveKey(processLocation)
             outputTabsForProcesses:RemoveKey(processLocation)
             old:Cancel()
@@ -1349,6 +1355,68 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         processes:Add(processLocation, build)
 
         build:Run()      
+
+        //On Xcode 27, RoboVM builds the app but can't open the simulator window,
+        //so Studio installs and launches it instead (see IOSSupport).
+        if project:IsIOSPhysicalDevice() or not ios:IsSimulatorAppMissing()
+            return now
+        end
+
+        text problem = ios:InstallOnSimulator()
+        if not problem:IsEmpty()
+            out:Append(problem)
+            return now
+        end
+
+        Process launch = ios:GetSimulatorLaunchProcess(project)
+        launch:AddListener(ios)
+        if processes:HasKey(processLocation)
+            processes:RemoveKey(processLocation)
+        end
+        processes:Add(processLocation, launch)
+        out:Append("Running on the " + ios:GetDevice():GetName() + " simulator.")
+        launch:Run()
+    end
+
+    /*
+        Checks that Xcode is ready and picks the device for Send to iOS, before
+        anything is copied or Gradle starts. Returns false, after saying why in the
+        output tab, if the send can't go ahead. When the iOS Simulator isn't
+        installed, offers to download it (InstallIOSSimulatorDialog).
+    */
+    private action PrepareIOSDevice(QuorumProject project, IOSSupport ios, OutputTab out) returns boolean
+        AppleDevicesReader reader
+        text problem = reader:GetXcodeProblem()
+        if not problem:IsEmpty()
+            out:Append(problem)
+            return false
+        end
+
+        if project:IsIOSPhysicalDevice()
+            reader:RefreshPhysicalDevices()
+        else
+            reader:RefreshSimulators()
+            if not reader:HasSimulatorRuntime()
+                out:Append("The iOS Simulator isn't installed. Choose Download in the dialog, or install it in Xcode, under Settings, then Components. Then send to iOS again.")
+                outputTabs:AddBehavior(showIOSSimulatorInstaller)
+                return false
+            end
+
+            if not reader:HasSimulators()
+                out:Append("No iOS simulators exist yet, so Quorum is making one.")
+                if not reader:CreateSimulator()
+                    out:Append("Quorum couldn't make a simulator. Open Xcode, then Window, Devices and Simulators, and add an iPhone. Then send to iOS again.")
+                    return false
+                end
+            end
+        end
+
+        boolean found = ios:ChooseDevice(project)
+        text message = ios:GetDeviceMessage()
+        if not message:IsEmpty()
+            out:Append(message)
+        end
+        return found
     end
 
     action SendToAndroidDebugMode(BuildInformation info)

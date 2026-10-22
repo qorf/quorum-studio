@@ -2,44 +2,342 @@ package Libraries.Development.Environment.Studio.Mobile
 use Libraries.Containers.Array
 use Libraries.System.Properties
 use Libraries.System.Process
-use Libraries.System.File
 
+/*
+    Finds the iOS simulators and connected iOS devices on this Mac.
+
+    Simulators come from xcrun simctl, which takes about 0.2 seconds, so they are
+    looked up again whenever the list is needed (RefreshSimulators). Connected
+    devices come from xcrun xctrace, which takes a few seconds, so they are looked
+    up at startup and before sending to a device (RefreshPhysicalDevices).
+
+    On recent Xcode versions, the iOS Simulator is a separate download. Without it
+    there are no simulators, and HasSimulatorRuntime returns false.
+
+    simctl's plain text is read rather than its --json output: the text is short
+    and has stayed the same across Xcode versions, and it needs no JSON reader.
+*/
 shared class AppleDevicesReader
-    Array<AppleDevice> availableDevices = undefined
+    Array<AppleDevice> simulators
+    Array<AppleDevice> physicalDevices
+    Array<AppleDevice> availableDevices
+    boolean hasSimulatorRuntime = false
+    text newestRuntime = ""
+    text newestRuntimeVersion = ""
+    text newestIPhoneType = ""
+    text newestIPhoneName = ""
+
     on create
-        availableDevices = RunAvailableDevicesProcess()
+        Refresh()
     end
 
+    /* Simulators first, newest iOS version first, then connected devices. */
     action GetAvailableDevices returns Array<AppleDevice>
         return availableDevices
     end
 
-    /*
-        This action currently runs xcrun xctrace list devices from the terminal,
-        other options include xcrun simctl list devices available
+    action Refresh
+        RefreshSimulators()
+        RefreshPhysicalDevices()
+    end
 
-    */
-    action RunAvailableDevicesProcess returns Array<AppleDevice>
+    action RefreshSimulators
+        Array<AppleDevice> found
         Properties properties
-        Process process
-        File directory
-        directory:SetPath("")
-        directory = directory:GetParentDirectory()
-        process:SetDirectory(directory)
         if properties:IsMac()
-            process:SetName("xcrun")
+            ReadRuntimes()
+            if hasSimulatorRuntime
+                Array<text> params
+                params:Add("simctl")
+                params:Add("list")
+                params:Add("devices")
+                params:Add("available")
+                AppleCommandOutput result = RunCommand("xcrun", params)
+                ReadSimulators(result:GetOutput(), found)
+            end
+        end
+        simulators = found
+        CombineDevices()
+    end
+
+    action RefreshPhysicalDevices
+        Array<AppleDevice> found
+        Properties properties
+        if properties:IsMac()
             Array<text> params
             params:Add("xctrace")
             params:Add("list")
             params:Add("devices")
-            process:SetParameters(params)
             AppleDeviceParser parser
+            Process process
+            process:SetName("xcrun")
+            process:SetParameters(params)
             process:AddListener(parser)
-            process:Run()
-            return parser:GetDevices()
+            check
+                process:Run()
+                found = parser:GetDevices()
+            detect e
+                //No Xcode tools: no devices.
+            end
+        end
+        physicalDevices = found
+        CombineDevices()
+    end
+
+    /* True when an iOS Simulator runtime is installed (Xcode, Settings, Components). */
+    action HasSimulatorRuntime returns boolean
+        return hasSimulatorRuntime
+    end
+
+    /* True when at least one simulator exists (as of the last RefreshSimulators). */
+    action HasSimulators returns boolean
+        return simulators:GetSize() > 0
+    end
+
+    /* The newest installed iOS Simulator version, for example "27.0", or "" if none. */
+    action GetNewestRuntimeVersion returns text
+        return newestRuntimeVersion
+    end
+
+    /*
+        Makes a simulator of the newest iPhone the newest iOS runtime supports, for
+        when a runtime is installed but has no simulators. Returns true if it worked.
+    */
+    action CreateSimulator returns boolean
+        ReadNewestIPhone()
+        if newestRuntime = "" or newestIPhoneType = ""
+            return false
         end
 
-        Array<AppleDevice> blank
-        return blank
+        Array<text> params
+        params:Add("simctl")
+        params:Add("create")
+        params:Add(newestIPhoneName)
+        params:Add(newestIPhoneType)
+        params:Add(newestRuntime)
+        AppleCommandOutput result = RunCommand("xcrun", params)
+        if result:GetExit() not= 0
+            return false
+        end
+        RefreshSimulators()
+        return simulators:GetSize() > 0
+    end
+
+    /*
+        Returns "" when Xcode can build for iOS. Otherwise, returns what the user
+        needs to do first: install Xcode, select it, or accept its license.
+    */
+    action GetXcodeProblem returns text
+        Properties properties
+        if not properties:IsMac()
+            return "Sending to iOS needs a Mac with Xcode."
+        end
+
+        Array<text> selectParams
+        selectParams:Add("-p")
+        AppleCommandOutput selected = RunCommand("xcode-select", selectParams)
+        text path = selected:GetOutput():Trim()
+        if selected:GetExit() not= 0 or path:IsEmpty()
+            return "Xcode isn't installed. Install it from the App Store, open it once, then send to iOS again."
+        end
+
+        if not path:Contains(".app/")
+            text message = "Quorum needs Xcode to send to iOS, but this Mac is set to use the Command Line Tools (" + path + "). "
+            message = message + "Install Xcode from the App Store and open it once. If it is already installed, run "
+            message = message + "sudo xcode-select -s /Applications/Xcode.app in Terminal, then send to iOS again."
+            return message
+        end
+
+        Array<text> versionParams
+        versionParams:Add("-version")
+        AppleCommandOutput version = RunCommand("xcodebuild", versionParams)
+        if version:GetExit() not= 0
+            return "Xcode isn't ready yet. Open Xcode once and accept its license, then send to iOS again."
+        end
+        return ""
+    end
+
+    /*
+        Compares two version numbers like "27.0" and "18.4". Returns 1 if the
+        first is newer, -1 if it's older, and 0 if they're the same.
+    */
+    action CompareVersions(text left, text right) returns integer
+        Array<text> a = left:Split("\.")
+        Array<text> b = right:Split("\.")
+        i = 0
+        repeat while i < a:GetSize() or i < b:GetSize()
+            integer x = 0
+            integer y = 0
+            check
+                if i < a:GetSize()
+                    x = cast(integer, a:Get(i))
+                end
+                if i < b:GetSize()
+                    y = cast(integer, b:Get(i))
+                end
+            detect e
+                return 0
+            end
+
+            if x > y
+                return 1
+            elseif x < y
+                return -1
+            end
+            i = i + 1
+        end
+        return 0
+    end
+
+    /* Runs a short command and collects its output. Doesn't throw. */
+    action RunCommand(text name, Array<text> params) returns AppleCommandOutput
+        AppleCommandOutput result
+        Process process
+        process:SetName(name)
+        process:SetParameters(params)
+        process:AddListener(result)
+        check
+            process:Run()
+        detect e
+            //The exit code stays -1.
+        end
+        return result
+    end
+
+    private action CombineDevices
+        Array<AppleDevice> combined
+        i = 0
+        repeat while i < simulators:GetSize()
+            combined:Add(simulators:Get(i))
+            i = i + 1
+        end
+
+        i = 0
+        repeat while i < physicalDevices:GetSize()
+            combined:Add(physicalDevices:Get(i))
+            i = i + 1
+        end
+        availableDevices = combined
+    end
+
+    /*
+        Reads xcrun simctl list runtimes, and remembers the newest iOS one. Its lines
+        look like "iOS 27.0 (27.0 - 24A434) - com.apple.CoreSimulator.SimRuntime.iOS-27-0".
+        A runtime that can't be used has "(unavailable" in its line.
+    */
+    private action ReadRuntimes
+        hasSimulatorRuntime = false
+        newestRuntime = ""
+        newestRuntimeVersion = ""
+
+        Array<text> params
+        params:Add("simctl")
+        params:Add("list")
+        params:Add("runtimes")
+        AppleCommandOutput result = RunCommand("xcrun", params)
+        Array<text> lines = result:GetOutput():SplitIntoLines()
+        i = 0
+        repeat while i < lines:GetSize()
+            text line = lines:Get(i):Trim()
+            integer parenStart = line:IndexOf(" (")
+            integer dash = LastIndexOf(line, " - ")
+            if line:StartsWith("iOS ") and not line:Contains("unavailable") and parenStart > 4 and dash > parenStart
+                hasSimulatorRuntime = true
+                text version = line:GetSubtext(4, parenStart)
+                if newestRuntime = "" or CompareVersions(version, newestRuntimeVersion) > 0
+                    newestRuntime = line:GetSubtext(dash + 3):Trim()
+                    newestRuntimeVersion = version
+                end
+            end
+            i = i + 1
+        end
+    end
+
+    /*
+        Reads xcrun simctl list devicetypes, whose lines look like
+        "iPhone 18 Pro (com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro)". It
+        lists the newest first, so the first iPhone is the newest.
+    */
+    private action ReadNewestIPhone
+        newestIPhoneType = ""
+        newestIPhoneName = ""
+
+        Array<text> params
+        params:Add("simctl")
+        params:Add("list")
+        params:Add("devicetypes")
+        AppleCommandOutput result = RunCommand("xcrun", params)
+        Array<text> lines = result:GetOutput():SplitIntoLines()
+        i = 0
+        repeat while i < lines:GetSize() and newestIPhoneType = ""
+            text line = lines:Get(i):Trim()
+            integer parenStart = LastIndexOf(line, "(")
+            if line:StartsWith("iPhone") and parenStart > 0 and line:EndsWith(")")
+                newestIPhoneName = line:GetSubtext(0, parenStart):Trim()
+                newestIPhoneType = line:GetSubtext(parenStart + 1, line:GetSize() - 1)
+            end
+            i = i + 1
+        end
+    end
+
+    /*
+        Reads xcrun simctl list devices available. A line "-- iOS 27.0 --" starts
+        each iOS version, followed by its simulators, each like
+        "iPhone 18 Pro (7AE73561-19C8-40ED-92A6-F4DFEF2F357D) (Shutdown)". Names can
+        have parentheses too, as in "iPad Pro 13-inch (M5)", so the ID and state are
+        the last two.
+    */
+    private action ReadSimulators(text listing, Array<AppleDevice> into)
+        Array<text> lines = listing:SplitIntoLines()
+        text version = ""
+        i = 0
+        repeat while i < lines:GetSize()
+            text line = lines:Get(i):Trim()
+            if line:StartsWith("--")
+                version = ""
+                if line:StartsWith("-- iOS ") and line:EndsWith(" --")
+                    version = line:GetSubtext(7, line:GetSize() - 3):Trim()
+                end
+            elseif not version:IsEmpty() and line:EndsWith(")")
+                integer stateStart = LastIndexOf(line, "(")
+                if stateStart > 0
+                    text state = line:GetSubtext(stateStart + 1, line:GetSize() - 1)
+                    text rest = line:GetSubtext(0, stateStart):Trim()
+                    integer idStart = LastIndexOf(rest, "(")
+                    if idStart > 0 and rest:EndsWith(")")
+                        text udid = rest:GetSubtext(idStart + 1, rest:GetSize() - 1)
+                        text name = rest:GetSubtext(0, idStart):Trim()
+                        AppleDevice device
+                        device:SetSimulator(name, udid, version, state = "Booted")
+                        into:Add(GetInsertPosition(into, version), device)
+                    end
+                end
+            end
+            i = i + 1
+        end
+    end
+
+    /* Newer iOS versions go first; within a version, simctl's order is kept. */
+    private action GetInsertPosition(Array<AppleDevice> devices, text version) returns integer
+        i = 0
+        repeat while i < devices:GetSize()
+            AppleDevice other = devices:Get(i)
+            if CompareVersions(version, other:GetVersion()) > 0
+                return i
+            end
+            i = i + 1
+        end
+        return devices:GetSize()
+    end
+
+    /* The index where the last copy of a piece of text starts, or -1. */
+    private action LastIndexOf(text value, text part) returns integer
+        integer found = -1
+        integer next = value:IndexOf(part)
+        repeat while next >= 0
+            found = next
+            next = value:IndexOf(part, next + 1)
+        end
+        return found
     end
 end

@@ -11,6 +11,7 @@ use Libraries.Development.Environment.Studio.Build.MobileListener
 use Libraries.Language.Compile.Symbol.Class
 use Libraries.Development.Environment.Studio.Build.BuildInformation
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.System.DateTime
 
 class IOSSupport is ProcessListener
     text FILE_SEPARATOR = "/"
@@ -23,20 +24,23 @@ class IOSSupport is ProcessListener
     constant text PATH_TO_APP_BUILD_ROBOVM_XML = 
         FILE_SEPARATOR + "ios" + FILE_SEPARATOR  + "robovm.xml"
     constant text PATH_TO_MAIN_XML = PATH_TO_MAIN + "AndroidManifest.xml"
-    constant text JAR_FOLDER_NAME = "jars"
-    constant text NATIVE_FOLDER_NAME = "natives"
-    constant text PATH_TO_LIBS = FILE_SEPARATOR + "ios" + FILE_SEPARATOR + JAR_FOLDER_NAME
-    constant text PATH_TO_NATIVES = FILE_SEPARATOR + "ios" + 
-        FILE_SEPARATOR + NATIVE_FOLDER_NAME
-    constant text PATH_TO_NATIVE_FILE = PATH_TO_NATIVES + FILE_SEPARATOR + "liballnatives.a"
+    /*
+        RoboVM and Gradle run in Run/Mobile/ios, so the project's Run folder is two
+        folders up. The jars and the natives (jni/ios.a, jni/iosSimulator.a) are
+        used from there rather than copied: a copy gets a new date, and RoboVM then
+        recompiles every class in it.
+    */
+    constant text RUN_FOLDER_FROM_IOS = "../.."
     constant text FOLDER_NAME = "Mobile"
     text pathToRunFolder = ""
     text pathToBuildFolder = ""
-    Array<text> librarySources 
-    Array<text> libraryDestinations
     text log = ""
     Array<MobileListener> listeners
     text java = ""    
+    AppleDevice device = undefined
+    text deviceMessage = ""
+    integer lastExit = -1
+    boolean simulatorAppMissing = false
 
     
 
@@ -48,6 +52,7 @@ class IOSSupport is ProcessListener
     end
 
     action ProcessStopped(ProcessEvent event)
+        lastExit = event:GetExit()
         File file
         file:SetAbsolutePath(GetLogLocation())
 
@@ -59,12 +64,13 @@ class IOSSupport is ProcessListener
     end
 
     action GetLogLocation returns text
-        return pathToBuildFolder + "\log.txt"
+        return pathToBuildFolder + FILE_SEPARATOR + "log.txt"
     end
 
     action Error(ProcessEvent event)
         text current = event:GetOutput()
         log = log + current + current:GetLineFeed()
+        CheckForMissingSimulatorApp(current)
         i = 0
         repeat while i < listeners:GetSize()
             MobileListener listener = listeners:Get(i)
@@ -76,7 +82,25 @@ class IOSSupport is ProcessListener
     action Output(ProcessEvent event)
         text current = event:GetOutput()
         log = log + current + current:GetLineFeed()
+        CheckForMissingSimulatorApp(current)
         SendMessageToListeners(current)
+    end
+
+    /*
+        Xcode 27 replaced the Simulator app with DeviceHub, and MobiVM 2.3.20 only
+        knows how to open the Simulator app (open -a Simulator). When that fails,
+        RoboVM has already built and signed the app, but stops before installing
+        it, so Studio installs and launches it instead (InstallOnSimulator).
+    */
+    private action CheckForMissingSimulatorApp(text message)
+        if message not= undefined and message:Contains("Unable to find application named 'Simulator'")
+            simulatorAppMissing = true
+        end
+    end
+
+    /* True when RoboVM couldn't open the Simulator app (Xcode 27 and later). */
+    action IsSimulatorAppMissing returns boolean
+        return simulatorAppMissing
     end
 
     private action SendMessageToListeners(text message)
@@ -106,29 +130,257 @@ class IOSSupport is ProcessListener
     action Setup(QuorumProject project, text pathToRunFolder, text jarName)
         me:pathToRunFolder = pathToRunFolder
         me:pathToBuildFolder = pathToRunFolder + FILE_SEPARATOR + FOLDER_NAME
-
-        librarySources:Add(FILE_SEPARATOR + jarName)
-        librarySources:Add(FILE_SEPARATOR + "QuorumStandardLibrary.jar")
-        librarySources:Add(FILE_SEPARATOR + "QuorumStandardPlugins.jar")
-
-        libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + jarName)
-        libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardLibrary.jar")
-        libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_LIBS + FILE_SEPARATOR + "QuorumStandardPlugins.jar")
-
-        boolean physical = project:IsIOSPhysicalDevice()
-        if not physical //simulator
-            librarySources:Add(FILE_SEPARATOR + "jni" + FILE_SEPARATOR + "iosSimulator.a")
-            libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_NATIVES + FILE_SEPARATOR + "iosSimulator.a")
-        else
-            librarySources:Add(FILE_SEPARATOR + "jni" + FILE_SEPARATOR + "ios.a")
-            libraryDestinations:Add(me:pathToBuildFolder + PATH_TO_NATIVES + FILE_SEPARATOR + "ios.a")
-        end
     end
 
     
 
     action CopyAndRename(text templateLocation, text pathToRunFolder, text applicationName)
         CopyFolder(templateLocation, pathToBuildFolder)
+    end
+
+    /*
+        Brings the Gradle settings of a Mobile folder made by an older Studio up to
+        date with the template: build.gradle (without the Android plugin) and
+        gradle.properties (Gradle's daemon on). Writes only when they differ.
+    */
+    action UpdateGradleSettings(text templateLocation)
+        Array<text> names
+        names:Add("build.gradle")
+        names:Add("gradle.properties")
+        i = 0
+        repeat while i < names:GetSize()
+            File from
+            File to
+            from:SetAbsolutePath(templateLocation + FILE_SEPARATOR + names:Get(i))
+            to:SetAbsolutePath(pathToBuildFolder + FILE_SEPARATOR + names:Get(i))
+            if from:Exists()
+                text value = from:Read()
+                if not to:Exists() or to:Read() not= value
+                    to:Write(value)
+                end
+            end
+            i = i + 1
+        end
+    end
+
+    /*
+        Picks the device to send to, and remembers it for BuildForSimulator.
+
+        For a simulator, in order: the project's saved device, the same model on
+        the newest iOS (for names saved by older versions of Studio), a simulator
+        that is already running, the newest iPhone on the newest iOS, then any
+        simulator. If the saved device wasn't used, the project saves the new one.
+
+        For a physical device, only the saved one, and it must be connected.
+
+        Returns true when a device was found. GetDeviceMessage then says which
+        device was used if it changed, or why none was found.
+    */
+    action ChooseDevice(QuorumProject project) returns boolean
+        device = undefined
+        deviceMessage = ""
+        text saved = project:GetIOSDevice()
+        if saved = undefined
+            saved = ""
+        end
+        boolean physical = project:IsIOSPhysicalDevice()
+
+        AppleDevicesReader reader
+        Array<AppleDevice> devices = reader:GetAvailableDevices()
+        AppleDevice sameModel = undefined
+        AppleDevice booted = undefined
+        AppleDevice newest = undefined
+        AppleDevice first = undefined
+        i = 0
+        repeat while i < devices:GetSize()
+            AppleDevice candidate = devices:Get(i)
+            text name = candidate:GetName()
+            text actual = candidate:GetActualDeviceName()
+            if physical and candidate:IsDevice()
+                if name = saved
+                    device = candidate
+                end
+            elseif not physical and candidate:IsSimulator()
+                if name = saved
+                    device = candidate
+                elseif sameModel = undefined and (actual = saved or actual + " Simulator" = saved)
+                    sameModel = candidate
+                end
+
+                if booted = undefined and candidate:IsBooted()
+                    booted = candidate
+                end
+
+                if newest = undefined and actual:StartsWith("iPhone")
+                    newest = candidate
+                end
+
+                if first = undefined
+                    first = candidate
+                end
+            end
+            i = i + 1
+        end
+
+        if physical
+            if device = undefined
+                if saved:IsEmpty()
+                    deviceMessage = "No iOS device is chosen. Connect your iPhone or iPad, unlock it, and choose it in Project Properties, iOS."
+                else
+                    deviceMessage = saved + " isn't connected. Connect it and unlock it, then send to iOS again. Or choose another device in Project Properties, iOS."
+                end
+                return false
+            end
+            return true
+        end
+
+        if device = undefined
+            device = sameModel
+        end
+        if device = undefined
+            device = booted
+        end
+        if device = undefined
+            device = newest
+        end
+        if device = undefined
+            device = first
+        end
+
+        if device = undefined
+            deviceMessage = "No iOS simulators were found. Open Xcode, then Window, Devices and Simulators, and add one. Then send to iOS again."
+            return false
+        end
+
+        if device:GetName() not= saved
+            if saved:IsEmpty()
+                deviceMessage = "Using the " + device:GetName() + " simulator. You can choose another in Project Properties, iOS."
+            else
+                deviceMessage = saved + " isn't installed, so the " + device:GetName() + " simulator is used instead."
+            end
+            project:SetIOSDevice(device:GetName())
+            check
+                project:Save()
+            detect e
+                //The choice is still used for this build.
+            end
+        end
+        return true
+    end
+
+    action GetDeviceMessage returns text
+        return deviceMessage
+    end
+
+    action GetDevice returns AppleDevice
+        return device
+    end
+
+    /* The exit code of the last Gradle or launch process, 0 when it worked. */
+    action GetLastExit returns integer
+        return lastExit
+    end
+
+    /*
+        Installs the app RoboVM built on the chosen simulator, after starting the
+        simulator and opening the window that shows it. Returns "" when it worked,
+        or what went wrong.
+
+        Used when RoboVM couldn't open the Simulator app; see
+        CheckForMissingSimulatorApp. (RoboVM's robovm.skipLaunch can't be used
+        instead: it also skips making the .app.)
+    */
+    action InstallOnSimulator returns text
+        if device = undefined
+            return "No simulator was chosen, so the app wasn't installed."
+        end
+        text udid = device:GetSignature()
+        AppleDevicesReader reader
+
+        //This fails harmlessly when the simulator is already running.
+        Array<text> boot
+        boot:Add("simctl")
+        boot:Add("boot")
+        boot:Add(udid)
+        reader:RunCommand("xcrun", boot)
+
+        OpenSimulatorWindow(udid)
+
+        File app = FindBuiltApp()
+        if app = undefined
+            return "RoboVM finished, but the app wasn't found in " + pathToBuildFolder + "/ios/build/robovm.tmp."
+        end
+
+        Array<text> install
+        install:Add("simctl")
+        install:Add("install")
+        install:Add(udid)
+        install:Add(app:GetAbsolutePath())
+        AppleCommandOutput result = reader:RunCommand("xcrun", install)
+        if result:GetExit() not= 0
+            return "The app couldn't be installed on the simulator. " + result:GetErrors():Trim()
+        end
+        return ""
+    end
+
+    /*
+        Starts the installed app on the chosen simulator. The process lasts until the
+        app quits, and passes on what the app prints, like RoboVM's launch did.
+    */
+    action GetSimulatorLaunchProcess(QuorumProject project) returns Process
+        Process process
+        Array<text> params
+        params:Add("simctl")
+        params:Add("launch")
+        params:Add("--console")
+        params:Add("--terminate-running-process")
+        if device not= undefined
+            params:Add(device:GetSignature())
+        end
+        params:Add(project:GetIOSBundle())
+        process:SetName("xcrun")
+        process:SetParameters(params)
+        return process
+    end
+
+    /* DeviceHub on Xcode 27 and later, and the Simulator app before that. */
+    private action OpenSimulatorWindow(text udid)
+        AppleDevicesReader reader
+        Array<text> deviceHub
+        deviceHub:Add("-b")
+        deviceHub:Add("com.apple.dt.Devices")
+        AppleCommandOutput result = reader:RunCommand("open", deviceHub)
+        if result:GetExit() = 0
+            return now
+        end
+
+        Array<text> simulator
+        simulator:Add("-a")
+        simulator:Add("Simulator")
+        simulator:Add("--args")
+        simulator:Add("-CurrentDeviceUDID")
+        simulator:Add(udid)
+        reader:RunCommand("open", simulator)
+    end
+
+    /* RoboVM builds the app into ios/build/robovm.tmp, named after the program. */
+    private action FindBuiltApp returns File
+        File folder
+        folder:SetAbsolutePath(pathToBuildFolder + "/ios/build/robovm.tmp")
+        if not folder:Exists()
+            return undefined
+        end
+
+        Array<File> files = folder:GetDirectoryListing()
+        i = 0
+        repeat while i < files:GetSize()
+            File next = files:Get(i)
+            if next:IsDirectory() and next:GetPath():EndsWith(".app")
+                return next
+            end
+            i = i + 1
+        end
+        return undefined
     end
 
     action RewriteConfig(BuildInformation info)
@@ -151,44 +403,6 @@ class IOSSupport is ProcessListener
         File plist
         plist:SetAbsolutePath(pathToBuildFolder + PATH_TO_IOS_PLIST)
         plist:Write(plistXML)
-
-        QuorumProject project = info:project
-        text version = project:GetIOSVersionKey()   
-        text nativePath = me:pathToBuildFolder  
-        boolean physical = project:IsIOSPhysicalDevice()
-        text folderName = "Debug-iphonesimulator"
-        if physical
-            folderName = "Debug-iphoneos"
-        end
-        //if there isn't one set, set the default, so it shows up as this next time.  
-        if version = undefined
-            nativePath = nativePath + FILE_SEPARATOR + folderName
-            project:SetIOSVersionKey(project:IOS_14_1)
-        elseif version = project:IOS_14_1
-            nativePath = nativePath + FILE_SEPARATOR + folderName
-        elseif version = project:IOS_13
-            nativePath = nativePath + FILE_SEPARATOR + folderName
-        else
-            nativePath = nativePath + FILE_SEPARATOR + folderName
-        end
-
-        text freetype = "liballnatives.a"
-        //copy the correct files over for the requested architecture
-        File file
-        file:SetWorkingDirectory(nativePath)
-        file:SetPath(freetype)
-        
-        File to
-        to:SetWorkingDirectory(pathToBuildFolder + PATH_TO_NATIVES)
-        to:SetPath(freetype)
-
-        File mom = to:GetParentDirectory()
-        if not mom:Exists()
-            mom:CreateDirectory()
-        end
-        file:Copy(to)
-
-        CleanGeneratedFiles(pathToBuildFolder)
     end
 
     private action SanitizeMediaFolder(text value) returns text
@@ -242,7 +456,7 @@ result =
     </array>
     <key>UIRequiredDeviceCapabilities</key>
     <array>
-        <string>armv7</string>
+        <string>arm64</string>
         <string>opengles-2</string>
     </array>
     <key>UISupportedInterfaceOrientations</key>
@@ -265,9 +479,8 @@ result =
         text result = 
 "
 <config>
-  <mainJar>"+JAR_FOLDER_NAME+"/"+name+".jar</mainJar>
+  <mainJar>"+RUN_FOLDER_FROM_IOS+"/"+name+".jar</mainJar>
   <os>ios</os>
-  <arch>thumbv7</arch>
   <target>ios</target>
   <resources>
     <resource>
@@ -276,12 +489,12 @@ result =
     </resource>
   </resources>
   <classpath>
-    <classpathentry>"+JAR_FOLDER_NAME+"/"+name+".jar</classpathentry>
-    <classpathentry>"+JAR_FOLDER_NAME+"/QuorumStandardLibrary.jar</classpathentry>
-    <classpathentry>"+JAR_FOLDER_NAME+"/QuorumStandardPlugins.jar</classpathentry>
+    <classpathentry>"+RUN_FOLDER_FROM_IOS+"/"+name+".jar</classpathentry>
+    <classpathentry>"+RUN_FOLDER_FROM_IOS+"/QuorumStandardLibrary.jar</classpathentry>
+    <classpathentry>"+RUN_FOLDER_FROM_IOS+"/QuorumStandardPlugins.jar</classpathentry>
   </classpath>
   <libs>
-    <lib>"+NATIVE_FOLDER_NAME
+    <lib>"+RUN_FOLDER_FROM_IOS+"/jni"
     
     if not physical
         result = result + "/iosSimulator.a"
@@ -300,13 +513,6 @@ result =
     <framework>AVFoundation</framework>
   </weakFrameworks>
   <iosInfoPList>Info.plist.xml</iosInfoPList>
-  <tools>
-      <linker>
-          <flags>
-              <flag>-ld_classic</flag>
-          </flags>
-      </linker>
-  </tools>
 </config>
 "
         return result
@@ -362,78 +568,16 @@ end
 result = result + "
 
 dependencies {
-    implementation files('" + JAR_FOLDER_NAME + "/" + name + ".jar')
-    implementation files('" + JAR_FOLDER_NAME + "/QuorumStandardLibrary.jar')
-    implementation files('" + JAR_FOLDER_NAME + "/QuorumStandardPlugins.jar')
+    implementation files('" + RUN_FOLDER_FROM_IOS + "/" + name + ".jar')
+    implementation files('" + RUN_FOLDER_FROM_IOS + "/QuorumStandardLibrary.jar')
+    implementation files('" + RUN_FOLDER_FROM_IOS + "/QuorumStandardPlugins.jar')
 }
 "
         return result
     end
-    action CopyLibraries 
-        CopyLibraries(librarySources, libraryDestinations)
-    end
-
-    action CopyLibraries(Array<text> sourcePaths, Array<text> destinationPaths)
-        File libFolder
-        libFolder:SetAbsolutePath(pathToBuildFolder + PATH_TO_LIBS)
-
-        if not libFolder:Exists()
-            libFolder:CreateDirectories()
-        end
-
-        File nativeFolder
-        nativeFolder:SetAbsolutePath(pathToBuildFolder + PATH_TO_NATIVES)
-
-        if not libFolder:Exists()
-            libFolder:CreateDirectories()
-        end
-
-        if not nativeFolder:Exists()
-            nativeFolder:CreateDirectories()
-        end
-
-        i = 0
-        repeat while i < sourcePaths:GetSize()
-            File from
-            File to
-            from:SetAbsolutePath(pathToRunFolder + sourcePaths:Get(i))
-            to:SetAbsolutePath(destinationPaths:Get(i))
-            from:Copy(to)
-            i = i + 1
-        end
-    end
-
     action GetAvailableDevices returns Array<AppleDevice>
         AppleDevicesReader reader
         return reader:GetAvailableDevices()
-    end
-
-    action GetGenerateXCodeProjectProcess returns Process
-        Properties properties
-        Process process
-        File directory
-        directory:SetAbsolutePath(pathToBuildFolder)
-        process:SetDirectory(directory)
-        //This likely needs to change because it isn't going to work on Windows
-        //given limitations on Mac
-        if properties:IsMac()
-            process:SetName("/Applications/CMake.app/Contents/bin/cmake")
-            Array<text> params = GetCMakeParameters()
-            process:SetParameters(params)
-        end
-
-        return process
-    end
-
-    action HasNativesBuilt returns boolean
-        File native
-        native:SetWorkingDirectory(pathToBuildFolder)
-        native:SetPath(PATH_TO_NATIVE_FILE)
-        if native:Exists()
-            return true
-        else
-            return false
-        end        
     end
 
     action HasMobileFolder returns boolean
@@ -444,62 +588,6 @@ dependencies {
         else
             return false
         end  
-    end
-
-    action GetBuildXCodeProjectProcess(QuorumProject project) returns Process
-        Properties properties
-        Process process
-        File directory
-        directory:SetAbsolutePath(pathToBuildFolder)
-        process:SetDirectory(directory)
-        if properties:IsMac()
-            process:SetName("xcodebuild")
-            Array<text> params = GetBuildXCodeProjectParameters(project)
-            process:SetParameters(params)
-        end
-
-        return process
-    end
-
-    private action GetBuildXCodeProjectParameters(QuorumProject project) returns Array<text>
-        text value = ""
-        text dq = value:GetDoubleQuote()
-        text device = project:GetIOSDevice()
-        text signature = project:GetIOSDeviceSignature()
-        text version = project:GetIOSVersionKey()
-        boolean physical = project:IsIOSPhysicalDevice()       
-        Array<text> params
-        params:Add("-project")
-        params:Add("allnativesv2.xcodeproj")
-        params:Add("-target")
-        params:Add("ALL_BUILD")
-        
-        if not physical
-            params:Add("-sdk")
-            params:Add("iphonesimulator")
-        end
-
-        params:Add("-destination")
-
-        if physical
-            params:Add("platform=iOS,id="+signature+",OS="+version+"")
-        else
-            params:Add("platform=iOS Simulator,id="+signature+",OS="+version+"")
-        end
-        return params
-    end
-
-    private action GetCMakeParameters returns Array<text>
-        text value = ""
-        text dq = value:GetDoubleQuote()
-        Array<text> params
-        params:Add("-G")
-        params:Add("Xcode")
-        params:Add("./Source/freetype-2.5.5/CMakeLists.txt")
-        text source = pathToBuildFolder + "/Source/ios_cmake/iOS.cmake" 
-        params:Add("-DCMAKE_TOOLCHAIN_FILE='" + source + "'")
-        params:Add("-B.")
-        return params
     end
 
     action GetBuildForSimulatorProcess(QuorumProject project) returns Process
@@ -528,7 +616,6 @@ dependencies {
         text value = ""
         text dq = value:GetDoubleQuote()
 
-        text device = project:GetIOSDevice()
         boolean physical = project:IsIOSPhysicalDevice()
         Array<text> params
         params:Add("-p")  
@@ -542,27 +629,15 @@ dependencies {
             params:Add("ios:launchIPhoneSimulator")
         end
 
-        //we have the device name, but we need its signature
-        text signature = ""
-        AppleDevicesReader reader
-        Array<AppleDevice> devices = reader:GetAvailableDevices()
-        i = 0
-        repeat while i < devices:GetSize()
-            AppleDevice fruit = devices:Get(i)
-
-            text name = fruit:GetName()
-            if name = device
-                //get the signature
-                signature = fruit:GetActualDeviceName()
+        //The device comes from ChooseDevice. RoboVM finds a simulator by name and
+        //iOS version, and a connected device by its ID.
+        if device not= undefined
+            if physical
+                params:Add("-Probovm.device.udid=" + device:GetSignature())
+            else
+                params:Add("-Probovm.device.name=" + device:GetActualDeviceName())
+                params:Add("-Probovm.sdk.version=" + device:GetVersion())
             end
-            i = i + 1
-        end
-
-//        output device
-//        output signature
-        //If the user didn't define a signature, just pick.
-        if signature not= undefined
-            params:Add("-Probovm.device.name=" + signature)
         end
         //params:Add("--info")
         //params:Add("--stacktrace")
@@ -583,52 +658,40 @@ dependencies {
             assetsFolder:CreateDirectories()
         end
 
-        mediaFolder:Copy(assetsFolder, true)
+        CopyChanged(mediaFolder, assetsFolder)
     end
 
-    action CleanGeneratedFiles(text projectPath)
-        Properties properties
-        Process process
-        Array<text> parameters
-        process:SetParameters(parameters)
-        if properties:IsWindows()
-            File directory
-            directory:SetAbsolutePath(projectPath)
-            process:SetDirectory(directory)
-            process:SetName("cmd")
+    /*
+        Copies the files in one folder to another, and its folders inside it, but
+        only the files that are missing or newer than the copy. Files deleted from
+        the project stay in the copy until Clean and Build.
+    */
+    private action CopyChanged(File from, File to)
+        if not to:Exists()
+            to:CreateDirectories()
+        end
 
-            parameters:Add("/C")
-            parameters:Add("./gradlew.bat")
-            parameters:Add("-p")
-            parameters:Add(projectPath)
-            parameters:Add(" clean")
-            process:SetParameters(parameters)
-            process:AddListener(me)
-            process:Run()
-        elseif properties:IsMac()
-            File file
-            file:SetAbsolutePath(projectPath + "/gradlew")
-            if file:Exists()
-                file:SetExecutable(true)
+        Array<File> files = from:GetDirectoryListing()
+        i = 0
+        repeat while i < files:GetSize()
+            File next = files:Get(i)
+            if not next:IsHidden()
+                File copyTo
+                copyTo:SetWorkingDirectory(to:GetAbsolutePath() + FILE_SEPARATOR)
+                copyTo:SetPath(next:GetPath())
+                if next:IsDirectory()
+                    CopyChanged(next, copyTo)
+                elseif not copyTo:Exists()
+                    next:Copy(copyTo)
+                else
+                    DateTime fileTime = next:GetLastModifiedDate()
+                    DateTime copyTime = copyTo:GetLastModifiedDate()
+                    if fileTime:GetEpochTime() > copyTime:GetEpochTime()
+                        next:Copy(copyTo)
+                    end
+                end
             end
-
-            File value = file:GetParentDirectory()
-            process:SetDirectory(value)
-            process:SetName("./gradlew")
-            parameters:Add("-p")
-            parameters:Add(projectPath)
-            parameters:Add(" clean")
-            process:Run()
-        else
-            File file
-            file:SetAbsolutePath(projectPath + "/gradlew")
-
-            process:SetDirectory(file:GetParentDirectory())
-            process:SetName("/gradlew")
-            parameters:Add("-p")
-            parameters:Add(projectPath)
-            parameters:Add(" clean")
-            process:Run()
+            i = i + 1
         end
     end
 

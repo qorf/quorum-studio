@@ -1,6 +1,12 @@
 package Libraries.Development.Environment.Studio.Mobile
 use Libraries.Containers.Array
 
+/*
+    One iOS simulator or connected iOS device. The name is what Studio shows
+    and saves in the project, for example "iPhone 18 Pro (iOS 27.0)". The actual
+    device name is the bare name RoboVM matches, for example "iPhone 18 Pro".
+    The signature is the device's ID (its UDID).
+*/
 class AppleDevice
     text name = ""
     text signature = ""
@@ -10,6 +16,7 @@ class AppleDevice
     boolean parsed = false
     boolean isDevice = false
     boolean isSimulator = false
+    boolean booted = false
 
     action GetName returns text
         return name
@@ -27,6 +34,24 @@ class AppleDevice
         return total
     end
 
+    /* Fills in a simulator from xcrun simctl list devices available --json. */
+    action SetSimulator(text deviceName, text udid, text iosVersion, boolean isBooted)
+        actualDeviceName = deviceName
+        signature = udid
+        version = iosVersion
+        booted = isBooted
+        name = deviceName + " (iOS " + iosVersion + ")"
+        total = name
+        isSimulator = true
+        isDevice = false
+        parsed = true
+    end
+
+    /*
+        Reads a line from the Devices section of xcrun xctrace list devices, for
+        example "Andreas's iPhone (18.0) (00008030-001A2B3C4D5E6F70)". Lines without
+        an iOS version, like the Mac itself, are left unparsed.
+    */
     action ParseDevice(text line)
         isDevice = true
         if line = undefined or line:IsEmpty()
@@ -34,76 +59,41 @@ class AppleDevice
         end
         total = line
 
-        Array<text> split = line:Split("\(")
-        //if there's 3, the name is the first one
-        if split:GetSize() = 2
-            name = split:Get(0):Trim()
-            signature = "(" + split:Get(split:GetSize() - 1)
-        //if there's 4, or more, the name is all but the last two
-        elseif split:GetSize() >= 3
-            
-            signature = "(" + split:Get(split:GetSize() - 1)
-            version = "(" + split:Get(split:GetSize() - 2)
-
-            text val = signature
-            integer value = line:IndexOf(val) - 1
-            i = value
-            repeat while i > 0
-                text char = line:GetCharacter(i)
-                if char = "("
-                    value = i - 1
-                    i = -1
-                end
-                i = i - 1
-            end
-            name =  line:GetSubtext(0, value)
-            a = 5
-        
-        else
+        integer idStart = LastIndexOf(line, "(")
+        if idStart <= 0
             return now
         end
 
+        text beforeID = line:GetSubtext(0, idStart):Trim()
+        integer versionStart = LastIndexOf(beforeID, "(")
+        if versionStart <= 0
+            return now
+        end
+
+        actualDeviceName = beforeID:GetSubtext(0, versionStart):Trim()
+        version = beforeID:GetSubtext(versionStart + 1):Replace(")", ""):Trim()
+        signature = line:GetSubtext(idStart + 1):Replace(")", ""):Trim()
+        name = actualDeviceName + " (iOS " + version + ", device)"
         parsed = true
     end
 
-    action ParseSimulator(text line)
-        isSimulator = true
-        if line = undefined or line:IsEmpty()
-            return now
-        end
-        total = line
-
-        Array<text> split = line:Split("\(")
-        //if there's 3, the name is the first one
-        if split:GetSize() = 3
-            name = split:Get(0):Trim()
-            
-        //if there's 4, or more, the name is all but the last two
-        elseif split:GetSize() > 3
-
-            name = split:Get(0):Trim()
-            //It is unclear what iOS demands for names here. I thought it included
-            //the below information, but it will take more investigation
-            //to know exactly what is used. Do we use the name only?
-            i = 1
-            repeat while i < split:GetSize() - 2
-                name = name + " (" + split:Get(i)
-                i = i + 1
+    private action LastIndexOf(text value, text character) returns integer
+        i = value:GetSize() - 1
+        repeat while i >= 0
+            if value:GetCharacter(i) = character
+                return i
             end
-        else
-            return now
+            i = i - 1
         end
-
-        //modern versions require we remove the "Simulator" name at the end. So let's do that.
-        integer index = name:IndexOf("Simulator")
-        actualDeviceName = name:GetSubtext(0, index - 1)
-        signature = "(" + split:Get(split:GetSize() - 1)
-        version = "(" + split:Get(split:GetSize() - 2)
-        parsed = true
+        return -1
     end
 
     action IsParsed returns boolean
         return parsed
+    end
+
+    action IsBooted returns boolean
+        return booted
     end
 
     action IsSimulator returns boolean

@@ -1,0 +1,164 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Accessibility
+use Libraries.Interface.Item
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.InstallIOSSimulatorButtonBehavior
+use Libraries.Development.Environment.Studio.Behaviors.InstallIOSSimulatorBehavior
+use Libraries.Development.Environment.Studio.Mobile.IOSSimulatorInstaller
+use Libraries.Concurrency.ThreadRunner
+
+/*
+    Offers to download the iOS Simulator when it isn't installed, by running
+    xcodebuild -downloadPlatform iOS. BuildManager:SendToIOS shows it.
+
+    Download becomes Stop while the download runs. Close only hides the dialog:
+    the download keeps going, and Send to iOS shows its progress again.
+*/
+class InstallIOSSimulatorDialog is Dialog
+    constant text START_MESSAGE = "The iOS Simulator isn't installed. Quorum can download it from Apple now. It is several gigabytes, so it can take a while. You can also install it in Xcode, under Settings, then Components."
+    GameStateManager manager
+    IOSSimulatorInstaller installer
+    Label messageLabel
+    Button download
+    Button close
+    DialogCancelBehavior closeBehavior
+    InstallIOSSimulatorButtonBehavior downloadBehavior
+    boolean watching = false
+    number elapsed = 0
+    integer lastAnnounced = -1
+    text shown = ""
+
+    on create
+        SetModal(true)
+        SetName("Install the iOS Simulator")
+        SetPercentageWidth(0.50)
+        SetPixelHeight(200)
+        closeBehavior:SetDialog(me)
+        downloadBehavior:SetDialog(me)
+
+        Page page = InitializeDefaultPage()
+        messageLabel = page:AddLabel(START_MESSAGE)
+        download = page:AddButton("Download")
+        close = page:AddButton("Close")
+        download:SetBehavior(downloadBehavior)
+        close:SetBehavior(closeBehavior)
+        shown = START_MESSAGE
+    end
+
+    action OnShow
+        if installer:IsRunning()
+            watching = true
+        elseif not watching
+            SetMessage(START_MESSAGE)
+        end
+        UpdateButtons()
+        download:Focus()
+    end
+
+    /* Download, or Stop while downloading. */
+    action DownloadOrStop
+        if installer:IsRunning()
+            installer:Stop()
+            SetMessage("Stopping the download.")
+        else
+            elapsed = 0
+            lastAnnounced = -1
+            installer:Prepare()
+            watching = true
+            SetMessage("Starting the download.")
+
+            QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+            Behaviors behaviors = studio:GetBehaviors()
+            ThreadRunner runner = behaviors:GetNetworkThreadRunner()
+            InstallIOSSimulatorBehavior behavior
+            runner:Add(behavior)
+        end
+        UpdateButtons()
+    end
+
+    action Update(number seconds)
+        if not watching
+            return now
+        end
+
+        if installer:IsRunning()
+            elapsed = elapsed + seconds
+            number percent = installer:GetPercent()
+            text value = "Downloading the iOS Simulator"
+            if percent >= 0
+                integer whole = cast(integer, percent)
+                value = value + ", " + whole + "% done"
+                integer step = cast(integer, percent / 10)
+                if step > lastAnnounced
+                    lastAnnounced = step
+                    Announce(value)
+                end
+            end
+            integer minutes = cast(integer, elapsed / 60)
+            if minutes = 1
+                value = value + ". 1 minute so far."
+            elseif minutes > 1
+                value = value + ". " + minutes + " minutes so far."
+            else
+                value = value + "."
+            end
+            SetMessage(value)
+        elseif installer:IsFinished()
+            watching = false
+            text value = ""
+            if installer:GetExit() = 0
+                value = "The iOS Simulator is installed. Send to iOS again to run your program."
+            elseif installer:WasStopped()
+                value = "The download was stopped. Choose Download to start it again."
+            else
+                value = "The download didn't finish"
+                text line = installer:GetLastLine()
+                if not line:IsEmpty()
+                    value = value + ": " + line
+                end
+                value = value + ". You can try again, or install it in Xcode, under Settings, then Components."
+            end
+            SetMessage(value)
+            Announce(value)
+            UpdateButtons()
+        end
+    end
+
+    private action UpdateButtons
+        if installer:IsRunning()
+            download:SetName("Stop")
+        else
+            download:SetName("Download")
+        end
+    end
+
+    private action SetMessage(text value)
+        if value = shown
+            return now
+        end
+        shown = value
+        messageLabel:SetText(value)
+        RequestLayout()
+    end
+
+    private action Announce(text value)
+        Accessibility access = manager:GetAccessibility()
+        if access = undefined
+            return now
+        end
+
+        Item focus = manager:GetFocus()
+        if focus = undefined
+            focus = me
+        end
+        access:Notify(focus, value)
+    end
+end

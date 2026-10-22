@@ -4,6 +4,9 @@ use Libraries.System.ProcessListener
 use Libraries.System.Process
 use Libraries.System.ProcessEvent
 
+/*
+    Reads physical iOS devices from the output of xcrun xctrace list devices.
+*/
 class AppleDeviceParser is ProcessListener
     boolean isDevice = false
     boolean isSimulator = false
@@ -38,20 +41,19 @@ class AppleDeviceParser is ProcessListener
             isDevice = false
             isSimulator = true
         else
-            AppleDevice device
+            //Simulators come from simctl instead (AppleDevicesReader), so only
+            //physical devices are read here.
             if isDevice
+                AppleDevice device
                 device:ParseDevice(line)
-            elseif isSimulator
-                device:ParseSimulator(line)
-            end
-            
-            if device not= undefined and device:IsParsed()
-                devices:Add(device)
+                if device:IsParsed()
+                    devices:Add(device)
+                end
             end
         end
     end
 
-    action GetDevices returns Array
+    action GetDevices returns Array<AppleDevice>
         return devices
     end
 end

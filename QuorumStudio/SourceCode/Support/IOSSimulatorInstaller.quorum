@@ -1,0 +1,142 @@
+package Libraries.Development.Environment.Studio.Mobile
+use Libraries.System.Process
+use Libraries.System.ProcessListener
+use Libraries.System.ProcessEvent
+use Libraries.Containers.Array
+
+/*
+    Downloads and installs the iOS Simulator with xcodebuild -downloadPlatform iOS.
+
+    InstallIOSSimulatorDialog calls Prepare on the interface thread, then runs
+    Download on a background thread, since it blocks until the download is done
+    (often several minutes). The dialog reads the progress while it runs.
+*/
+shared class IOSSimulatorInstaller is ProcessListener
+    Process process = undefined
+    boolean running = false
+    boolean finished = false
+    boolean stopped = false
+    integer exit = -1
+    text lastLine = ""
+    number percent = -1
+
+    /* Marks the download as started, before the background thread picks it up. */
+    action Prepare
+        running = true
+        finished = false
+        stopped = false
+        exit = -1
+        lastLine = ""
+        percent = -1
+    end
+
+    action Download
+        Process downloader
+        Array<text> params
+        params:Add("xcodebuild")
+        params:Add("-downloadPlatform")
+        params:Add("iOS")
+        downloader:SetName("xcrun")
+        downloader:SetParameters(params)
+        downloader:AddListener(me)
+        process = downloader
+        check
+            downloader:Run()
+        detect e
+            lastLine = e:GetErrorMessage()
+        end
+        process = undefined
+
+        if exit = 0
+            AppleDevicesReader reader
+            reader:RefreshSimulators()
+        end
+        running = false
+        finished = true
+    end
+
+    action Stop
+        Process current = process
+        if current not= undefined
+            stopped = true
+            current:Cancel()
+        end
+    end
+
+    action IsRunning returns boolean
+        return running
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+
+    action WasStopped returns boolean
+        return stopped
+    end
+
+    /* 0 when the download and install worked. */
+    action GetExit returns integer
+        return exit
+    end
+
+    /* The last line xcodebuild printed. */
+    action GetLastLine returns text
+        return lastLine
+    end
+
+    /* The last percentage xcodebuild printed, or -1 if none yet. */
+    action GetPercent returns number
+        return percent
+    end
+
+    action ProcessStarted(ProcessEvent event)
+    end
+
+    action ProcessStopped(ProcessEvent event)
+        exit = event:GetExit()
+    end
+
+    action Error(ProcessEvent event)
+        ReadLine(event:GetOutput())
+    end
+
+    action Output(ProcessEvent event)
+        ReadLine(event:GetOutput())
+    end
+
+    private action ReadLine(text line)
+        if line = undefined
+            return now
+        end
+
+        text value = line:Trim()
+        if value:IsEmpty()
+            return now
+        end
+        lastLine = value
+        ReadPercent(value)
+    end
+
+    /* Finds a number just before a % sign, as in "Downloading iOS 27.0 Simulator: 45.2%". */
+    private action ReadPercent(text line)
+        integer sign = line:IndexOf("%")
+        if sign <= 0
+            return now
+        end
+
+        text digits = "0123456789."
+        integer start = sign
+        repeat while start > 0 and digits:Contains(line:GetCharacter(start - 1))
+            start = start - 1
+        end
+
+        if start < sign
+            check
+                percent = cast(number, line:GetSubtext(start, sign))
+            detect e
+                //Not a number after all; keep the last one.
+            end
+        end
+    end
+end

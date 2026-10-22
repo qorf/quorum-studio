@@ -1,0 +1,32 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.InstallIOSSimulatorDialog
+
+/*
+    Shows InstallIOSSimulatorDialog. Send to iOS runs on the build thread, so it
+    adds this behavior to the output pane, which runs it on the interface thread.
+    The dialog is made here too, on the interface thread, the first time. The
+    behavior finishes after each run, so it can be added again.
+*/
+class ShowInstallIOSSimulatorBehavior is QuorumStudioBehavior
+    InstallIOSSimulatorDialog dialog = undefined
+    boolean done = false
+
+    action Run(BehaviorEvent event)
+        if dialog = undefined
+            InstallIOSSimulatorDialog newDialog
+            dialog = newDialog
+        end
+        dialog:Show()
+        done = true
+    end
+
+    action IsFinished returns boolean
+        return done
+    end
+
+    action Dispose
+        done = false
+    end
+end
