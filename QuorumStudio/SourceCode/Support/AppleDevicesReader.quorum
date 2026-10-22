@@ -2,6 +2,7 @@ package Libraries.Development.Environment.Studio.Mobile
 use Libraries.Containers.Array
 use Libraries.System.Properties
 use Libraries.System.Process
+use Libraries.System.SystemHelper
 
 /*
     Finds the iOS simulators and connected iOS devices on this Mac.
@@ -26,6 +27,8 @@ shared class AppleDevicesReader
     text newestRuntimeVersion = ""
     text newestIPhoneType = ""
     text newestIPhoneName = ""
+    integer bootAttempts = 3
+    integer bootRetryDelay = 3000 //milliseconds
 
     on create
         Refresh()
@@ -187,6 +190,42 @@ shared class AppleDevicesReader
             i = i + 1
         end
         return 0
+    end
+
+    /*
+        Starts a simulator and waits until it has finished starting. Does nothing
+        when it's already running. The first boot after Xcode is installed or
+        updated sometimes loses its connection to Apple's simulator service, and
+        works when tried again, so this tries up to three times. Returns "" when
+        it worked, or what went wrong.
+    */
+    action BootSimulator(text udid) returns text
+        SystemHelper helper
+        Array<text> params
+        params:Add("simctl")
+        params:Add("bootstatus")
+        params:Add(udid)
+        params:Add("-b")
+
+        text problem = ""
+        integer attempt = 1
+        repeat while attempt <= bootAttempts
+            AppleCommandOutput result = RunCommand("xcrun", params)
+            if result:GetExit() = 0
+                return ""
+            end
+
+            problem = result:GetErrors():Trim()
+            if problem:IsEmpty()
+                problem = result:GetOutput():Trim()
+            end
+
+            if attempt < bootAttempts
+                helper:Sleep(bootRetryDelay)
+            end
+            attempt = attempt + 1
+        end
+        return problem
     end
 
     /* Runs a short command and collects its output. Doesn't throw. */

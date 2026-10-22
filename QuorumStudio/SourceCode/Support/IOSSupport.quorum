@@ -41,6 +41,7 @@ class IOSSupport is ProcessListener
     text deviceMessage = ""
     integer lastExit = -1
     boolean simulatorAppMissing = false
+    boolean simulatorBootFailed = false
 
     
 
@@ -91,16 +92,28 @@ class IOSSupport is ProcessListener
         knows how to open the Simulator app (open -a Simulator). When that fails,
         RoboVM has already built and signed the app, but stops before installing
         it, so Studio installs and launches it instead (InstallOnSimulator).
+        The same happens when RoboVM's own boot of the simulator fails, which it
+        does after building and signing the app.
     */
     private action CheckForMissingSimulatorApp(text message)
-        if message not= undefined and message:Contains("Unable to find application named 'Simulator'")
+        if message = undefined
+            return now
+        end
+
+        if message:Contains("Unable to find application named 'Simulator'")
             simulatorAppMissing = true
+        elseif message:Contains("Unable to boot the Simulator")
+            simulatorBootFailed = true
         end
     end
 
-    /* True when RoboVM couldn't open the Simulator app (Xcode 27 and later). */
-    action IsSimulatorAppMissing returns boolean
-        return simulatorAppMissing
+    /*
+        True when RoboVM built the app but couldn't start it on the simulator:
+        the Simulator app is missing (Xcode 27 and later), or RoboVM's boot failed.
+        Studio then installs and launches the app itself (InstallOnSimulator).
+    */
+    action NeedsStudioLaunch returns boolean
+        return simulatorAppMissing or simulatorBootFailed
     end
 
     private action SendMessageToListeners(text message)
@@ -297,12 +310,10 @@ class IOSSupport is ProcessListener
         text udid = device:GetSignature()
         AppleDevicesReader reader
 
-        //This fails harmlessly when the simulator is already running.
-        Array<text> boot
-        boot:Add("simctl")
-        boot:Add("boot")
-        boot:Add(udid)
-        reader:RunCommand("xcrun", boot)
+        text problem = reader:BootSimulator(udid)
+        if not problem:IsEmpty()
+            return "The " + device:GetName() + " simulator couldn't start. Send to iOS again. If it keeps happening, restart the Mac. " + problem
+        end
 
         OpenSimulatorWindow(udid)
 

@@ -1356,9 +1356,10 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
 
         build:Run()      
 
-        //On Xcode 27, RoboVM builds the app but can't open the simulator window,
-        //so Studio installs and launches it instead (see IOSSupport).
-        if project:IsIOSPhysicalDevice() or not ios:IsSimulatorAppMissing()
+        //When RoboVM builds the app but can't start it on the simulator (no
+        //Simulator app on Xcode 27, or a failed boot), Studio installs and
+        //launches it instead (see IOSSupport).
+        if project:IsIOSPhysicalDevice() or not ios:NeedsStudioLaunch()
             return now
         end
 
@@ -1416,7 +1417,19 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         if not message:IsEmpty()
             out:Append(message)
         end
-        return found
+        if not found or project:IsIOSPhysicalDevice()
+            return found
+        end
+
+        //Start the simulator now, so RoboVM finds it running and skips its own
+        //boot, which can fail the first time after Xcode is installed or updated.
+        problem = reader:BootSimulator(ios:GetDevice():GetSignature())
+        if not problem:IsEmpty()
+            out:Append("The " + ios:GetDevice():GetName() + " simulator couldn't start. This sometimes happens the first time after Xcode is installed or updated. Send to iOS again. If it keeps happening, restart the Mac.")
+            out:Append(problem)
+            return false
+        end
+        return true
     end
 
     action SendToAndroidDebugMode(BuildInformation info)
