@@ -385,6 +385,7 @@ TextField spikeProgramSlot
         end
         jdkField:HideCaret()
 
+        RefreshDeviceList()
         if iosDeviceProperty not= undefined
             text value = iosDeviceProperty:GetFirstValue()
             boolean done = false
@@ -935,14 +936,7 @@ integer slot = cast(integer, value)
         page:AddLabel("Device List")
         availableDevicesList = page:AddList("Device List")
 
-        AppleDevicesReader reader
-        Array<AppleDevice> devices = reader:GetAvailableDevices()
-        i = 0
-        repeat while i < devices:GetSize()
-            AppleDevice device = devices:Get(i)
-            availableDevicesList:Add(device:GetName())
-            i = i + 1
-        end
+        FillDeviceList()
         
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancel = buttonGroup:AddButton("Cancel")
@@ -1079,6 +1073,36 @@ private action CreateSpikeTab returns Tab
         ok:SetBehavior(okBehavior)
         cancel:SetBehavior(cancelBehavior)
         return tab
+    end
+
+    /*
+        Looks up the simulators again (it takes well under a second), so ones added
+        in Xcode since Studio started appear, then fills the device list.
+    */
+    private action RefreshDeviceList
+        if availableDevicesList = undefined
+            return now
+        end
+
+        AppleDevicesReader reader
+        reader:RefreshSimulators()
+        FillDeviceList()
+    end
+
+    private action FillDeviceList
+        AppleDevicesReader reader
+        Array<AppleDevice> devices = reader:GetAvailableDevices()
+
+        repeat while availableDevicesList:GetSize() > 0
+            availableDevicesList:Remove(availableDevicesList:GetSize() - 1)
+        end
+
+        i = 0
+        repeat while i < devices:GetSize()
+            AppleDevice device = devices:Get(i)
+            availableDevicesList:Add(device:GetName())
+            i = i + 1
+        end
     end
 
     private action ListToArray(List list) returns Array<text>
