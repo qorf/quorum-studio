@@ -62,6 +62,7 @@ class Options is ProjectListener
     constant text BLOCKS_HEIGHT_SCALING = "Blocks Height Scaling"
     constant text BLOCKS_SCOPE_WIDTH_SCALING = "Blocks Scope Width Scaling"
     constant text BLOCK_MODE = "Block Mode"
+    constant text CLOSED_PROPERTIES_SECTIONS = "Closed Properties Sections"
     constant text LOCAL_PASSWORD_ENCRYPTION_KEY = "KbPdSgVkYp3s6v9y$B&E)H@McQfThWmZ"
     public constant text QUORUM_WEBSITE_PASSWORD_KEY = "QUORUM-WEBSITE_3948Y 93F8 34F93 94F8Y3P4F34FOI3U4F&&__"
     text loginCookie = undefined
@@ -97,6 +98,11 @@ class Options is ProjectListener
     boolean blockMode = true
     number blocksHeightScaling = 1
     number blocksScopeWidthScaling = 1
+
+    // The titles of the scene editor's Properties panel sections the user
+    // closed, such as "Physics" (step 15). Every scene tab's panel shares
+    // this list, and changes it as sections open and close.
+    Array<text> closedPropertiesSections
 
     action IsOverridingStandardLibrary returns boolean
         return overrideLibraryLocation
@@ -406,6 +412,17 @@ action GetBlocksScopeWidthScaling returns number
         return treeState
     end
 
+    /*
+        Returns the titles of the Properties panel sections the user closed.
+        The scene tabs' panels share and change this list, and Write saves
+        it.
+
+        Attribute: Returns The titles
+    */
+    action GetClosedPropertiesSections returns Array<text>
+        return closedPropertiesSections
+    end
+
     action GetTreeSelect returns text
         return treeSelect
     end
@@ -635,6 +652,17 @@ action GetBlocksScopeWidthScaling returns number
         notation:Add(BLOCK_MODE, blockMode)
         notation:Add(BLOCKS_HEIGHT_SCALING, blocksHeightScaling)
         notation:Add(BLOCKS_SCOPE_WIDTH_SCALING, blocksScopeWidthScaling)
+
+        JavaScriptObjectNotation closedSections
+        closedSections:SetArray()
+        notation:Add(CLOSED_PROPERTIES_SECTIONS, closedSections)
+        integer sectionIndex = 0
+        repeat while sectionIndex < closedPropertiesSections:GetSize()
+            JavaScriptObjectNotation section
+            section:SetText(closedPropertiesSections:Get(sectionIndex))
+            closedSections:Add(section)
+            sectionIndex = sectionIndex + 1
+        end
 
         GameStateManager gameStateManager
         notation:Add(MAXIMIZE_WINDOW, gameStateManager:GetGame():IsWindowMaximized())
@@ -880,6 +908,18 @@ if object:IsNumber()
             if object:IsBoolean()
                 boolean blocks = object:GetBoolean()
                 me:blockMode = blocks
+            end
+        elseif key = CLOSED_PROPERTIES_SECTIONS
+            if not object:IsEmpty()
+                JavaScriptObjectNotation sections = object:GetArray()
+                integer index = 0
+                repeat while index < sections:GetSize()
+                    JavaScriptObjectNotation section = sections:Get(index)
+                    if section:IsText() and not closedPropertiesSections:Has(section:GetText())
+                        closedPropertiesSections:Add(section:GetText())
+                    end
+                    index = index + 1
+                end
             end
         end
     end

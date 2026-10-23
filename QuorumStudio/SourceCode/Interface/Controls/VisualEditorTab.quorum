@@ -100,6 +100,10 @@ class VisualEditorTab is Tab
 
         // Docked before loading, so the dialogs never float.
         editor:SetPropertiesPanel(propertiesPanel)
+        // Sections the user closed stay closed, in every scene tab and
+        // after Studio restarts (step 15).
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        propertiesPanel:SetClosedSections(studio:GetOptions():GetClosedPropertiesSections())
         editor:Load()
     end
 
