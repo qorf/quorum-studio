@@ -23,8 +23,16 @@ class AndroidSupport is ProcessListener
     constant text PACKAGES_FOLDER = "packagesfolder"
     constant text FOLDER_NAME = "Android"
 
-    constant text NDK_VERSION_NUMBER = "19.2.5345600"
-    constant text PATH_TO_NATIVE_DEVELOPMENT_KIT = "ndk" + FILE_SEPARATOR + NDK_VERSION_NUMBER
+    // The template's version (External/Android/quorum-template-version.txt).
+    // Run/Android is kept between sends, and copied again from the template
+    // only when it's missing or its version differs.
+    constant text TEMPLATE_VERSION_FILE = "quorum-template-version.txt"
+
+    // The natives for each Android ABI, built by quorum-natives' AutoBuild.
+    // The compiler copies them from the standard library into Run/jni/android,
+    // and they're copied from there into the app.
+    constant text NATIVE_LIBRARY = "libGameEngineCPlugins.so"
+    constant text PATH_TO_JNI_LIBS = PATH_TO_MAIN + "jniLibs" + FILE_SEPARATOR
 
     text androidSDKPath = ""
 
@@ -37,7 +45,7 @@ class AndroidSupport is ProcessListener
     text keyAlias = "key0"
     text keyPassword = ""
     
-    text toolPath = FILE_SEPARATOR +  "build-tools" + FILE_SEPARATOR + "27.0.3" + FILE_SEPARATOR
+    text toolPath = FILE_SEPARATOR +  "build-tools" + FILE_SEPARATOR + "36.0.0" + FILE_SEPARATOR
     text zipalignPath = toolPath + "zipalign"
     text zipalignOptions = "-v -p 4"
     text apksignerPath = toolPath + "apksigner"
@@ -183,7 +191,7 @@ public class MainActivity extends Activity {
 
         plugins.quorum.Libraries.Game.AndroidApplication.SetActivity(this);
 
-        if (savedInstanceState == null)
+        if (savedInstanceState == null || main == null)
         {
             main = new " + main:GetName() + "();
             main.Main();
@@ -192,6 +200,7 @@ public class MainActivity extends Activity {
         {
             main.StartAndroidGame();
         }
+        initialized = true;
     }
 
     @Override
@@ -206,11 +215,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause()
     {
-        // Call AndroidApplication
+        if (initialized)
+            ((AndroidApplication)GameStateManager.application).plugin_.onPause();
+
         super.onPause();
     }
 
-    @Override 
+    @Override
     protected void onResume()
     {
         if (initialized)
@@ -222,7 +233,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy()
     {
-        // Call AndroidApplication
+        if (initialized)
+            ((AndroidApplication)GameStateManager.application).plugin_.onDestroy();
+
         super.onDestroy();
     }
 }
@@ -459,35 +472,117 @@ public class MainActivity extends Activity {
         return home
     end
 
+    /*
+    Makes Run/Android from the template, or keeps the one from the last send
+    when its template version is current, so Gradle's work from the last
+    build is reused. The SDK location, the JDK and the program's name are
+    written each time, since they may have changed.
+    */
     action CopyAndRename(text templateLocation, text pathToRunFolder, text applicationName, text jdkPath)
         text pathToBuildAndroidFolder = pathToRunFolder + FILE_SEPARATOR + FOLDER_NAME
 
-        // Copy project into new folder with appropriate name
-        CopyFolder(templateLocation, pathToBuildAndroidFolder)
+        if not IsTemplateCurrent(templateLocation, pathToBuildAndroidFolder)
+            CopyFolder(templateLocation, pathToBuildAndroidFolder)
+        end
 
         SetSDKLocation(pathToBuildAndroidFolder)
-        SetNDKLocation(pathToBuildAndroidFolder)
 
-
-        if jdkPath not= undefined and not jdkPath:IsEmpty()
-            SetJDKLocation(pathToBuildAndroidFolder, jdkPath)
+        // Gradle 9 and the Android Gradle plugin need a JDK 17 or later.
+        // Quorum Studio's own JDK is older, so if the project doesn't name
+        // one, Android Studio's is used when it's installed.
+        text jdk = jdkPath
+        if jdk = undefined or jdk:IsEmpty()
+            jdk = GetAndroidStudioJDKPath()
         end
-        
+        SetJDKLocation(pathToBuildAndroidFolder, jdk)
+
         // Change Application Name
         ChangeApplicationName(pathToBuildAndroidFolder, applicationName)
-    
-//        // Clean the generated files that might conflict with the renamings
-        CleanGeneratedFiles(pathToBuildAndroidFolder)
     end
-    
+
+    /*
+    Returns true if Run/Android exists and was made from this version of the
+    template.
+    */
+    private action IsTemplateCurrent(text templateLocation, text pathToBuildAndroidFolder) returns boolean
+        File templateVersion
+        templateVersion:SetAbsolutePath(templateLocation + FILE_SEPARATOR + TEMPLATE_VERSION_FILE)
+        File projectVersion
+        projectVersion:SetAbsolutePath(pathToBuildAndroidFolder + FILE_SEPARATOR + TEMPLATE_VERSION_FILE)
+        if not templateVersion:Exists() or not projectVersion:Exists()
+            return false
+        end
+        text expected = templateVersion:Read()
+        text found = projectVersion:Read()
+        return expected:Trim() = found:Trim()
+    end
+
+    /*
+    Returns the JDK that comes with Android Studio (the JetBrains Runtime), or
+    "" if Android Studio isn't installed where it usually is.
+    */
+    action GetAndroidStudioJDKPath returns text
+        Properties properties
+        File jdk
+        if properties:IsWindows()
+            jdk:SetAbsolutePath("C:/Program Files/Android/Android Studio/jbr")
+        elseif properties:IsMac()
+            jdk:SetAbsolutePath("/Applications/Android Studio.app/Contents/jbr/Contents/Home")
+        else
+            return ""
+        end
+
+        if jdk:Exists()
+            return jdk:GetAbsolutePath()
+        end
+        return ""
+    end
+
+    /*
+    Copies the natives for each Android ABI from Run/jni/android/<ABI> into the
+    app's src/main/jniLibs/<ABI>, where Gradle packages them. Returns false if
+    there were none, which means the standard library has no Android natives.
+    */
+    action CopyNatives returns boolean
+        File source
+        source:SetAbsolutePath(pathToRunFolder + FILE_SEPARATOR + "jni" + FILE_SEPARATOR + "android")
+        if not source:Exists()
+            return false
+        end
+
+        boolean copied = false
+        Array<File> abis = source:GetDirectoryListing()
+        i = 0
+        repeat while i < abis:GetSize()
+            File abi = abis:Get(i)
+            File library
+            library:SetAbsolutePath(abi:GetAbsolutePath() + FILE_SEPARATOR + NATIVE_LIBRARY)
+            if abi:IsDirectory() and library:Exists()
+                File destinationFolder
+                destinationFolder:SetAbsolutePath(pathToBuildAndroidFolder + PATH_TO_JNI_LIBS + abi:GetFileName())
+                if not destinationFolder:Exists()
+                    destinationFolder:CreateDirectories()
+                end
+                File destination
+                destination:SetAbsolutePath(destinationFolder:GetAbsolutePath() + FILE_SEPARATOR + NATIVE_LIBRARY)
+                library:Copy(destination)
+                copied = true
+            end
+            i = i + 1
+        end
+        return copied
+    end
+
     action ChangeApplicationName(text projectPath, text applicationName)
         text pathToMain = projectPath + PATH_TO_MAIN_XML
         text dq = pathToMain:GetDoubleQuote()
 
-        ReplaceLineTextInFile(pathToMain, "android:label=" + dq + "Android" + dq, "android:label=" + dq + applicationName + dq)
-        
+        // The label is on its own line in the template's manifest.
+        ReplaceLineTextInFile(pathToMain, "android:label=", "        android:label=" + dq + applicationName + dq)
+
+        // The program's jar is on the line marked in the template's build.gradle.
         text pathToBuild = projectPath + PATH_TO_APP_BUILD_GRADLE
-        ReplaceLineTextInFile(pathToBuild, "api files('libs/Default.jar')", "    api files('libs/"+applicationName+".jar')")
+        ReplaceLineTextInFile(pathToBuild, "The program's jar", "    implementation files('libs/" + applicationName + ".jar') // The program's jar: Quorum Studio writes its name on this line.")
     end
 
     action CleanGeneratedFiles(text projectPath)
@@ -505,7 +600,7 @@ public class MainActivity extends Activity {
             text dq = ""
             dq = dq:GetDoubleQuote()
             parameters:Add(dq + dq + projectPath + "/gradlew.bat" + dq + dq)
-            parameters:Add(" clean")
+            parameters:Add("clean")
             process:SetParameters(parameters)
             process:AddListener(me)
             process:Run()
@@ -521,7 +616,7 @@ public class MainActivity extends Activity {
             process:SetName("./gradlew")
             parameters:Add("-p")
             parameters:Add(projectPath)
-            parameters:Add(" clean")
+            parameters:Add("clean")
             process:Run()
         else
             File file
@@ -531,12 +626,20 @@ public class MainActivity extends Activity {
             process:SetName("/gradlew")
             parameters:Add("-p")
             parameters:Add(projectPath)
-            parameters:Add(" clean")
+            parameters:Add("clean")
             process:Run()
         end
     end
 
+    /*
+    Tells Gradle which JDK to run with (org.gradle.java.home in
+    gradle.properties). The line is replaced if it's already there, since
+    Run/Android is kept between sends. Nothing is written for "".
+    */
     action SetJDKLocation(text pathToBuildAndroidFolder, text jdkPath)
+        if jdkPath = undefined or jdkPath:IsEmpty()
+            return now
+        end
         text pathToLocalProperties = pathToBuildAndroidFolder + FILE_SEPARATOR + "gradle.properties"
         text sdkLocation = jdkPath
 
@@ -553,7 +656,14 @@ public class MainActivity extends Activity {
             end
         end
 
-        AppendLineToFile(pathToLocalProperties, "org.gradle.java.home="+sdkLocation)
+        File gradleProperties
+        gradleProperties:SetAbsolutePath(pathToLocalProperties)
+        text contents = gradleProperties:Read()
+        if contents:Contains("org.gradle.java.home=")
+            ReplaceLineTextInFile(pathToLocalProperties, "org.gradle.java.home=", "org.gradle.java.home=" + sdkLocation)
+        else
+            AppendLineToFile(pathToLocalProperties, "org.gradle.java.home=" + sdkLocation)
+        end
     end
 
     private action CopyFolder(text from, text to)
@@ -592,34 +702,6 @@ public class MainActivity extends Activity {
         end
 
         ReplaceLineTextInFile(pathToLocalProperties, "sdk.dir=", "sdk.dir="+sdkLocation)
-    end
-
-    action SetNDKLocation(text pathToBuildAndroidFolder)
-        text pathToAppBuildFile = pathToBuildAndroidFolder + PATH_TO_APP_BUILD_GRADLE
-        text ndkLocation = androidSDKPath + FILE_SEPARATOR + PATH_TO_NATIVE_DEVELOPMENT_KIT
-        text final = ""
-        Properties properties
-        if properties:IsWindows()
-            i = 0
-            repeat while i < ndkLocation:GetSize()
-                text character = ndkLocation:GetCharacter(i)
-                if character = "\"
-                    final = final + "\\"
-                elseif character = "/"
-                    final = final + "\\"
-                else 
-                    final = final + character
-                end
-                i = i + 1
-            end
-        else 
-            final = ndkLocation
-        end
-
-        text dq = ndkLocation:GetDoubleQuote()
-
-        ReplaceLineTextInFile(pathToAppBuildFile, "android.ndkVersion " + dq + "placeholder" + dq, "android.ndkVersion " + dq + NDK_VERSION_NUMBER + dq)
-        ReplaceLineTextInFile(pathToAppBuildFile, "android.ndkPath " + dq + "placeholder" + dq, "android.ndkPath " + dq + final + dq)
     end
 
     action AppendLineToFile(text path, text line)

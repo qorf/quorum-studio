@@ -1,49 +1,42 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application'
+}
 
 android {
-    compileSdkVersion 30
+    // The package of the generated R class, which MainActivity imports.
+    namespace = 'com.quorum.TestApplication'
+    compileSdk = 36
+
     defaultConfig {
-        applicationId "com.quorum.testapplication"
-        minSdkVersion 21
-        targetSdkVersion 30
-		android.ndkVersion "placeholder"
-		android.ndkPath "placeholder"
-        multiDexEnabled true
-        versionCode 1
-        versionName "1.0"
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-        externalNativeBuild {
-            cmake {
-                cppFlags ""
-            }
+        applicationId = 'com.quorum.testapplication'
+        // Android 15: Quorum's minimum, for Vulkan 1.3.
+        minSdk = 35
+        targetSdk = 36
+        versionCode = 1
+        versionName = '1.0'
+
+        // The natives are built by quorum-natives' AutoBuild for these ABIs,
+        // and copied into src/main/jniLibs by Quorum Studio.
+        ndk {
+            abiFilters 'arm64-v8a', 'x86_64'
         }
     }
+
     compileOptions {
-        sourceCompatibility = '1.11'
-        targetCompatibility = '1.11'
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
+
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
-    }
-    externalNativeBuild {
-        cmake {
-            path "CMakeLists.txt"
+            minifyEnabled = false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
 
 dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
-    androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
-        exclude group: 'com.android.support', module: 'support-annotations'
-    })
-    implementation 'com.android.support:appcompat-v7:25.3.1'
-    implementation 'com.android.support.constraint:constraint-layout:1.0.2'
-    testImplementation 'junit:junit:4.12'
-    api files('libs/Default.jar')
-    api files('libs/QuorumStandardLibrary.jar')
-    api files('libs/QuorumStandardPlugins.jar')
+    implementation files('libs/Default.jar') // The program's jar: Quorum Studio writes its name on this line.
+    implementation files('libs/QuorumStandardLibrary.jar')
+    implementation files('libs/QuorumStandardPlugins.jar')
 }

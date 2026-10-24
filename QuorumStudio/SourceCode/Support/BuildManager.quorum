@@ -1508,7 +1508,10 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         out:Append("Copying Information")
         android:CopyLibraries()
         android:CopyNewMain(mainClazz)
-        
+        if not android:CopyNatives()
+            out:Append("The standard library has no Android natives (Native/mobile/android), so the game couldn't start. Run quorum-natives' AutoBuild, then build the standard library.")
+            return now
+        end
 
         text mobileAssetPath = project:GetAndroidAssetsPath()
         if mediaDirectory not= undefined and mediaDirectory:Exists() and mobileAssetPath not= undefined
@@ -1517,12 +1520,9 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         else
             out:Append("No assets requested for copying")
         end
-        out:Append("Requesting build from Android System. This can take a few minutes. Please wait.")
-        Process build = android:GetAPKDebugBuildProcess()
-        build:AddListener(android)
-        build:Run()
-
-        out:Append("Installing program (if device is found)")
+        // One Gradle run: installDebug builds the app first. Run/Android is
+        // kept between sends, so later builds reuse Gradle's earlier work.
+        out:Append("Building and installing the program (if a device is found). The first build can take a few minutes. Please wait.")
         Process install = android:GetDebugInstallProcess()
         install:AddListener(android)
         install:Run()

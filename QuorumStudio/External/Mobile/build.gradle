@@ -1,9 +1,13 @@
 // Top-level build file for the iOS project Quorum Studio makes in Run/Mobile.
-// Studio copies this file and gradle.properties into existing Mobile folders
-// when they differ (IOSSupport:UpdateGradleSettings).
+// Studio copies this file, gradle.properties and the Gradle version files into
+// existing Mobile folders when they differ (IOSSupport:UpdateGradleSettings).
+//
+// Gradle 9 and MobiVM 2.3.26's plugin run on Java 17 or later. The daemon's Java
+// is set in gradle/gradle-daemon-jvm.properties (Temurin 21), which Gradle finds
+// on the machine or downloads, whatever Java Studio passes.
 
 buildscript {
-    project.ext.mobivmVersion = "2.3.20"
+    project.ext.mobivmVersion = "2.3.26"
     project.ext.mobivmLocation = "com.mobidevelop.robovm"
 
     repositories {
@@ -21,7 +25,7 @@ allprojects {
 }
 
 task clean(type: Delete) {
-    delete rootProject.buildDir
+    delete rootProject.layout.buildDirectory
 }
 
 project(":ios") {
@@ -29,8 +33,10 @@ project(":ios") {
     apply plugin: 'robovm'
     apply plugin: 'java-library'
 
+    // Read from the root project explicitly: Gradle 9.6 deprecates finding a
+    // parent project's properties implicitly.
     dependencies {
-        implementation "$mobivmLocation:robovm-rt:$mobivmVersion"
-        implementation "$mobivmLocation:robovm-cocoatouch:$mobivmVersion"
+        implementation "${rootProject.mobivmLocation}:robovm-rt:${rootProject.mobivmVersion}"
+        implementation "${rootProject.mobivmLocation}:robovm-cocoatouch:${rootProject.mobivmVersion}"
     }
 }

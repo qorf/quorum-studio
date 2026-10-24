@@ -2,11 +2,11 @@ import org.apache.tools.ant.taskdefs.condition.Os
 
 plugins {
     id 'java'
-    id "de.undercouch.download" version "5.1.0"
+    id "de.undercouch.download" version "5.7.0"
 }
 
-group 'plugins.quorum.studio'
-version '4.0'
+group = 'plugins.quorum.studio'
+version = '4.0'
 def jdkFolder = "${project.rootDir}/jdks"
 
 repositories {
@@ -17,8 +17,8 @@ dependencies {
     //testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     //testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
 
-    //First the dependency for the poorly named Quorum Debugger
-    compileOnly files('../../quorum-debugger/build/libs/OmniscientDebugger.jar')
+    //The debugger's sources (from quorum-debugger) are in src/main/java/org/debugger,
+    //and compile against the JDK's own JDI (module jdk.jdi), so there is no jar for it.
 
     //Now the standard library and compile against Quorum Studio itself.
     compileOnly files('../../quorum-language/Quorum/Library/Compiled/Run/QuorumStandardLibrary.jar')
@@ -41,7 +41,8 @@ java {
             in older versions of QS, is no longer necessary.
          */
         languageVersion.set(JavaLanguageVersion.of(11))
-        vendor = JvmVendorSpec.ADOPTOPENJDK
+        // AdoptOpenJDK is now Eclipse Adoptium (Temurin), which Studio bundles.
+        vendor = JvmVendorSpec.ADOPTIUM
     }
 }
 

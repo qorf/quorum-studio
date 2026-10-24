@@ -9,6 +9,8 @@ import quorum.Libraries.Game.AndroidApplication;
 import plugins.quorum.Libraries.Game.GameStateManager;
 import quorum.Main;
 
+// Quorum Studio replaces this file with one for the program's Main class
+// (AndroidSupport:GetHiddenMain).
 public class MainActivity extends Activity {
 
     private static boolean initialized = false;
@@ -21,7 +23,7 @@ public class MainActivity extends Activity {
 
         plugins.quorum.Libraries.Game.AndroidApplication.SetActivity(this);
 
-        if (savedInstanceState == null)
+        if (savedInstanceState == null || main == null)
         {
             main = new Main();
             main.Main();
@@ -30,6 +32,7 @@ public class MainActivity extends Activity {
         {
             main.StartAndroidGame();
         }
+        initialized = true;
     }
 
     @Override
@@ -44,11 +47,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause()
     {
-        // Call AndroidApplication
+        if (initialized)
+            ((AndroidApplication)GameStateManager.application).plugin_.onPause();
+
         super.onPause();
     }
 
-    @Override 
+    @Override
     protected void onResume()
     {
         if (initialized)
@@ -60,7 +65,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy()
     {
-        // Call AndroidApplication
+        if (initialized)
+            ((AndroidApplication)GameStateManager.application).plugin_.onDestroy();
+
         super.onDestroy();
     }
 }

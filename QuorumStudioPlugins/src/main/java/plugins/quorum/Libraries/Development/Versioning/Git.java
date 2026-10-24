@@ -6,8 +6,11 @@
 package plugins.quorum.Libraries.Development.Versioning;
 
 import com.github.difflib.algorithm.DiffException;
-import com.github.difflib.text.DiffRow;
-import com.github.difflib.text.DiffRowGenerator;
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.AbstractDelta;
+import com.github.difflib.patch.Chunk;
+import com.github.difflib.patch.DeltaType;
+import com.github.difflib.patch.Patch;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -16,6 +19,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
@@ -483,6 +487,59 @@ public class Git {
         return result;
     }
     
+    /*
+     * Splits text into its lines, as git counts them: a line break ends a
+     * line, so a final line break doesn't make an empty line after it, but
+     * blank lines before it are kept.
+     */
+    private static List<String> SplitIntoLines(String value) {
+        List<String> lines = new ArrayList<>(Arrays.asList(value.split("\\r?\\n", -1)));
+        if (!lines.isEmpty() && lines.get(lines.size() - 1).isEmpty()) {
+            lines.remove(lines.size() - 1);
+        }
+        return lines;
+    }
+
+    /*
+     * Adds an edit for one line of the text being edited. The types are
+     * GitConstants' EDIT_INSERT 0, EDIT_CHANGE 1 and EDIT_EQUAL 3.
+     */
+    private static void AddEdit(quorum.Libraries.Development.Versioning.DiffResult result, int line, int type) {
+        quorum.Libraries.Development.Versioning.DiffEdit edit = new quorum.Libraries.Development.Versioning.DiffEdit();
+        edit.startLine = line;
+        edit.endLine = line;
+        edit.SetEditType(type);
+        result.GetEdits().Add(edit);
+    }
+
+    /*
+     * Adds unchanged lines from a line up to, but not including, another,
+     * and returns where they end.
+     */
+    private static int AddEqualLines(quorum.Libraries.Development.Versioning.DiffResult result, int from, int to) {
+        int line = from;
+        while (line < to) {
+            AddEdit(result, line, 3);
+            result.Set_Libraries_Development_Versioning_DiffResult__linesEqual_(
+                result.Get_Libraries_Development_Versioning_DiffResult__linesEqual_() + 1);
+            line = line + 1;
+        }
+        return line;
+    }
+
+    /*
+     * Marks the last line added as having lines deleted after it. Lines
+     * deleted from the top of the file have no line above them to mark.
+     */
+    private static void MarkDeletionBefore(quorum.Libraries.Development.Versioning.DiffResult result) {
+        int size = result.GetEdits().GetSize();
+        if (size > 0) {
+            quorum.Libraries.Development.Versioning.DiffEdit edit =
+                (quorum.Libraries.Development.Versioning.DiffEdit) result.GetEdits().Get(size - 1);
+            edit.SetHasDeletion(true);
+        }
+    }
+
     public DiffResult_ RequestDiff(Repository_ quorumRepository, DiffRequest_ request) {
         try {
             quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
@@ -519,70 +576,58 @@ public class Git {
 
                 revWalk.dispose();
                 if(result != null) {
-                    DiffRowGenerator generator = DiffRowGenerator.create()
-                    .showInlineDiffs(true)
-                    .mergeOriginalRevised(true)
-                    .inlineDiffByWord(true)
-                    .oldTag(f -> "~")      //introduce markdown style for strikethrough
-                    .newTag(f -> "**")     //introduce markdown style for bold
-                    .build();
-            
-                    List<String> resultList = Arrays.asList(StringDiff.ConvertToList(result)); 
-                    List<String> readList = Arrays.asList(StringDiff.ConvertToList(read));
-                    
-                    //compute the differences for two test texts.
-                    List<DiffRow> rows = generator.generateDiffRows(resultList, readList);
-                    
+                    List<String> resultList = SplitIntoLines(result);
+                    List<String> readList = SplitIntoLines(read);
+
+                    // The changes as blocks, each with its place in the
+                    // committed file and in the text being edited.
+                    Patch<String> patch = DiffUtils.diff(resultList, readList);
+
+                    // One edit for each line of the text being edited, in
+                    // order, since the editor's gutter finds a line's mark by
+                    // its place in this list. A deleted line has no line of
+                    // its own; it marks the line above where it was.
                     quorum.Libraries.Development.Versioning.DiffResult resultForFile = new quorum.Libraries.Development.Versioning.DiffResult();
-                    Iterator<DiffRow> iterator = rows.iterator();
-                    DiffRow.Tag previousTag = null;
-                    quorum.Libraries.Development.Versioning.DiffEdit previousRes = null;
                     int line = 0;
-                    while(iterator.hasNext()) {
-                        DiffRow row = iterator.next();
-                        DiffRow.Tag tag = row.getTag();
-                        quorum.Libraries.Development.Versioning.DiffEdit res = new quorum.Libraries.Development.Versioning.DiffEdit();
-                        res.startLine = line;
-                        res.endLine = line;
-                        
-                        if(null != tag) switch (tag) {
-                            case CHANGE:
-                                res.SetEditType(1);
+                    for (AbstractDelta<String> delta : patch.getDeltas()) {
+                        Chunk<String> source = delta.getSource();
+                        Chunk<String> target = delta.getTarget();
+                        line = AddEqualLines(resultForFile, line, target.getPosition());
+
+                        DeltaType type = delta.getType();
+                        if (type == DeltaType.INSERT || type == DeltaType.CHANGE) {
+                            // The new lines of a changed block are all
+                            // marked changed, however many lines it had
+                            // before.
+                            int editType = 0;
+                            if (type == DeltaType.CHANGE) {
+                                editType = 1;
+                            }
+                            for (int i = 0; i < target.size(); i++) {
+                                AddEdit(resultForFile, line, editType);
+                                line = line + 1;
+                            }
+                            if (type == DeltaType.CHANGE) {
                                 resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesChanged_(
-                                    resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesChanged_() + 1);
-                                resultForFile.GetEdits().Add(res);
-                                break;
-                            case DELETE:
-                                res.SetEditType(2);
-                                resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesDeleted_(
-                                    resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesDeleted_() + 1);
-                                
-                                if((previousTag == null && previousRes != null) || 
-                                   (previousTag != null && previousRes != null && previousTag != previousTag.DELETE)) {
-                                    previousRes.SetHasDeletion(true);
+                                    resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesChanged_() + target.size());
+                                if (source.size() > target.size()) {
+                                    // The block lost lines too: its last
+                                    // line shows the deletion.
+                                    MarkDeletionBefore(resultForFile);
+                                    resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesDeleted_(
+                                        resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesDeleted_() + source.size() - target.size());
                                 }
-                                break;
-                            case INSERT:
-                                res.SetEditType(0);
+                            } else {
                                 resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesInserted_(
-                                    resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesInserted_() + 1);
-                                resultForFile.GetEdits().Add(res);
-                                break;
-                            case EQUAL:
-                                res.SetEditType(3);
-                                resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesEqual_(
-                                    resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesEqual_() + 1);
-                                resultForFile.GetEdits().Add(res);
-                                break;
-                            default:
-                                break;
+                                    resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesInserted_() + target.size());
+                            }
+                        } else if (type == DeltaType.DELETE) {
+                            MarkDeletionBefore(resultForFile);
+                            resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesDeleted_(
+                                resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesDeleted_() + source.size());
                         }
-                        
-                        previousTag = tag;
-                        previousRes = res;
-                        line = line + 1;
-                        
                     }
+                    AddEqualLines(resultForFile, line, readList.size());
                     return resultForFile;
                 }
         }   catch (DiffException ex) {

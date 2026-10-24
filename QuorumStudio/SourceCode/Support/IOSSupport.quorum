@@ -153,13 +153,18 @@ class IOSSupport is ProcessListener
 
     /*
         Brings the Gradle settings of a Mobile folder made by an older Studio up to
-        date with the template: build.gradle (without the Android plugin) and
-        gradle.properties (Gradle's daemon on). Writes only when they differ.
+        date with the template: build.gradle (without the Android plugin),
+        gradle.properties (Gradle's daemon on), the Gradle version (the wrapper's
+        properties) and the daemon's Java (gradle-daemon-jvm.properties). Writes
+        only when they differ. The older wrapper scripts and jar left in the
+        folder still download and start the Gradle version named here.
     */
     action UpdateGradleSettings(text templateLocation)
         Array<text> names
         names:Add("build.gradle")
         names:Add("gradle.properties")
+        names:Add("gradle" + FILE_SEPARATOR + "wrapper" + FILE_SEPARATOR + "gradle-wrapper.properties")
+        names:Add("gradle" + FILE_SEPARATOR + "gradle-daemon-jvm.properties")
         i = 0
         repeat while i < names:GetSize()
             File from
@@ -429,7 +434,9 @@ class IOSSupport is ProcessListener
         they won't launch (Apple's TN3187), so it names the scene delegate in the
         standard library's iOS plugin (IOSSceneDelegate, whose Objective-C name is
         QuorumSceneDelegate). GetRoboVMXML force-links that class, since iOS finds
-        it only by this name.
+        it only by this name. UILaunchScreen (empty) says the app handles every
+        screen size; without it, iOS runs the app in a 320 by 480 compatibility
+        window.
     */
     private action GetPList(BuildInformation info) returns text
         text result = ""
@@ -463,6 +470,10 @@ result =
     <string>${app.build}</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>MinimumOSVersion</key>
+    <string>15.0</string>
+    <key>UILaunchScreen</key>
+    <dict/>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
     <key>UIStatusBarHidden</key>
@@ -546,6 +557,8 @@ result =
     <framework>OpenAL</framework>
     <framework>AudioToolbox</framework>
     <framework>AVFoundation</framework>
+    <framework>Metal</framework>
+    <framework>IOSurface</framework>
   </weakFrameworks>
   <iosInfoPList>Info.plist.xml</iosInfoPList>
   <forceLinkClasses>
@@ -580,24 +593,20 @@ app.name="+name+"
         text signature = project:GetIOSSignature()
         text dq = name:GetDoubleQuote()
 
-        text result = 
+        // No Java toolchain: the ios module has no Java sources, and a
+        // toolchain of 8 would need a Java 8 Gradle can find. MobiVM 2.3.26
+        // removed stdoutFifo and stderrFifo, and Gradle stops on unknown
+        // settings, so they aren't written.
+        text result =
 "
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(8))
-    }
-}
-
 robovm {"
 
-if provision not= undefined and signature not= undefined 
+if provision not= undefined and signature not= undefined
     and not provision:IsEmpty() and not signature:IsEmpty()
     result = result +"
         iosSignIdentity = " + dq + signature + dq + "
         iosProvisioningProfile = " + dq + provision + dq + "
         iosSkipSigning = false
-        stdoutFifo = " + dq + dq + "
-        stderrFifo = " + dq + dq + "
 }"
 else
     result = result + "
