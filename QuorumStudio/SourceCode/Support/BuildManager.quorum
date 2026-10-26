@@ -99,6 +99,12 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
     ShowInstallIOSSimulatorBehavior showIOSSimulatorInstaller
     HashTable<text, Process> processes
     HashTable<text, OutputTab> outputTabsForProcesses
+    // Waiting for a locked iPhone to be unlocked (WaitForUnlockAndLaunch): how
+    // often to check, in milliseconds, how long to wait at most, and whether
+    // Stop was pressed during the wait.
+    constant integer UNLOCK_CHECK_DELAY = 2000
+    constant integer UNLOCK_WAIT_LIMIT = 180000
+    boolean unlockWaitStopped = false
     ProjectManager projectManager = undefined
 
     //for the parsing and indexing procedures
@@ -1356,10 +1362,20 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
 
         build:Run()      
 
+        //On a phone, MobiVM installs the app and then launches it. If the phone
+        //was locked, only the launch failed, so Studio waits for an unlock and
+        //launches the app itself (see IOSSupport:WasPhoneLocked).
+        if project:IsIOSPhysicalDevice()
+            if ios:WasPhoneLocked()
+                WaitForUnlockAndLaunch(project, ios, out, processLocation)
+            end
+            return now
+        end
+
         //When RoboVM builds the app but can't start it on the simulator (no
         //Simulator app on Xcode 27, or a failed boot), Studio installs and
         //launches it instead (see IOSSupport).
-        if project:IsIOSPhysicalDevice() or not ios:NeedsStudioLaunch()
+        if not ios:NeedsStudioLaunch()
             return now
         end
 
@@ -1417,8 +1433,16 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         if not message:IsEmpty()
             out:Append(message)
         end
-        if not found or project:IsIOSPhysicalDevice()
-            return found
+        if not found
+            return false
+        end
+        if project:IsIOSPhysicalDevice()
+            //Only a heads-up: iOS installs on a locked phone, but won't start the
+            //app until it's unlocked (see WaitForUnlockAndLaunch).
+            if ios:IsPhoneLocked()
+                out:Append("Your iPhone is locked. The app will install, and start once you unlock it.")
+            end
+            return true
         end
 
         //Start the simulator now, so RoboVM finds it running and skips its own
@@ -1430,6 +1454,44 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             return false
         end
         return true
+    end
+
+    /*
+        Waits for the user to unlock the phone, checking every UNLOCK_CHECK_DELAY
+        milliseconds, then starts the app MobiVM installed. Gives up after
+        UNLOCK_WAIT_LIMIT, or when Stop is pressed (StopAll). This runs on the
+        build thread, so the rest of Studio keeps working while it waits.
+    */
+    private action WaitForUnlockAndLaunch(QuorumProject project, IOSSupport ios, OutputTab out, text processLocation)
+        if ios:GetDevice() = undefined
+            return now
+        end
+
+        out:Append("Unlock your iPhone to start the app.")
+        unlockWaitStopped = false
+        SystemHelper helper
+        integer waited = 0
+        repeat while ios:IsPhoneLocked()
+            if unlockWaitStopped
+                out:Append("Stopped waiting. The app is installed on your iPhone, so you can open it from its icon.")
+                return now
+            end
+            if waited >= UNLOCK_WAIT_LIMIT
+                out:Append("Your iPhone stayed locked, so the app didn't start. It is installed, so you can open it from its icon, or send to iOS again.")
+                return now
+            end
+            helper:Sleep(UNLOCK_CHECK_DELAY)
+            waited = waited + UNLOCK_CHECK_DELAY
+        end
+
+        Process launch = ios:GetDeviceLaunchProcess(project)
+        launch:AddListener(ios)
+        if processes:HasKey(processLocation)
+            processes:RemoveKey(processLocation)
+        end
+        processes:Add(processLocation, launch)
+        out:Append("Running on " + ios:GetDevice():GetName() + ".")
+        launch:Run()
     end
 
     action SendToAndroidDebugMode(BuildInformation info)
@@ -1917,6 +1979,7 @@ private action FindMicropythonCompiler returns text
     
 
     action StopAll
+        unlockWaitStopped = true
         Iterator<text> iterator = processes:GetKeyIterator()
         repeat while iterator:HasNext()
             text key = iterator:Next()

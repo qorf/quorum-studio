@@ -35,8 +35,6 @@ use Libraries.Interface.Pages.StackedRowPage
 use Libraries.Interface.Forms.Banner
 use Libraries.Interface.Controls.Checkbox
 use Libraries.Interface.Layouts.FormRowLayout
-use Libraries.Interface.Layouts.StackLayout
-use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Forms.Page
 
 
@@ -81,7 +79,7 @@ end
         SetName("Quorum Studio Properties")
         SetPercentageWidth(0.50)
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:STANDARD)
-        SetPercentageHeight(0.65)
+        SetPercentageHeight(0.72)
         
         CreatePropertiesPage()
         Load()
@@ -199,40 +197,35 @@ end
         page:SetSkipLabelsInFocus(true)
         page:LeftAlignContent()
         
-        //add radio buttons
-        page:AddLabel("Color Mode")
-        Grouping projectTypeGroup = page:AddGrouping("Color Mode Grouping")
-        lightModeButton = projectTypeGroup:AddRadioButton("Light Mode")
-        darkModeButton = projectTypeGroup:AddRadioButton("Dark Mode")
-        StackLayout groupLayout
-        projectTypeGroup:SetLayout(groupLayout)
-        projectTypeGroup:SetLeftPadding(15)
-        
-        
-        Grouping blocksGrouping = page:AddGrouping("Checks")
-        blockModeCheckbox = blocksGrouping:AddCheckbox("Blocks")
-        framesPerSecondCheckbox = blocksGrouping:AddCheckbox("Display Framerate")
-        overrideLibraryCheckbox = blocksGrouping:AddCheckbox("Override Library")
-        StackLayout checksLayout
-        LayoutProperties props
-        blocksGrouping:SetHorizontalLayoutMode(props:FIT_CONTENTS)
-        blocksGrouping:SetLayout(checksLayout)
-        
-        page:AddLabel("Blocks Height Scaling")
-        blockHeightField = page:AddTextField("Blocks Height Scaling")
-        
-        page:AddLabel("Blocks Scope Width Scaling")
-        blockWidthField = page:AddTextField("Blocks Scope Width Scaling")
-        
-        page:AddLabel("Override Library Path")
-        libraryField = page:AddTextField("Library Location")
+        Grouping appearanceCard = page:AddGrouping("Appearance")
+        appearanceCard:SetTitle("Appearance")
+        appearanceCard:AddLabel("Color Mode")
+        Grouping colorModeChoices = appearanceCard:AddGrouping("Color Mode Grouping")
+        lightModeButton = colorModeChoices:AddRadioButton("Light Mode")
+        darkModeButton = colorModeChoices:AddRadioButton("Dark Mode")
+        framesPerSecondCheckbox = appearanceCard:AddCheckbox("Display Framerate")
+        appearanceCard:AddLabel("Frame Rate")
+        frameRateField = appearanceCard:AddTextField("Frame Rate")
 
-        page:AddLabel("Frame Rate")
-        frameRateField = page:AddTextField("Frame Rate")
-        
+        Grouping blocksCard = page:AddGrouping("Blocks")
+        blocksCard:SetTitle("Blocks")
+        blockModeCheckbox = blocksCard:AddCheckbox("Blocks")
+        blocksCard:AddLabel("Height Scaling")
+        blockHeightField = blocksCard:AddTextField("Blocks Height Scaling")
+        blocksCard:AddLabel("Scope Width Scaling")
+        blockWidthField = blocksCard:AddTextField("Blocks Scope Width Scaling")
+
+        Grouping libraryCard = page:AddGrouping("Library")
+        libraryCard:SetTitle("Library")
+        overrideLibraryCheckbox = libraryCard:AddCheckbox("Override Library")
+        libraryCard:AddLabel("Override Library Path")
+        libraryField = libraryCard:AddTextField("Library Location")
+
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancelButton = buttonGroup:AddButton("Cancel")
         Button okayButton = buttonGroup:AddButton("Ok")
+        // The main action: the accent button style.
+        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
         buttonGroup:PositionFromBottom() 
 
         cancelButton:SetBehavior(cancelBehavior)

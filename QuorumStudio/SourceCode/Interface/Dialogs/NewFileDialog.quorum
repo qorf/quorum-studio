@@ -3,7 +3,6 @@ package Libraries.Development.Environment.Studio.Interface
 use Libraries.Interface.Controls.Dialog
 use Libraries.Interface.Views.LabelBoxView
 use Libraries.Game.Graphics.Color
-use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Game.Graphics.Label
 use Libraries.Interface.Controls.TextField
 use Libraries.Interface.Controls.Button
@@ -15,9 +14,7 @@ use Libraries.Interface.Controls.ButtonGroup
 use Libraries.System.File
 use Libraries.System.FileWriter
 use Libraries.Interface.Controls.List
-use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
-use Libraries.Game.Graphics.Gradient
 use Libraries.Development.Environment.Studio.Behaviors.NewFileOkBehavior
 use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Development.Environment.Studio.Behaviors.OpenBrowseFoldersBehavior
@@ -41,7 +38,6 @@ use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Interface.Forms.Page
-use Libraries.Interface.Forms.FormPanel
 use Libraries.Interface.Forms.Grouping
 
 
@@ -88,7 +84,7 @@ class NewFileDialog is Dialog
             SetName("New File")
         end
         SetPixelWidth(600)
-        SetPixelHeight(175)
+        SetPixelHeight(200)
 
         CreateNewFileControl()
     end
@@ -113,88 +109,37 @@ class NewFileDialog is Dialog
     end
 
     action CreateNewFileControl()
-        Color color
         Page createNewFileContainer = InitializeDefaultPage()
-        
-        LayoutProperties properties
-        
-        FlowLayout fileLayout
-        FormPanel fileContainer
-        fileContainer:SetLayout(fileLayout)
-        fileContainer:SetVerticalLayoutMode(properties:FIT_CONTENTS)
-        
-        Label fileName = fileContainer:AddLabel("Name:")
-        fileName:SetPositionOnBaseLine(false)
-        fileName:SetHorizontalLayoutMode(properties:STANDARD)
-        fileName:SetPercentageWidth(0.2)
-        
-        fileNameField = fileContainer:AddTextField("New File")
+        createNewFileContainer:SetSkipLabelsInFocus(true)
+
+        createNewFileContainer:AddLabel("Name")
+        fileNameField = createNewFileContainer:AddTextField("New File")
         if IsFolder()
             fileNameField:SetName("New Folder Name")
         else
             fileNameField:SetName("New File Name")
         end
-        
         fileNameField:SetText("")
-        fileNameField:SetPercentageWidth(0.8)
 
-        createNewFileContainer:Add(fileContainer)
-
-        FlowLayout locationLayout
-        FormPanel locationContainer
-        locationContainer:SetLayout(locationLayout)
-
-        Label locationName = locationContainer:AddLabel("Location:")
-        locationName:SetPositionOnBaseLine(false)
-        locationName:SetHorizontalLayoutMode(properties:STANDARD)
-        locationName:SetPercentageWidth(0.2)
-     
-        locationNameField = locationContainer:AddTextField("Location")
-        locationNameField:SetPercentageWidth(0.55)
+        // The location and its Browse button, on one row beside the label.
+        createNewFileContainer:AddLabel("Location")
+        Grouping locationGroup = createNewFileContainer:AddGrouping("Location Row")
+        locationNameField = locationGroup:AddTextField("Location")
         locationNameField:SetName("Location")
-        
-        Control browseSpacer
-        browseSpacer:SetPercentageWidth(0.05)
-        browseSpacer:SetPixelHeight(1)
-        locationContainer:Add(browseSpacer)
-
-        browseButton = locationContainer:AddButton("Browse...")
-        browseButton:SetFontSize(14)
-        browseButton:SetVerticalLayoutMode(properties:FIT_FONT)
-        browseButton:SetHorizontalLayoutMode(properties:STANDARD)
-        browseButton:SetPercentageWidth(0.2)
+        browseButton = locationGroup:AddButton("Browse...")
         browseButton:SetBehavior(browseBehavior)
-        
-        createNewFileContainer:Add(locationContainer)
 
-        FlowLayout closingButtonsLayout
-        Control closingButtonsContainer
-        closingButtonsContainer:SetLayout(closingButtonsLayout)
-        closingButtonsContainer:SetPercentageWidth(1.0)
-        closingButtonsContainer:SetVerticalLayoutMode(closingButtonsContainer:FIT_CONTENTS)
-        closingButtonsContainer:SetTopMargin(20)
-        
-Grouping closingButtons = createNewFileContainer:AddGrouping("Closing Buttons")
+        // The footer: Cancel, then the main action at the right.
+        Grouping closingButtons = createNewFileContainer:AddGrouping("Closing Buttons")
         closingButtons:PositionFromBottom()
         cancelButton = closingButtons:AddButton("Cancel")
-        cancelButton:SetHorizontalLayoutMode(cancelButton:parent:Libraries.Interface.Controls.Control:STANDARD)
-        cancelButton:SetPercentageWidth(0.2)
         cancelButton:SetBehavior(cancelBehavior)
-
-        Gradient okayGradient
-        Color gradientTop = color:CustomColor(0.85, 0.85, 1, 1)
-        Color gradientBottom = color:CustomColor(0.75, 0.75, 0.9, 1)
-        okayGradient:Set(gradientBottom, gradientBottom, gradientTop, gradientTop)
 
         okayButton = closingButtons:AddButton("OK")
         okayButton:SetName("OK")
-        okayButton:SetHorizontalLayoutMode(okayButton:parent:Libraries.Interface.Controls.Control:STANDARD)
         InterfaceOptions options
         okayButton:SetInterfaceOptionsKey(options:DIALOG_ACCEPT_BUTTON)
-        okayButton:SetPercentageWidth(0.2)
         okayButton:SetBehavior(okayBehavior)
-
-
     end
     
     //returns the current QuorumProject that the NewFile is being added to

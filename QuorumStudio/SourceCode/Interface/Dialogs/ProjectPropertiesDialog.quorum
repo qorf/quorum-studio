@@ -55,11 +55,8 @@ use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Forms.Page
 use Libraries.Interface.Forms.Grouping
-use Libraries.Interface.Forms.Banner
 use Libraries.Interface.Layouts.ManualLayout
 use Libraries.Interface.Pages.StackedRowPage
-use Libraries.Interface.Layouts.StackLayout
-use Libraries.Interface.Forms.FormPanel
 use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesCopyLocationBehavior
 
 class ProjectPropertiesDialog is Dialog, MouseWheelListener
@@ -695,61 +692,45 @@ integer slot = cast(integer, value)
         // remove offset for top bar since this page in a pane
         page:SetPixelHeight(0)
         
-        LayoutProperties properties
-        
-        FormPanel locationPanel
-        FlowLayout flow
-        locationPanel:SetLayout(flow)
-        locationPanel:SetVerticalLayoutMode(properties:FIT_CONTENTS)
-        page:Add(locationPanel)
-        Label locationLabel = locationPanel:AddLabel("Project Location")
-        Control locationSpacer
-        locationSpacer:SetPercentageWidth(0.02)
-        locationSpacer:SetPixelWidth(1)
-        locationPanel:Add(locationSpacer)
-        copyButton = locationPanel:AddButton("Copy")
-        copyButton:SetHorizontalLayoutMode(properties:FIT_CONTENTS)
-        copyButton:SetVerticalLayoutMode(properties:FIT_FONT)
-        copyButton:SetBehavior(copyBehavior)
-        programLocationLabel = page:AddLabel("Location")
-        
-        page:AddLabel("Project Name")
-        programNameField = page:AddTextField("Name")
-        
-        page:AddLabel("Project Version")
-        programVersionField = page:AddTextField("Version")
+        page:SetSkipLabelsInFocus(true)
 
-        //add radio buttons
-        page:AddLabel("Project Type")
+        Grouping projectCard = page:AddGrouping("Project")
+        projectCard:SetTitle("Project")
+        // "Location" with Copy at the right, then the project's folder on a
+        // row of its own, in the caption size. The folder stays a focus
+        // stop, since it isn't shown anywhere else. A button with a width of
+        // its own pairs with the label before it.
+        projectCard:AddLabel("Location")
+        copyButton = projectCard:AddButton("Copy")
+        copyButton:SetPixelWidth(88)
+        copyButton:SetBehavior(copyBehavior)
+        programLocationLabel = projectCard:AddLabel("Location Path")
+        programLocationLabel:SetFocusable(true)
+        programLocationLabel:SetFontSize(14)
+        projectCard:AddLabel("Name")
+        programNameField = projectCard:AddTextField("Name")
+        projectCard:AddLabel("Version")
+        programVersionField = projectCard:AddTextField("Version")
+
+        // The four project types on one row.
         Grouping projectTypeGroup = page:AddGrouping("Project Type")
-        StackLayout stackLayout
-        projectTypeGroup:SetLayout(stackLayout)
+        projectTypeGroup:SetTitle("Project Type")
         standardProjectButton = projectTypeGroup:AddRadioButton("Standard")
-        standardProjectButton:SetTopMargin(10)
-        standardProjectButton:SetLeftMargin(10)
-        standardProjectButton:SetFontSize(18)
         webBrowserProjectButton = projectTypeGroup:AddRadioButton("Browser")
-        webBrowserProjectButton:SetLeftMargin(10)
-        webBrowserProjectButton:SetTopMargin(5)
-        webBrowserProjectButton:SetFontSize(18)
         legoProjectButton = projectTypeGroup:AddRadioButton("LEGO EV3")
-        legoProjectButton:SetLeftMargin(10)
-        legoProjectButton:SetTopMargin(5)
-        legoProjectButton:SetFontSize(18)
         pythonSpikeButton = projectTypeGroup:AddRadioButton("LEGO Spike")
-        pythonSpikeButton:SetLeftMargin(10)
-        pythonSpikeButton:SetTopMargin(5)
-        pythonSpikeButton:SetFontSize(18)
         
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancelButton = buttonGroup:AddButton("Cancel")
         Button okayButton = buttonGroup:AddButton("Ok")
+        // The main action: the accent button style.
+        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
         buttonGroup:PositionFromBottom() 
 
         cancelButton:SetBehavior(cancelBehavior)
         okayButton:SetBehavior(okBehavior)
 
-        projectInfoTab:SetFocusTarget(locationLabel)
+        projectInfoTab:SetFocusTarget(programLocationLabel)
         projectInfoTab:SetRelatedItem(page)
         return projectInfoTab
     end
@@ -766,11 +747,14 @@ integer slot = cast(integer, value)
         // remove offset for top bar since this page in a pane
         page:SetPixelHeight(0)
         
-        //Create all of the plugins lists and buttons for controlling them
-        Label pluginLabel = page:AddLabel("Plugin Folders")
-        javaClassList = page:AddList("Plugins")
-        
-        Grouping pluginGroup = page:AddGrouping("Plugins")
+        page:SetSkipLabelsInFocus(true)
+
+        // One card per list, each with its Add, Remove and Clear buttons.
+        Grouping pluginCard = page:AddGrouping("Plugin Folders")
+        pluginCard:SetTitle("Plugin Folders")
+        javaClassList = pluginCard:AddList("Plugins")
+
+        Grouping pluginGroup = pluginCard:AddGrouping("Plugins")
         Button addPlugin = pluginGroup:AddButton("Add")
         Button removePlugin = pluginGroup:AddButton("Remove")
         Button clearPlugin = pluginGroup:AddButton("Clear")
@@ -784,13 +768,13 @@ integer slot = cast(integer, value)
         removeJavaClassBehavior:SetList(javaClassList)
         clearJavaClassesBehavior:SetList(javaClassList)
         
-        //Create the list for all of the jar files
-        page:AddLabel("Jar Folders")
-        jarList = page:AddList("Jars")
+        Grouping jarCard = page:AddGrouping("Jar Folders")
+        jarCard:SetTitle("Jar Folders")
+        jarList = jarCard:AddList("Jars")
         jarList:Add("Option 1")
         jarList:Add("Option 2")
         
-        Grouping jarGroup = page:AddGrouping("Jars")
+        Grouping jarGroup = jarCard:AddGrouping("Jars")
         Button addJar = jarGroup:AddButton("Add")
         Button removeJar = jarGroup:AddButton("Remove")
         Button clearJars = jarGroup:AddButton("Clear")
@@ -804,12 +788,13 @@ integer slot = cast(integer, value)
         removeJar:SetBehavior(removeJarBehavior)
         clearJars:SetBehavior(clearJarsBehavior)
 
-        page:AddLabel("Source Folders")
-        quorumSourcesList = page:AddList("Sources")
+        Grouping sourceCard = page:AddGrouping("Source Folders")
+        sourceCard:SetTitle("Source Folders")
+        quorumSourcesList = sourceCard:AddList("Sources")
         quorumSourcesList:Add("Option 1")
         quorumSourcesList:Add("Option 2")
         
-        Grouping sourceGroup = page:AddGrouping("Sources")
+        Grouping sourceGroup = sourceCard:AddGrouping("Sources")
         Button addSource = sourceGroup:AddButton("Add")
         Button removeSource = sourceGroup:AddButton("Remove")
         Button clearSources = sourceGroup:AddButton("Clear")
@@ -826,12 +811,14 @@ integer slot = cast(integer, value)
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancelButton = buttonGroup:AddButton("Cancel")
         Button okayButton = buttonGroup:AddButton("Ok")
+        // The main action: the accent button style.
+        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
         buttonGroup:PositionFromBottom() 
 
         cancelButton:SetBehavior(cancelBehavior)
         okayButton:SetBehavior(okBehavior)
 
-        pluginsTab:SetFocusTarget(pluginLabel)
+        pluginsTab:SetFocusTarget(javaClassList)
         pluginsTab:SetRelatedItem(page)
         return pluginsTab
     end
@@ -848,21 +835,21 @@ integer slot = cast(integer, value)
         // remove offset for top bar since this page in a pane
         page:SetPixelHeight(0)
         
-        Label imageSheetLabel = page:AddLabel("Image Sheet Properties")
-        enableImageSheets = page:AddCheckbox("Enable Image Sheets")
-        buildImageSheetsOnCompile = page:AddCheckbox("Rebuild Image Sheets every compile")
-        
-        page:AddLabel("Build Path")
-        imageSheetsBuildPathField = page:AddTextField("Build Path Field")
+        page:SetSkipLabelsInFocus(true)
 
-        page:AddLabel("Image Sheets")
-        imageSheetsList = page:AddList("Image SheetList")
+        Grouping sheetsCard = page:AddGrouping("Image Sheets")
+        sheetsCard:SetTitle("Image Sheets")
+        enableImageSheets = sheetsCard:AddCheckbox("Enable Image Sheets")
+        buildImageSheetsOnCompile = sheetsCard:AddCheckbox("Rebuild Image Sheets every compile")
+        sheetsCard:AddLabel("Build Path")
+        imageSheetsBuildPathField = sheetsCard:AddTextField("Build Path Field")
+        imageSheetsList = sheetsCard:AddList("Image SheetList")
         imageSheetsList:SetItemActivationBehavior(imageSheetListBehavior)
 
-        Grouping imageSheetGroup = page:AddGrouping("Image Sheet Buttons")
+        Grouping imageSheetGroup = sheetsCard:AddGrouping("Image Sheet Buttons")
         Button addSheet = imageSheetGroup:AddButton("Add")
-        Button editSheet = imageSheetGroup:AddButton("Remove")
-        Button removeSheet = imageSheetGroup:AddButton("Clear")
+        Button editSheet = imageSheetGroup:AddButton("Edit")
+        Button removeSheet = imageSheetGroup:AddButton("Remove")
 
         addImageSheetsBehavior:SetImageSheetsList(imageSheetsList)
         editImageSheetsBehavior:SetImageSheetsList(imageSheetsList)
@@ -871,17 +858,18 @@ integer slot = cast(integer, value)
         addSheet:SetBehavior(addImageSheetsBehavior)
         editSheet:SetBehavior(editImageSheetsBehavior)
         removeSheet:SetBehavior(removeImageSheetBehavior)
-        
-        page:AddLabel("Images")
-        imagesList = page:AddList("Image List")
+
+        Grouping imagesCard = page:AddGrouping("Images")
+        imagesCard:SetTitle("Images")
+        imagesList = imagesCard:AddList("Image List")
         imagesList:Add("Option 1")
         imagesList:Add("Option 2")
-        
-        Grouping imageGroup = page:AddGrouping("Image Buttons")
+
+        Grouping imageGroup = imagesCard:AddGrouping("Image Buttons")
         Button addImage = imageGroup:AddButton("Add")
         Button addImageFolder = imageGroup:AddButton("Add Folder")
-        Button removeImage = imageGroup:AddButton("Clear")
-        
+        Button removeImage = imageGroup:AddButton("Remove")
+
         addImage:SetBehavior(addImagesBehavior)
         addImageFolder:SetBehavior(addImageFolderBehavior)
         removeImage:SetBehavior(removeImageBehavior)
@@ -890,16 +878,18 @@ integer slot = cast(integer, value)
         addImageFolderBehavior:SetImageSheetsList(imageSheetsList)
         removeImageBehavior:SetImageSheetsList(imageSheetsList)
         removeImageBehavior:SetImagesList(imagesList)
-        
+
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancelButton = buttonGroup:AddButton("Cancel")
         Button okButton = buttonGroup:AddButton("Ok")
+        // The main action: the accent button style.
+        okButton:SetInterfaceOptionsKey("DialogAcceptButton")
         buttonGroup:PositionFromBottom() 
 
-        cancelButton:SetBehavior(okBehavior)
+        cancelButton:SetBehavior(cancelBehavior)
         okButton:SetBehavior(okBehavior)
 
-        tab:SetFocusTarget(imageSheetLabel)
+        tab:SetFocusTarget(enableImageSheets)
         tab:SetRelatedItem(page)
         return tab
     end
@@ -911,38 +901,41 @@ integer slot = cast(integer, value)
 
         StackedRowPage page
         page:LeftAlignContent()
-        Banner banner = page:AddBanner("Apple Device Settings", "Pick a simulator or enter security credentials for physical devices")
-        banner:PositionFromTop()
         ApplyDefaultStyleToPage(page)
         // remove offset for top bar since this page in a pane
         page:SetPixelHeight(0)
-        page:AddLabel("Resource Folder")
-        Grouping resourceGroup = page:AddGrouping("Resources")
+        page:SetSkipLabelsInFocus(true)
+
+        Grouping resourcesCard = page:AddGrouping("Resources")
+        resourcesCard:SetTitle("Resources")
+        resourcesCard:AddLabel("Resource Folder")
+        Grouping resourceGroup = resourcesCard:AddGrouping("Resource Folder Row")
         iosResourcesField = resourceGroup:AddTextField("Apple Resource Folder")
         Button browse = resourceGroup:AddButton("Browse ...")
         browse:SetBehavior(iosResourcesBrowseBehavior)
-        tab:SetFocusTarget(iosResourcesField)
-        
-        page:AddLabel("Bundle Identifier")
-        iosBundlingField = page:AddTextField("Bundling")
+        resourcesCard:AddLabel("Bundle Identifier")
+        iosBundlingField = resourcesCard:AddTextField("Bundling")
 
-        page:AddLabel("Signing Identity")
-        iosSignatureField = page:AddTextField("Signing")
-        
-        page:AddLabel("Provisioning profile")
-        iosProvisioningField = page:AddTextField("Provisioning")
-        
-        
-        page:AddLabel("Device List")
-        availableDevicesList = page:AddList("Device List")
+        Grouping signingCard = page:AddGrouping("Signing")
+        signingCard:SetTitle("Signing")
+        signingCard:AddLabel("Signing Identity")
+        iosSignatureField = signingCard:AddTextField("Signing")
+        signingCard:AddLabel("Provisioning Profile")
+        iosProvisioningField = signingCard:AddTextField("Provisioning")
+
+        Grouping devicesCard = page:AddGrouping("Devices")
+        devicesCard:SetTitle("Devices")
+        availableDevicesList = devicesCard:AddList("Device List")
 
         FillDeviceList()
         
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancel = buttonGroup:AddButton("Cancel")
         Button ok = buttonGroup:AddButton("Ok")
+        // The main action: the accent button style.
+        ok:SetInterfaceOptionsKey("DialogAcceptButton")
         buttonGroup:PositionFromBottom() 
-        tab:SetFocusTarget(banner)
+        tab:SetFocusTarget(iosResourcesField)
         tab:SetRelatedItem(page)
 
         ok:SetBehavior(okBehavior)
@@ -952,42 +945,38 @@ integer slot = cast(integer, value)
 
     private action CreateAndroidTab returns Tab
         Tab tab
-        tab:SetFocusTarget(androidResourcesField)
         tab:SetName("Android")
         tab:DisplayCloseButton(false)
 
         StackedRowPage page
         page:LeftAlignContent()
-        Banner banner = page:AddBanner("Android Device Settings", "Enter credentials for physical devices")
-        banner:PositionFromTop()
         ApplyDefaultStyleToPage(page)
         // remove offset for top bar since this page in a pane
         page:SetPixelHeight(0)
-        
-        page:AddLabel("Resource Folder")
-        Grouping resourceGroup = page:AddGrouping("Resources")
+        page:SetSkipLabelsInFocus(true)
+
+        Grouping resourcesCard = page:AddGrouping("Resources")
+        resourcesCard:SetTitle("Resources")
+        resourcesCard:AddLabel("Resource Folder")
+        Grouping resourceGroup = resourcesCard:AddGrouping("Resource Folder Row")
         androidResourcesField = resourceGroup:AddTextField("Android Resource Folder")
         Button browse = resourceGroup:AddButton("Browse ...")
         browse:SetBehavior(mobileResourcesBrowseBehavior)
-        tab:SetFocusTarget(androidResourcesField)
-        
-        page:AddLabel("Library Path")
-        androidLibraryField = page:AddTextField("Android Library Path")
+        resourcesCard:AddLabel("Library Path")
+        androidLibraryField = resourcesCard:AddTextField("Android Library Path")
+        resourcesCard:AddLabel("Path to Alternative Java Development Kit")
+        jdkField = resourcesCard:AddTextField("Path to Alternate Java Development Kit")
 
-        page:AddLabel("Key Store Path")
-        keyStoreField = page:AddTextField("Keystore Path")
-        
-        page:AddLabel("Key Store password")
-        keyStorePasswordField = page:AddTextField("Key Store password")
-        
-        page:AddLabel("Key Alias")
-        keyAliasField = page:AddTextField("Key Alias")
-
-        page:AddLabel("Key password")
-        keyPasswordField = page:AddTextField("Key password")
-
-        page:AddLabel("Path to Alternative Java Development Kit")
-        jdkField = page:AddTextField("Path to Alternate Java Development Kit")
+        Grouping signingCard = page:AddGrouping("Signing")
+        signingCard:SetTitle("Signing")
+        signingCard:AddLabel("Key Store Path")
+        keyStoreField = signingCard:AddTextField("Keystore Path")
+        signingCard:AddLabel("Key Store Password")
+        keyStorePasswordField = signingCard:AddTextField("Key Store password")
+        signingCard:AddLabel("Key Alias")
+        keyAliasField = signingCard:AddTextField("Key Alias")
+        signingCard:AddLabel("Key Password")
+        keyPasswordField = signingCard:AddTextField("Key password")
 
         keyStorePasswordField:SetPassword(true)
         keyPasswordField:SetPassword(true)
@@ -995,8 +984,10 @@ integer slot = cast(integer, value)
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancel = buttonGroup:AddButton("Cancel")
         Button ok = buttonGroup:AddButton("Ok")
+        // The main action: the accent button style.
+        ok:SetInterfaceOptionsKey("DialogAcceptButton")
         buttonGroup:PositionFromBottom() 
-        tab:SetFocusTarget(banner)
+        tab:SetFocusTarget(androidResourcesField)
         tab:SetRelatedItem(page)
 
         ok:SetBehavior(okBehavior)
@@ -1007,27 +998,26 @@ integer slot = cast(integer, value)
     
 private action CreateSpikeTab returns Tab
         Tab tab
-        tab:SetFocusTarget(spikeProgramSlot)
         tab:SetName("Spike")
         tab:DisplayCloseButton(false)
 
         StackedRowPage page
         page:LeftAlignContent()
-        Banner banner = page:AddBanner("LEGO Spike (tm)", 
-            "Enter the LEGO Spike slot")
-        banner:PositionFromTop()
         ApplyDefaultStyleToPage(page)
         // remove offset for top bar since this page in a pane
         page:SetPixelHeight(0)
-        
-        page:AddLabel("Slot (0 - 10)")
+        page:SetSkipLabelsInFocus(true)
+
+        page:AddLabel("LEGO Spike Slot (0 - 10)")
         spikeProgramSlot = page:AddTextField("Program Slot")
 
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancel = buttonGroup:AddButton("Cancel")
         Button ok = buttonGroup:AddButton("Ok")
+        // The main action: the accent button style.
+        ok:SetInterfaceOptionsKey("DialogAcceptButton")
         buttonGroup:PositionFromBottom()
-        tab:SetFocusTarget(banner) 
+        tab:SetFocusTarget(spikeProgramSlot)
         tab:SetRelatedItem(page)
 
         ok:SetBehavior(okBehavior)
@@ -1037,37 +1027,41 @@ private action CreateSpikeTab returns Tab
 
     private action CreateTeamsTab returns Tab
         Tab tab
-        tab:SetFocusTarget(usernameTeams)
         tab:SetName("Teams")
         tab:DisplayCloseButton(false)
 
         StackedRowPage page
         page:LeftAlignContent()
-        Banner banner = page:AddBanner("Version Control Settings", 
-            "Enter credentials for Github or Bitbucket. Passwords should be credentials keys, not account passwords, for these services")
-        banner:PositionFromTop()
         ApplyDefaultStyleToPage(page)
         // remove offset for top bar since this page in a pane
         page:SetPixelHeight(0)
-        
-        page:AddLabel("Username")
-        usernameTeams = page:AddTextField("Username")
+        page:SetSkipLabelsInFocus(true)
 
-        page:AddLabel("Password")
-        passwordTeams = page:AddTextField("Password")
+        Grouping accountCard = page:AddGrouping("Account")
+        accountCard:SetTitle("Account")
+        accountCard:AddLabel("Username")
+        usernameTeams = accountCard:AddTextField("Username")
+        accountCard:AddLabel("Password")
+        passwordTeams = accountCard:AddTextField("Password")
         passwordTeams:SetPassword(true)
+        // What the old banner said: these services want a token here.
+        passwordTeams:SetDescription("For GitHub or Bitbucket, use an access token, not your account password.")
+        accountCard:AddLabel("Teams Password Note", "For GitHub or Bitbucket, use an access token as the password, not your account password.")
 
-        page:AddLabel("Name")
-        nameTeams = page:AddTextField("Name")
-        
-        page:AddLabel("Email")
-        emailTeams = page:AddTextField("Email")
+        Grouping authorCard = page:AddGrouping("Commit Author")
+        authorCard:SetTitle("Commit Author")
+        authorCard:AddLabel("Name")
+        nameTeams = authorCard:AddTextField("Name")
+        authorCard:AddLabel("Email")
+        emailTeams = authorCard:AddTextField("Email")
 
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancel = buttonGroup:AddButton("Cancel")
         Button ok = buttonGroup:AddButton("Ok")
+        // The main action: the accent button style.
+        ok:SetInterfaceOptionsKey("DialogAcceptButton")
         buttonGroup:PositionFromBottom()
-        tab:SetFocusTarget(banner) 
+        tab:SetFocusTarget(usernameTeams)
         tab:SetRelatedItem(page)
 
         ok:SetBehavior(okBehavior)

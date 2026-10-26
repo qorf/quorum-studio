@@ -97,6 +97,7 @@ constant text LEGO_SPIKE_MOVE = "Lego Spike"
     CharacterIcon templateVisual = undefined
     CharacterIcon secondTemplateVisual = undefined
     Label secondPageLabel = undefined
+    Label secondDescriptionLabel = undefined
     
     Page templatePage = undefined
     Page projectNamePage = undefined
@@ -106,6 +107,15 @@ constant text LEGO_SPIKE_MOVE = "Lego Spike"
     constant text LOCATION_FIELD_ID = "Location"
     constant text CANCEL_BUTTON = "Cancel"
     constant text OK_BUTTON = "Ok"
+
+    // The template header on the second page: the icon's tile, in points
+    // before the interface scale, the space beside it, and the size of the
+    // Font Awesome icons in the tile.
+    constant integer TEMPLATE_TILE_SIZE = 56
+    constant integer TEMPLATE_TEXT_GAP = 12
+    constant integer TEMPLATE_TILE_GLYPH_SIZE = 32
+    // The size of the Font Awesome icons on the first page.
+    constant integer TEMPLATE_GLYPH_SIZE = 75
 
     //Dialog Behaviors
     DialogCancelBehavior cancelBehavior
@@ -174,7 +184,7 @@ TreeItem selected = treeSelection:GetTreeItem()
         text templateName = selected:GetName()
         selectedProject = templateName
         templatePath = templateHash:GetValue(selectedProject)
-        SetTemplateImage(templateName, templateVisual)
+        SetTemplateImage(templateName, templateVisual, TEMPLATE_GLYPH_SIZE)
         if templateName = BLANK
             templateDescription:SetText("A blank template for starting from scratch.")
         elseif templateName = APP
@@ -271,7 +281,7 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         templateHash:Add(TRIGGER_ANIMATION,"Templates/Games/TriggerAnimation")
     end
     
-    action SetTemplateImage(text templateName, CharacterIcon templateImage) 
+    action SetTemplateImage(text templateName, CharacterIcon templateImage, integer glyphSize)
         Color color
         //templateImage:LoadRectangle(50,50, color:Red())
         //templateImage:Load(fontAwesome:GetGlyph(templateName:GetUnicodeValue(61728)):texture)
@@ -306,7 +316,7 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
             templateImage:SetPixelHeight(0)
             templateImage:SetPixelWidth(0)
         elseif templateName = MOBILE
-            templateImage:SetFontSize(75)
+            templateImage:SetFontSize(glyphSize)
             templateImage:LoadCharacter(62415, fontAwesome)
             templateImage:SetPercentageHeight(0)
             templateImage:SetPercentageWidth(0)
@@ -377,7 +387,7 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
             templateImage:SetPixelWidth(0)
             elseif templateName = DESCRIPTIVES
             //58658
-            templateImage:SetFontSize(75)
+            templateImage:SetFontSize(glyphSize)
             templateImage:LoadCharacter(58658, fontAwesome)
             templateImage:SetPercentageHeight(0)
             templateImage:SetPercentageWidth(0)
@@ -398,56 +408,56 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
             templateImage:SetPixelHeight(0)
             templateImage:SetPixelWidth(0)
             elseif templateName = PLAY_SOUND
-            templateImage:SetFontSize(75)
+            templateImage:SetFontSize(glyphSize)
             templateImage:LoadCharacter(61764, fontAwesome)
             templateImage:SetPercentageHeight(0)
             templateImage:SetPercentageWidth(0)
             templateImage:SetPixelHeight(templateImage:GetHeight())
             templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = SINE_WAVE
-            templateImage:SetFontSize(75)
+            templateImage:SetFontSize(glyphSize)
             templateImage:LoadCharacter(63550, fontAwesome)
             templateImage:SetPercentageHeight(0)
             templateImage:SetPercentageWidth(0)
             templateImage:SetPixelHeight(templateImage:GetHeight())
             templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = MIDI
-            templateImage:SetFontSize(75)
+            templateImage:SetFontSize(glyphSize)
             templateImage:LoadCharacter(61441, fontAwesome)
             templateImage:SetPercentageHeight(0)
             templateImage:SetPercentageWidth(0)
             templateImage:SetPixelHeight(templateImage:GetHeight())
             templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = DATABASE
-            templateImage:SetFontSize(75)
+            templateImage:SetFontSize(glyphSize)
             templateImage:LoadCharacter(61888, fontAwesome)
             templateImage:SetPercentageHeight(0)
             templateImage:SetPercentageWidth(0)
             templateImage:SetPixelHeight(templateImage:GetHeight())
             templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = LEGO_MINDSTORMS
-            templateImage:SetFontSize(75)
+            templateImage:SetFontSize(glyphSize)
             templateImage:LoadCharacter(62788, fontAwesome)
             templateImage:SetPercentageHeight(0)
             templateImage:SetPercentageWidth(0)
             templateImage:SetPixelHeight(templateImage:GetHeight())
             templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = LEGO_SPIKE_MOVE
-            templateImage:SetFontSize(75)
+            templateImage:SetFontSize(glyphSize)
             templateImage:LoadCharacter(62788, fontAwesome)
             templateImage:SetPercentageHeight(0)
             templateImage:SetPercentageWidth(0)
             templateImage:SetPixelHeight(templateImage:GetHeight())
             templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = DOCUMENT
-            templateImage:SetFontSize(75)
+            templateImage:SetFontSize(glyphSize)
             templateImage:LoadCharacter(58658, fontAwesome)
             templateImage:SetPercentageHeight(0)
             templateImage:SetPercentageWidth(0)
             templateImage:SetPixelHeight(templateImage:GetHeight())
             templateImage:SetPixelWidth(templateImage:GetWidth())
         elseif templateName = INTERNET_SERVICE
-            templateImage:SetFontSize(75)
+            templateImage:SetFontSize(glyphSize)
             templateImage:LoadCharacter(63231, fontAwesome)
             templateImage:SetPercentageHeight(0)
             templateImage:SetPercentageWidth(0)
@@ -501,96 +511,108 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
     */
     private action SetupSecondPageElements(Page page)
         ApplyDefaultStyleToPage(page)
-        page:LeftAlignContent()
-        
-        
-        FormPanel labelPanel
-        FormRowLayout labelLayout
-        labelPanel:SetLayout(labelLayout)
-        me:secondPageLabel = labelPanel:AddLabel("Selected Template: " + selectedProject)
-        
-        page:Add(labelPanel)
-        
-        Color color
+        page:SetSkipLabelsInFocus(true)
         LayoutProperties properties
-        
-        FormPanel evenBiggerPanel
-        evenBiggerPanel:SetPercentageWidth(0.9)
-        evenBiggerPanel:SetPercentageHeight(0.4)
-        ManualLayout biggerLayout
-        evenBiggerPanel:SetLayout(biggerLayout)
-        
-        FormPanel iconPanel
-        
-        iconPanel:SetPercentageHeight(0.8)
-        iconPanel:SetPercentageWidth(0.3)
-        iconPanel:SetVerticalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
-        ControlShaderView iconPanelShader
-        iconPanelShader:Initialize()
-        iconPanel:SetView2D(iconPanelShader)
-        ManualLayout iconPanelLayout
-        iconPanel:SetLayout(iconPanelLayout)
-        iconPanel:SetBackgroundColor(color:White())
-        iconPanel:SetCornerPixelRounding(10,10,10,10)
-        iconPanel:SetBorderThickness(1.5)
-        
-        evenBiggerPanel:Add(iconPanel)
-        iconPanel:SetPercentageOriginX(0.5)
-        iconPanel:SetPercentageX(0.5)
-        page:Add(evenBiggerPanel)
-        
+
+        // The header: the template's icon on a small tile, with its name and
+        // description beside it.
+        FormPanel templateHeader
+        FlowLayout headerLayout
+        templateHeader:SetLayout(headerLayout)
+        // As wide as the page's rows (80%), so its left edge lines up with
+        // the card's.
+        templateHeader:SetPercentageWidth(0.8)
+        templateHeader:SetVerticalLayoutMode(properties:FIT_CONTENTS)
+        page:Add(templateHeader)
+
+        FormPanel iconTile
+        iconTile:SetPixelWidth(TEMPLATE_TILE_SIZE)
+        iconTile:SetPixelHeight(TEMPLATE_TILE_SIZE)
+        ControlShaderView iconTileView
+        iconTileView:Initialize()
+        iconTile:SetView2D(iconTileView)
+        ManualLayout iconTileLayout
+        iconTile:SetLayout(iconTileLayout)
+        ColorGroup tileColor = studio:GetInterfaceOptions():GetBackgroundColor("FormCard")
+        if tileColor not= undefined
+            iconTile:SetBackgroundColor(tileColor)
+        end
+        iconTile:SetCornerPixelRounding(8, 8, 8, 8)
+        iconTile:SetBorderThickness(0)
+        templateHeader:Add(iconTile)
+
         CharacterIcon temp
         me:secondTemplateVisual = temp
         secondTemplateVisual:SetIconColor(studio:GetInterfaceOptions():GetIconColor())
-        secondTemplateVisual:SetPercentageHeight(0.9)
-        secondTemplateVisual:SetPercentageWidth(0.9)
+        secondTemplateVisual:SetPercentageHeight(0.8)
+        secondTemplateVisual:SetPercentageWidth(0.8)
         secondTemplateVisual:SetPercentageOriginX(0.5)
         secondTemplateVisual:SetPercentageOriginY(0.5)
         secondTemplateVisual:SetPercentageX(0.5)
         secondTemplateVisual:SetPercentageY(0.5)
-        //SetTemplateImage(selectedProject, secondTemplateVisual)
-        
-        iconPanel:Add(secondTemplateVisual)
-        
-        page:AddLabel("Project Name")
-        TextField nameField = page:AddTextField(NAME_FIELD_ID)
+        iconTile:Add(secondTemplateVisual)
 
-        FormPanel locationGrouping
-        FlowLayout locationLayout
-        locationGrouping:SetLayout(locationLayout)
-        Label locationLabel = locationGrouping:AddLabel("Project Location")
-        locationLabel:SetPositionOnBaseLine(false)
-        locationLabel:SetHorizontalLayoutMode(properties:STANDARD)
-        locationLabel:SetPercentageWidth(0.7)
-        //Grouping locationGrouping = page:AddGrouping("Location")
-        Button browseButton = locationGrouping:AddButton("Browse...")
-        browseButton:SetHorizontalLayoutMode(properties:STANDARD)
-        browseButton:SetVerticalLayoutMode(properties:FIT_FONT)
-        browseButton:SetFontSize(14)
-        browseButton:SetPercentageWidth(0.3)
-        
-        page:Add(locationGrouping)
-        TextField locationField = page:AddTextField(LOCATION_FIELD_ID)
+        // The name and description fill the rest of the row. The width
+        // leaves a few points spare, so the text never wraps under the tile.
+        FormPanel templateText
+        FlowLayout textLayout
+        templateText:SetLayout(textLayout)
+        templateText:SetPercentageWidth(1.0)
+        templateText:SetPixelWidth(0 - TEMPLATE_TILE_SIZE - TEMPLATE_TEXT_GAP - 4)
+        templateText:SetLeftMargin(TEMPLATE_TEXT_GAP)
+        templateText:SetVerticalLayoutMode(properties:FIT_CONTENTS)
+        templateHeader:Add(templateText)
 
+        me:secondPageLabel = templateText:AddLabel("Template Name", selectedProject)
+        secondPageLabel:SetFocusable(false)
+        secondPageLabel:SetFontSize(18)
+        secondPageLabel:SetHorizontalLayoutMode(properties:STANDARD)
+        secondPageLabel:SetPercentageWidth(1.0)
+
+        me:secondDescriptionLabel = templateText:AddLabel("Template Description", "")
+        secondDescriptionLabel:SetFocusable(false)
+        secondDescriptionLabel:SetHorizontalLayoutMode(properties:STANDARD)
+        secondDescriptionLabel:SetPercentageWidth(1.0)
+        // A long description wraps beside the icon, justified.
+        secondDescriptionLabel:SetJustifyAlignment()
+        ColorGroup descriptionColor = studio:GetInterfaceOptions():GetFontColor("FieldCaption")
+        if descriptionColor not= undefined
+            secondDescriptionLabel:SetFontColor(descriptionColor)
+        end
+
+        // One card: the project's name, and where it goes.
+        Grouping projectCard = page:AddGrouping("Project")
+        projectCard:SetTitle("Project")
+        projectCard:AddLabel("Name")
+        nameField = projectCard:AddTextField(NAME_FIELD_ID)
+        projectCard:AddLabel("Location")
+        Grouping locationGroup = projectCard:AddGrouping("Location Row")
+        locationField = locationGroup:AddTextField(LOCATION_FIELD_ID)
+        Button browseButton = locationGroup:AddButton("Browse...")
+
+        // The footer: Back at the left; Cancel, then Create at the right.
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button backButton = buttonGroup:AddButton("Back")
-        Button cancelButton = buttonGroup:AddButton("Cancel")
-        Button okButton = buttonGroup:AddButton("Ok")
+        cancelButton = buttonGroup:AddButton("Cancel")
+        Button okButton = buttonGroup:AddButton("Create")
+        // The main action: the accent button style.
+        okButton:SetInterfaceOptionsKey("DialogAcceptButton")
         buttonGroup:PositionFromBottom()
-        
-        me:nameField = nameField
-        me:locationField = locationField
-        me:cancelButton = cancelButton
+        buttonGroup:SetLeadingButtonCount(1)
 
         cancelButton:SetBehavior(cancelBehavior)
         backButton:SetBehavior(backBehavior)
         okButton:SetBehavior(okBehavior)
         browseButton:SetBehavior(browseBehavior)
     end
-    
+
     action UpdateSecondPage
-        me:secondPageLabel:SetText("Selected Template: " + selectedProject)
-        SetTemplateImage(selectedProject, me:secondTemplateVisual)
+        me:secondPageLabel:SetText(selectedProject)
+        me:secondDescriptionLabel:SetText(templateDescription:GetText())
+        SetTemplateImage(selectedProject, me:secondTemplateVisual, TEMPLATE_TILE_GLYPH_SIZE)
+        // The header isn't a focus stop, so the name field says which
+        // template this is.
+        nameField:SetDescription("Template: " + selectedProject + ". " + templateDescription:GetText())
     end
 
     action GetLocation returns text
@@ -724,8 +746,10 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         FormRowLayout rightLayout
         rightPanel:SetLayout(rightLayout)
         
+        // The picture and the description leave room under them for the
+        // Next button's footer at the bottom of this panel.
         FormPanel iconPanel
-        iconPanel:SetPercentageHeight(0.5)
+        iconPanel:SetPercentageHeight(0.45)
         ControlShaderView iconPanelShader
         iconPanelShader:Initialize()
         iconPanel:SetView2D(iconPanelShader)
@@ -756,7 +780,7 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         FormRowLayout labelLayout
         labelContainer:SetLayout(labelLayout)
         labelContainer:LeftAlignContent()
-        labelContainer:SetPercentageHeight(0.333)
+        labelContainer:SetPercentageHeight(0.25)
         labelContainer:SetBackgroundColor(backgroundColor)
         labelContainer:SetBorderThickness(1)
         labelContainer:SetCornerPixelRounding(10,10,10,10)
@@ -768,6 +792,8 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         Grouping nextGroup
         nextGroup:PositionFromBottom()
         Button nextButton = nextGroup:AddButton("Next")
+        // The main action: the accent button style.
+        nextButton:SetInterfaceOptionsKey("DialogAcceptButton")
         rightPanel:Add(nextGroup)
         nextButton:SetBehavior(me:nextBehavior)
         
@@ -781,6 +807,8 @@ templateHash:Add(LEGO_SPIKE_MOVE,"Templates/Spike/Move")
         page1:SetBorderColor(GetBorderColor())
         
         SetupTemplateTree(templateTree)
+        // Smaller than the Forms default, so more templates fit in the tree.
+        templateTree:SetFontSize(16)
     end
     
     action SetupTemplateTree(Tree tree)

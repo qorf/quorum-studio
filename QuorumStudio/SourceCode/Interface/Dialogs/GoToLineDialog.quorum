@@ -8,7 +8,7 @@ use Libraries.Game.Graphics.Drawable
 use Libraries.Interface.Controls.Icon
 use Libraries.Interface.Views.LabelBoxView
 use Libraries.Game.Graphics.Color
-use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Item2D
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Controls.TextField
 use Libraries.Interface.Controls.Button
@@ -22,7 +22,6 @@ use Libraries.Game.InputTable
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Forms.Page
 use Libraries.Interface.Forms.Grouping
-use Libraries.Interface.Forms.FormPanel
 
 class GoToLineDialog is Dialog, TextChangeListener
     boolean initialized = false
@@ -47,30 +46,15 @@ class GoToLineDialog is Dialog, TextChangeListener
 
         SetName("Go To Line Dialog")
         SetPixelWidth(400)
-        SetPixelHeight(135)
+        SetPixelHeight(200)
         okBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
         SetBehavior(okBehavior)
 
-        LayoutProperties properties
-        Page page = InitializeDefaultPage() 
-        page:LeftAlignContent()
-        
-        FormPanel goToPanel
-        FlowLayout goToLayout
-        goToPanel:SetLayout(goToLayout)
-        page:Add(goToPanel)
-        lineLabel = goToPanel:AddLabel("Go To Line")
-        lineLabel:SetHorizontalLayoutMode(properties:STANDARD)
-        lineLabel:SetPercentageWidth(0.2)
-        lineLabel:SetFontSize(14)
-        lineLabel:SetLeftMargin(20)
-        lineLabel:SetPositionOnBaseLine(false)
-
-        lineTextField = goToPanel:AddTextField("Go To Line Field")
-lineTextField:SetFontSize(14)
-        lineTextField:SetHorizontalLayoutMode(properties:STANDARD)
-        lineTextField:SetPercentageWidth(0.7)
+        Page page = InitializeDefaultPage()
+        page:SetSkipLabelsInFocus(true)
+        lineLabel = page:AddLabel("Line Number")
+        lineTextField = page:AddTextField("Go To Line Field")
         
         InputSet enterSet
         InputSet numEnterSet
@@ -87,15 +71,32 @@ lineTextField:SetFontSize(14)
         
         Grouping buttonGroup = page:AddGrouping("Confirm")
         buttonGroup:PositionFromBottom()
-        cancel= buttonGroup:AddButton("Cancel")
-        cancel:SetFontSize(14)
+        cancel = buttonGroup:AddButton("Cancel")
         cancel:SetBehavior(cancelBehavior)
         
 //setup the ok button
         ok = buttonGroup:AddButton("Go To")
-        ok:SetFontSize(14)
+        // The main action: the accent button style.
+        ok:SetInterfaceOptionsKey("DialogAcceptButton")
         ok:SetBehavior(okBehavior)
 
+    end
+
+    /*
+    Shows the dialog at the top right of the code it moves in, where the
+    Find and Replace dialogs go (FindDialog:Show).
+    */
+    action ShowNear(Item2D code)
+        LayoutProperties properties = GetDefaultLayoutProperties()
+        properties:SetPercentageX(0)
+        properties:SetPercentageY(0)
+        properties:SetPercentageOriginX(1)
+        properties:SetPercentageOriginY(1)
+        number globalX = code:GetGlobalX() + code:GetWidth()
+        number globalY = code:GetGlobalY() + code:GetHeight()
+        properties:SetPixelX(globalX - code:GetWidth() * 0.02)
+        properties:SetPixelY(globalY - code:GetHeight() * 0.02)
+        Show()
     end
 
     action TextChanged(TextChangeEvent event)

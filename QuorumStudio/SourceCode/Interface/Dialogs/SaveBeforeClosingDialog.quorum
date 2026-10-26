@@ -48,7 +48,7 @@ class SaveBeforeClosingDialog is Dialog
 
         SetName("Save Before Closing")
         SetPixelWidth(450)
-        SetPixelHeight(150)
+        SetPixelHeight(170)
 
         
         CreateSaveChangesControl()
@@ -57,23 +57,13 @@ class SaveBeforeClosingDialog is Dialog
     private action CreateSaveChangesControl
         Page page = InitializeDefaultPage()
         
-        Color color
-        
         Label warningLabel = page:AddLabel("Unsaved")
-        warningLabel:SetFontSize(14)
-        warningLabel:SetText("You have unsaved changes , would you like to save before closing?")
+        warningLabel:SetText("You have unsaved changes. Do you want to save them before closing?")
 
+        // The footer, left to right: Don't Save, Cancel, then the main
+        // action, Save, at the right.
         Grouping buttonGrouping = page:AddGrouping("Confirm Group")
         buttonGrouping:PositionFromBottom()
-
-        saveButton = buttonGrouping:AddButton("Save")
-        if singleItemWording
-            saveButton:SetName("Save")
-        else
-                saveButton:SetName("Save All")
-end
-        saveButton:SetBehavior(saveBehavior) 
-        saveButton:SetFontSize(14)
 
         discardButton = buttonGrouping:AddButton("Don't Save")
         if singleItemWording
@@ -81,13 +71,21 @@ end
         else
             discardButton:SetName("Discard All")
         end
-        discardButton:SetBehavior(discardBehavior)   
-        discardButton:SetFontSize(14)
+        discardButton:SetBehavior(discardBehavior)
 
         cancelButton = buttonGrouping:AddButton("Cancel")
         cancelButton:SetName("Cancel")
-        cancelButton:SetBehavior(cancelBehavior) 
-        cancelButton:SetFontSize(14)
+        cancelButton:SetBehavior(cancelBehavior)
+
+        saveButton = buttonGrouping:AddButton("Save")
+        // The main action: the accent button style.
+        saveButton:SetInterfaceOptionsKey("DialogAcceptButton")
+        if singleItemWording
+            saveButton:SetName("Save")
+        else
+            saveButton:SetName("Save All")
+        end
+        saveButton:SetBehavior(saveBehavior)
     end
 
     action OnHide()

@@ -13,12 +13,26 @@ use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Game.InputSet
 use Libraries.Game.InputTable
 use Libraries.Interface.Behaviors.Controls.TextBoxNewLineBehavior
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Game.GameStateManager
+use Libraries.System.File
 
 class OutputTab is Tab
     TextBox box = undefined
     Array<text> lines
     boolean empty = false
     Behaviors behaviors
+
+    // How tall the input row is, before the interface scale.
+    constant integer INPUT_ROW_HEIGHT = 40
+
+    // The toolbar's icon font, for the send button's arrow.
+    Font iconFont
  
     action SetTextBox(TextBox box)
         me:box = box
@@ -68,21 +82,24 @@ class OutputTab is Tab
         textBoxForConsoleOutput:SetMoveFocusOnTab(true)
         textBoxForConsoleOutput:SetName("Console output")
 
+        // The output takes the pane's height, less the input row's.
         LayoutProperties textBoxPanelLayout = textBoxForConsoleOutput:GetDefaultLayoutProperties()
-        textBoxPanelLayout:SetPercentageX(0)
-        textBoxPanelLayout:SetPercentageY(0.2)
         textBoxPanelLayout:SetPercentageWidth(1)
-        textBoxPanelLayout:SetPercentageHeight(0.8)
+        textBoxPanelLayout:SetPercentageHeight(1)
+        textBoxPanelLayout:SetPixelHeight(-INPUT_ROW_HEIGHT)
 
         TextBox inputTextBoxForOutputPane
         inputTextBoxForOutputPane:SetName("Input Text Box")
 
+        // Inside the row: the width the prompt and the send button leave.
         LayoutProperties textBoxPanelLayoutForInput = inputTextBoxForOutputPane:GetDefaultLayoutProperties()
-        textBoxPanelLayoutForInput:SetPercentageX(0)
-        textBoxPanelLayoutForInput:SetPercentageY(0)
-        textBoxPanelLayoutForInput:SetPercentageWidth(0.8)
-        textBoxPanelLayoutForInput:SetPercentageHeight(0.2)
-        textBoxPanelLayoutForInput:SetTopMargin(3)
+        textBoxPanelLayoutForInput:SetPercentageWidth(1)
+        textBoxPanelLayoutForInput:SetPixelWidth(-64)
+        textBoxPanelLayoutForInput:SetPercentageHeight(1)
+        Color clear
+        clear:SetColor(0, 0, 0, 0)
+        inputTextBoxForOutputPane:SetBackgroundColor(clear)
+        inputTextBoxForOutputPane:SetBorderThickness(0)
 
         //inputTextBoxForOutputPane:SetBackgroundColor(color:White())
         inputTextBoxForOutputPane:GetTextBoxEditManager():SetOff(true)
@@ -114,12 +131,76 @@ class OutputTab is Tab
 //        table:Add(shiftNumEnterSet, newLine)
         
         
+        // A round button with an up arrow, in the accent color.
+        File iconFile
+        iconFile:SetPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
+        iconFont:LoadFont(iconFile)
+        text arrow = ""
+        // Font Awesome's arrow-up (f062).
+        arrow = arrow:GetUnicodeValue(61538)
+
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+
         Button sendButtonOutputPane
         LayoutProperties buttonProperties = sendButtonOutputPane:GetDefaultLayoutProperties()
-        buttonProperties:SetHorizontalLayoutMode(buttonProperties:FILL)
-        buttonProperties:SetVerticalLayoutMode(buttonProperties:FILL)
-        buttonProperties:SetTopMargin(2)
+        buttonProperties:SetHorizontalLayoutMode(buttonProperties:STANDARD)
+        buttonProperties:SetVerticalLayoutMode(buttonProperties:STANDARD)
+        // A little smaller than the row's 28, so it sits inside the field.
+        buttonProperties:SetPixelWidth(22)
+        buttonProperties:SetPixelHeight(22)
+        buttonProperties:SetRightMargin(4)
+        // The name first: Button:SetName also sets the label text.
         sendButtonOutputPane:SetName("Send")
+        sendButtonOutputPane:SetFont(iconFont)
+        sendButtonOutputPane:SetFontSize(14)
+        sendButtonOutputPane:SetLabelText(arrow)
+        sendButtonOutputPane:SetBackgroundColor(options:GetSelectionColor())
+        sendButtonOutputPane:SetFontColor(options:GetSelectionFontColor())
+        sendButtonOutputPane:SetBorderThickness(0)
+        sendButtonOutputPane:SetTopLeftRounding(1.0)
+        sendButtonOutputPane:SetTopRightRounding(1.0)
+        sendButtonOutputPane:SetBottomLeftRounding(1.0)
+        sendButtonOutputPane:SetBottomRightRounding(1.0)
+        sendButtonOutputPane:SetDescription("Sends the input to your program. Enter does the same.")
+
+        // The input row (C3): one rounded field with a ">" prompt, the input,
+        // and the send button. It is a fixed height, so it is the same size
+        // however tall the pane is.
+        Control inputRow
+        ControlShaderView rowView
+        rowView:Initialize()
+        inputRow:SetView2D(rowView)
+        inputRow:SetInterfaceOptionsKey("TextField")
+        inputRow:SetTopLeftRounding(1.0)
+        inputRow:SetTopRightRounding(1.0)
+        inputRow:SetBottomLeftRounding(1.0)
+        inputRow:SetBottomRightRounding(1.0)
+        // Not single line: FlowLayout's vertical centering needs the line's
+        // bottom, which it only tracks when lines can wrap. The row's widths
+        // fit on one line.
+        FlowLayout rowLayout
+        rowLayout:SetVerticalCentering(true)
+        inputRow:SetLayout(rowLayout)
+        LayoutProperties rowProperties = inputRow:GetDefaultLayoutProperties()
+        rowProperties:SetPercentageWidth(1)
+        rowProperties:SetPixelHeight(INPUT_ROW_HEIGHT - 12)
+        rowProperties:SetLeftMargin(6)
+        rowProperties:SetRightMargin(6)
+        rowProperties:SetTopMargin(6)
+        rowProperties:SetBottomMargin(6)
+        inputRow:SetName("Input")
+
+        // Sized like other control labels (from the bottom of its descent),
+        // so the row's vertical centering centers it.
+        Label prompt
+        prompt:SetPositionOnBaseLine(false)
+        prompt:SetText(">")
+        prompt:SetFontColor(options:GetSelectionColor())
+        prompt:SetColor(options:GetSelectionColor())
+        prompt:SetLeftMargin(12)
+        prompt:SetRightMargin(6)
+        prompt:SetAccessibilityCode(prompt:parent:Item:NOT_ACCESSIBLE)
 
         //Set the focus system up for these controls
         sendButtonOutputPane:SetNextFocus(textBoxForConsoleOutput)
@@ -133,9 +214,12 @@ class OutputTab is Tab
         behavior:SetInputTextBox(inputTextBoxForOutputPane)
         sendButtonOutputPane:SetBehavior(behavior)
 
+        inputRow:Add(prompt)
+        inputRow:Add(inputTextBoxForOutputPane)
+        inputRow:Add(sendButtonOutputPane)
+
         outputPanel:Add(textBoxForConsoleOutput)
-        outputPanel:Add(inputTextBoxForOutputPane)
-        outputPanel:Add(sendButtonOutputPane)
+        outputPanel:Add(inputRow)
         
         SetTextBox(textBoxForConsoleOutput)
         SetFocusTarget(textBoxForConsoleOutput)

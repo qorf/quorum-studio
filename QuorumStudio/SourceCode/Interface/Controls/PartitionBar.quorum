@@ -1,0 +1,43 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Views.ControlShaderView
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Game.Graphics.Color
+
+/*
+The PartitionBar class is the thin divider between two of Studio's panes,
+which can be dragged to resize them. It is invisible until the mouse is over
+it, when it fills with the selection color to show it can be dragged.
+*/
+class PartitionBar is Control
+    Color clear
+
+    on create
+        clear:SetColor(0, 0, 0, 0)
+    end
+
+    action LoadGraphics(LayoutProperties properties)
+        if GetView2D() = undefined
+            ControlShaderView view
+            view:Initialize()
+            SetView2D(view)
+        end
+        parent:Control:LoadGraphics(properties)
+    end
+
+    action GetBackgroundColor returns ColorGroup
+        if HasColorPropertyOverride("backgroundColor")
+            return parent:Control:GetBackgroundColor()
+        end
+        return clear
+    end
+
+    action GetMouseOverColor returns ColorGroup
+        if HasColorPropertyOverride("mouseOverColor")
+            return parent:Control:GetMouseOverColor()
+        end
+        return GetSelectionColor()
+    end
+end

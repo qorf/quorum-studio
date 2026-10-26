@@ -22,7 +22,6 @@ use Libraries.Containers.Iterator
 use Libraries.Interface.Pages.StackedRowPage
 use Libraries.Interface.Forms.Banner
 use Libraries.Interface.Forms.Page
-use Libraries.Interface.Layouts.StackLayout
 
 class FindInProjectDialog is Dialog
     boolean initialized = false
@@ -78,25 +77,17 @@ class FindInProjectDialog is Dialog
 
     action LoadDialogPage
         Page page = InitializeDefaultPage()
-        page:LeftAlignContent()
-        //Banner banner = page:AddBanner("Find In Project", 
-//            "Find items within a folder")
-        //banner:PositionFromTop()
-
-        //add radio buttons
+        page:SetSkipLabelsInFocus(true)
         page:AddLabel("Contains Text")
         queryField = page:AddTextField("Query Text Field")
-
-        page:AddLabel("Settings")
-        Grouping settings = page:AddGrouping("Settings")
-        StackLayout settingsLayout
-        settings:SetLayout(settingsLayout)
-        wholeWordCheckbox = settings:AddCheckbox("Whole Word")
-        matchCaseCheckbox = settings:AddCheckbox("Match Case")
+        wholeWordCheckbox = page:AddCheckbox("Whole Word")
+        matchCaseCheckbox = page:AddCheckbox("Match Case")
         
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancelButton = buttonGroup:AddButton("Cancel")
         Button okayButton = buttonGroup:AddButton("Ok")
+        // The main action: the accent button style.
+        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
         buttonGroup:PositionFromBottom() 
 
         cancelButton:SetBehavior(cancelBehavior)

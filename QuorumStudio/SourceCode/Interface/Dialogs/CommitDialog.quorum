@@ -60,17 +60,19 @@ class CommitDialog is Dialog
         SetBehavior(okBehavior)
 
         Page page = InitializeDefaultPage()
-        page:LeftAlignContent()
-        lineLabel = page:AddLabel("Message: ")
+        page:SetSkipLabelsInFocus(true)
+        lineLabel = page:AddLabel("Message")
         lineTextField = page:AddTextField("Commit Message")
 
+        // The footer: Cancel, then the main action at the right.
         Grouping buttonGroup = page:AddGrouping("Buttons")
-        //setup the ok button
-        ok = buttonGroup:AddButton("Commit")
-        ok:SetBehavior(okBehavior)
-
         cancel = buttonGroup:AddButton("Cancel")
         cancel:SetBehavior(cancelBehavior)
+
+        ok = buttonGroup:AddButton("Commit")
+        // The main action: the accent button style.
+        ok:SetInterfaceOptionsKey("DialogAcceptButton")
+        ok:SetBehavior(okBehavior)
         buttonGroup:PositionFromBottom()
 
     end

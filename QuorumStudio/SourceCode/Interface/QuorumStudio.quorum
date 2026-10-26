@@ -73,6 +73,9 @@ use Libraries.Interface.Controls.Scenes.SceneTree
 use Libraries.Interface.Controls.Scenes.ScenePalette
 use Libraries.Interface.Behaviors.Controls.ScrollableControlMouseScrollBehavior
 use Libraries.Interface.Behaviors.Controls.ScrollBarDragBehavior
+use Libraries.Interface.Behaviors.Controls.MouseOnBehavior
+use Libraries.Interface.Behaviors.Controls.MouseOffBehavior
+use Libraries.Development.Environment.Studio.Interface.PartitionBar
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Development.Environment.Studio.Behaviors.NavigationPartitionDragBehavior
 use Libraries.Development.Environment.Studio.Behaviors.EditorPartitionDragBehavior
@@ -106,10 +109,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     Control inputOutputPane
     
     // This represents the area between the project/navigation pane and the input/output pane that can be dragged.
-    Control navigationPartition
+    PartitionBar navigationPartition
     
     // This represents the area between the code editor and the output region on the right side.
-    Control editorPartition
+    PartitionBar editorPartition
     
     Color color
     
@@ -587,6 +590,16 @@ codeCompletionTable:Add(tabSet, menuRunBehavior)
         AddInputTable(codeCompletionTable)
         
         
+        // The dividers light up under the mouse (PartitionBar).
+        InputSet partitionMouseOn
+        partitionMouseOn:SetInputType(partitionMouseOn:MOUSE_MOVEMENT_INPUT)
+        partitionMouseOn:SetInputTrigger(partitionMouseOn:BEGIN)
+        MouseOnBehavior partitionOnBehavior
+        InputSet partitionMouseOff
+        partitionMouseOff:SetInputType(partitionMouseOff:MOUSE_MOVEMENT_INPUT)
+        partitionMouseOff:SetInputTrigger(partitionMouseOff:FINISH)
+        MouseOffBehavior partitionOffBehavior
+
         InputTable navigationPartitionTable
         navigationPartitionTable:SetIdentifier("NavigationPartition")
         
@@ -598,6 +611,8 @@ codeCompletionTable:Add(tabSet, menuRunBehavior)
         
         navigationPartitionTable:Add(dragSet, navigationDrag)
 navigationPartitionTable:Add(dragContinueSet, navigationDrag)
+        navigationPartitionTable:Add(partitionMouseOn, partitionOnBehavior)
+        navigationPartitionTable:Add(partitionMouseOff, partitionOffBehavior)
         AddInputTable(navigationPartitionTable)
         
         
@@ -608,6 +623,8 @@ EditorPartitionDragBehavior editorDrag
         
 editorPartitionTable:Add(dragSet, editorDrag)
 editorPartitionTable:Add(dragContinueSet, editorDrag)
+        editorPartitionTable:Add(partitionMouseOn, partitionOnBehavior)
+        editorPartitionTable:Add(partitionMouseOff, partitionOffBehavior)
         AddInputTable(editorPartitionTable)
 
         // The drag bar between a scene and its Properties panel (step 4).
@@ -616,6 +633,8 @@ editorPartitionTable:Add(dragContinueSet, editorDrag)
         PropertiesPartitionDragBehavior propertiesDrag
         propertiesPartitionTable:Add(dragSet, propertiesDrag)
         propertiesPartitionTable:Add(dragContinueSet, propertiesDrag)
+        propertiesPartitionTable:Add(partitionMouseOn, partitionOnBehavior)
+        propertiesPartitionTable:Add(partitionMouseOff, partitionOffBehavior)
         AddInputTable(propertiesPartitionTable)
 
         // The scene editor's keys come from Studio's key map, so a user's key
@@ -725,7 +744,7 @@ editorPartitionTable:Add(dragContinueSet, editorDrag)
     
     action CreateNavigationPartition
         LayoutProperties navigationProperties = navigationPartition:GetDefaultLayoutProperties()
-        navigationProperties:SetPixelWidth(4)
+        navigationProperties:SetPixelWidth(6)
         navigationProperties:SetVerticalLayoutMode(navigationProperties:FILL)
         
         navigationPartition:SetInputGroup("NavigationPartition")
@@ -734,7 +753,7 @@ editorPartitionTable:Add(dragContinueSet, editorDrag)
     
     action CreateEditorPartition
         LayoutProperties editorProperties = editorPartition:GetDefaultLayoutProperties()
-        editorProperties:SetPixelHeight(4)
+        editorProperties:SetPixelHeight(6)
         editorProperties:SetPercentageWidth(1.0)
         
         editorPartition:SetInputGroup("EditorPartition")

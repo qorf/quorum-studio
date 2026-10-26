@@ -8,8 +8,6 @@ use Libraries.Game.Graphics.Drawable
 use Libraries.Interface.Controls.Icon
 use Libraries.Interface.Views.LabelBoxView
 use Libraries.Game.Graphics.Color
-use Libraries.Interface.Layouts.FlowLayout
-use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Controls.TextField
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Studio.Behaviors.GoToLineOkButtonBehavior
@@ -29,7 +27,6 @@ use Libraries.Development.Environment.Studio.Behaviors.OpenBrowseFoldersBehavior
 use Libraries.Development.Environment.Studio.Behaviors.BrowseForCloneLocationBehavior
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Forms.Page
-use Libraries.Interface.Forms.FormPanel
 use Libraries.Interface.Forms.Grouping
 
 class CloneDialog is Dialog
@@ -68,132 +65,45 @@ if initialized
         browseBehavior:SetDialog(me)
         SetName("Clone Dialog")
         SetPercentageWidth(0.45)
-        SetPixelHeight(250)
-        SetCornerRounding(0.1,0.1,0.1,0.1)
+        SetPixelHeight(360)
 
         okBehavior:SetDialog(me)
         cancelBehavior:SetDialog(me)
         SetBehavior(okBehavior)
 
         Page page = InitializeDefaultPage()
-        page:LeftAlignContent()
+        page:SetSkipLabelsInFocus(true)
 
-        number leftMargin = 20
+        Grouping repositoryCard = page:AddGrouping("Repository")
+        repositoryCard:SetTitle("Repository")
+        urlLabel = repositoryCard:AddLabel("Repository URL")
+        urlTextField = repositoryCard:AddTextField("Clone Field")
 
-        LayoutProperties properties
-        
-        FormPanel urlContainer
-        urlContainer:SetPercentageWidth(1.0)
-        urlContainer:SetVerticalLayoutMode(properties:FIT_CONTENTS)        
-        FlowLayout urlLayout
-        urlContainer:SetLayout(urlLayout)
-        //urlContainer:SetTopMargin(20)
-        //urlContainer:SetRightMargin(20)
-
-        urlLabel = urlContainer:AddLabel("Clone")
-        urlLabel:SetText("Clone")
-        urlLabel:SetPositionOnBaseLine(false)
-        urlLabel:SetHorizontalLayoutMode(properties:STANDARD)
-        urlLabel:SetLeftMargin(leftMargin)
-        urlLabel:SetPercentageWidth(0.15)
-
-        urlTextField = urlContainer:AddTextField("Clone Field")
-        urlTextField:SetHorizontalLayoutMode(properties:STANDARD)
-        urlTextField:SetPercentageWidth(0.75)
-        urlTextField:SetBorderThickness(1.5)
-        
-        page:Add(urlContainer)
-
-        FormPanel locationContainer
-        locationContainer:SetPercentageWidth(1.0)
-        locationContainer:SetVerticalLayoutMode(properties:FIT_CONTENTS)
-        FlowLayout locationLayout
-        locationContainer:SetLayout(locationLayout)
-        locationContainer:SetTopMargin(20)
-        locationContainer:SetRightMargin(20)
-
-        browseLabel = locationContainer:AddLabel("Location")
-        browseLabel:SetPositionOnBaseLine(false)
-        browseLabel:SetLeftMargin(leftMargin)
-        browseLabel:SetHorizontalLayoutMode(properties:STANDARD)
-        browseLabel:SetPercentageWidth(0.15)
-
-        browseTextField = locationContainer:AddTextField("Location Field")
-        browseTextField:SetPercentageWidth(0.4)
-        browseTextField:SetHorizontalLayoutMode(properties:STANDARD)
-        browseTextField:SetBorderThickness(1.5)
-
-        Control browseSpacer
-        browseSpacer:SetPercentageWidth(0.05)
-        browseSpacer:SetPixelHeight(1)
-        locationContainer:Add(browseSpacer)
-
-        browseButton = locationContainer:AddButton("Browse...")
-        browseButton:SetVerticalLayoutMode(properties:FIT_FONT)
-        browseButton:SetHorizontalLayoutMode(properties:STANDARD)
-        browseButton:SetPercentageWidth(0.3)
-        browseButton:SetFontSize(14)
+        // The location and its Browse button, on one row beside the label.
+        browseLabel = repositoryCard:AddLabel("Location")
+        Grouping locationGroup = repositoryCard:AddGrouping("Location Row")
+        browseTextField = locationGroup:AddTextField("Location Field")
+        browseButton = locationGroup:AddButton("Browse...")
         browseButton:SetBehavior(browseBehavior)
-        browseButton:SetBorderThickness(1.1)
-        
-        page:Add(locationContainer)
 
-        FormPanel usernameContainer
-        usernameContainer:SetPercentageWidth(1.0)
-        usernameContainer:SetVerticalLayoutMode(properties:FIT_CONTENTS)
-        FlowLayout usernameLayout
-        usernameContainer:SetLayout(usernameLayout)
-        usernameContainer:SetTopMargin(20)
-        usernameContainer:SetRightMargin(20)
-
-        usernameLabel = usernameContainer:AddLabel("Username")
-        usernameLabel:SetPositionOnBaseLine(false)
-        usernameLabel:SetLeftMargin(leftMargin)
-        usernameLabel:SetHorizontalLayoutMode(properties:STANDARD)
-        usernameLabel:SetPercentageWidth(0.15)
-
-        usernameTextField = usernameContainer:AddTextField("Username Field")
-        usernameTextField:SetHorizontalLayoutMode(properties:STANDARD)
-        usernameTextField:SetPercentageWidth(0.75)
-        usernameTextField:SetBorderThickness(1.5)
-        
-        page:Add(usernameContainer)
-
-        FormPanel passwordContainer
-        passwordContainer:SetPercentageWidth(1.0)
-        passwordContainer:SetVerticalLayoutMode(properties:FIT_CONTENTS)
-        FlowLayout passwordLayout
-        passwordContainer:SetLayout(passwordLayout)
-        passwordContainer:SetTopMargin(20)
-        passwordContainer:SetRightMargin(20)
-
-        passwordLabel = passwordContainer:AddLabel("Password")
-        passwordLabel:SetHorizontalLayoutMode(properties:STANDARD)
-        passwordLabel:SetPositionOnBaseLine(false)
-        passwordLabel:SetPercentageWidth(0.15)
-        passwordLabel:SetLeftMargin(leftMargin)
-
-        passwordTextField = passwordContainer:AddTextField("Password Field")
+        Grouping signInCard = page:AddGrouping("Sign In")
+        signInCard:SetTitle("Sign In")
+        usernameLabel = signInCard:AddLabel("Username")
+        usernameTextField = signInCard:AddTextField("Username Field")
+        passwordLabel = signInCard:AddLabel("Password")
+        passwordTextField = signInCard:AddTextField("Password Field")
         passwordTextField:SetPassword(true)
-        passwordTextField:SetHorizontalLayoutMode(properties:STANDARD)
-        passwordTextField:SetPercentageWidth(0.75)
-        passwordTextField:SetBorderThickness(1.5)
-        
-        page:Add(passwordContainer)
 
+        // The footer: Cancel, then the main action at the right.
         Grouping buttonContainer = page:AddGrouping("Button Container")
         buttonContainer:PositionFromBottom()
-        
         cancel = buttonContainer:AddButton("Cancel")
         cancel:SetName("Cancel")
-        cancel:SetFontSize(14)
-        cancel:SetPercentageWidth(0.25)
         cancel:SetBehavior(cancelBehavior)
 
-        //setup the ok button
         ok = buttonContainer:AddButton("Clone")
-        ok:SetFontSize(14)
-        ok:SetPercentageWidth(0.25)
+        // The main action: the accent button style.
+        ok:SetInterfaceOptionsKey("DialogAcceptButton")
         ok:SetBehavior(okBehavior)
 
     end

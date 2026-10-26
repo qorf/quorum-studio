@@ -4,6 +4,7 @@ use Libraries.Game.Graphics.Label
 use Libraries.Interface.Controls.Dialog
 use Libraries.Interface.Controls.Button
 use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
 use Libraries.Interface.Accessibility
 use Libraries.Interface.Item
 use Libraries.Game.GameStateManager
@@ -40,14 +41,19 @@ class InstallIOSSimulatorDialog is Dialog
         SetModal(true)
         SetName("Install the iOS Simulator")
         SetPercentageWidth(0.50)
-        SetPixelHeight(200)
+        SetPixelHeight(230)
         closeBehavior:SetDialog(me)
         downloadBehavior:SetDialog(me)
 
         Page page = InitializeDefaultPage()
         messageLabel = page:AddLabel(START_MESSAGE)
-        download = page:AddButton("Download")
-        close = page:AddButton("Close")
+        // The footer: Close, then the main action, Download, at the right.
+        Grouping buttonGroup = page:AddGrouping("Buttons")
+        buttonGroup:PositionFromBottom()
+        close = buttonGroup:AddButton("Close")
+        download = buttonGroup:AddButton("Download")
+        // The main action: the accent button style.
+        download:SetInterfaceOptionsKey("DialogAcceptButton")
         download:SetBehavior(downloadBehavior)
         close:SetBehavior(closeBehavior)
         shown = START_MESSAGE

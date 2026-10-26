@@ -42,6 +42,7 @@ class IOSSupport is ProcessListener
     integer lastExit = -1
     boolean simulatorAppMissing = false
     boolean simulatorBootFailed = false
+    boolean phoneLocked = false
 
     
 
@@ -72,6 +73,7 @@ class IOSSupport is ProcessListener
         text current = event:GetOutput()
         log = log + current + current:GetLineFeed()
         CheckForMissingSimulatorApp(current)
+        CheckForLockedPhone(current)
         i = 0
         repeat while i < listeners:GetSize()
             MobileListener listener = listeners:Get(i)
@@ -84,6 +86,7 @@ class IOSSupport is ProcessListener
         text current = event:GetOutput()
         log = log + current + current:GetLineFeed()
         CheckForMissingSimulatorApp(current)
+        CheckForLockedPhone(current)
         SendMessageToListeners(current)
     end
 
@@ -114,6 +117,77 @@ class IOSSupport is ProcessListener
     */
     action NeedsStudioLaunch returns boolean
         return simulatorAppMissing or simulatorBootFailed
+    end
+
+    /*
+        MobiVM installs the app on a phone, then launches it. iOS won't start an
+        app on a locked phone, so when MobiVM says the phone "could not be
+        unlocked", the app is installed and only the launch is missing.
+        BuildManager then waits for an unlock (WaitForUnlockAndLaunch).
+    */
+    private action CheckForLockedPhone(text message)
+        if message not= undefined and message:Contains("could not be, unlocked")
+            phoneLocked = true
+        end
+    end
+
+    /* True when the app was installed on a phone but couldn't start because the phone was locked. */
+    action WasPhoneLocked returns boolean
+        return phoneLocked
+    end
+
+    /*
+        Asks the chosen phone whether it is locked, with xcrun devicectl device
+        info lockState. Its JSON has "passcodeRequired" : true while the phone is
+        locked. Returns false when there's no phone or the question fails, so a
+        failed check never holds up a send.
+    */
+    action IsPhoneLocked returns boolean
+        if device = undefined
+            return false
+        end
+
+        Array<text> params
+        params:Add("devicectl")
+        params:Add("device")
+        params:Add("info")
+        params:Add("lockState")
+        params:Add("-d")
+        params:Add(device:GetSignature())
+        params:Add("-q")
+        params:Add("-j")
+        params:Add("-")
+        AppleDevicesReader reader
+        AppleCommandOutput result = reader:RunCommand("xcrun", params)
+        if result:GetExit() not= 0
+            return false
+        end
+
+        text json = result:GetOutput():Replace(" ", "")
+        text dq = json:GetDoubleQuote()
+        return json:Contains(dq + "passcodeRequired" + dq + ":true")
+    end
+
+    /*
+        Starts the installed app on the chosen phone with xcrun devicectl, the same
+        way MobiVM does. The process lasts until the app quits, and passes on what
+        the app prints. BuildManager only calls this when a phone was chosen.
+    */
+    action GetDeviceLaunchProcess(QuorumProject project) returns Process
+        Process process
+        Array<text> params
+        params:Add("devicectl")
+        params:Add("device")
+        params:Add("process")
+        params:Add("launch")
+        params:Add("--device")
+        params:Add(device:GetSignature())
+        params:Add("--console")
+        params:Add("--terminate-existing")
+        params:Add(project:GetIOSBundle())
+        process:SetName("xcrun")
+        process:SetParameters(params)
+        return process
     end
 
     private action SendMessageToListeners(text message)
@@ -491,6 +565,15 @@ result =
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>UIApplicationSceneManifest</key>
     <dict>
@@ -515,6 +598,11 @@ result =
         return result
     end
 
+    /*
+        The PNGs stay standard PNGs (skipPngCrush). For device builds MobiVM
+        otherwise runs Xcode's pngcrush -iphone on them, which swaps their
+        blue and red for Apple's own decoder, and Quorum decodes images itself.
+    */
     private action GetRoboVMXML(BuildInformation info) returns text
         QuorumProject project = info:project
         boolean physical = project:IsIOSPhysicalDevice() 
@@ -532,6 +620,7 @@ result =
     <resource>
       <directory>"+media+"</directory>
       <targetPath>"+media+"</targetPath>
+      <skipPngCrush>true</skipPngCrush>
     </resource>
   </resources>
   <classpath>

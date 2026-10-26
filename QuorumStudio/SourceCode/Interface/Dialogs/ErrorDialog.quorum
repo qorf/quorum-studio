@@ -12,6 +12,7 @@ use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
 
 class ErrorDialog is Dialog
     Label lineLabel
@@ -30,13 +31,18 @@ class ErrorDialog is Dialog
 
     private action Setup
         SetPercentageWidth(0.50) 
-        SetPixelHeight(150)
+        SetPixelHeight(170)
         defaultCancelBehavior:SetDialog(me)
 
 Page page = InitializeDefaultPage()
 
         lineLabel = page:AddLabel(error)
-        cancel = page:AddButton("OK")
+        // The button in a grouping at the bottom: the dialog's footer.
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        buttonGroup:PositionFromBottom()
+        cancel = buttonGroup:AddButton("OK")
+        // The main action: the accent button style.
+        cancel:SetInterfaceOptionsKey("DialogAcceptButton")
         
         cancel:SetName("OK")
         cancel:SetBehavior(defaultCancelBehavior)

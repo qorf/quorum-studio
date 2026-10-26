@@ -48,7 +48,6 @@ use Libraries.Interface.Forms.Page
 use Libraries.Game.Graphics.Font
 use Libraries.System.File
 use Libraries.Interface.Forms.FormPanel
-use Libraries.Interface.Layouts.StackLayout
 
 class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeListener
     boolean initialized = false
@@ -145,7 +144,7 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
     action Initialize
         initialized = true
         SetPercentageWidth(0.36)
-        SetPercentageHeight(0.21)
+        SetPercentageHeight(0.22)
 
         SetName("Find")
 
@@ -203,13 +202,11 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
         matches = horizontalContainer:AddLabel("Matches")
         matches:SetPositionOnBaseLine(false)
         
+        // The two checkboxes side by side, on one row.
         Grouping options = page:AddGrouping("Checkbox Options")
-        StackLayout stackLayout
-        options:SetLayout(stackLayout)
         wholeWord = options:AddCheckbox("Whole")
         matchCase = options:AddCheckbox("Match")
         wholeWord:SetLayoutRows(1)
-        wholeWord:SetTopMargin(5)
         matchCase:SetLayoutRows(1)
 
         wholeWord:SetBehavior(wholeWordMatchCaseBehavior)
