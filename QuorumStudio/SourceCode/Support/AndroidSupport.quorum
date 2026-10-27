@@ -723,6 +723,40 @@ public class MainActivity extends Activity {
         ReplaceLineTextInFile(pathToBuild, "The program's jar", "    implementation files('libs/" + applicationName + ".jar') // The program's jar: Quorum Studio writes its name on this line.")
     end
 
+    /*
+        The name under the icon (the manifest's label), apart from the
+        program's jar name.
+    */
+    action SetAppLabel(text projectPath, text label)
+        text pathToMain = projectPath + PATH_TO_MAIN_XML
+        text dq = pathToMain:GetDoubleQuote()
+        text safe = label:Replace("&", "&amp;"):Replace(dq, "&quot;"):Replace("<", "&lt;")
+        ReplaceLineTextInFile(pathToMain, "android:label=", "        android:label=" + dq + safe + dq)
+    end
+
+    /*
+        The project's app icon: copied as res/drawable-nodpi/app_icon.png
+        (a launcher scales it down) and named in the manifest; without one,
+        the template's icons.
+    */
+    action SetAppIcon(text projectPath, File icon)
+        text pathToMain = projectPath + PATH_TO_MAIN_XML
+        text dq = pathToMain:GetDoubleQuote()
+        text iconName = "@mipmap/ic_launcher"
+        text roundName = "@mipmap/ic_launcher_round"
+        if icon not= undefined
+            File copy
+            copy:SetAbsolutePath(projectPath + PATH_TO_MAIN + "res" + FILE_SEPARATOR + "drawable-nodpi" + FILE_SEPARATOR + "app_icon.png")
+            File folder = copy:GetParentDirectory()
+            folder:CreateDirectories()
+            icon:Copy(copy)
+            iconName = "@drawable/app_icon"
+            roundName = "@drawable/app_icon"
+        end
+        ReplaceLineTextInFile(pathToMain, "android:icon=", "        android:icon=" + dq + iconName + dq)
+        ReplaceLineTextInFile(pathToMain, "android:roundIcon=", "        android:roundIcon=" + dq + roundName + dq)
+    end
+
     action CleanGeneratedFiles(text projectPath)
         Properties properties
         Process process

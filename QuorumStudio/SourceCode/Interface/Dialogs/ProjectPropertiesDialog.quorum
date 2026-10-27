@@ -36,6 +36,7 @@ use Libraries.Interface.Selections.ListSelection
 use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesImageSheetListBehavior
 use Libraries.Interface.Controls.ListItem
 use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddImageSheetsBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAppIconBrowseBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesAddSourceBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesEditImageSheetsBehavior
 use Libraries.Development.Environment.Studio.Behaviors.ProjectPropertiesRemoveImageSheetBehavior
@@ -72,6 +73,9 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     Label programLocationLabel = undefined
     TextField programNameField = undefined
     TextField programVersionField = undefined
+    TextField appNameField = undefined
+    TextField appIconField = undefined
+    ProjectPropertiesAppIconBrowseBehavior appIconBrowseBehavior
     RadioButton standardProjectButton = undefined
     RadioButton legoProjectButton = undefined
     RadioButton webBrowserProjectButton = undefined
@@ -223,6 +227,15 @@ TextField spikeProgramSlot
 
         if executableName not= undefined
             programNameField:SetText(executableName)
+        end
+
+        ProjectProperty appNameProperty = project:GetProperty(project:APP_NAME)
+        if appNameProperty not= undefined and appNameProperty:GetFirstValue() not= undefined
+            appNameField:SetText(appNameProperty:GetFirstValue())
+        end
+        text appIcon = project:GetAppIcon()
+        if appIcon not= undefined
+            appIconField:SetText(appIcon)
         end
 
         text version = project:GetProperty(project:PROJECT_VERSION):GetFirstValue()
@@ -529,6 +542,16 @@ TextField spikeProgramSlot
         androidResourcesField:SetText(location)
     end
 
+    // The chosen icon, stored from the project's folder (/media/icon.png).
+    action SetAppIconLocation(File file)
+        text projectPath = project:GetLocation():GetAbsolutePath()
+        text path = file:GetAbsolutePath()
+        if path:StartsWith(projectPath)
+            path = path:GetSubtext(projectPath:GetSize())
+        end
+        appIconField:SetText(path)
+    end
+
     action SetIOSResourcesLocation(text location)
         iosResourcesField:SetText(location)
     end
@@ -539,6 +562,8 @@ TextField spikeProgramSlot
     */
     action SavePropertyChanges
         project:SetExecutableName(programNameField:GetText())
+        project:SetAppName(appNameField:GetText())
+        project:SetAppIcon(appIconField:GetText())
         project:SetProjectVersion(programVersionField:GetText())
         if standardProjectButton:GetToggleState() = true
             project:SetProjectCompileType(project:JAVA_COMPILE_TYPE)
@@ -711,6 +736,17 @@ integer slot = cast(integer, value)
         programNameField = projectCard:AddTextField("Name")
         projectCard:AddLabel("Version")
         programVersionField = projectCard:AddTextField("Version")
+        // The name and icon on a phone or tablet (Send to iOS or Android).
+        projectCard:AddLabel("App Name")
+        appNameField = projectCard:AddTextField("App Name")
+        appNameField:SetDescription("The name under the icon on a phone or tablet. Empty uses the program's name.")
+        projectCard:AddLabel("App Icon")
+        Grouping appIconRow = projectCard:AddGrouping("App Icon Row")
+        appIconField = appIconRow:AddTextField("App Icon")
+        appIconField:SetDescription("A PNG in the project, at least 1024 pixels on a side. Empty uses the default icon.")
+        Button appIconBrowse = appIconRow:AddButton("Browse ...")
+        appIconBrowseBehavior:SetDialog(me)
+        appIconBrowse:SetBehavior(appIconBrowseBehavior)
 
         // The four project types on one row.
         Grouping projectTypeGroup = page:AddGrouping("Project Type")

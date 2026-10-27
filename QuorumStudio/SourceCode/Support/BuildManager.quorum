@@ -1362,7 +1362,8 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             ios:CopyAndRename(iosLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName)
         end
 
-        ios:RewriteConfig(info)       
+        ios:RewriteConfig(info)
+        ios:WriteAppIcon(project)       
 
         text mobileAssetPath = project:GetIOSAssetsPath()
         if mediaDirectory not= undefined and mediaDirectory:Exists() and mobileAssetPath not= undefined
@@ -1620,6 +1621,10 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         if mediaDirectory not= undefined and mediaDirectory:Exists() and mobileAssetPath not= undefined
             android:CopyAssets(mediaDirectory, mobileAssetPath)
         end
+        // The name and icon on the device (Project Properties).
+        text androidFolder = runDirectory:GetAbsolutePath() + "/Android"
+        android:SetAppLabel(androidFolder, project:GetAppName())
+        android:SetAppIcon(androidFolder, project:GetAppIconFile())
         // One Gradle run: installDebug builds the app first. Run/Android is
         // kept between sends, so later builds reuse Gradle's earlier work.
         Process install = android:GetDebugInstallProcess()

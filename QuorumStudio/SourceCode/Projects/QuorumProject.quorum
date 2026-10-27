@@ -103,6 +103,8 @@ public constant text PYTHON_SPIKE_PROGRAM_SLOT = "PythonSpikeProgramSlot"
     public constant text MOBILE_ASSETS_DEFAULT_FOLDER = "media"
     public constant text IOS_VERSION = "iosVersion"
     public constant text IOS_BUNDLE = "IOS_BUNDLE"
+    public constant text APP_NAME = "AppName"
+    public constant text APP_ICON = "AppIcon"
     public constant text IOS_PROVISIONING = "IOS_PROVISIONING"
     public constant text IOS_SIGNATURE = "IOS_SIGNATURE"
     //None: Send to iOS then picks a simulator and saves it (IOSSupport:ChooseDevice).
@@ -423,6 +425,59 @@ public constant text PYTHON_SPIKE_PROGRAM_SLOT = "PythonSpikeProgramSlot"
 
     action SetIOSBundle(text value)
         SetPropertyValue(IOS_BUNDLE, value)
+    end
+
+    /*
+        The name shown under the app's icon on a phone or tablet. When none
+        is set, it's the program's name.
+    */
+    action GetAppName returns text
+        ProjectProperty property = GetProperty(APP_NAME)
+        if property not= undefined
+            text value = property:GetFirstValue()
+            if value not= undefined and not value:Trim():IsEmpty()
+                return value:Trim()
+            end
+        end
+        return GetExecutableName()
+    end
+
+    action SetAppName(text value)
+        SetPropertyValue(APP_NAME, value)
+    end
+
+    /*
+        The app's icon on a phone or tablet: a PNG in the project, such as
+        /media/icon.png, or undefined for the platform's default.
+    */
+    action GetAppIcon returns text
+        ProjectProperty property = GetProperty(APP_ICON)
+        if property = undefined
+            return undefined
+        end
+        text value = property:GetFirstValue()
+        if value = undefined or value:Trim():IsEmpty()
+            return undefined
+        end
+        return value:Trim()
+    end
+
+    action SetAppIcon(text value)
+        SetPropertyValue(APP_ICON, value)
+    end
+
+    // The app icon's file, or undefined when none is set or it's missing.
+    action GetAppIconFile returns File
+        text value = GetAppIcon()
+        if value = undefined
+            return undefined
+        end
+        File icon
+        icon:SetAbsolutePath(GetLocation():GetAbsolutePath() + value)
+        if not icon:Exists()
+            return undefined
+        end
+        return icon
     end
 
     action GetIOSProvisioning returns text
@@ -1229,6 +1284,12 @@ detect error
             end
             AddProperty(key, object:GetText())
         elseif key = IOS_ASSETS
+            if not object:IsText()
+                logger:Log(textMessage)
+                return now
+            end
+            AddProperty(key, object:GetText())
+        elseif key = APP_NAME or key = APP_ICON
             if not object:IsText()
                 logger:Log(textMessage)
                 return now

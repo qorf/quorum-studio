@@ -32,6 +32,8 @@ class IOSSupport is ProcessListener
     */
     constant text RUN_FOLDER_FROM_IOS = "../.."
     constant text FOLDER_NAME = "Mobile"
+    // The app icon's asset catalog, in Run/Mobile/ios (WriteAppIcon).
+    constant text ICON_FOLDER = "icon"
     text pathToRunFolder = ""
     text pathToBuildFolder = ""
     text log = ""
@@ -577,6 +579,79 @@ class IOSSupport is ProcessListener
         plist:Write(plistXML)
     end
 
+    /*
+        Writes the project's app icon as an asset catalog MobiVM compiles
+        (actool picks the AppIcon set): one 1024 by 1024 PNG, which iOS
+        scales to every size. The image is scaled to fit and padded to a
+        square with macOS's sips. Without an icon, the catalog is removed.
+    */
+    action WriteAppIcon(QuorumProject project)
+        File folder
+        folder:SetAbsolutePath(pathToBuildFolder + FILE_SEPARATOR + "ios" + FILE_SEPARATOR + ICON_FOLDER)
+        if folder:Exists()
+            folder:Delete(true)
+        end
+        File icon = project:GetAppIconFile()
+        if icon = undefined
+            return now
+        end
+
+        text setPath = folder:GetAbsolutePath() + FILE_SEPARATOR + "Assets.xcassets" + FILE_SEPARATOR + "AppIcon.appiconset"
+        File set
+        set:SetAbsolutePath(setPath)
+        set:CreateDirectories()
+
+        text scaled = setPath + FILE_SEPARATOR + "scaled.png"
+        text square = setPath + FILE_SEPARATOR + "icon.png"
+        Array<text> scaleParams
+        scaleParams:Add("-Z")
+        scaleParams:Add("1024")
+        scaleParams:Add(icon:GetAbsolutePath())
+        scaleParams:Add("--out")
+        scaleParams:Add(scaled)
+        RunSips(scaleParams)
+        Array<text> padParams
+        padParams:Add("-p")
+        padParams:Add("1024")
+        padParams:Add("1024")
+        padParams:Add("--padColor")
+        padParams:Add("FFFFFF")
+        padParams:Add(scaled)
+        padParams:Add("--out")
+        padParams:Add(square)
+        RunSips(padParams)
+        File scaledFile
+        scaledFile:SetAbsolutePath(scaled)
+        scaledFile:Delete()
+
+        text dq = setPath:GetDoubleQuote()
+        File contents
+        contents:SetAbsolutePath(setPath + FILE_SEPARATOR + "Contents.json")
+        contents:Write("{ " + dq + "images" + dq + " : [ { " + dq + "filename" + dq + " : " + dq + "icon.png" + dq + ", "
+            + dq + "idiom" + dq + " : " + dq + "universal" + dq + ", " + dq + "platform" + dq + " : " + dq + "ios" + dq + ", "
+            + dq + "size" + dq + " : " + dq + "1024x1024" + dq + " } ], "
+            + dq + "info" + dq + " : { " + dq + "author" + dq + " : " + dq + "xcode" + dq + ", " + dq + "version" + dq + " : 1 } }")
+        File catalog
+        catalog:SetAbsolutePath(folder:GetAbsolutePath() + FILE_SEPARATOR + "Assets.xcassets" + FILE_SEPARATOR + "Contents.json")
+        catalog:Write("{ " + dq + "info" + dq + " : { " + dq + "author" + dq + " : " + dq + "xcode" + dq + ", " + dq + "version" + dq + " : 1 } }")
+    end
+
+    private action RunSips(Array<text> params)
+        Process process
+        process:SetName("sips")
+        process:SetParameters(params)
+        check
+            process:Run()
+        detect e
+            // Without the icon, iOS uses its default; the send still works.
+        end
+    end
+
+    // Text for an XML file: &, < and > as entities.
+    private action EscapeXML(text value) returns text
+        return value:Replace("&", "&amp;"):Replace("<", "&lt;"):Replace(">", "&gt;")
+    end
+
     private action SanitizeMediaFolder(text value) returns text
         text result = value
         if result not= undefined and result:GetSize() > 1 and result:GetCharacter(0) = "/"
@@ -598,6 +673,7 @@ class IOSSupport is ProcessListener
         text result = ""
         QuorumProject project = info:project
         text name = project:GetExecutableName()
+        text displayName = EscapeXML(project:GetAppName())
         text dq = result:GetDoubleQuote()
 result = 
 "<?xml version="+dq+"1.0"+dq+" encoding="+dq+"UTF-8"+dq+"?>
@@ -607,7 +683,7 @@ result =
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>"+name+"</string>
+    <string>"+displayName+"</string>
     <key>CFBundleExecutable</key>
     <string>"+name+"</string>
     <key>CFBundleIdentifier</key>
@@ -691,7 +767,16 @@ result =
         text name = project:GetExecutableName()
         text media = SanitizeMediaFolder(project:GetIOSAssetsPath())
 
-        
+        // The app icon's asset catalog, when the project has an icon
+        // (WriteAppIcon); MobiVM compiles it with actool.
+        text iconResource = ""
+        if project:GetAppIconFile() not= undefined
+            iconResource = "
+    <resource>
+      <directory>" + ICON_FOLDER + "</directory>
+    </resource>"
+        end
+
         text result = 
 "
 <config>
@@ -703,7 +788,7 @@ result =
       <directory>"+media+"</directory>
       <targetPath>"+media+"</targetPath>
       <skipPngCrush>true</skipPngCrush>
-    </resource>
+    </resource>"+iconResource+"
   </resources>
   <classpath>
     <classpathentry>"+RUN_FOLDER_FROM_IOS+"/"+name+".jar</classpathentry>
