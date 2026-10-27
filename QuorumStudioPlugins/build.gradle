@@ -46,6 +46,13 @@ java {
     }
 }
 
+// The sources are UTF-8. Without this, javac reads them in the system's default
+// encoding: UTF-8 on a Mac, but the code page on Windows (usually Cp1252), so any
+// non-ASCII character in a string or character literal would break on Windows.
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
 test {
     //useJUnitPlatform()
 }
@@ -56,15 +63,27 @@ the JDK's associated with the the machine in question and then to modify the scr
 Quorum Studio in the correct way per platform. Different architectures are all downloaded here in part
 to future proof the system and make it consistent everywhere, including in the transition to the M1 processor on Mac.
 
+Studio bundles Temurin 21 on every platform (it used to be 11.0.15). Studio runs on it, and passes it to Gradle
+for iOS projects (Gradle 9 and MobiVM 2.3.26 need Java 17 or later). What Studio's own Java is compiled for, the
+toolchain above (11), doesn't change. One release for all three: 21.0.13 wasn't out for Windows yet (2026-10-27).
+
 Here is the documentation for the download task plugin
 https://github.com/michel-kraemer/gradle-download-task
  */
+def bundledJdkRelease = "21.0.12.1+1"                                 // Adoptium's release name, without "jdk-"
+def bundledJdkVersion = bundledJdkRelease.split("\\+")[0]             // JAVA_VERSION in the JDK's release file
+def bundledJdkFileVersion = bundledJdkRelease.replace("+", "_")       // as in the archive names
+def bundledJdkUrl = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-" + bundledJdkRelease.replace("+", "%2B") + "/"
+def macIntelJdk = "OpenJDK21U-jdk_x64_mac_hotspot_${bundledJdkFileVersion}.tar.gz"
+def macArmJdk = "OpenJDK21U-jdk_aarch64_mac_hotspot_${bundledJdkFileVersion}.tar.gz"
+def windowsJdk = "OpenJDK21U-jdk_x64_windows_hotspot_${bundledJdkFileVersion}.zip"
+
 task downloadJDKsAndCopyToQuorumStudio(type: Download) {
     //download JDKs for Mac aarch64, x86_64 and Windows x86_64
     src ([
-            'https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz',
-            'https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz',
-            'https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.15%2B10/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip'
+            bundledJdkUrl + macIntelJdk,
+            bundledJdkUrl + macArmJdk,
+            bundledJdkUrl + windowsJdk
     ])
     dest jdkFolder
     overwrite false
@@ -75,17 +94,16 @@ task downloadJDKsAndCopyToQuorumStudio(type: Download) {
 
         boolean M1 = true
         println "Deflating jdks"
-        println "${jdkFolder}/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"
         copy {
-            from tarTree(resources.gzip("${jdkFolder}/OpenJDK11U-jdk_x64_mac_hotspot_11.0.15_10.tar.gz"))
+            from tarTree(resources.gzip("${jdkFolder}/${macIntelJdk}"))
             into jdkFolder + "/mac/x64/"
         }
         copy {
-            from tarTree(resources.gzip(jdkFolder + "/OpenJDK11U-jdk_aarch64_mac_hotspot_11.0.15_10.tar.gz"))
+            from tarTree(resources.gzip("${jdkFolder}/${macArmJdk}"))
             into jdkFolder + "/mac/aarch64/"
         }
         copy {
-            from zipTree(jdkFolder + "/OpenJDK11U-jdk_x64_windows_hotspot_11.0.15_10.zip")
+            from zipTree("${jdkFolder}/${windowsJdk}")
             into jdkFolder + "/windows/x64/"
         }
         print "Copying from Quorum Studio"
@@ -94,28 +112,44 @@ task downloadJDKsAndCopyToQuorumStudio(type: Download) {
             into 'build/classes'
         }
 
-        print "Copying to Installer"
-        def destPath = '../QuorumStudio/Java/jdk'
-        def homePath = ""
-        if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-            homePath = jdkFolder + "/windows/x64/jdk-11.0.15+10"
-        } else if(Os.isFamily(Os.FAMILY_MAC) && !M1) {
-            println "Copying x86 "
-            homePath = jdkFolder + "/mac/x64/jdk-11.0.15+10"
-        } else if(Os.isFamily(Os.FAMILY_MAC) && M1) {
-            println "Copying M1"
-            homePath = jdkFolder + "/mac/aarch64/jdk-11.0.15+10"
-        }//Os.FAMILY_UNIX
-        if (!file(destPath).exists()) {
+        // The JAVA_VERSION in a JDK folder's release file (Contents/Home/release on a Mac,
+        // release on Windows), or null if there's no JDK there.
+        def installedVersion = { String folder ->
+            def release = [file("${folder}/Contents/Home/release"), file("${folder}/release")].find { it.exists() }
+            def line = release?.readLines()?.find { it.startsWith("JAVA_VERSION=") }
+            return line?.substring("JAVA_VERSION=".length())?.replace('"', '')
+        }
+
+        // Puts the JDK in a Studio folder, replacing one of a different version. (This used to
+        // skip any folder that existed, so an old JDK stayed and the task still looked done.)
+        def installJdk = { String homePath, String destPath ->
+            def found = installedVersion(destPath)
+            if (found == bundledJdkVersion) {
+                println "JDK ${found} is already in ${destPath}. No copying was done."
+                return
+            }
+            if (found != null)
+                println "Replacing JDK ${found} in ${destPath} with ${bundledJdkVersion}."
+            delete destPath
             mkdir destPath
             copy {
                 from homePath
                 into destPath
             }
-            print "Copy Complete."
-        } else {
-            print "JDK already there. No copying was done."
+            println "Copied JDK ${bundledJdkVersion} into ${destPath}."
         }
+
+        print "Copying to Installer"
+        def jdkName = "jdk-" + bundledJdkRelease
+        if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+            installJdk(jdkFolder + "/windows/x64/" + jdkName, '../QuorumStudio/Java/jdk')
+        } else if (Os.isFamily(Os.FAMILY_MAC)) {
+            // Java/jdk is for the Mac Studio runs on, and Apple Silicon by default.
+            // Java-INTEL/jdk is the Intel one, which BuildSignedInstaller.sh bundles for Intel Macs.
+            println M1 ? "Copying M1" : "Copying x86"
+            installJdk(jdkFolder + (M1 ? "/mac/aarch64/" : "/mac/x64/") + jdkName, '../QuorumStudio/Java/jdk')
+            installJdk(jdkFolder + "/mac/x64/" + jdkName, '../QuorumStudio/Java-INTEL/jdk')
+        }//Os.FAMILY_UNIX
     }
 }
 

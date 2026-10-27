@@ -1,7 +1,6 @@
 #!/bin/bash
-cd "${0%/*}"
-#pwd=$(pwd)
-#osascript <<EOF
-#tell app "Finder" to display dialog "$pwd"
-#EOF
-./Java/jdk/Contents/Home/bin/java -XstartOnFirstThread -jar QuorumStudio.jar
+# Studio's files live in Contents/app, not beside this script: code signing
+# treats everything in Contents/MacOS as code, and jars and folders there
+# can't be signed. Studio finds its files from the working directory.
+cd "${0%/*}/../app" || exit 1
+exec ./Java/jdk/Contents/Home/bin/java -XstartOnFirstThread -jar QuorumStudio.jar
