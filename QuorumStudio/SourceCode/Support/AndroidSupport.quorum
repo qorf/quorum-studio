@@ -9,6 +9,8 @@ use Libraries.System.ProcessListener
 use Libraries.System.ProcessEvent
 use Libraries.Development.Environment.Studio.Build.MobileListener
 use Libraries.Language.Compile.Symbol.Class
+use Libraries.Development.Environment.Studio.Mobile.SendProgress
+use Libraries.Development.Environment.Studio.Mobile.AppleCommandOutput
 
 class AndroidSupport is ProcessListener
     text FILE_SEPARATOR = "/"
@@ -27,6 +29,9 @@ class AndroidSupport is ProcessListener
     // Run/Android is kept between sends, and copied again from the template
     // only when it's missing or its version differs.
     constant text TEMPLATE_VERSION_FILE = "quorum-template-version.txt"
+
+    // The app's activity, from the template's applicationId and MainActivity.
+    constant text APP_ACTIVITY = "com.quorum.testapplication/.MainActivity"
 
     // The natives for each Android ABI, built by quorum-natives' AutoBuild.
     // The compiler copies them from the standard library into Run/jni/android,
@@ -57,6 +62,8 @@ class AndroidSupport is ProcessListener
     Array<text> libraryDestinations
     text log = ""
     Array<MobileListener> listeners
+    // A send's checklist (SendProgressPanel), or undefined.
+    SendProgress progress = undefined
     
     on create
         androidSDKPath = GetDefaultAndroidSDKPath()
@@ -64,6 +71,43 @@ class AndroidSupport is ProcessListener
 
     action AddListener(MobileListener listener)
         listeners:Add(listener)
+    end
+
+    action SetProgress(SendProgress value)
+        progress = value
+    end
+
+    /*
+        Moves the checklist along on Gradle's lines from installDebug, and
+        takes the device's name from "Installing APK 'app-debug.apk' on
+        'Pixel 8 - 15' for :app:debug".
+    */
+    private action TrackProgress(text message)
+        if message = undefined
+            return now
+        end
+        if message:Contains(":app:installDebug")
+            progress:StartStep(progress:INSTALL_ANDROID)
+        elseif message:Contains("Installing APK") and message:Contains(" on '")
+            progress:StartStep(progress:INSTALL_ANDROID)
+            integer nameStart = message:IndexOf(" on '") + 5
+            integer nameEnd = message:IndexOf("'", nameStart)
+            if nameEnd > nameStart
+                progress:SetDeviceName(message:GetSubtext(nameStart, nameEnd))
+            end
+        elseif message:Contains("Installed on")
+            progress:StartStep(progress:START_ANDROID)
+        elseif message:Contains("BUILD FAILED")
+            progress:Finish(false)
+        end
+    end
+
+    private action SendDetailToListeners(text message)
+        integer index = 0
+        repeat while index < listeners:GetSize()
+            listeners:Get(index):Detail(message)
+            index = index + 1
+        end
     end
 
     action ProcessStarted(ProcessEvent event)
@@ -83,12 +127,18 @@ class AndroidSupport is ProcessListener
     end
 
     action GetLogLocation returns text
-        return pathToBuildAndroidFolder + "\log.txt"
+        return pathToBuildAndroidFolder + FILE_SEPARATOR + "log.txt"
     end
 
     action Error(ProcessEvent event)
         text current = event:GetOutput()
         log = log + current + current:GetLineFeed()
+        // While sending, Gradle's own lines wait behind Show steps.
+        if progress not= undefined
+            TrackProgress(current)
+            SendDetailToListeners(current)
+            return now
+        end
         i = 0
         repeat while i < listeners:GetSize()
             MobileListener listener = listeners:Get(i)
@@ -125,6 +175,11 @@ class AndroidSupport is ProcessListener
     action Output(ProcessEvent event)
         text current = event:GetOutput()
         log = log + current + current:GetLineFeed()
+        if progress not= undefined
+            TrackProgress(current)
+            SendDetailToListeners(current)
+            return now
+        end
         SendMessageToListeners(current)
     end
 
@@ -167,6 +222,7 @@ class AndroidSupport is ProcessListener
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.content.res.Configuration;
 
 import com.quorum.TestApplication.R;
 
@@ -196,9 +252,11 @@ public class MainActivity extends Activity {
             main = new " + main:GetName() + "();
             main.Main();
         }
-        else
+        else if (GameStateManager.game != null)
         {
-            main.StartAndroidGame();
+            // The running game, which is Main itself or, for a Forms app,
+            // the Form its Main showed.
+            GameStateManager.game.StartAndroidGame();
         }
         initialized = true;
     }
@@ -208,14 +266,28 @@ public class MainActivity extends Activity {
     {
         super.onWindowFocusChanged(hasFocus);
 
-        if (initialized)
+        if (plugins.quorum.Libraries.Game.AndroidApplication.IsInitialized())
             ((AndroidApplication)GameStateManager.application).plugin_.onWindowFocusChanged(hasFocus);
+    }
+
+    /*
+        The activity isn't remade when the screen turns (configChanges in the
+        manifest), so a game that asked for its orientation and is waiting
+        for it starts here.
+    */
+    @Override
+    public void onConfigurationChanged(Configuration newConfig)
+    {
+        super.onConfigurationChanged(newConfig);
+
+        if (initialized && !plugins.quorum.Libraries.Game.AndroidApplication.IsInitialized() && GameStateManager.game != null)
+            GameStateManager.game.StartAndroidGame();
     }
 
     @Override
     protected void onPause()
     {
-        if (initialized)
+        if (plugins.quorum.Libraries.Game.AndroidApplication.IsInitialized())
             ((AndroidApplication)GameStateManager.application).plugin_.onPause();
 
         super.onPause();
@@ -224,7 +296,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume()
     {
-        if (initialized)
+        if (plugins.quorum.Libraries.Game.AndroidApplication.IsInitialized())
             ((AndroidApplication)GameStateManager.application).plugin_.onResume();
 
         super.onResume();
@@ -233,7 +305,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy()
     {
-        if (initialized)
+        if (plugins.quorum.Libraries.Game.AndroidApplication.IsInitialized())
             ((AndroidApplication)GameStateManager.application).plugin_.onDestroy();
 
         super.onDestroy();
@@ -470,6 +542,72 @@ public class MainActivity extends Activity {
         end
         
         return home
+    end
+
+    /*
+        Starts the installed app on each connected device, as sending to an
+        iPhone does: installDebug installs it on every device Gradle finds.
+        A copy already running is stopped first. Returns an empty text when
+        it started, or what went wrong.
+    */
+    action StartApp returns text
+        text adb = androidSDKPath + FILE_SEPARATOR + "platform-tools" + FILE_SEPARATOR + "adb"
+        Properties properties
+        if properties:IsWindows()
+            adb = adb + ".exe"
+        end
+
+        Array<text> listParams
+        listParams:Add("devices")
+        AppleCommandOutput listed = RunAdb(adb, listParams)
+        if listed:GetExit() not= 0
+            return "Studio couldn't run adb to start the app (" + adb + "). Open it on the device; it's installed."
+        end
+
+        // "List of devices attached", then one "SERIAL<tab>device" line each.
+        text listing = listed:GetOutput()
+        Array<text> listingLines = listing:Split(listing:GetLineFeed())
+        text tab = listing:GetTab()
+        integer started = 0
+        integer index = 1
+        repeat while index < listingLines:GetSize()
+            Array<text> parts = listingLines:Get(index):Trim():Split(tab)
+            if parts:GetSize() = 2 and parts:Get(1) = "device"
+                Array<text> startParams
+                startParams:Add("-s")
+                startParams:Add(parts:Get(0))
+                startParams:Add("shell")
+                startParams:Add("am")
+                startParams:Add("start")
+                startParams:Add("-S")
+                startParams:Add("-n")
+                startParams:Add(APP_ACTIVITY)
+                AppleCommandOutput result = RunAdb(adb, startParams)
+                if result:GetExit() not= 0 or result:GetOutput():Contains("Error")
+                    return "The app is installed, but Android didn't start it: " + result:GetOutput() + result:GetErrors()
+                end
+                started = started + 1
+            end
+            index = index + 1
+        end
+        if started = 0
+            return "The app is installed, but no device was ready to start it. Open it on the device."
+        end
+        return ""
+    end
+
+    private action RunAdb(text adb, Array<text> params) returns AppleCommandOutput
+        AppleCommandOutput result
+        Process process
+        process:SetName(adb)
+        process:SetParameters(params)
+        process:AddListener(result)
+        check
+            process:Run()
+        detect e
+            // The exit code stays -1.
+        end
+        return result
     end
 
     /*

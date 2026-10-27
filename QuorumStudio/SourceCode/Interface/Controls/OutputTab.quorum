@@ -21,6 +21,7 @@ use Libraries.Game.Graphics.Label
 use Libraries.Game.Graphics.Font
 use Libraries.Game.GameStateManager
 use Libraries.System.File
+use Libraries.Development.Environment.Studio.Mobile.SendProgress
 
 class OutputTab is Tab
     TextBox box = undefined
@@ -33,6 +34,18 @@ class OutputTab is Tab
 
     // The toolbar's icon font, for the send button's arrow.
     Font iconFont
+
+    // A send's checklist above the output (SendProgressPanel), and the
+    // build lines it hides until Show details.
+    SendProgressPanel progressPanel
+    Array<text> detailLines
+    boolean detailsShown = false
+    // Whether a send's checklist is up. Build lines only count while it is.
+    boolean sending = false
+    integer panelHeight = 0
+    LayoutProperties outputLayout = undefined
+    // The Console area the checklist and output are laid out in.
+    Control consoleArea = undefined
  
     action SetTextBox(TextBox box)
         me:box = box
@@ -57,10 +70,69 @@ class OutputTab is Tab
     end
     action Empty
         empty = true
+        // A finished send's checklist goes with the old output. A send in
+        // progress keeps it: sending clears the Console after it starts.
+        if progressPanel:ClearIfFinished()
+            detailLines:Empty()
+            detailsShown = false
+        end
     end
 
     action Append(text line)
         lines:Add(line + line:GetLineFeed())
+    end
+
+    /*
+        Adds a build line that is hidden while a send's checklist shows,
+        unless Show details was chosen.
+    */
+    action AppendDetail(text line)
+        if not sending
+            return now
+        end
+        if detailsShown
+            Append(line)
+        else
+            detailLines:Add(line)
+        end
+    end
+
+    // Shows a send's checklist; its build lines start hidden.
+    action ShowProgress(SendProgress progress)
+        detailLines:Empty()
+        detailsShown = false
+        sending = true
+        progressPanel:SetProgress(progress, me)
+    end
+
+    /*
+        Ends a send's checklist: its hidden build lines are dropped and the
+        Console gets one line saying how it went.
+    */
+    action EndProgress(text summary)
+        sending = false
+        detailLines:Empty()
+        detailsShown = false
+        Append(summary)
+    end
+
+    // Puts the hidden build lines into the output, and the next ones too.
+    action ShowDetails
+        if detailsShown
+            return now
+        end
+        detailsShown = true
+        integer index = 0
+        repeat while index < detailLines:GetSize()
+            Append(detailLines:Get(index))
+            index = index + 1
+        end
+        detailLines:Empty()
+    end
+
+    // The steps show again: the build lines that come next are held back.
+    action HideDetails
+        detailsShown = false
     end
 
     action Setup
@@ -74,6 +146,9 @@ class OutputTab is Tab
 
         FlowLayout flow
         outputPanel:SetLayout(flow)
+        consoleArea = outputPanel
+        // The checklist above the output is hidden between sends.
+        flow:SetIgnoreHidden(true)
 
         TextBox textBoxForConsoleOutput  
         //textBoxForConsoleOutput:SetBackgroundColor(color:White())
@@ -87,6 +162,7 @@ class OutputTab is Tab
         textBoxPanelLayout:SetPercentageWidth(1)
         textBoxPanelLayout:SetPercentageHeight(1)
         textBoxPanelLayout:SetPixelHeight(-INPUT_ROW_HEIGHT)
+        outputLayout = textBoxPanelLayout
 
         TextBox inputTextBoxForOutputPane
         inputTextBoxForOutputPane:SetName("Input Text Box")
@@ -218,6 +294,7 @@ class OutputTab is Tab
         inputRow:Add(inputTextBoxForOutputPane)
         inputRow:Add(sendButtonOutputPane)
 
+        outputPanel:Add(progressPanel)
         outputPanel:Add(textBoxForConsoleOutput)
         outputPanel:Add(inputRow)
         
@@ -229,6 +306,19 @@ class OutputTab is Tab
     end
 
     action Update(number seconds)
+        // The checklist takes room above the output while it shows.
+        integer height = progressPanel:Refresh()
+        if height not= panelHeight and outputLayout not= undefined and box not= undefined
+            panelHeight = height
+            progressPanel:SetPixelHeight(height)
+            outputLayout:SetPixelHeight(-INPUT_ROW_HEIGHT - height)
+            // The whole Console area, so the checklist gets its place above
+            // the output, and not just the output's new height.
+            if consoleArea not= undefined
+                consoleArea:RequestLayout()
+            end
+        end
+
         if empty
             box:Empty()
             empty = false

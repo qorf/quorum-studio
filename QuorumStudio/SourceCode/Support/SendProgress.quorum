@@ -1,0 +1,341 @@
+package Libraries.Development.Environment.Studio.Mobile
+
+use Libraries.Containers.Array
+use Libraries.System.DateTime
+use Libraries.System.File
+
+/*
+    The progress of sending an app to an iPhone, the simulator or an Android
+    device, step by step, for the checklist in the Console
+    (SendProgressPanel). The build's thread moves it from step to step; the
+    interface reads it each frame.
+    After a send that works, each step's time is saved, per project and kind
+    of device, as the next send's estimate.
+*/
+class SendProgress
+    public constant integer COMPILE_QUORUM = 0
+    public constant integer PREPARE = 1
+    public constant integer COMPILE_IOS = 2
+    public constant integer LINK = 3
+    public constant integer INSTALL = 4
+    public constant integer START_APP = 5
+    // Android's steps; the first two are the same as iOS's.
+    public constant integer BUILD_ANDROID = 2
+    public constant integer INSTALL_ANDROID = 3
+    public constant integer START_ANDROID = 4
+
+    Array<SendStep> steps
+    text deviceName = "your iPhone"
+    boolean physical = true
+    boolean active = false
+    boolean finished = false
+    boolean succeeded = false
+    boolean waitingForUnlock = false
+    integer current = -1
+    number startTime = 0
+    number endTime = 0
+    // Counts every change, so the interface knows when to redraw the rows.
+    integer changes = 0
+    File timesFile = undefined
+    DateTime clock
+
+    /*
+        Starts a new send: the steps, with last time's times (or typical
+        ones), none of them started yet.
+    */
+    action Begin(boolean isPhone, File savedTimes)
+        physical = isPhone
+        steps:Empty()
+        AddStep("Compile Quorum", "compileQuorum", 2)
+        AddStep("Prepare the iOS project", "prepare", 5)
+        AddStep("Compile for iOS", "compileIOS", 150)
+        AddStep("Link and sign", "link", 20)
+        if physical
+            AddStep("Install on the iPhone", "install", 15)
+            deviceName = "your iPhone"
+        else
+            AddStep("Start the simulator and install", "install", 20)
+            deviceName = "the simulator"
+        end
+        AddStep("Start the app", "startApp", 5)
+        timesFile = savedTimes
+        Restart()
+    end
+
+    /*
+        Starts a new send to an Android device, with its steps. Gradle's
+        installDebug installs the app; Studio then starts it with adb
+        (AndroidSupport:StartApp).
+    */
+    action BeginAndroid(File savedTimes)
+        physical = true
+        steps:Empty()
+        AddStep("Compile Quorum", "compileQuorum", 2)
+        AddStep("Prepare the Android project", "prepare", 5)
+        AddStep("Build the Android app", "buildAndroid", 60)
+        AddStep("Install on the device", "install", 10)
+        AddStep("Start the app", "startApp", 3)
+        deviceName = "your Android device"
+        timesFile = savedTimes
+        Restart()
+    end
+
+    // Last time's times, and no step started yet.
+    private action Restart
+        LoadTimes()
+        current = -1
+        finished = false
+        succeeded = false
+        waitingForUnlock = false
+        startTime = Now()
+        endTime = 0
+        active = true
+        changes = changes + 1
+    end
+
+    private action AddStep(text name, text key, number typical)
+        SendStep step
+        step:name = name
+        step:key = key
+        step:estimate = typical
+        steps:Add(step)
+    end
+
+    // The time, in seconds since the epoch.
+    private action Now returns number
+        return clock:GetEpochTime() / 1000.0
+    end
+
+    /*
+        Moves to a step. Steps before it that aren't done are marked done
+        (MobiVM skips compiling and linking when nothing changed). Moving
+        back, or to the step already running, does nothing.
+    */
+    action StartStep(integer index)
+        if finished or index <= current or index >= steps:GetSize()
+            return now
+        end
+        number time = Now()
+        integer i = 0
+        repeat while i < index
+            SendStep earlier = steps:Get(i)
+            if earlier:state not= earlier:DONE
+                if earlier:startTime = 0
+                    earlier:startTime = time
+                end
+                earlier:endTime = time
+                earlier:state = earlier:DONE
+            end
+            i = i + 1
+        end
+        SendStep step = steps:Get(index)
+        step:state = step:RUNNING
+        step:startTime = time
+        current = index
+        changes = changes + 1
+    end
+
+    /*
+        Ends the send. When it worked, every step is done and the times are
+        saved; when it didn't, the running step failed.
+    */
+    action Finish(boolean success)
+        if finished or not active
+            return now
+        end
+        number time = Now()
+        if success
+            StartStep(steps:GetSize() - 1)
+            SendStep last = steps:Get(steps:GetSize() - 1)
+            last:endTime = time
+            last:state = last:DONE
+            SaveTimes()
+        elseif current >= 0
+            SendStep failed = steps:Get(current)
+            failed:endTime = time
+            failed:state = failed:FAILED
+        end
+        endTime = time
+        finished = true
+        succeeded = success
+        waitingForUnlock = false
+        changes = changes + 1
+    end
+
+    action SetWaitingForUnlock(boolean waiting)
+        if waitingForUnlock not= waiting
+            waitingForUnlock = waiting
+            changes = changes + 1
+        end
+    end
+
+    action SetDeviceName(text name)
+        deviceName = name
+        changes = changes + 1
+    end
+
+    action GetDeviceName returns text
+        return deviceName
+    end
+
+    action IsActive returns boolean
+        return active
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+
+    action Succeeded returns boolean
+        return succeeded
+    end
+
+    action IsWaitingForUnlock returns boolean
+        return waitingForUnlock
+    end
+
+    action GetChanges returns integer
+        return changes
+    end
+
+    action GetCurrent returns integer
+        return current
+    end
+
+    action GetSteps returns Array<SendStep>
+        return steps
+    end
+
+    // How long the send has taken so far, or took, in seconds.
+    action GetElapsed returns number
+        if finished
+            return endTime - startTime
+        end
+        return Now() - startTime
+    end
+
+    // How long a step has run so far, or took, in seconds.
+    action GetStepElapsed(SendStep step) returns number
+        if step:state = step:WAITING
+            return 0
+        elseif step:state = step:RUNNING
+            return Now() - step:startTime
+        end
+        return step:endTime - step:startTime
+    end
+
+    /*
+        The estimated time left, in seconds: what's left of the running
+        step's estimate, plus the estimates of the steps after it.
+    */
+    action GetTimeLeft returns number
+        if finished
+            return 0
+        end
+        number left = 0
+        integer i = 0
+        repeat while i < steps:GetSize()
+            SendStep step = steps:Get(i)
+            if step:state = step:WAITING
+                left = left + step:estimate
+            elseif step:state = step:RUNNING
+                number remaining = step:estimate - GetStepElapsed(step)
+                if remaining > 0
+                    left = left + remaining
+                end
+            end
+            i = i + 1
+        end
+        return left
+    end
+
+    // Whether the running step has taken longer than its estimate.
+    action IsOverEstimate returns boolean
+        if finished or current < 0
+            return false
+        end
+        SendStep step = steps:Get(current)
+        return GetStepElapsed(step) > step:estimate
+    end
+
+    // How much of the send is done, from 0 to 1, by the estimates.
+    action GetFraction returns number
+        number total = 0
+        number done = 0
+        integer i = 0
+        repeat while i < steps:GetSize()
+            SendStep step = steps:Get(i)
+            total = total + step:estimate
+            if step:state = step:DONE
+                done = done + step:estimate
+            elseif step:state = step:RUNNING
+                number part = GetStepElapsed(step)
+                if part > step:estimate
+                    part = step:estimate
+                end
+                done = done + part
+            end
+            i = i + 1
+        end
+        if total <= 0
+            return 0
+        end
+        return done / total
+    end
+
+    // Reads last time's step times, as key=seconds lines.
+    private action LoadTimes
+        if timesFile = undefined or not timesFile:Exists()
+            return now
+        end
+        text contents = timesFile:Read()
+        Array<text> fileLines = contents:Split(contents:GetLineFeed())
+        integer i = 0
+        repeat while i < fileLines:GetSize()
+            Array<text> parts = fileLines:Get(i):Trim():Split("=")
+            if parts:GetSize() = 2
+                number seconds = -1
+                check
+                    seconds = parts:Get(1):ParseNumber()
+                detect e
+                    seconds = -1
+                end
+                SendStep step = FindStep(parts:Get(0))
+                if step not= undefined and seconds > 0
+                    step:estimate = seconds
+                end
+            end
+            i = i + 1
+        end
+    end
+
+    // Writes this send's step times, as key=seconds lines.
+    private action SaveTimes
+        if timesFile = undefined
+            return now
+        end
+        text contents = ""
+        integer i = 0
+        repeat while i < steps:GetSize()
+            SendStep step = steps:Get(i)
+            contents = contents + step:key + "=" + GetStepElapsed(step) + contents:GetLineFeed()
+            i = i + 1
+        end
+        check
+            timesFile:Write(contents)
+        detect e
+            // The times are only for estimates; a send works without them.
+        end
+    end
+
+    private action FindStep(text key) returns SendStep
+        integer i = 0
+        repeat while i < steps:GetSize()
+            if steps:Get(i):key = key
+                return steps:Get(i)
+            end
+            i = i + 1
+        end
+        return undefined
+    end
+end

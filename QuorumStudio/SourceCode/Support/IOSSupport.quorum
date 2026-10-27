@@ -43,11 +43,83 @@ class IOSSupport is ProcessListener
     boolean simulatorAppMissing = false
     boolean simulatorBootFailed = false
     boolean phoneLocked = false
+    // The send's checklist (SendProgressPanel), and whether the app has
+    // started, after which its own lines go to the Console.
+    SendProgress progress = undefined
+    boolean appStarted = false
 
     
 
     action AddListener(MobileListener listener)
         listeners:Add(listener)
+    end
+
+    action SetProgress(SendProgress value)
+        progress = value
+        appStarted = false
+    end
+
+    /*
+        Moves the checklist along on MobiVM's messages (Gradle's --info), and
+        ends it when the app prints its first line or the build fails.
+    */
+    private action TrackProgress(text message)
+        if progress = undefined or message = undefined
+            return now
+        end
+        if message:StartsWith("> Task :ios:launch")
+            progress:StartStep(progress:COMPILE_IOS)
+        elseif message:Contains("No classes were modified") or message:Contains("Building ios binary") or message:Contains("Building fat binary")
+            progress:StartStep(progress:LINK)
+        elseif message:Contains("Deploying app")
+            progress:StartStep(progress:INSTALL)
+        elseif message:Contains("Launching app")
+            progress:StartStep(progress:START_APP)
+        elseif message:Contains("could not be, unlocked")
+            progress:StartStep(progress:START_APP)
+            progress:SetWaitingForUnlock(true)
+        elseif message:StartsWith("IOSApplication:")
+            appStarted = true
+            progress:Finish(true)
+        elseif message:Contains("BUILD FAILED")
+            progress:Finish(false)
+        end
+    end
+
+    /*
+        Whether a line is the build's own, hidden unless asked for: every
+        line before the app starts, except ones that look like a problem, and
+        after it starts, MoltenVK's start-up lines.
+    */
+    private action IsBuildDetail(text message) returns boolean
+        if progress = undefined or message = undefined
+            return false
+        end
+        if not appStarted
+            return not LooksLikeProblem(message)
+        end
+        return message:StartsWith("[mvk-info]") or message:StartsWith(message:GetTab())
+    end
+
+    private action LooksLikeProblem(text message) returns boolean
+        // Lines that only name something with "Error" in it, such as a class
+        // being compiled, a phantom class warning, or Gradle's daemon
+        // settings (HeapDumpOnOutOfMemoryError), aren't problems.
+        if message:StartsWith("Compiling ") or message:StartsWith("Warning: ")
+                or message:Contains("DaemonInfo") or message:Contains("DaemonContext")
+            return false
+        end
+        return message:Contains("error") or message:Contains("Error") or message:Contains("FAILURE")
+            or message:Contains("What went wrong") or message:Contains("Exception")
+            or message:Contains("BUILD FAILED") or message:Contains("failed")
+    end
+
+    private action SendDetailToListeners(text message)
+        integer i = 0
+        repeat while i < listeners:GetSize()
+            listeners:Get(i):Detail(message)
+            i = i + 1
+        end
     end
 
     action ProcessStarted(ProcessEvent event)
@@ -74,6 +146,11 @@ class IOSSupport is ProcessListener
         log = log + current + current:GetLineFeed()
         CheckForMissingSimulatorApp(current)
         CheckForLockedPhone(current)
+        TrackProgress(current)
+        if IsBuildDetail(current)
+            SendDetailToListeners(current)
+            return now
+        end
         i = 0
         repeat while i < listeners:GetSize()
             MobileListener listener = listeners:Get(i)
@@ -87,7 +164,12 @@ class IOSSupport is ProcessListener
         log = log + current + current:GetLineFeed()
         CheckForMissingSimulatorApp(current)
         CheckForLockedPhone(current)
-        SendMessageToListeners(current)
+        TrackProgress(current)
+        if IsBuildDetail(current)
+            SendDetailToListeners(current)
+        else
+            SendMessageToListeners(current)
+        end
     end
 
     /*
@@ -775,7 +857,9 @@ dependencies {
                 params:Add("-Probovm.sdk.version=" + device:GetVersion())
             end
         end
-        //params:Add("--info")
+        // MobiVM's step messages, for the checklist (SendProgress). The
+        // extra lines go to the details, not the Console.
+        params:Add("--info")
         //params:Add("--stacktrace")
         //params:Add("--scan")
         //params:Add("--debug")

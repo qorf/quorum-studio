@@ -1,0 +1,394 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Controls.ProgressBar
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.Color
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Accessibility
+use Libraries.Interface.Item
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.Mobile.SendProgress
+use Libraries.Development.Environment.Studio.Mobile.SendStep
+
+/*
+    The checklist of a send to an iPhone, the simulator or an Android
+    device, above the
+    Console (SendProgress): a title with the time left, a bar, one row per
+    step, and Show steps, which switches to the build's own lines. When the
+    send ends, the checklist goes and the Console gets one line saying how
+    it went. Each new step is said once to a screen reader.
+*/
+class SendProgressPanel is Control
+    // Heights before the interface scale: the whole panel (header 30 and
+    // its margin 4, the bar 16, six rows of 26), the header row (title and
+    // Show steps), and each step's row.
+    public constant integer FULL_HEIGHT = 210
+    // The header and bar only, while the build's lines show instead of the
+    // steps.
+    public constant integer STEPS_HIDDEN_HEIGHT = 50
+    constant integer HEADER_HEIGHT = 30
+    constant integer ROW_HEIGHT = 26
+
+    SendProgress progress = undefined
+    OutputTab tab = undefined
+    integer seenChanges = -1
+    integer seenStep = -1
+    text lastTitle = ""
+
+    Font iconFont
+    // The title and Show steps, on one row.
+    Control headerRow
+    Label titleLabel
+    ProgressBar bar
+    Array<Control> rows
+    Array<Label> rowIcons
+    Array<Label> rowTexts
+    // Checked: the steps. Unchecked: the build's lines, in the Console
+    // below the title and bar.
+    Checkbox stepsCheckbox
+    boolean stepsShown = true
+
+    // The bar's width before the interface scale: as wide as the longest
+    // step line so far in this send, so it doesn't jump as the times change.
+    number barWidth = 0
+
+    on create
+        SetName("Send progress")
+        FlowLayout layout
+        layout:SetIgnoreHidden(true)
+        SetLayout(layout)
+        SetPercentageWidth(1)
+        SetPixelHeight(FULL_HEIGHT)
+
+        File iconFile
+        iconFile:SetPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
+        iconFont:LoadFont(iconFile)
+
+        FlowLayout headerLayout
+        headerLayout:SetIgnoreHidden(true)
+        // One line of a known height, so the title and button are centered
+        // in it (a row that fits its contents centers them below itself).
+        headerLayout:SetSingleLine(true)
+        headerLayout:SetVerticalCentering(true)
+        headerRow:SetLayout(headerLayout)
+        headerRow:SetPercentageWidth(1)
+        headerRow:SetPercentageHeight(0)
+        headerRow:SetPixelHeight(HEADER_HEIGHT)
+        headerRow:SetLeftMargin(10)
+        headerRow:SetTopMargin(4)
+        // Inside its row, not dropped to the font's baseline.
+        titleLabel:SetPositionOnBaseLine(false)
+        titleLabel:SetRightMargin(12)
+        headerRow:Add(titleLabel)
+        stepsCheckbox:SetName("Show steps")
+        stepsCheckbox:SetDescription("When off, the build's own lines show in the Console instead of the steps")
+        stepsCheckbox:SetToggleState(true)
+        headerRow:Add(stepsCheckbox)
+        Add(headerRow)
+
+        bar:SetName("Send progress")
+        bar:SetMinimum(0)
+        bar:SetMaximum(100)
+        // A ProgressBar fits its contents and its font unless told
+        // otherwise: here it is 8 points tall and as wide as the longest
+        // step line (UpdateBarWidth).
+        bar:SetHorizontalLayoutMode(bar:parent:Control:STANDARD)
+        bar:SetVerticalLayoutMode(bar:parent:Control:STANDARD)
+        bar:SetPercentageWidth(0)
+        bar:SetPixelWidth(200)
+        bar:SetPercentageHeight(0)
+        bar:SetPixelHeight(8)
+        bar:SetBorderThickness(0)
+        bar:SetLeftMargin(10)
+        bar:SetTopMargin(4)
+        bar:SetBottomMargin(4)
+        Add(bar)
+
+        Hide()
+    end
+
+    /*
+        Shows a send's checklist, for the Console it is above.
+    */
+    action SetProgress(SendProgress value, OutputTab owner)
+        progress = value
+        tab = owner
+        stepsShown = true
+        stepsCheckbox:SetToggleState(true)
+        seenChanges = -1
+        seenStep = -1
+        barWidth = 0
+    end
+
+    /*
+        Ends the checklist if its send is over, so it hides on the next
+        frame. Returns whether it did.
+    */
+    action ClearIfFinished returns boolean
+        if progress not= undefined and progress:IsFinished()
+            progress = undefined
+            return true
+        end
+        return false
+    end
+
+    /*
+        Updates the checklist from the send, once a frame. Returns its height
+        before the interface scale, or 0 when it is hidden, so the Console
+        can make room.
+    */
+    action Refresh returns integer
+        if progress = undefined or not progress:IsActive()
+            if IsShowing()
+                Hide()
+            end
+            return 0
+        end
+        if not IsShowing()
+            Show()
+        end
+
+        // The checkbox switches between the steps and the build's lines.
+        if stepsCheckbox:GetToggleState() not= stepsShown
+            SetStepsShown(stepsCheckbox:GetToggleState())
+        end
+
+        if progress:GetChanges() not= seenChanges
+            seenChanges = progress:GetChanges()
+            RebuildRows()
+        end
+        UpdateTimes()
+
+        // A finished send leaves one line in the Console, and the checklist
+        // goes.
+        if progress:IsFinished()
+            text summary = FinishedLine()
+            progress = undefined
+            Hide()
+            if tab not= undefined
+                tab:EndProgress(summary)
+            end
+            return 0
+        end
+        if stepsShown
+            return FULL_HEIGHT
+        end
+        return STEPS_HIDDEN_HEIGHT
+    end
+
+    /*
+        Shows the steps, or hides them and puts the build's lines in the
+        Console. The lines already in the Console stay there.
+    */
+    private action SetStepsShown(boolean value)
+        stepsShown = value
+        if tab not= undefined
+            if value
+                tab:HideDetails()
+            else
+                tab:ShowDetails()
+            end
+        end
+        // RebuildRows shows or hides the rows.
+        seenChanges = -1
+    end
+
+    // Makes or updates the rows, and says a new step to a screen reader.
+    private action RebuildRows
+        Array<SendStep> steps = progress:GetSteps()
+        repeat while rows:GetSize() < steps:GetSize()
+            Control row
+            FlowLayout rowLayout
+            // The icon and words centered on one line, like the header.
+            rowLayout:SetSingleLine(true)
+            rowLayout:SetVerticalCentering(true)
+            row:SetLayout(rowLayout)
+            row:SetPercentageWidth(1)
+            row:SetPercentageHeight(0)
+            row:SetPixelHeight(ROW_HEIGHT)
+            row:SetLeftMargin(14)
+            Label icon
+            icon:SetFont(iconFont)
+            icon:SetFontSize(9)
+            icon:SetPositionOnBaseLine(false)
+            icon:SetRightMargin(8)
+            icon:SetAccessibilityCode(icon:parent:Item:NOT_ACCESSIBLE)
+            row:Add(icon)
+            Label words
+            words:SetPositionOnBaseLine(false)
+            row:Add(words)
+            rows:Add(row)
+            rowIcons:Add(icon)
+            rowTexts:Add(words)
+            // After the title and the bar.
+            Add(rows:GetSize() + 1, row)
+        end
+
+        integer i = 0
+        repeat while i < rows:GetSize()
+            Control row = rows:Get(i)
+            if not stepsShown or i >= steps:GetSize()
+                row:Hide()
+            else
+                row:Show()
+                rowIcons:Get(i):SetText(IconFor(steps:Get(i)))
+                rowIcons:Get(i):SetFontColor(ColorFor(steps:Get(i)))
+            end
+            i = i + 1
+        end
+        if progress:GetCurrent() not= seenStep or progress:IsFinished()
+            seenStep = progress:GetCurrent()
+            Announce(Title())
+            if progress:IsFinished() and not progress:Succeeded() and tab not= undefined
+                // A failure needs the build's lines to see why.
+                tab:ShowDetails()
+            end
+        end
+        RequestLayout()
+    end
+
+    // The icon for a step's state, from Font Awesome.
+    private action IconFor(SendStep step) returns text
+        text value = ""
+        if step:state = step:DONE
+            return value:GetUnicodeValue(61452)
+        elseif step:state = step:RUNNING
+            return value:GetUnicodeValue(61842)
+        elseif step:state = step:FAILED
+            return value:GetUnicodeValue(61453)
+        end
+        return value:GetUnicodeValue(61713)
+    end
+
+    // A step icon's color: green when done, blue while running, gray
+    // while waiting, red when it failed.
+    private action ColorFor(SendStep step) returns Color
+        Color color
+        if step:state = step:DONE
+            return color:CustomColor(93.0 / 255.0, 202.0 / 255.0, 136.0 / 255.0, 1)
+        elseif step:state = step:RUNNING
+            return color:CustomColor(125.0 / 255.0, 176.0 / 255.0, 255.0 / 255.0, 1)
+        elseif step:state = step:FAILED
+            return color:CustomColor(230.0 / 255.0, 78.0 / 255.0, 88.0 / 255.0, 1)
+        end
+        return color:CustomColor(130.0 / 255.0, 135.0 / 255.0, 140.0 / 255.0, 1)
+    end
+
+    // The Console's line for a finished send.
+    private action FinishedLine returns text
+        if progress:Succeeded()
+            return "Sent to " + progress:GetDeviceName() + " in " + Format(progress:GetElapsed()) + "."
+        end
+        return "Couldn't send to " + progress:GetDeviceName() + ". The build's lines are above."
+    end
+
+    // The title, with the time left.
+    private action Title returns text
+        if progress:IsFinished()
+            return FinishedLine()
+        end
+        if progress:IsWaitingForUnlock()
+            return "Sending to " + progress:GetDeviceName() + ": waiting for you to unlock it"
+        end
+        if progress:IsOverEstimate()
+            return "Sending to " + progress:GetDeviceName() + ", taking longer than last time"
+        end
+        return "Sending to " + progress:GetDeviceName() + ", about " + Format(progress:GetTimeLeft()) + " left"
+    end
+
+    // The title, each step's time and the bar.
+    private action UpdateTimes
+        text title = Title()
+        if title not= lastTitle
+            lastTitle = title
+            titleLabel:SetText(title)
+            bar:SetDescription(title)
+        end
+        bar:SetValue(progress:GetFraction() * 100)
+
+        Array<SendStep> steps = progress:GetSteps()
+        integer i = 0
+        repeat while i < steps:GetSize() and i < rowTexts:GetSize()
+            SendStep step = steps:Get(i)
+            text words = step:name
+            if step:state = step:DONE
+                words = words + ", " + Format(progress:GetStepElapsed(step))
+            elseif step:state = step:RUNNING
+                words = words + ", " + Format(progress:GetStepElapsed(step)) + " of about " + Format(step:estimate)
+            elseif step:state = step:FAILED
+                words = words + ", failed"
+            else
+                words = words + ", about " + Format(step:estimate)
+            end
+            if rowTexts:Get(i):GetText() not= words
+                rowTexts:Get(i):SetText(words)
+            end
+            i = i + 1
+        end
+
+        UpdateBarWidth()
+    end
+
+    /*
+        Makes the bar reach from its left edge to the end of the longest
+        step line, the icon and the space after it included. It only grows
+        during a send.
+    */
+    private action UpdateBarWidth
+        number scale = GetInterfaceScale()
+        if scale <= 0
+            return now
+        end
+        number longest = 0
+        integer index = 0
+        repeat while index < rowTexts:GetSize()
+            if rows:Get(index):IsShowing()
+                number lineWidth = rowIcons:Get(index):GetWidth() + rowTexts:Get(index):GetWidth()
+                if lineWidth > longest
+                    longest = lineWidth
+                end
+            end
+            index = index + 1
+        end
+        // The row starts 14 in and the bar 10 in; the icon has 8 after it.
+        number wanted = longest / scale + 14 + 8 - 10
+        if wanted > barWidth
+            barWidth = wanted
+            bar:SetPixelWidth(barWidth)
+            RequestLayout()
+        end
+    end
+
+    // Seconds as minutes and seconds, such as 2:05.
+    private action Format(number seconds) returns text
+        integer total = cast(integer, seconds + 0.5)
+        if total < 0
+            total = 0
+        end
+        integer minutes = cast(integer, total / 60)
+        integer rest = total mod 60
+        if rest < 10
+            return minutes + ":0" + rest
+        end
+        return minutes + ":" + rest
+    end
+
+    // Says a step change once to a screen reader.
+    private action Announce(text value)
+        GameStateManager manager
+        Accessibility access = manager:GetAccessibility()
+        if access = undefined
+            return now
+        end
+        Item focus = manager:GetFocus()
+        if focus = undefined
+            focus = me
+        end
+        access:Notify(focus, value)
+    end
+end

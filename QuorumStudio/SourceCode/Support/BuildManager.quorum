@@ -70,6 +70,7 @@ use Libraries.Development.Versioning.DiffRequest
 use Libraries.Development.Versioning.DiffResult
 use Libraries.Language.Compile.CodeCompletionItem
 use Libraries.Development.Environment.Studio.Mobile.IOSSupport
+use Libraries.Development.Environment.Studio.Mobile.SendProgress
 use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
 use Libraries.Development.Environment.Studio.Behaviors.ShowInstallIOSSimulatorBehavior
 use Libraries.System.Logging.SharedLogger
@@ -1270,12 +1271,25 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             out:Append("The project is currently in Web Client mode. I cannot send a Web client project to an Android Device. Please compile in Standard mode.")
             return now
         end
+
+        // The checklist above the Console (SendProgressPanel).
+        SendProgress progress
+        File timesFile
+        text deviceKind = "simulator"
+        if project:IsIOSPhysicalDevice()
+            deviceKind = "phone"
+        end
+        timesFile:SetAbsolutePath(project:GetLocation():GetAbsolutePath() + "/Run/Mobile/send-times-" + deviceKind + ".txt")
+        progress:Begin(project:IsIOSPhysicalDevice(), timesFile)
+        out:ShowProgress(progress)
+        progress:StartStep(progress:COMPILE_QUORUM)
         Build(info)
 
         CompilerResult result = info:result
         SymbolTable table = result:symbolTable
         CompilerErrorManager errors = result:compilerErrorManager
         if not errors:IsCompilationErrorFree()
+            progress:Finish(false)
             return now
         end
 
@@ -1283,12 +1297,14 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         File main = project:GetMain()
         if main = undefined
             out:Append("Main not found. Ending iOS Compilation")
+            progress:Finish(false)
             return now
         end
 
         Class mainClazz = table:GetClassInFile(main:GetAbsolutePath())
         if mainClazz = undefined
             out:Append("Main not found. Ending iOS Compilation")
+            progress:Finish(false)
             return now
         end
 
@@ -1315,9 +1331,18 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
 
         //Check Xcode and the device before anything is copied or Gradle starts.
         IOSSupport ios
+        progress:StartStep(progress:PREPARE)
         if not PrepareIOSDevice(project, ios, out)
+            progress:Finish(false)
             return now
         end
+        // The phone's own name, such as "Andy's iPhone", without its iOS version.
+        text shownName = ios:GetDevice():GetActualDeviceName()
+        if shownName = undefined or shownName:IsEmpty()
+            shownName = ios:GetDevice():GetName()
+        end
+        progress:SetDeviceName(shownName)
+        ios:SetProgress(progress)
 
         //Setup IOS and tell it where to find the JDK
         ios:AddListener(me)
@@ -1337,12 +1362,10 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             ios:CopyAndRename(iosLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName)
         end
 
-        out:Append("Converting Quorum to iOS. This can take a few minutes.")
         ios:RewriteConfig(info)       
 
         text mobileAssetPath = project:GetIOSAssetsPath()
         if mediaDirectory not= undefined and mediaDirectory:Exists() and mobileAssetPath not= undefined
-            out:Append("Copying Assets")
             ios:CopyAssets(mediaDirectory, mobileAssetPath)
         end
 
@@ -1362,6 +1385,12 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
 
         build:Run()      
 
+        // A build that ended without the app starting (a failure, or the
+        // simulator path below) ends the checklist too.
+        if not progress:IsFinished() and not ios:WasPhoneLocked() and not ios:NeedsStudioLaunch()
+            progress:Finish(ios:GetLastExit() = 0)
+        end
+
         //On a phone, MobiVM installs the app and then launches it. If the phone
         //was locked, only the launch failed, so Studio waits for an unlock and
         //launches the app itself (see IOSSupport:WasPhoneLocked).
@@ -1379,9 +1408,11 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             return now
         end
 
+        progress:StartStep(progress:INSTALL)
         text problem = ios:InstallOnSimulator()
         if not problem:IsEmpty()
             out:Append(problem)
+            progress:Finish(false)
             return now
         end
 
@@ -1392,6 +1423,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         end
         processes:Add(processLocation, launch)
         out:Append("Running on the " + ios:GetDevice():GetName() + " simulator.")
+        progress:StartStep(progress:START_APP)
         launch:Run()
     end
 
@@ -1511,12 +1543,21 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             out:Append("The project is currently in Web Client mode. I cannot send a Web client project to an Android Device. Please compile in Standard mode.")
             return now
         end
+
+        // The checklist above the Console (SendProgressPanel).
+        SendProgress progress
+        File timesFile
+        timesFile:SetAbsolutePath(project:GetLocation():GetAbsolutePath() + "/Run/send-times-android.txt")
+        progress:BeginAndroid(timesFile)
+        out:ShowProgress(progress)
+        progress:StartStep(progress:COMPILE_QUORUM)
         Build(info)
 
         CompilerResult result = info:result
         SymbolTable table = result:symbolTable
         CompilerErrorManager errors = result:compilerErrorManager
         if not errors:IsCompilationErrorFree()
+            progress:Finish(false)
             return now
         end
 
@@ -1524,14 +1565,17 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         File main = project:GetMain()
         if main = undefined
             out:Append("Main not found. Ending Android Compilation")
+            progress:Finish(false)
             return now
         end
 
         Class mainClazz = table:GetClassInFile(main:GetAbsolutePath())
         if mainClazz = undefined
             out:Append("Main not found. Ending Android Compilation")
+            progress:Finish(false)
             return now
         end
+        progress:StartStep(progress:PREPARE)
 
         text run = project:GetLocation():GetAbsolutePath() + "/Run"
         
@@ -1563,32 +1607,44 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
             android:SetAndroidPath(androidPath)
         end
 
-        out:Append("")
-        out:Append("Starting Android Generator")
-        out:Append("Generating Template Android Project")
         android:CopyAndRename(androidLocation:GetAbsolutePath(), runDirectory:GetAbsolutePath(), applicationName, androidAlternateJDK)
-        out:Append("Copying Information")
         android:CopyLibraries()
         android:CopyNewMain(mainClazz)
         if not android:CopyNatives()
             out:Append("The standard library has no Android natives (Native/mobile/android), so the game couldn't start. Run quorum-natives' AutoBuild, then build the standard library.")
+            progress:Finish(false)
             return now
         end
 
         text mobileAssetPath = project:GetAndroidAssetsPath()
         if mediaDirectory not= undefined and mediaDirectory:Exists() and mobileAssetPath not= undefined
-            out:Append("Copying Assets")
             android:CopyAssets(mediaDirectory, mobileAssetPath)
-        else
-            out:Append("No assets requested for copying")
         end
         // One Gradle run: installDebug builds the app first. Run/Android is
         // kept between sends, so later builds reuse Gradle's earlier work.
-        out:Append("Building and installing the program (if a device is found). The first build can take a few minutes. Please wait.")
         Process install = android:GetDebugInstallProcess()
         install:AddListener(android)
+        android:SetProgress(progress)
+        progress:StartStep(progress:BUILD_ANDROID)
         install:Run()
-        out:Append("Completed Android Process with log at: " + android:GetLogLocation())
+        // "Installed on" moved the checklist to its last step: the app is
+        // started now, as on iOS.
+        if not progress:IsFinished() and progress:GetCurrent() = progress:START_ANDROID
+            text problem = android:StartApp()
+            if problem:IsEmpty()
+                progress:Finish(true)
+            else
+                out:Append(problem)
+                progress:Finish(false)
+            end
+        end
+        // Gradle ended without "Installed on": no device, or a failure.
+        if not progress:IsFinished()
+            progress:Finish(false)
+        end
+        if not progress:Succeeded()
+            out:Append("The Android build's log is at " + android:GetLogLocation())
+        end
 
         //for the signed version
 //        text androidPath = project:GetAndroidPath()
@@ -1670,6 +1726,14 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         end
 
         out:Append(message)
+    end
+
+    action Detail(text message)
+        OutputTab out = outputTabs:GetOutputTab()
+        if out = undefined
+            return now
+        end
+        out:AppendDetail(message)
     end
     
     action FinishedBuild(boolean success, text message) 
