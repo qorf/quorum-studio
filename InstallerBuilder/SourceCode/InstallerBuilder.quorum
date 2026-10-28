@@ -167,6 +167,8 @@ class InstallerBuilder is ProcessListener
     // process ends and its last output and ProcessStopped have arrived.
     integer lastExit = -1
     Array<text> lastOutput
+    // When true, each line a tool prints also goes to the log as it comes.
+    boolean echoOutput = false
 
     // Everything logged, for the window when it runs the build itself.
     Array<text> messages
@@ -1098,18 +1100,25 @@ class InstallerBuilder is ProcessListener
         Array<text> launcherParameters = Parameters("-V2", "-DOUTPUT=" + NsisPath(launcher))
         AddAll(launcherParameters, signing)
         launcherParameters:Add("Run.nsi")
-        if not RunTool(makensis, launcherParameters, windowsFolder, environment)
+        echoOutput = true
+        boolean launcherMade = RunTool(makensis, launcherParameters, windowsFolder, environment)
+        echoOutput = false
+        if not launcherMade
             return ToolFailed("NSIS couldn't make the launcher")
         end
 
         Step("Making the installer (Installer.nsi); this takes a few minutes", 15)
         text installer = VersionFolder() + "/Quorum-Studio-Windows.exe"
-        Array<text> parameters = Parameters("-V2", "-DSTUDIO=" + NsisPath(studio), "-DJDK=" + NsisPath(jdk), "-DLAUNCHER=" + NsisPath(launcher), "-DOUTPUT=" + NsisPath(installer))
+        Array<text> parameters = Parameters("-V3", "-DSTUDIO=" + NsisPath(studio), "-DJDK=" + NsisPath(jdk), "-DLAUNCHER=" + NsisPath(launcher), "-DOUTPUT=" + NsisPath(installer))
         parameters:Add("-DVERSION=" + version)
         parameters:Add("-DPRODUCT_VERSION=" + FourPartVersion(version))
         AddAll(parameters, signing)
         parameters:Add("Installer.nsi")
-        if not RunTool(makensis, parameters, windowsFolder, environment)
+        // -V3 lists each file NSIS adds, so the log shows it working.
+        echoOutput = true
+        boolean installerMade = RunTool(makensis, parameters, windowsFolder, environment)
+        echoOutput = false
+        if not installerMade
             return ToolFailed("NSIS couldn't make the installer")
         end
         Log("Installer: " + installer)
@@ -1440,6 +1449,9 @@ class InstallerBuilder is ProcessListener
         repeat while i < lines:GetSize()
             if lines:Get(i):Trim() not= ""
                 lastOutput:Add(lines:Get(i))
+                if echoOutput
+                    Log(lines:Get(i))
+                end
             end
             i = i + 1
         end

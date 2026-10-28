@@ -35,13 +35,18 @@ use Libraries.Containers.HashTable
 
     QUORUM_BUILD_INSTALLERS=yes java -jar Run/Default.jar
 
-    On Windows, the build runs in this program, so the window stops
-    responding until it's done.
+    On Windows the same happens, with PowerShell starting the second copy
+    and tasklist checking it. The second copy's errors go to
+    InstallerBuilderErrors.log, which the window also reads.
 */
 class Main is Form, ProcessListener
     constant integer WIDTH = 960
     constant integer HEIGHT = 940
     constant text LOG_FILE = "InstallerBuilder.log"
+    // On Windows the second copy's errors go here; the window reads both.
+    constant text ERRORS_FILE = "InstallerBuilderErrors.log"
+    // On Windows, check that the second copy is running every few reads.
+    constant integer READS_PER_CHECK = 4
     constant text BUILD_VARIABLE = "QUORUM_BUILD_INSTALLERS"
     // The log shows its last lines. Few enough that the whole form fits in the
     // window: a form taller than its window scrolls, and its groupings move
@@ -68,14 +73,13 @@ class Main is Form, ProcessListener
 
     boolean building = false
 
-    // On Windows the build starts a couple of frames after Build is pressed,
-    // so the window can say it won't respond before it stops.
-    integer framesUntilBuild = -1
-
     // For reading the log from the second copy.
     number secondsSinceRead = 0
     text buildProcessId = ""
     integer lastExit = -1
+    // On Windows: tasklist's output, and how many reads since it last ran.
+    text checkOutput = ""
+    integer readsSinceCheck = 0
 
     action Main
         // The second copy, started by the window, builds and stops.
@@ -216,13 +220,8 @@ class Main is Form, ProcessListener
         building = true
         progress:SetValue(0)
         logBox:SetText("")
-        if onWindows
-            statusLabel:SetText("Building. The window won't respond until it's done.")
-            framesUntilBuild = 2
-        else
-            statusLabel:SetText("Starting the build.")
-            StartBuildProcess()
-        end
+        statusLabel:SetText("Starting the build.")
+        StartBuildProcess()
     end
 
     /*
@@ -232,6 +231,11 @@ class Main is Form, ProcessListener
         for it.
     */
     action StartBuildProcess
+        if onWindows
+            StartWindowsBuildProcess()
+            return now
+        end
+
         File log
         log:SetPath(LOG_FILE)
         if log:Exists()
@@ -268,19 +272,64 @@ class Main is Form, ProcessListener
         end
     end
 
-    action Update(number seconds)
-        if framesUntilBuild > 0
-            framesUntilBuild = framesUntilBuild - 1
-            if framesUntilBuild = 0
-                framesUntilBuild = -1
-                builder:Build()
-                ShowLog(builder:GetMessages())
-                building = false
-            end
-            return now
-        end
+    /*
+        On Windows, PowerShell starts the second copy with javaw, which has
+        no console window, and prints its process ID without waiting for it.
+        Its output goes to the log and its errors to ERRORS_FILE. The paths
+        reach the script through environment variables, and its one double
+        quote is [char]34, so spaces in them need no escaping.
+    */
+    action StartWindowsBuildProcess
+        DeleteFile(LOG_FILE)
+        DeleteFile(ERRORS_FILE)
 
-        if not building or onWindows
+        text script = "$p = Start-Process -FilePath $env:INSTALLER_JAVA"
+            + " -ArgumentList ('-jar ' + [char]34 + $env:INSTALLER_JAR + [char]34)"
+            + " -WorkingDirectory (Get-Location).Path"
+            + " -RedirectStandardOutput $env:INSTALLER_LOG"
+            + " -RedirectStandardError $env:INSTALLER_ERRORS"
+            + " -PassThru; $p.Id"
+
+        Array<text> parameters
+        parameters:Add("-NoProfile")
+        parameters:Add("-NonInteractive")
+        parameters:Add("-ExecutionPolicy")
+        parameters:Add("Bypass")
+        parameters:Add("-Command")
+        parameters:Add(script)
+
+        HashTable<text, text> environment
+        environment:Add(BUILD_VARIABLE, "yes")
+        environment:Add("INSTALLER_JAVA", properties:GetProperty("java.home") + "\bin\javaw.exe")
+        environment:Add("INSTALLER_JAR", properties:GetProperty("java.class.path"))
+        environment:Add("INSTALLER_LOG", LOG_FILE)
+        environment:Add("INSTALLER_ERRORS", ERRORS_FILE)
+
+        buildProcessId = ""
+        readsSinceCheck = 0
+        Process shell
+        shell:SetName("powershell.exe")
+        shell:SetParameters(parameters)
+        shell:SetEnvironment(environment)
+        shell:AddListener(me)
+        shell:Run()
+        if buildProcessId = ""
+            building = false
+            statusLabel:SetText("The build couldn't start.")
+        end
+    end
+
+    // Deletes a file in this folder, if it's there.
+    action DeleteFile(text path)
+        File file
+        file:SetPath(path)
+        if file:Exists()
+            file:Delete()
+        end
+    end
+
+    action Update(number seconds)
+        if not building
             return now
         end
         secondsSinceRead = secondsSinceRead + seconds
@@ -289,21 +338,45 @@ class Main is Form, ProcessListener
         end
         secondsSinceRead = 0
 
-        File log
-        log:SetPath(LOG_FILE)
-        if log:Exists()
-            ShowLog(log:Read():SplitIntoLines())
-        end
+        ShowLog(ReadLog())
         // ShowLog stops the build when it reads the line saying it finished.
         if building and not IsBuildRunning()
             // It may have finished since the log was read.
-            if log:Exists()
-                ShowLog(log:Read():SplitIntoLines())
-            end
+            ShowLog(ReadLog())
             if building
                 building = false
                 statusLabel:SetText("The build stopped without finishing. See InstallerBuilder.log.")
             end
+        end
+    end
+
+    /*
+        The log's lines, and on Windows the errors file's after them. The
+        second copy may be writing a file as it's read; then this read gets
+        nothing from it, and the next one tries again.
+    */
+    action ReadLog returns Array<text>
+        Array<text> lines
+        AddFileLines(LOG_FILE, lines)
+        if onWindows
+            AddFileLines(ERRORS_FILE, lines)
+        end
+        return lines
+    end
+
+    action AddFileLines(text path, Array<text> lines)
+        File file
+        file:SetPath(path)
+        check
+            if file:Exists()
+                Array<text> read = file:Read():SplitIntoLines()
+                integer i = 0
+                repeat while i < read:GetSize()
+                    lines:Add(read:Get(i))
+                    i = i + 1
+                end
+            end
+        detect e
         end
     end
 
@@ -361,6 +434,9 @@ class Main is Form, ProcessListener
         if buildProcessId = ""
             return false
         end
+        if onWindows
+            return IsWindowsBuildRunning()
+        end
         Array<text> parameters
         parameters:Add("-0")
         parameters:Add(buildProcessId)
@@ -373,6 +449,35 @@ class Main is Form, ProcessListener
         return lastExit = 0
     end
 
+    /*
+        On Windows, tasklist lists the second copy while it runs. It takes
+        about a tenth of a second, so it runs every few reads, and counts as
+        running in between.
+    */
+    action IsWindowsBuildRunning returns boolean
+        readsSinceCheck = readsSinceCheck + 1
+        if readsSinceCheck < READS_PER_CHECK
+            return true
+        end
+        readsSinceCheck = 0
+
+        Array<text> parameters
+        parameters:Add("/FI")
+        parameters:Add("PID eq " + buildProcessId)
+        parameters:Add("/NH")
+        parameters:Add("/FO")
+        parameters:Add("CSV")
+        checkOutput = ""
+        Process taskList
+        taskList:SetName("tasklist")
+        taskList:SetParameters(parameters)
+        taskList:AddListener(me)
+        taskList:Run()
+        text quote = ""
+        quote = quote:GetDoubleQuote()
+        return checkOutput:Contains(quote + buildProcessId + quote)
+    end
+
     action ProcessStarted(ProcessEvent event)
     end
 
@@ -380,11 +485,17 @@ class Main is Form, ProcessListener
         lastExit = event:GetExit()
     end
 
-    // The shell prints the second copy's process ID.
+    // The shell prints the second copy's process ID; on Windows, tasklist's
+    // output comes here after that.
     action Output(ProcessEvent event)
         text value = event:GetOutput()
-        if value not= undefined and buildProcessId = ""
+        if value = undefined
+            return now
+        end
+        if buildProcessId = ""
             buildProcessId = value:Trim()
+        else
+            checkOutput = checkOutput + value
         end
     end
 
