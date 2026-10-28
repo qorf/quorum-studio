@@ -62,6 +62,8 @@ class Toolbar is ToolBar
     // Run and Debug, whose text keeps LABEL_FONT_SIZE when SetFontSize
     // changes the icons.
     Array<Button> labeledButtons
+    // Run's and Debug's icon characters, in the order of labeledButtons.
+    Array<integer> labeledCharacters
         
     on create
         SetFocusable(true)
@@ -245,11 +247,7 @@ class Toolbar is ToolBar
         // height of a capital letter of the word. The shared font is at its
         // default size when the toolbar is set up, and its size changes as
         // the other buttons draw.
-        Font glyphFont = fontAwesome:Copy()
-        glyphFont:SetSize(cast(integer, LABEL_ICON_SIZE * GetInterfaceScale()))
-        CharacterIcon glyph
-        glyph:LoadCharacter(unicode, glyphFont)
-        button:SetIcon(glyph)
+        LoadLabeledIcon(button, unicode, GetInterfaceScale())
 
         /*
         Run and Debug share one fixed height. Each one's top and bottom
@@ -262,13 +260,6 @@ class Toolbar is ToolBar
         stays centered: one-line labels are centered on their letters, not
         their padding.
         */
-        number glyphHeight = glyph:GetRegionHeight() / GetInterfaceScale()
-        number inset = (LABELED_BUTTON_HEIGHT - glyphHeight) / 2.0
-        if inset < 0
-            inset = 0
-        end
-        button:SetTopPadding(inset)
-        button:SetBottomPadding(inset)
         // Filled, but flat like the rest of the toolbar.
         button:SetTopAccent(false)
         button:SetRaised(false)
@@ -315,7 +306,43 @@ class Toolbar is ToolBar
         Add(button)
         buttons:Add(button)
         labeledButtons:Add(button)
+        labeledCharacters:Add(unicode)
         buttonMap:Add(name, button)
+    end
+
+    /*
+    Makes a labeled button's icon for an interface scale: Font Awesome at
+    about a capital letter of the word, and the top and bottom padding that
+    centers it in LABELED_BUTTON_HEIGHT, so ButtonLayout draws it at the
+    size it was made.
+    */
+    private action LoadLabeledIcon(Button button, integer unicode, number scale)
+        Font glyphFont = fontAwesome:Copy()
+        glyphFont:SetSize(cast(integer, LABEL_ICON_SIZE * scale + 0.5))
+        CharacterIcon glyph
+        glyph:LoadCharacter(unicode, glyphFont)
+        button:SetIcon(glyph)
+        number glyphHeight = glyph:GetRegionHeight() / scale
+        number inset = (LABELED_BUTTON_HEIGHT - glyphHeight) / 2.0
+        if inset < 0
+            inset = 0
+        end
+        button:SetTopPadding(inset)
+        button:SetBottomPadding(inset)
+    end
+
+    // The toolbar is set up at scale 1, before it is added; Run's and
+    // Debug's icons are made again for each new scale.
+    action SetInterfaceScale(number scale)
+        boolean changed = scale not= GetInterfaceScale()
+        parent:Control:SetInterfaceScale(scale)
+        if changed
+            integer index = 0
+            repeat while index < labeledButtons:GetSize()
+                LoadLabeledIcon(labeledButtons:Get(index), labeledCharacters:Get(index), scale)
+                index = index + 1
+            end
+        end
     end
 
     // A thin line between groups of buttons. It isn't a button, so it isn't

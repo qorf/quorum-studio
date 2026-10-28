@@ -177,24 +177,28 @@ class StatusLineGutter is Gutter
     end
 
     private action GetDrawable(integer index) returns Drawable
-        if drawables:GetSize() <= index or drawables:Get(index) = undefined
+        // Only rows with a bar ask for one, so fill any gap first.
+        repeat while drawables:GetSize() <= index
+            drawables:Add(undefined)
+        end
+        if drawables:Get(index) = undefined
             Drawable drawable
-            
             color = color:White()
             drawable:LoadFilledRectangle(1,1, color)
-            drawables:Add(index, drawable)
-            return drawable
-        else
-            return drawables:Get(index)
+            drawables:Set(index, drawable)
         end
+        return drawables:Get(index)
     end
 
     // Loaded as a triangle each time it's drawn, at the current scale.
     private action GetWedge(integer index) returns Drawable
-        if wedges:GetSize() <= index or wedges:Get(index) = undefined
+        // Only rows with a deletion ask for one, so fill any gap first.
+        repeat while wedges:GetSize() <= index
+            wedges:Add(undefined)
+        end
+        if wedges:Get(index) = undefined
             Drawable wedge
-            wedges:Add(index, wedge)
-            return wedge
+            wedges:Set(index, wedge)
         end
         return wedges:Get(index)
     end

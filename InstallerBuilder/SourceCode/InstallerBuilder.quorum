@@ -33,8 +33,10 @@ use Libraries.Data.Formats.JavaScriptObjectNotation
     1. QuorumStudio.app is built in Installer/Build/Work. Studio's files go
        in Contents/app, not Contents/MacOS: codesign treats every file in
        Contents/MacOS as code, and can't sign a jar there. The launcher
-       script (Installer/Mac/QuorumStudio) changes to Contents/app before it
-       starts Java, so Studio finds its files as before.
+       (Contents/MacOS/QuorumStudio) is compiled from Installer/Mac/Launcher.c
+       for the installer's architecture. It changes to Contents/app and
+       starts Java inside its own process, so macOS, VoiceOver and the Dock
+       see one app, and Studio finds its files as before.
     2. Every native is checked to run on the macOS the app says it needs
        (LSMinimumSystemVersion in Installer/Mac/Info.plist).
     3. The app is signed from the inside out: the natives inside jars, any
@@ -101,6 +103,9 @@ class InstallerBuilder is ProcessListener
     // The Mac tools, by their full paths: a program started from Quorum
     // Studio may not have Homebrew's or Packages' folders on its PATH.
     constant text CHMOD = "/bin/chmod"
+    // Apple's clang, which builds the app's launcher. It comes with Xcode
+    // or its Command Line Tools.
+    constant text CLANG = "/usr/bin/clang"
     constant text CODESIGN = "/usr/bin/codesign"
     constant text COPY = "/bin/cp"
     constant text DITTO = "/usr/bin/ditto"
@@ -260,7 +265,7 @@ class InstallerBuilder is ProcessListener
         if not CheckMacBuild(architecture, jdk)
             return false
         end
-        if not MakeApp(jdk)
+        if not MakeApp(jdk, architecture)
             return false
         end
         if not CheckMinimumMacOS()
@@ -369,6 +374,12 @@ class InstallerBuilder is ProcessListener
         end
         Log("JDK: " + jdk + " (" + architectures + ")")
 
+        // /usr/bin/clang is always there, but only works with Xcode or its
+        // Command Line Tools installed.
+        if not RunTool(XCRUN, Parameters("--find", "clang"))
+            return Fail("There's no C compiler to build the app's launcher. Install Xcode, or run: xcode-select --install")
+        end
+
         if localOnly
             Log("Local only: signed with no certificate, and not notarized.")
             return true
@@ -398,9 +409,9 @@ class InstallerBuilder is ProcessListener
 
     /*
         Builds QuorumStudio.app in the build folder from Studio's files and
-        the chosen JDK.
+        the chosen JDK. The launcher is compiled for the JDK's architecture.
     */
-    action MakeApp(text jdk) returns boolean
+    action MakeApp(text jdk, text architecture) returns boolean
         Step("Building QuorumStudio.app", 5)
 
         RunTool(REMOVE, Parameters("-rf", app))
@@ -422,14 +433,22 @@ class InstallerBuilder is ProcessListener
             return ToolFailed("Could not set the version in Info.plist")
         end
 
-        text launcher = contents + "/MacOS/QuorumStudio"
         if not RunTool(COPY, Parameters(studio + "/Resources/Graphics/Interface/Quorum.icns", contents + "/Resources/"))
             return ToolFailed("Could not copy the icon")
         end
-        if not RunTool(COPY, Parameters(macFolder + "/QuorumStudio", launcher))
-            return ToolFailed("Could not copy the launcher")
+
+        // The launcher starts Java inside its own process, so macOS,
+        // VoiceOver and the Dock see one app. It's built for this
+        // installer's architecture only, like its JDK, and for the macOS
+        // the app says it needs.
+        RunTool(PLIST_BUDDY, Parameters("-c", "Print :LSMinimumSystemVersion", plist))
+        text minimumMacOS = Joined(lastOutput):Trim()
+        text launcher = contents + "/MacOS/QuorumStudio"
+        Array<text> clangParameters = Parameters("-arch", architecture, "-mmacosx-version-min=" + minimumMacOS, "-O2", "-Wall", "-o", launcher, macFolder + "/Launcher.c", "-framework")
+        clangParameters:Add("CoreFoundation")
+        if not RunTool(CLANG, clangParameters)
+            return ToolFailed("Could not build the launcher from " + macFolder + "/Launcher.c")
         end
-        RunTool(CHMOD, Parameters("755", launcher))
 
         if not CopyIn("Configuration", "Configuration")
             return false

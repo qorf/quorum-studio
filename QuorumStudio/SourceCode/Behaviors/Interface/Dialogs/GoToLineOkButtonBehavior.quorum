@@ -12,6 +12,8 @@ use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Controls.Dialog
 use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Interface.Controls.Blocks.Block
+use Libraries.Interface.Controls.Blocks.RootBlock
 
 class GoToLineOkButtonBehavior is Behavior
 
@@ -76,14 +78,65 @@ class GoToLineOkButtonBehavior is Behavior
                     box:Focus()
                 elseif related is CodeEditor
                     CodeEditor editor = cast(CodeEditor, related)
-                    if line > editor:GetLineCount()
-                        line = editor:GetLineCount() - 1
+                    integer lastLine = editor:GetRawTextLineCount() - 1
+                    if line > lastLine
+                        line = lastLine
                     end
 
-                    editor:GoToLine(line)
+                    Block target = FindBlockAtTextLine(editor, line)
+                    if target = undefined
+                        editor:Focus()
+                    else
+                        // Scroll first: that draws the block and puts it back
+                        // in the screen reader's tree. Then focus it, which
+                        // reads it aloud and moves the selection to it.
+                        editor:GoToBlock(target)
+                        target:Focus()
+                    end
                 end
             end
         end
     end
 
+
+    /*
+    The block to land on for a text line (from 0). It's the block that ends
+    on the line, or else the innermost one that holds it, the same rule as
+    the renderer's GetNavigableBlockAtTextLine. On a blank line it's the next
+    block, and past the end of the code it's the last one.
+    */
+    private action FindBlockAtTextLine(CodeEditor editor, integer line) returns Block
+        RootBlock root = editor:GetRootBlock()
+        if root = undefined
+            return undefined
+        end
+
+        Block candidate = undefined
+        Block following = undefined
+        Block last = undefined
+        Block current = root:GetNextNavigableBlock()
+        repeat until current = undefined
+            integer start = current:GetStartLine()
+            integer finish = current:GetEndLine()
+            if start <= line
+                if finish = line
+                    return current
+                elseif finish > line
+                    candidate = current
+                end
+            elseif following = undefined
+                following = current
+            end
+            last = current
+            current = current:GetNextNavigableBlock()
+        end
+
+        if candidate not= undefined
+            return candidate
+        end
+        if following not= undefined
+            return following
+        end
+        return last
+    end
 end

@@ -121,6 +121,9 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     Updater updater
     Toolbar toolbar
     Menu menu
+    // Made in SetupInterface: a layer needs the game's display to exist.
+    Layer2D menuLayer = undefined
+    Control menuSpacer
     number tempXOffset = 0
 
     Options options
@@ -536,9 +539,39 @@ SetScreenSize(width, height)
         toolbar:Setup()
 
         CreateMainContentPane()
-        Add(menu)
+
+        // The menu bar has its own layer, drawn after the scene editor's
+        // layers, so open menus show over the 3D view. The spacer holds
+        // the bar's place in the main layer.
+        LayoutProperties spacing = menuSpacer:GetDefaultLayoutProperties()
+        spacing:SetPercentageWidth(1)
+        spacing:SetPixelHeight(0)
+        menuSpacer:SetName("Menu Spacer")
+        menuSpacer:SetFocusable(false)
+        Add(menuSpacer)
         Add(toolbar)
         Add(mainContentPane)
+
+        Layer2D newMenuLayer
+        menuLayer = newMenuLayer
+        FlowLayout menuLayout
+        menuLayer:SetLayout(menuLayout)
+        menuLayer:SetAutomaticResizing(true)
+        menuLayer:SetDepthBufferSorting(false)
+        menuLayer:Add(menu)
+        AddLayer(menuLayer)
+    end
+
+    /*
+        Keeps the menu bar's layer above every other layer, such as the
+        scene editor's layers, which are added when a scene tab shows.
+    */
+    action BringMenuLayerToFront
+        if menuLayer = undefined
+            return now
+        end
+        RemoveLayer(menuLayer)
+        AddLayer(menuLayer)
     end
 
     action SetupInputTables
@@ -963,6 +996,20 @@ EditorTab editorTab = cast(EditorTab, codeTabs:Get(0))
             projectTree:LoadExpandState(options:GetTreeState())
             projectTree:LoadSelection(options:GetTreeSelect())
             SetFocus(projectTree)
+        end
+
+        // The spacer keeps the menu bar's room in the main layer. The menu's
+        // height is in screen pixels, already scaled; a pixel height is in
+        // points, which the layout scales, so it's divided by the scale here.
+        number spacerGap = menuSpacer:GetHeight() - menu:GetHeight()
+        if spacerGap > 0.5 or spacerGap < -0.5
+            number scale = menuSpacer:GetInterfaceScale()
+            if scale <= 0
+                scale = 1
+            end
+            LayoutProperties spacing = menuSpacer:GetDefaultLayoutProperties()
+            spacing:SetPixelHeight(menu:GetHeight() / scale)
+            menuSpacer:RequestLayout()
         end
     end
     

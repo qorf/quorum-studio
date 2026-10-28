@@ -17,7 +17,7 @@ It is a Quorum project. Open it in Quorum Studio and run it, and a window opens.
 | Folder | What's in it |
 |---|---|
 | `SourceCode` | The program. `InstallerBuilder.quorum` makes the installers; `Main.quorum` is the window. |
-| `Installer/Mac` | What the Mac installers are made from: the Packages project (`QuorumStudio.pkgproj`), the app's `Info.plist`, the launcher script (`QuorumStudio`), Java's entitlements (`QuorumStudio.entitlements`), and the license the installer shows (`License.txt`, the same as Windows'). |
+| `Installer/Mac` | What the Mac installers are made from: the Packages project (`QuorumStudio.pkgproj`), the app's `Info.plist`, the launcher's C source (`Launcher.c`), Java's entitlements (`QuorumStudio.entitlements`), and the license the installer shows (`License.txt`, the same as Windows'). |
 | `Installer/Windows` | What the Windows installer is made from: the NSIS scripts (`Run.nsi` for the `QuorumStudio.exe` launcher, `Installer.nsi` for the installer), the icon and the license. |
 | `Installer/Build` | What's made. Git ignores it. `Build/<version>` has the finished installers; `Build/Work` has what's made on the way (the Mac app, the Windows launcher). |
 
