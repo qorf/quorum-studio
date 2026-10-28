@@ -1,0 +1,141 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Item2D
+use Libraries.Interface.Controls.Control
+use Libraries.Game.Graphics.Label
+use Libraries.Containers.Array
+
+/*
+A row layout for lists shown as a table, such as the Variables tab (V1).
+It lays the row out on one line, as FlowLayout does, then puts each column
+piece at a fixed share of the row's width, the same for every row, so the
+columns line up. Anything before the first column, such as an indent and a
+tree arrow, stays where FlowLayout put it. A label longer than its column
+is cut short with "...".
+*/
+class ColumnRowLayout is FlowLayout
+    Array<Control> pieces
+    Array<number> shares
+    // Each column's whole text, and the room it was last cut to fit.
+    Array<text> fullTexts
+    Array<number> fittedRooms
+    // The space after each column, in points.
+    number columnGap = 8
+
+    constant text ELLIPSIS = "..."
+
+    on create
+        SetSingleLine(true)
+        SetIgnoreHidden(true)
+        SetVerticalCentering(true)
+    end
+
+    /*
+    This action adds a column: the piece shown in it and its share of the
+    row's width, such as 0.35 for 35%. Columns go left to right in the order
+    they're added.
+    */
+    action AddColumn(Control piece, number share)
+        pieces:Add(piece)
+        shares:Add(share)
+        fullTexts:Add("")
+        fittedRooms:Add(-1.0)
+    end
+
+    action GetColumnCount returns integer
+        return pieces:GetSize()
+    end
+
+    // The text a label column shows, before it's cut to fit.
+    action SetColumnText(integer column, text value)
+        fullTexts:Set(column, value)
+        fittedRooms:Set(column, -1.0)
+        Control piece = pieces:Get(column)
+        if piece is Label
+            Label label = cast(Label, piece)
+            label:SetText(value)
+        end
+    end
+
+    action GetColumnText(integer column) returns text
+        return fullTexts:Get(column)
+    end
+
+    action SetColumnGap(number gap)
+        columnGap = gap
+    end
+
+    action GetColumnGap returns number
+        return columnGap
+    end
+
+    action Layout(Control container, Array<Item2D> items, number newContainerWidth, number newContainerHeight)
+        parent:FlowLayout:Layout(container, items, newContainerWidth, newContainerHeight)
+
+        number gap = columnGap
+        if not IsIgnoringInterfaceScale()
+            gap = columnGap * container:GetInterfaceScale()
+        end
+
+        number columnStart = 0
+        integer column = 0
+        repeat while column < pieces:GetSize()
+            Control piece = pieces:Get(column)
+            number columnEnd = columnStart + newContainerWidth * shares:Get(column)
+            // The first column starts after what's before it, such as the
+            // indent and the arrow.
+            number left = columnStart
+            if column = 0
+                left = piece:GetX()
+            end
+
+            if piece is Label
+                Fit(column, cast(Label, piece), columnEnd - left - gap)
+            end
+            piece:SetX(cast(integer, left))
+
+            columnStart = columnEnd
+            column = column + 1
+        end
+    end
+
+    /*
+    This action cuts a label's text to fit its room, with "..." at the end.
+    It's only redone when the room changes, since changing the text asks
+    for another layout.
+    */
+    private action Fit(integer column, Label label, number room)
+        number space = room
+        if space < 0
+            space = 0
+        end
+        if fittedRooms:Get(column) = space
+            return now
+        end
+        fittedRooms:Set(column, space)
+
+        text value = fullTexts:Get(column)
+        label:SetText(value)
+        number width = label:GetWidth()
+        if value:GetSize() = 0 or width <= space
+            return now
+        end
+
+        integer keep = cast(integer, value:GetSize() * space / width)
+        repeat while keep > 0
+            label:SetText(value:GetSubtext(0, keep) + ELLIPSIS)
+            width = label:GetWidth()
+            if width <= space
+                return now
+            end
+            integer guess = cast(integer, keep * space / width)
+            if guess < keep
+                keep = guess
+            else
+                keep = keep - 1
+            end
+        end
+        label:SetText("")
+    end
+end

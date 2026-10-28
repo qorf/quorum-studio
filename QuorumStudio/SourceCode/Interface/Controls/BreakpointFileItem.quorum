@@ -1,0 +1,190 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Containers.Array
+use Libraries.Language.Debug.Breakpoint
+use Libraries.System.File
+
+/*
+A file's row in the Breakpoints tab (B1): the tree's fold chevron, the
+file's name, and, muted, where the file is, how many breakpoints it has, and
+whether it's in an open project. Its breakpoints are the rows under it while
+it's expanded.
+*/
+class BreakpointFileItem is ListItem, FoldClickRow
+    File file = undefined
+    text path = ""
+    // Where the file is, such as "MyGame/SourceCode" or "Library: Interface/Controls".
+    text place = ""
+    // Empty, "not in an open project" or "file not found".
+    text status = ""
+    // This file's breakpoint rows, kept for putting back after a fold.
+    Array<BreakpointItem> rows
+    boolean expanded = true
+    // The tree's chevron (ListChevronView), turned down while expanded.
+    Control arrow
+    ListChevronView chevron = undefined
+    Label detail
+    // How far past the chevron's edges a click still counts, in points.
+    constant number FOLD_SLACK = 4
+
+    on create
+        // The fold arrow replaces ListItem's own picture.
+        parent:ListItem:icon:Hide()
+
+        // The pieces sit centered on the row's line.
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        // Sized like the tree's arrow; a drawing only, so a click reaches
+        // the row, whose FoldClickBehavior folds it.
+        arrow:SetAccessibilityCode(arrow:parent:Item:NOT_ACCESSIBLE)
+        arrow:SetFocusable(false)
+        arrow:SetAcceptsMouseInput(false)
+        arrow:SetHorizontalLayoutMode(arrow:MAINTAIN_ASPECT_RATIO)
+        arrow:SetVerticalLayoutMode(arrow:STANDARD)
+        arrow:SetPercentageWidth(1.0)
+        arrow:SetPercentageHeight(1.0)
+        arrow:SetLeftMargin(4)
+        arrow:SetTopMargin(4)
+        arrow:SetBottomMargin(4)
+        Add(0, arrow)
+
+        detail:SetAccessibilityCode(detail:parent:Item:NOT_ACCESSIBLE)
+        detail:SetAcceptsMouseInput(false)
+        detail:SetPositionOnBaseLine(false)
+        detail:SetLeftMargin(12)
+        Add(detail)
+    end
+
+    /*
+    This action sets the file this row stands for, where it is, its status,
+    and the color of its muted details. The chevron is made here, when the
+    graphics exist.
+    */
+    action Setup(File value, text placeValue, text statusValue, ColorGroup mutedColor)
+        file = value
+        if file not= undefined
+            path = file:GetAbsolutePath()
+        end
+        place = placeValue
+        status = statusValue
+        if mutedColor not= undefined
+            detail:SetColor(mutedColor)
+        end
+
+        ListChevronView view
+        chevron = view
+        chevron:Initialize(16, 32)
+        arrow:SetView2D(chevron)
+        chevron:UseThemeColor()
+        Refresh()
+    end
+
+    action GetFile returns File
+        return file
+    end
+
+    action GetPath returns text
+        return path
+    end
+
+    action GetRows returns Array<BreakpointItem>
+        return rows
+    end
+
+    action AddRow(BreakpointItem row)
+        rows:Add(row)
+    end
+
+    // This file's breakpoints, in a new array, so they can be removed from
+    // the manager while going through it.
+    action GetBreakpoints returns Array<Breakpoint>
+        Array<Breakpoint> points
+        integer index = 0
+        repeat while index < rows:GetSize()
+            points:Add(rows:Get(index):GetBreakpoint())
+            index = index + 1
+        end
+        return points
+    end
+
+    action IsExpanded returns boolean
+        return expanded
+    end
+
+    action SetExpanded(boolean value)
+        expanded = value
+        Refresh()
+    end
+
+    /*
+    This action updates the name, the arrow and the details after the rows
+    are added or the row is folded.
+    */
+    action Refresh
+        text fileName = "(no file)"
+        if file not= undefined
+            fileName = file:GetFileName()
+        end
+
+        integer count = rows:GetSize()
+        text details = "" + count + " breakpoints"
+        if count = 1
+            details = "1 breakpoint"
+        end
+        if place not= ""
+            details = place + ", " + details
+        end
+        if status not= ""
+            details = details + ", " + status
+        end
+
+        SetText(fileName)
+        detail:SetText(details)
+
+        if chevron not= undefined
+            chevron:SetToggleState(expanded)
+        end
+
+        text state = "expanded"
+        if not expanded
+            state = "collapsed"
+        end
+        SetName(fileName + ", " + details + ", " + state)
+    end
+
+    // The text Copy puts on the clipboard: each breakpoint's location, one a line.
+    action GetCopyText returns text
+        text result = ""
+        integer index = 0
+        repeat while index < rows:GetSize()
+            if index > 0
+                result = result + result:GetLineFeed()
+            end
+            result = result + rows:Get(index):GetCopyText()
+            index = index + 1
+        end
+        return result
+    end
+
+    action IsOnFoldControl(number x, number y) returns boolean
+        number slack = FOLD_SLACK * GetInterfaceScale()
+        return x >= arrow:GetGlobalX() - slack and x <= arrow:GetGlobalX() + arrow:GetWidth() + slack
+    end
+
+    /*
+    The text a screen reader reads for this row: its whole name, with every
+    column, rather than the first label alone. The label still shows what
+    SetText gave it.
+    */
+    action GetText returns text
+        return GetName()
+    end
+end

@@ -36,24 +36,29 @@ import com.sun.jdi.IntegerValue;
 import com.sun.jdi.InvalidTypeException;
 import com.sun.jdi.InvocationException;
 import com.sun.jdi.ObjectReference;
-import com.sun.jdi.ThreadReference;
 import com.sun.jdi.Value;
-import com.sun.jdi.VirtualMachine;
-import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.debugger.Variable;
 import org.debugger.jdi.JDIVariable;
-import org.debugger.jdi.JDIVariablesModel;
+import org.debugger.jdi.views.JDIVariableView;
 
 /**
- * This is a view for list containers.
+ * This is a view for list containers. A list is a chain of nodes, so its
+ * items are read by following the nodes' fields, without calling into the
+ * running program. Calls are a fallback for a list without those fields.
  * 
  * @author Andreas Stefik
  */
 public class ListView extends QuorumVariableView {
     public final String key = "quorum.Libraries.Containers.List";
+    private static final String HEAD = "head";
+    private static final String NEXT = "next";
+    private static final String VALUE = "value";
+    private static final String SIZE = "size";
     
     @Override
     public String getStaticKey() {
@@ -67,53 +72,93 @@ public class ListView extends QuorumVariableView {
 
     @Override
     public Variable[] getSpecialVariableChildren(ObjectReference reference) {
-        List<Value> args = new LinkedList<>();
-        List<Variable> variables = new LinkedList<Variable>();
-        ThreadReference thread = this.getThread();
-        VirtualMachine machine = this.getMachine();
+        return getSpecialVariableChildren(reference, 0, 0);
+    }
+
+    @Override
+    public Variable[] getSpecialVariableChildren(ObjectReference reference, int from, int to) {
+        int[] range = JDIVariableView.clampRange(from, to, getElementCount(reference));
+        int start = range[0];
+        int end = range[1];
+        List<Variable> variables = new ArrayList<>();
+        Field head = reference.referenceType().fieldByName(HEAD);
+        if (head == null) {
+            return iterate(reference, start, end);
+        }
+
+        Value node = reference.getValue(head);
+        Field next = null;
+        Field value = null;
+        int i = 0;
+        while (node instanceof ObjectReference && i < end) {
+            ObjectReference current = (ObjectReference) node;
+            if (next == null) {
+                next = current.referenceType().fieldByName(NEXT);
+                value = current.referenceType().fieldByName(VALUE);
+                if (next == null || value == null) {
+                    return iterate(reference, start, end);
+                }
+            }
+            if (i >= start) {
+                JDIVariable variable = getQuorumView().convert(current.getValue(value));
+                variable.setName("" + i);
+                variables.add(variable);
+            }
+            node = current.getValue(next);
+            i++;
+        }
+        return variables.toArray(new Variable[0]);
+    }
+
+    /**
+     * This walks the list with its iterator, calling into the running
+     * program, for a list whose nodes can't be read.
+     *
+     * @param reference
+     * @param start
+     * @param end
+     * @return
+     */
+    private Variable[] iterate(ObjectReference reference, int start, int end) {
+        List<Variable> variables = new ArrayList<>();
+        List<Value> args = Collections.<Value>emptyList();
         try {
-            Value iteratorValue = reference.invokeMethod(thread,
-                    reference.referenceType().methodsByName("GetIterator").get(0),args, 0);
-            
-            if(iteratorValue instanceof ObjectReference) {
+            Value iteratorValue = invoke(reference, "GetIterator", args);
+            if (iteratorValue instanceof ObjectReference) {
                 ObjectReference iterator = (ObjectReference) iteratorValue;
-                
-                Value boolValue = iterator.invokeMethod(thread,
-                    iterator.referenceType().methodsByName("HasNext").get(0),args, 0);
-                
-                if (boolValue instanceof BooleanValue) {
-                    BooleanValue bool = (BooleanValue) boolValue;
-                    boolean hasNext = bool.booleanValue();
-                    
-                    int i = 0; //the position
-                    while(hasNext) {
-                        Value value = iterator.invokeMethod(thread,
-                            iterator.referenceType().methodsByName("Next").get(0),args, 0);
+                int i = 0;
+                while (i < end && hasNext(iterator)) {
+                    Value value = invoke(iterator, "Next", args);
+                    if (i >= start) {
                         JDIVariable variable = getQuorumView().convert(value);
                         variable.setName("" + i);
                         variables.add(variable);
-                        
-                        //check if there are more values
-                        boolValue = iterator.invokeMethod(thread,
-                            iterator.referenceType().methodsByName("HasNext").get(0),args, 0);
-                        if (boolValue instanceof BooleanValue) {
-                            bool = (BooleanValue) boolValue;
-                            hasNext = bool.booleanValue();
-                        } else {
-                            hasNext = false;
-                        }
-                        
-                        //update the position
-                        i = i + 1;
                     }
+                    i++;
                 }
-                return (Variable[]) variables.toArray(new JDIVariable[0]);
             }
         } catch (InvalidTypeException | ClassNotLoadedException | IncompatibleThreadStateException | InvocationException ex) {
-            Logger.getLogger(JDIVariablesModel.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(ListView.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
-        return new Variable[0];
+        return variables.toArray(new Variable[0]);
+    }
+
+    private boolean hasNext(ObjectReference iterator)
+            throws InvalidTypeException, ClassNotLoadedException, IncompatibleThreadStateException, InvocationException {
+        Value value = invoke(iterator, "HasNext", Collections.<Value>emptyList());
+        return value instanceof BooleanValue && ((BooleanValue) value).booleanValue();
+    }
+
+    @Override
+    public int getElementCount(ObjectReference reference) {
+        Field size = reference.referenceType().fieldByName(SIZE);
+        if (size != null) {
+            Value value = reference.getValue(size);
+            if (value instanceof IntegerValue) {
+                return ((IntegerValue) value).intValue();
+            }
+        }
+        return 0;
     }
 
     @Override
@@ -121,11 +166,7 @@ public class ListView extends QuorumVariableView {
         if(value == null) {
             return getQuorumView().getNull();
         } else if(value instanceof ObjectReference) {
-            ObjectReference ref = (ObjectReference) value;
-            Field size = ref.referenceType().fieldByName("size");
-            Value v = ref.getValue(size);
-            JDIVariable variable = getQuorumView().convert(v);
-            return "size = " + variable.getValue();
+            return "size = " + getElementCount((ObjectReference) value);
         }  else {
             return value.toString();
         }

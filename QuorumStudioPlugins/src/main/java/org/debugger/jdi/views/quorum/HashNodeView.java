@@ -44,7 +44,6 @@ public class HashNodeView extends QuorumVariableView{
     public final String key = "quorum.Libraries.Containers.Support.HashNode";
     private static final String KEY = "key";
     private static final String VALUE = "value";
-    private static final String NEXT = "next";
     
     @Override
     public String getStaticKey() {
@@ -63,12 +62,10 @@ public class HashNodeView extends QuorumVariableView{
         //get the fields
         Field keyField = reference.referenceType().fieldByName(KEY);
         Field valueField = reference.referenceType().fieldByName(VALUE);
-        Field nextField = reference.referenceType().fieldByName(NEXT);
         
         //get their values
         Value keyValue = reference.getValue(keyField);
         Value valueValue = reference.getValue(valueField);
-        Value nextValue = reference.getValue(nextField);
         
         //convert them to variables, key first
         JDIVariable keyVariable = getQuorumView().convert(keyValue);
@@ -80,11 +77,8 @@ public class HashNodeView extends QuorumVariableView{
         valueVariable.setName(VALUE);
         variables.add(valueVariable);
         
-        //now the support hash node for separate chaining
-        JDIVariable nextVariable = getQuorumView().convert(nextValue);
-        nextVariable.setName(NEXT);
-        variables.add(nextVariable);
-        
+        //the next node isn't shown: the table's view lists every entry,
+        //chained or not
         //now return the list of variables to the client.
         return (Variable[]) variables.toArray(new JDIVariable[0]);
     }

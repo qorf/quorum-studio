@@ -48,6 +48,7 @@ use Libraries.Concurrency.ThreadRunner
 use Libraries.Development.Environment.Studio.Behaviors.BuildLoop
 use Libraries.Development.Environment.Studio.Behaviors.UpdateCodeEditorBehavior
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Development.Environment.Studio.Interface.StudioBlockEditor
 use Libraries.Language.Compile.CodeCompletionRequest
 use Libraries.Language.Compile.CodeCompletionResult
 use Libraries.Development.Environment.Studio.Android.AndroidSupport
@@ -189,7 +190,8 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
     end
 
     action OpenedProject(QuorumProject project)
-        
+        // The Breakpoints tab shows which files are in an open project.
+        breakpointManager:FireChangedEvent()
     end
 
     action ClosedProject(QuorumProject project)
@@ -204,6 +206,8 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
                 recentCompilerResults:RemoveKey(value)
             end
         end
+        // The Breakpoints tab shows which files are in an open project.
+        breakpointManager:FireChangedEvent()
         SystemHelper helper
         helper:RequestGarbageCollection()
     end
@@ -240,8 +244,20 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         return breakpointManager:GetBreakpoints()
     end
 
+    action GetBreakpointManager returns BreakpointManager
+        return breakpointManager
+    end
+
+    /*
+    This action checks a file's breakpoints after an edit. Lines may have
+    moved, and breakpoints on one line been merged, so while a program is
+    being debugged, the debugger gets a fresh copy of every breakpoint.
+    */
     action RehashBreakpoints(text path)
         breakpointManager:Rehash(path)
+        if IsDebugging()
+            SyncDebuggerBreakpoints()
+        end
     end
 
     action GetBreakpointIterator(text path) returns Iterator<Breakpoint>
@@ -325,11 +341,20 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         return library
     end
 
+    /*
+    This action removes the breakpoint on this point's file and line if there
+    is one, and adds this point if not. The debugger is told which of the two
+    it was, not just to toggle.
+    */
     action ToggleBreakpoint(Breakpoint point)
-        breakpointManager:ToggleBreakpoint(point)
-
-        if debugger not= undefined
-            ToggleBreakpointInDebugger(point, undefined)
+        if point = undefined or point:GetFile() = undefined
+            return now
+        end
+        Breakpoint existing = breakpointManager:GetBreakpoint(point:GetFile():GetAbsolutePath(), point:GetLine())
+        if existing not= undefined
+            RemoveBreakpoint(existing)
+        else
+            AddBreakpoint(point)
         end
     end
 
@@ -339,6 +364,114 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         point:SetLine(line)
         point:SetFile(file)
         ToggleBreakpoint(point)
+    end
+
+    action AddBreakpoint(Breakpoint point) returns boolean
+        boolean added = breakpointManager:AddBreakpoint(point)
+        if added and IsDebugging()
+            SendBreakpointToDebugger(point, GetDebuggingSymbolTable(), true)
+        end
+        return added
+    end
+
+    action AddBreakpoint(File file, integer line) returns boolean
+        Breakpoint point
+        point:SetLine(line)
+        point:SetFile(file)
+        return AddBreakpoint(point)
+    end
+
+    action RemoveBreakpoint(Breakpoint point) returns boolean
+        boolean removed = breakpointManager:RemoveBreakpoint(point)
+        if removed and IsDebugging()
+            SendBreakpointToDebugger(point, undefined, false)
+        end
+        return removed
+    end
+
+    /*
+    This action removes each of these breakpoints. The array is the caller's
+    own, such as a copy of a file's breakpoints, so nothing is skipped. It
+    returns how many were removed.
+    */
+    action RemoveBreakpoints(Array<Breakpoint> points) returns integer
+        integer removed = 0
+        integer index = 0
+        repeat while index < points:GetSize()
+            if RemoveBreakpoint(points:Get(index))
+                removed = removed + 1
+            end
+            index = index + 1
+        end
+        return removed
+    end
+
+    /*
+    This action removes the breakpoints whose files are gone, or are neither
+    in the standard library nor in an open project. It returns how many were
+    removed.
+    */
+    action RemoveBreakpointsNotInOpenProjects returns integer
+        Array<Breakpoint> unused
+        Iterator<Breakpoint> iterator = breakpointManager:GetBreakpoints()
+        repeat while iterator:HasNext()
+            Breakpoint point = iterator:Next()
+            if not IsBreakpointFileInUse(point:GetFile())
+                unused:Add(point)
+            end
+        end
+        return RemoveBreakpoints(unused)
+    end
+
+    // A breakpoint's file is in use if it exists and is in the standard
+    // library or an open project.
+    action IsBreakpointFileInUse(File file) returns boolean
+        if file = undefined or file:Exists() = false
+            return false
+        end
+        if IsStandardLibraryFile(file)
+            return true
+        end
+        if projectManager = undefined
+            // Nothing to check against yet, so keep it.
+            return true
+        end
+        return projectManager:IsProjectSourceFile(file) not= undefined
+    end
+
+    // Whether a file is in the standard library Studio builds against.
+    action IsStandardLibraryFile(File file) returns boolean
+        if file = undefined
+            return false
+        end
+        text path = file:GetAbsolutePath()
+        File location = library:GetLocation()
+        if location not= undefined and path:StartsWith(location:GetAbsolutePath())
+            return true
+        end
+        return GetIndexOf(path) >= 0
+    end
+
+    private action IsDebugging returns boolean
+        return debugger not= undefined and debuggingProgram not= undefined
+    end
+
+    private action GetDebuggingSymbolTable returns SymbolTable
+        if debuggingProgram = undefined or debuggingProgram:result = undefined
+            return undefined
+        end
+        CompilerResult result = debuggingProgram:result
+        return result:symbolTable
+    end
+
+    // The debugger forgets every breakpoint and is sent them all again.
+    private action SyncDebuggerBreakpoints
+        SymbolTable table = GetDebuggingSymbolTable()
+        debugger:EmptyBreakpoints()
+        Iterator<Breakpoint> iterator = breakpointManager:GetBreakpoints()
+        repeat while iterator:HasNext()
+            SendBreakpointToDebugger(iterator:Next(), table, true)
+        end
     end
 
     /*
@@ -901,6 +1034,10 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         elseif editor not= undefined
             code = editor:GetText()
             editor:SetBreakpointManager(breakpointManager)
+            if editor is StudioBlockEditor
+                StudioBlockEditor blockEditor = cast(StudioBlockEditor, editor)
+                blockEditor:SetBuildManager(me)
+            end
         end
 
         UpdateCodeEditorBehavior updater
@@ -1780,7 +1917,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         Iterator<Breakpoint> iterator = GetBreakpointIterator()
         repeat while iterator:HasNext()
             Breakpoint bp = iterator:Next()
-            ToggleBreakpointInDebugger(bp, table)
+            SendBreakpointToDebugger(bp, table, true)
         end
         debuggingProgram = info:Copy()
         debuggingProgram:result = result:CopyToBareResult()
@@ -1788,7 +1925,16 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         debugger:Continue()
     end
 
-    private action ToggleBreakpointInDebugger(Breakpoint bp, SymbolTable table)
+    /*
+    This action adds a breakpoint to the running debugger, or removes one.
+    Removal goes by the breakpoint itself (Debugger.java), so its class
+    doesn't need finding again.
+    */
+    private action SendBreakpointToDebugger(Breakpoint bp, SymbolTable table, boolean adding)
+        if not adding
+            debugger:Remove(bp)
+            return now
+        end
         SymbolTable libraryTable = library:GetSymbolTable()
         Class clazz = libraryTable:GetClassInFile(bp:GetFile():GetAbsolutePath())
         File file = bp:GetFile()
@@ -1820,7 +1966,7 @@ class BuildManager is DebuggerListener, ProcessListener, ProjectListener, Mobile
         if clazz not= undefined
             text key = clazz:GetStaticKey()
             bp:SetDotName(key)
-            debugger:Toggle(bp)
+            debugger:Add(bp)
         end
     end
 

@@ -1,0 +1,46 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Development.Environment.Studio.Interface.VariablesTab
+use Libraries.Development.Environment.Studio.Interface.VariableItem
+
+/*
+Opens the Variables tab's menu (V1). A right click selects the row it's on
+and opens the menu at the mouse; Shift+F10 opens it at the selected row.
+*/
+class VariablesMenuBehavior is Behavior
+    VariablesTab variablesTab = undefined
+
+    action SetVariablesTab(VariablesTab tab)
+        variablesTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if variablesTab = undefined
+            return now
+        end
+
+        VariableItem row = undefined
+        if event:GetItem() is VariableItem
+            row = cast(VariableItem, event:GetItem())
+            variablesTab:GetList():Select(row)
+        else
+            row = variablesTab:GetSelectedRow()
+        end
+        if row = undefined
+            return now
+        end
+
+        PopupMenu menu = row:GetPopupMenu()
+        if menu = undefined
+            return now
+        end
+        if event:GetMouseEvent() not= undefined
+            menu:OpenAtCursor()
+        else
+            menu:OpenAt(row:GetGlobalX(), row:GetGlobalY())
+        end
+    end
+end

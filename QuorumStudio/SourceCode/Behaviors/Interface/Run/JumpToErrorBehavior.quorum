@@ -6,6 +6,7 @@ use Libraries.Development.Environment.Projects.ProjectManager
 use Libraries.Development.Environment.Projects.Project
 use Libraries.Interface.Behaviors.Behavior
 use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Controls.Blocks.CodeEditor
 use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environment.Studio.Interface.OutputTab
@@ -17,51 +18,59 @@ use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Studio.Build.BuildInformation
 use Libraries.Development.Environment.Studio.Interface.ErrorTab
-use Libraries.Interface.Controls.Spreadsheet
-use Libraries.Interface.Selections.SpreadsheetSelection
-use Libraries.Interface.Controls.Cell
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.System.File
 use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Interface.Controls.Tab
-use Libraries.Development.Environment.Studio.Interface.StateCell
+use Libraries.Interface.Controls.ListItem
+use Libraries.Development.Environment.Studio.Interface.ErrorItem
 
 class JumpToErrorBehavior is QuorumStudioBehavior
 
     action Run(BehaviorEvent event)
-        if not(event:GetItem() is Cell)
-            return now
+        // An error row of the Errors tab (E3): the row it's run on, or, from
+        // the tab's menu, the selected row.
+        ErrorItem errorRow = undefined
+        if event:GetItem() is ErrorItem
+            errorRow = cast(ErrorItem, event:GetItem())
+        else
+            QuorumStudio mainStudio = GetMainApplication()
+            ListItem selected = mainStudio:GetOutputPane():GetErrorTab():GetSelectedRow()
+            if selected is ErrorItem
+                errorRow = cast(ErrorItem, selected)
+            end
         end
-       
-        Cell cell = cast(Cell, event:GetItem())
-        Spreadsheet sheet = cell:GetSpreadsheet()
-        SpreadsheetSelection selection = sheet:GetSelection()
-        integer row = selection:GetRow()
-        integer column = selection:GetColumn()
-        //checks if selection is a header cell
-        if row = 0
+        if errorRow = undefined
             return now
         end
 
         check
-            Cell lineCell = sheet:GetCell(row, 1)
-            StateCell fileCell = cast(StateCell, sheet:GetCell(row, 2))
-            
-            integer line = cast(integer, lineCell:GetText())
-            text fileText = fileCell:GetText()
-    
+            integer line = errorRow:GetError():GetLineNumber()
+            File file = errorRow:GetError():GetFile()
+            if file = undefined
+                return now
+            end
+
             QuorumStudio studio = GetMainApplication()
             CodeEditorTabPane editors = studio:GetTabPane()
-            File file = cast(File, fileCell:GetObject())
             Tab tab1 = editors:OpenNewTab(file)
             if not (tab1 is EditorTab)
                 return now
             end
             EditorTab tab = cast(EditorTab, tab1)
+            if line < 1
+                return now
+            end
+
+            // A tab holds a text box in text mode, and the block editor in
+            // block mode; each moves to the error's line its own way.
             TextBox box = tab:GetTextBox()
-    
-            if line > 0
+            CodeEditor blocks = tab:GetBlockEditor()
+            if box not= undefined
                 box:SetCaretPositionToLine(line - 1)
+            elseif blocks not= undefined
+                blocks:SelectBlockAtTextLine(line - 1)
+                blocks:GoToLine(line - 1)
             end
         detect e
             e:OutputStackTrace()

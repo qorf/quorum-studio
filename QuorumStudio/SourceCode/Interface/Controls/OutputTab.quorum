@@ -9,6 +9,7 @@ use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Development.Environment.Studio.Behaviors.InputBehavior
 use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.ColorGroup
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Game.InputSet
 use Libraries.Game.InputTable
@@ -272,8 +273,15 @@ class OutputTab is Tab
         Label prompt
         prompt:SetPositionOnBaseLine(false)
         prompt:SetText(">")
-        prompt:SetFontColor(options:GetSelectionColor())
-        prompt:SetColor(options:GetSelectionColor())
+        // The accent blue (the buttons' accent line), lighter than the
+        // selection color on the dark field. A theme without it keeps the
+        // selection color.
+        ColorGroup promptColor = options:GetTopAccentColor(options:BUTTON)
+        if promptColor = undefined
+            promptColor = options:GetSelectionColor()
+        end
+        prompt:SetFontColor(promptColor)
+        prompt:SetColor(promptColor)
         prompt:SetLeftMargin(12)
         prompt:SetRightMargin(6)
         prompt:SetAccessibilityCode(prompt:parent:Item:NOT_ACCESSIBLE)

@@ -1,0 +1,61 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.Behaviors.CallStackCopyBehavior
+
+/*
+The Call Stack tab's menu (C1): Go to line, Copy frame and Copy stack
+trace. Each acts on the tab's selected row.
+*/
+class CallStackPopupMenu is PopupMenu
+    MenuItem goToLine
+    MenuItem copyFrame
+    MenuItem copyTrace
+    CallStackCopyBehavior copyBehavior
+    CallStackCopyBehavior copyAllBehavior
+    boolean built = false
+
+    action SetCallStackTab(CallStackTab tab)
+        copyBehavior:SetCallStackTab(tab)
+        copyAllBehavior:SetCallStackTab(tab)
+        copyAllBehavior:SetCopyingAll(true)
+    end
+
+    // The items are made when the menu first opens, when Studio's
+    // behaviors exist.
+    private action Build
+        if built
+            return now
+        end
+        GameStateManager gameState
+        QuorumStudio studio = cast(QuorumStudio, gameState:GetGame())
+
+        goToLine:SetName("Go to line")
+        goToLine:SetShortcut("Return")
+        goToLine:SetBehavior(studio:GetBehaviors():GetJumpToCallStackBehavior())
+
+        copyFrame:SetName("Copy frame")
+        copyFrame:SetBehavior(copyBehavior)
+
+        copyTrace:SetName("Copy stack trace")
+        copyTrace:SetBehavior(copyAllBehavior)
+
+        Add(goToLine)
+        Add(copyFrame)
+        Add(copyTrace)
+        built = true
+    end
+
+    action OpenAtCursor
+        Build()
+        parent:PopupMenu:OpenAtCursor()
+    end
+
+    action OpenAt(number x, number y)
+        Build()
+        parent:PopupMenu:OpenAt(x, y)
+    end
+end

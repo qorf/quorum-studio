@@ -28,6 +28,7 @@
  */
 package org.debugger.jdi.views.quorum;
 
+import org.debugger.jdi.views.QuorumView;
 import com.sun.jdi.ObjectReference;
 import com.sun.jdi.Value;
 
@@ -53,7 +54,7 @@ public class TextView extends PrimitiveView{
             String name = ref.referenceType().name();
             //technically, this is already guaranteed
             if(name.compareTo(key)==0) {
-                return value.toString();
+                return QuorumView.toDisplay(value);
             }
             return "#" + ref.hashCode();
         } else if(value == null) {

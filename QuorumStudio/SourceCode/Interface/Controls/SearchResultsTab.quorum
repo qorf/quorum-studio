@@ -1,75 +1,135 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Tab
-
-use Libraries.Interface.Controls.Tab
-use Libraries.Development.Environment.Studio.Build.BuildManager
-use Libraries.Interface.Layouts.Layout
-use Libraries.Interface.Controls.Tree
-use Libraries.Development.Environment.Resources
-use Libraries.Development.Environment.Studio.Behaviors.Behaviors
-use Libraries.Language.Debug.Debugger
-use Libraries.Language.Debug.VariablesModel
-use Libraries.Containers.Array
-use Libraries.Language.Debug.Variable
-use Libraries.Interface.Controls.TreeItem
-use Libraries.Interface.Events.TreeChangeListener
-use Libraries.Interface.Events.TreeChangeEvent
-use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.Blocks.CodeEditor
 use Libraries.Interface.Layouts.LayoutProperties
-use Libraries.Interface.Controls.Icon
-use Libraries.Interface.Controls.Spreadsheet
-use Libraries.Interface.Controls.Column
-use Libraries.Interface.Controls.Cell
-use Libraries.Language.Compile.CompilerError
-use Libraries.Development.Environment.Studio.Behaviors.FindInProjectBehavior
-use Libraries.Interface.Controls.ScrollPane
-use Libraries.System.File
-use Libraries.Containers.HashTable
-use Libraries.Containers.Support.Pair
-use Libraries.Containers.MultipleLineText
-use Libraries.Containers.Iterator
-use Libraries.Containers.Support.HashNode
-use Libraries.Interface.Events.SelectionListener
-use Libraries.Interface.Events.SelectionEvent
-use Libraries.Interface.Selections.TreeSelection
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Interface.Behaviors.Controls.ListActivationBehavior
+use Libraries.Interface.Behaviors.Controls.OpenPopupMenuBehavior
+use Libraries.Game.InputTable
+use Libraries.Game.InputSet
 use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Containers.Array
+use Libraries.Containers.HashTable
+use Libraries.Containers.MultipleLineText
+use Libraries.Containers.Support.Pair
+use Libraries.System.File
+use Libraries.Development.Environment.Resources
+use Libraries.Development.Environment.Configuration.OptionsConstants
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Development.Environment.Studio.Behaviors.FoldClickBehavior
 use Libraries.Development.Environment.Studio.Behaviors.OpenFindInProjectFileBehavior
-use Libraries.Interface.Controls.SearchTreeItem
-use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Development.Environment.Studio.Behaviors.SearchFoldBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SearchCopyBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SearchMenuBehavior
 
+/*
+The Search Results tab (S1): the results of Find in Project as a List.
+- A muted summary row comes first.
+- Each file is a row that folds, with its matching lines as indented rows
+  under it.
+- Several matches on one line make one row.
+The list only holds what's shown, and only draws what's visible, so many
+matches stay fast, and the arrow keys scroll.
+*/
 class SearchResultsTab is Tab
     Behaviors behaviors = undefined
-    Tree searchResultsTree
-    TreeItem searchResultsRoot
+    // Kept for GetPane; the list is the tab's content now.
     BreakpointScrollPane pane
-    HashTable<File, Array<Pair<integer>>> fileIndices
-    HashTable<TreeItem, File> fileNames
-    HashTable<TreeItem, Pair<integer>> treeItemIndices
     text query = ""
-    Button previousResult
-    Button nextResult
 
+    List resultsList
+    // Fira Code, as the editor uses, for the lines and line numbers.
+    Font codeFont
+    boolean codeFontLoaded = false
+    // The rows' input group, made when the first row is added.
+    boolean rowInputReady = false
+    FoldClickBehavior foldClickBehavior
+
+    SearchResultsPopupMenu menu
     OpenFindInProjectFileBehavior openFileBehavior
+    SearchFoldBehavior toggleBehavior
+    SearchFoldBehavior collapseBehavior
+    SearchFoldBehavior expandBehavior
+    SearchCopyBehavior copyBehavior
+    SearchMenuBehavior menuBehavior
+    OpenPopupMenuBehavior openMenuBehavior
 
-    on create 
+    constant text ROW_INPUT_GROUP = "SearchResultsListItem"
+    // A long line shows this many characters before its first match.
+    constant integer CONTEXT_BEFORE = 50
+    // And at most this many characters in all.
+    constant integer MOST_SHOWN = 240
+
+    on create
         openFileBehavior:SetSearchResultsTab(me)
     end
 
-    action Setup     
-        LayoutProperties properties = searchResultsTree:GetDefaultLayoutProperties()
-        properties:SetHorizontalLayoutMode(properties:STANDARD)
-        properties:SetPercentageWidth(1.0)
-        searchResultsTree:SetBottomMargin(50)
-        pane:Add(searchResultsTree)
-        pane:Resize()
-
+    action Setup
         SetName("Search Results")
-        SetRelatedItem(GetPane())
         DisplayCloseButton(true)
-        SetFocusTarget(searchResultsTree)
+
+        resultsList:SetName("Search Results")
+        LayoutProperties listProperties = resultsList:GetDefaultLayoutProperties()
+        listProperties:SetPercentageX(0)
+        listProperties:SetPercentageY(0)
+        listProperties:SetPercentageWidth(1)
+        listProperties:SetPercentageHeight(1)
+
+        toggleBehavior:SetSearchResultsTab(me)
+        toggleBehavior:SetMode(toggleBehavior:TOGGLE)
+        collapseBehavior:SetSearchResultsTab(me)
+        collapseBehavior:SetMode(collapseBehavior:COLLAPSE)
+        expandBehavior:SetSearchResultsTab(me)
+        expandBehavior:SetMode(expandBehavior:EXPAND)
+        copyBehavior:SetSearchResultsTab(me)
+        copyBehavior:SetMode(copyBehavior:SELECTED_ROW)
+        menuBehavior:SetSearchResultsTab(me)
+        menu:SetSearchResultsTab(me, openFileBehavior)
+
+        SetRelatedItem(resultsList)
+        SetFocusTarget(resultsList)
+
+        // The list's keys: copy, the menu, Return to go to the match, and
+        // the arrows to fold a file.
+        KeyboardEvent keys
+        InputTable listTable = resultsList:CopyAndActivateInputTable("SearchResultsList")
+
+        InputSet metaC
+        metaC:SetKeyboardInput(keys:C)
+        metaC:AddModifier(metaC:META)
+        listTable:Add(metaC, copyBehavior)
+
+        InputSet controlC
+        controlC:SetKeyboardInput(keys:C)
+        controlC:AddModifier(controlC:CONTROL)
+        listTable:Add(controlC, copyBehavior)
+
+        InputSet shiftF10
+        shiftF10:SetKeyboardInput(keys:F10)
+        shiftF10:AddModifier(shiftF10:SHIFT)
+        listTable:Add(shiftF10, menuBehavior)
+
+        InputSet enterSet
+        enterSet:SetKeyboardInput(keys:ENTER)
+        ListActivationBehavior activate
+        listTable:Add(enterSet, activate)
+
+        InputSet leftSet
+        leftSet:SetKeyboardInput(keys:LEFT)
+        listTable:Add(leftSet, collapseBehavior)
+
+        InputSet rightSet
+        rightSet:SetKeyboardInput(keys:RIGHT)
+        listTable:Add(rightSet, expandBehavior)
     end
 
     action SetBehaviors(Behaviors behaviors)
@@ -80,8 +140,7 @@ class SearchResultsTab is Tab
         return behaviors
     end
 
-    action SetResources(Resources resources) 
-        
+    action SetResources(Resources resources)
     end
 
     action GetPane returns BreakpointScrollPane
@@ -96,177 +155,421 @@ class SearchResultsTab is Tab
         me:query = query
     end
 
-    private action SetupSearchTree
-        Iterator<File> it = fileIndices:GetKeyIterator()
-        repeat while it:HasNext()
-            File file = it:Next()  
-            SearchTreeItem fileItem
-            fileNames:Add(fileItem, file)
-            fileItem:SetBehavior(openFileBehavior)
-            //fileItem:SetIcon(fileIcon)
-            fileItem:SetName(file:GetFileName())
-            Array<Pair<integer>> temp = fileIndices:GetValue(file)
-            text textValue = file:Read()
-            text carriageReturn = textValue:GetCarriageReturn()
-            text lineFeed = textValue:GetLineFeed()
-            MultipleLineText value
-            text lineSeparator = value:GetLineSeparator()
-
-            /* Reusing the code from SanitizeLines in the TextBox class to swap the line separator to the current OS's
-            line separator style. The textValue is then rewritten to the file so that the line numbers and indices will 
-            match when highlighting the instances in the CodeTextBox */
-            //Windows style separators
-            if lineSeparator = (carriageReturn + lineFeed)
-                integer readIndex = 0
-                integer index = textValue:IndexOf(lineFeed, readIndex)
-                repeat while index >= 0
-                    if index > 0 and textValue:GetCharacter(index - 1) = carriageReturn
-                        readIndex = index + 1
-                    else
-                        if index = 0
-                            textValue = carriageReturn + textValue
-                        else
-                            text preText = textValue:GetSubtext(0, index) + carriageReturn
-                            text postText = textValue:GetSubtext(index)
-                            textValue = preText + postText
-                        end
-                    end
-                    readIndex = index + 2
-
-                    if readIndex >= textValue:GetSize()
-                        index = -1
-                    else
-                        index = textValue:IndexOf(lineFeed, readIndex)
-                    end
-                end
-
-
-
-            //UNIX style separators
-            elseif lineSeparator = lineFeed
-                textValue = textValue:Replace(carriageReturn + lineFeed, lineFeed)
-            end
-
-            value:Initialize(textValue)
-
-
-            integer j = 0
-            repeat while j < temp:GetSize()
-                SearchTreeItem indexItem
-                //indexItem:SetIcon(indexIcon)
-                indexItem:SetBehavior(openFileBehavior)
-                treeItemIndices:Add(indexItem, temp:Get(j))
-                integer index = temp:Get(j):GetFirstValue()
-                integer size = temp:Get(j):GetSecondValue() - index
-                integer lineIndex = value:LineIndexFromCharacterIndex(index)
-                MultipleLineText line = value:GetLine(lineIndex)
-                text lineText = line:GetText()
-                integer indexInLine = index - value:CharacterIndexFromLineIndex(lineIndex)
-//NEXT STEP: Add color and Bold to the tree item text when textStyles are available for TreeItems
-                indexItem:SetName((lineIndex + 1) + ": " + lineText:Trim() + "     [column " + indexInLine + "]")
-                fileItem:Add(cast(TreeItem, indexItem))
-                j = j + 1
-            end
-            AddFileTreeItem(fileItem)
-        end
-    end
-
-    action InitializeSearchResultsTree(TreeItem item)
-        searchResultsRoot = item
-        searchResultsTree:Add(searchResultsRoot)
-        searchResultsTree:Resize()
-    end
-
-    action AddFileTreeItem(TreeItem item)
-        searchResultsRoot:Add(item)
-        searchResultsTree:Resize()
-    end
-
-    action SetSearchResults(HashTable<File, Array<Pair<integer>>> fileIndices)
-        me:fileIndices = fileIndices
-        SetupSearchTree()   
-        searchResultsTree:Resize()
-    end
-
+    // Removes every row, from the end, which is quick for a List.
     action ClearSearchResults
-        searchResultsTree:Empty()
-        fileNames:Empty()
-        treeItemIndices:Empty()
+        resultsList:Deselect()
+        repeat while resultsList:GetSize() > 0
+            resultsList:Remove(resultsList:GetSize() - 1)
+        end
+        resultsList:Resize()
+        resultsList:SetScrollPercentageY(0)
     end
 
-    action OpenTreeItemFile(TreeItem item)
+    /*
+    This action shows a search's results:
+    - files: the searched files, in the order the search went through them;
+    - fileIndices: each matching file's matches;
+    - totalFinds and totalFiles: the counts for the summary;
+    - limitReached: whether the search stopped at its limit.
+    */
+    action SetSearchResults(Array<File> files, HashTable<File, Array<Pair<integer>>> fileIndices, integer totalFinds, integer totalFiles, boolean limitReached)
+        LoadCodeFont()
+        ColorGroup mutedColor = GetMutedColor()
+        ColorGroup outlineColor = GetOutlineColor()
+
+        SearchSummaryItem summary
+        summary:Setup(SummaryText(totalFinds, totalFiles, limitReached), mutedColor)
+        Prepare(summary)
+        resultsList:Add(summary)
+
+        integer index = 0
+        repeat while index < files:GetSize()
+            File file = files:Get(index)
+            Array<Pair<integer>> found = fileIndices:GetValue(file)
+            if found not= undefined and not found:IsEmpty()
+                AddFile(file, found, mutedColor, outlineColor)
+            end
+            index = index + 1
+        end
+
+        // One layout for all the rows, from the top. List:Add doesn't
+        // lay out, so building stays linear in the number of rows.
+        resultsList:Resize()
+        resultsList:SetScrollPercentageY(0)
+    end
+
+    // A file's row, then a row for each line with matches.
+    private action AddFile(File file, Array<Pair<integer>> found, ColorGroup mutedColor, ColorGroup outlineColor)
+        MultipleLineText value
+        value:Initialize(ReadWithSystemLineSeparators(file))
+
+        SearchFileItem fileItem
+        fileItem:Setup(file, mutedColor)
+        Prepare(fileItem)
+        fileItem:SetActivationBehavior(toggleBehavior)
+        resultsList:Add(fileItem)
+
+        // The line numbers are padded to the widest one in this file. The
+        // matches are in order, so that's the last match's line.
+        integer lastLine = value:LineIndexFromCharacterIndex(found:Get(found:GetSize() - 1):GetFirstValue()) + 1
+        text widest = "" + lastLine
+        integer digits = widest:GetSize()
+
+        // Matches on the same line make one row.
+        integer index = 0
+        repeat while index < found:GetSize()
+            integer lineIndex = value:LineIndexFromCharacterIndex(found:Get(index):GetFirstValue())
+            Array<Pair<integer>> onLine
+            onLine:Add(found:Get(index))
+            index = index + 1
+            repeat while index < found:GetSize() and value:LineIndexFromCharacterIndex(found:Get(index):GetFirstValue()) = lineIndex
+                onLine:Add(found:Get(index))
+                index = index + 1
+            end
+            AddLine(fileItem, value, lineIndex, onLine, digits, mutedColor, outlineColor)
+        end
+        fileItem:Refresh()
+    end
+
+    // One row for one line, with every match on it.
+    private action AddLine(SearchFileItem fileItem, MultipleLineText value, integer lineIndex, Array<Pair<integer>> onLine, integer digits, ColorGroup mutedColor, ColorGroup outlineColor)
+        text line = value:GetLine(lineIndex):GetText()
+        integer lineStart = value:CharacterIndexFromLineIndex(lineIndex)
+        text tabCharacter = line:GetTab()
+
+        // Leave out the indent, and anything blank at the end, line
+        // separators included.
+        integer leading = 0
+        repeat while leading < line:GetSize() and IsBlank(line:GetCharacter(leading))
+            leading = leading + 1
+        end
+        integer lineEnd = line:GetSize()
+        repeat while lineEnd > leading and IsBlank(line:GetCharacter(lineEnd - 1))
+            lineEnd = lineEnd - 1
+        end
+        text trimmed = line:GetSubtext(leading, lineEnd)
+        text shown = trimmed:Replace(tabCharacter, "    ")
+
+        // Each match's place in the shown text.
+        Array<Pair<integer>> ranges
+        integer index = 0
+        repeat while index < onLine:GetSize()
+            integer startColumn = onLine:Get(index):GetFirstValue() - lineStart
+            integer endColumn = onLine:Get(index):GetSecondValue() - lineStart
+            if startColumn < leading
+                startColumn = leading
+            end
+            if endColumn > lineEnd
+                endColumn = lineEnd
+            end
+            if endColumn > startColumn
+                Pair<integer> range
+                range:Set(ShownIndex(line, leading, startColumn), ShownIndex(line, leading, endColumn))
+                ranges:Add(range)
+            end
+            index = index + 1
+        end
+
+        // A long line shows the text around its first match.
+        if not ranges:IsEmpty() and ranges:Get(0):GetFirstValue() > CONTEXT_BEFORE + 10
+            integer cut = ranges:Get(0):GetFirstValue() - CONTEXT_BEFORE
+            shown = "..." + shown:GetSubtext(cut)
+            ranges = ShiftRanges(ranges, 3 - cut, shown:GetSize())
+        end
+        if shown:GetSize() > MOST_SHOWN
+            shown = shown:GetSubtext(0, MOST_SHOWN) + "..."
+            ranges = ShiftRanges(ranges, 0, MOST_SHOWN)
+        end
+
+        integer lineNumber = lineIndex + 1
+        SearchMatchItem row
+        row:Setup(fileItem, lineNumber, PadLeft("" + lineNumber, digits), shown, ranges, onLine, trimmed, codeFont, mutedColor, outlineColor)
+        Prepare(row)
+        row:SetActivationBehavior(openFileBehavior)
+        resultsList:Add(row)
+        fileItem:AddRow(row)
+    end
+
+    // Where a column of the line lands in the shown text: counted from the
+    // first shown character, with each tab taking four places.
+    private action ShownIndex(text line, integer leading, integer column) returns integer
+        text tabCharacter = line:GetTab()
+        integer result = 0
+        integer position = leading
+        repeat while position < column and position < line:GetSize()
+            if line:GetCharacter(position) = tabCharacter
+                result = result + 4
+            else
+                result = result + 1
+            end
+            position = position + 1
+        end
+        return result
+    end
+
+    // Moves each range by shift, and keeps only what's before limit.
+    private action ShiftRanges(Array<Pair<integer>> ranges, integer shift, integer limit) returns Array<Pair<integer>>
+        Array<Pair<integer>> result
+        integer index = 0
+        repeat while index < ranges:GetSize()
+            integer startIndex = ranges:Get(index):GetFirstValue() + shift
+            integer endIndex = ranges:Get(index):GetSecondValue() + shift
+            if startIndex < 0
+                startIndex = 0
+            end
+            if endIndex > limit
+                endIndex = limit
+            end
+            if endIndex > startIndex
+                Pair<integer> moved
+                moved:Set(startIndex, endIndex)
+                result:Add(moved)
+            end
+            index = index + 1
+        end
+        return result
+    end
+
+    private action IsBlank(text character) returns boolean
+        return character = " " or character = character:GetTab() or character = character:GetCarriageReturn() or character = character:GetLineFeed()
+    end
+
+    private action PadLeft(text value, integer width) returns text
+        text result = value
+        repeat while result:GetSize() < width
+            result = " " + result
+        end
+        return result
+    end
+
+    // "12 matches of Print in 3 files", and a note when the search stopped
+    // at its limit.
+    private action SummaryText(integer totalFinds, integer totalFiles, boolean limitReached) returns text
+        if totalFinds = 0
+            return "No matches of " + query
+        end
+        text matchWord = " matches"
+        if totalFinds = 1
+            matchWord = " match"
+        end
+        text fileWord = " files"
+        if totalFiles = 1
+            fileWord = " file"
+        end
+        text result = "" + totalFinds + matchWord + " of " + query + " in " + totalFiles + fileWord
+        if limitReached
+            result = result + ". The search stopped at 5000 matches, so there may be more."
+        end
+        return result
+    end
+
+    /*
+    This action folds or unfolds a file's lines. Folding takes its rows out
+    of the list, so the list only holds what's shown.
+    */
+    action ToggleFile(SearchFileItem fileItem)
+        SetFileExpanded(fileItem, not fileItem:IsExpanded())
+    end
+
+    action SetFileExpanded(SearchFileItem fileItem, boolean expanded)
+        if fileItem:IsExpanded() = expanded
+            return now
+        end
+
+        integer fileIndex = resultsList:GetIndexOf(fileItem)
+        integer count = fileItem:GetRows():GetSize()
+        if expanded
+            integer index = 0
+            repeat while index < count
+                // Shown first: a hidden row isn't added for screen readers.
+                fileItem:GetRows():Get(index):Show()
+                resultsList:Add(fileIndex + 1 + index, fileItem:GetRows():Get(index))
+                index = index + 1
+            end
+        else
+            repeat count times
+                resultsList:Remove(fileIndex + 1)
+            end
+        end
+        fileItem:SetExpanded(expanded)
+        // List:Add and List:Remove don't redraw; recompute the scroll ratios
+        // for the new length, then rebuild the visible rows.
+        resultsList:Resize()
+        resultsList:SetScrollPercentageY(resultsList:GetScrollPercentageY())
+        resultsList:Select(fileItem)
+    end
+
+    // The row that's selected, or undefined.
+    action GetSelectedRow returns ListItem
+        return resultsList:GetSelection():GetListItem()
+    end
+
+    action GetList returns List
+        return resultsList
+    end
+
+    // The summary, then every matching line, file by file.
+    action GetAllCopyText returns text
+        text newLine = ""
+        newLine = newLine:GetLineFeed()
+        text result = ""
+        integer index = 0
+        repeat while index < resultsList:GetSize()
+            ListItem row = resultsList:GetListItem(index)
+            text piece = ""
+            if row is SearchSummaryItem
+                SearchSummaryItem summary = cast(SearchSummaryItem, row)
+                piece = summary:GetCopyText()
+            elseif row is SearchFileItem
+                SearchFileItem fileItem = cast(SearchFileItem, row)
+                piece = fileItem:GetCopyText()
+            end
+            if piece not= ""
+                if result not= ""
+                    result = result + newLine
+                end
+                result = result + piece
+            end
+            index = index + 1
+        end
+        return result
+    end
+
+    /*
+    This action opens a line's file and goes to its first match. The text
+    editor selects the match. The block editor selects the block on its
+    line. This is the old OpenTreeItemFile, for one row.
+    */
+    action OpenMatch(SearchMatchItem row)
+        if row:GetFileItem() = undefined
+            return now
+        end
+        File file = row:GetFileItem():GetFile()
+        Pair<integer> first = row:GetFirstMatch()
+        if file = undefined or first = undefined
+            return now
+        end
+        integer startIndex = first:GetFirstValue()
+        integer endIndex = first:GetSecondValue()
+
         GameStateManager gameManager
         QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
         CodeEditorTabPane tabPane = studio:GetTabPane()
-        
-        boolean setFirstSelection = true    
-        File file = undefined
-        TreeItem parentTreeItem = item:GetParentTreeItem()
-        if parentTreeItem not= undefined
-            if parentTreeItem:Equals(searchResultsRoot)
-                //this is the file name tree item
-                setFirstSelection = true
-                file = fileNames:GetValue(item)
-            else
-               file = fileNames:GetValue(parentTreeItem)
-               setFirstSelection = false
-            end
-            if file not= undefined
-                Array<Pair<integer>> indices = fileIndices:GetValue(file)
-                Tab tab1 = tabPane:OpenNewTab(file)
-                if not (tab1 is EditorTab)
-                    return now
-                end
-                EditorTab tab = cast(EditorTab, tab1)
-                CodeEditor editor = tab:GetBlockEditor()
-                CodeTextBox textBox = tab:GetTextBox()
-                tabPane:Select(tab)
-                //if we're in the text editor
-                if textBox not= undefined
-                    MultipleLineText value = textBox:GetMultipleLineText()
-    
-                    /* If the File Name TreeItem was activated, then we will select 
-                    the first instance of the find word in the file, else a line number
-                    TreeItem was activated and we will select the instance associated
-                    with that line number in the file. */
-                    integer startIndex = 0
-                    integer endIndex = 0
-                    if(setFirstSelection)
-                        startIndex = indices:Get(0):GetFirstValue()
-                        endIndex = indices:Get(0):GetSecondValue()
-                    else
-                        Pair<integer> index = treeItemIndices:GetValue(item)
-                        startIndex = index:GetFirstValue()
-                        endIndex = index:GetSecondValue()
-                    end
-                    MultipleLineText lineText = value:GetLine(startIndex)
-                    textBox:SetCaretPosition(endIndex)
-                    textBox:GoToLine(textBox:GetLineIndexOfCharacter(endIndex))
-                    textBox:Select(startIndex, endIndex, true)
-                end
-
-                //if we're in the block editor
-                if editor not= undefined
-                    MultipleLineText value = editor:GetCode()
-    
-                    /* If the File Name TreeItem was activated, then we will select 
-                    the first instance of the find word in the file, else a line number
-                    TreeItem was activated and we will select the instance associated
-                    with that line number in the file. */
-                    integer startIndex = 0
-                    integer endIndex = 0
-                    if(setFirstSelection)
-                        startIndex = indices:Get(0):GetFirstValue()
-                        endIndex = indices:Get(0):GetSecondValue()
-                    else
-                        Pair<integer> index = treeItemIndices:GetValue(item)
-                        startIndex = index:GetFirstValue()
-                        endIndex = index:GetSecondValue()
-                    end
-                    integer line = editor:GetLineIndex(startIndex)
-                    editor:SelectBlockAtLine(line)
-                end
-            end
+        Tab opened = tabPane:OpenNewTab(file)
+        if not (opened is EditorTab)
+            return now
         end
+        EditorTab editorTab = cast(EditorTab, opened)
+        tabPane:Select(editorTab)
+
+        CodeTextBox textBox = editorTab:GetTextBox()
+        if textBox not= undefined
+            textBox:SetCaretPosition(endIndex)
+            textBox:GoToLine(textBox:GetLineIndexOfCharacter(endIndex))
+            textBox:Select(startIndex, endIndex, true)
+        end
+
+        CodeEditor editor = editorTab:GetBlockEditor()
+        if editor not= undefined
+            editor:SelectBlockAtLine(editor:GetLineIndex(startIndex))
+        end
+    end
+
+    // Each row gets the rows' input group (right click opens the menu)
+    // and the shared menu.
+    private action Prepare(ListItem row)
+        if not rowInputReady
+            InputTable rowTable = row:CopyAndActivateInputTable(ROW_INPUT_GROUP)
+            MouseEvent mouse
+            InputSet rightClick
+            rightClick:SetMouseInput(mouse:RIGHT)
+            rowTable:Add(rightClick, openMenuBehavior)
+            InputSet controlClick
+            controlClick:SetMouseInput(mouse:LEFT)
+            controlClick:AddModifier(controlClick:CONTROL)
+            rowTable:Add(controlClick, openMenuBehavior)
+            // One left click on a chevron folds the row (FoldClickBehavior);
+            // ClickDownBehavior, already in the table, still selects it.
+            InputSet leftClick
+            leftClick:SetMouseInput(mouse:LEFT)
+            rowTable:Add(leftClick, foldClickBehavior)
+            rowInputReady = true
+        else
+            row:SetInputGroup(ROW_INPUT_GROUP)
+        end
+        row:SetPopupMenu(menu)
+    end
+
+    /*
+    This action reads a file with its line separators swapped to the
+    system's, so character indexes match the editor's text. It's the code
+    the old SetupSearchTree used, and the same as FindQuery's.
+    */
+    private action ReadWithSystemLineSeparators(File file) returns text
+        text textValue = file:Read()
+        text carriageReturn = textValue:GetCarriageReturn()
+        text lineFeed = textValue:GetLineFeed()
+        MultipleLineText value
+        text lineSeparator = value:GetLineSeparator()
+
+        // Windows style separators
+        if lineSeparator = (carriageReturn + lineFeed)
+            integer readIndex = 0
+            integer index = textValue:IndexOf(lineFeed, readIndex)
+            repeat while index >= 0
+                if index > 0 and textValue:GetCharacter(index - 1) = carriageReturn
+                    readIndex = index + 1
+                else
+                    if index = 0
+                        textValue = carriageReturn + textValue
+                    else
+                        text preText = textValue:GetSubtext(0, index) + carriageReturn
+                        text postText = textValue:GetSubtext(index)
+                        textValue = preText + postText
+                    end
+                end
+                readIndex = index + 2
+
+                if readIndex >= textValue:GetSize()
+                    index = -1
+                else
+                    index = textValue:IndexOf(lineFeed, readIndex)
+                end
+            end
+        // UNIX style separators
+        elseif lineSeparator = lineFeed
+            textValue = textValue:Replace(carriageReturn + lineFeed, lineFeed)
+        end
+        return textValue
+    end
+
+    private action LoadCodeFont
+        if codeFontLoaded
+            return now
+        end
+        File fontFile
+        fontFile:SetPath("Resources/Fonts/FiraCode-Retina.ttf")
+        codeFont:LoadFont(fontFile)
+        codeFontLoaded = true
+    end
+
+    private action GetMutedColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetTabFontColor()
+    end
+
+    // The color of the thin outline around each match (H3), one per theme.
+    private action GetOutlineColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        OptionsConstants const
+        return options:GetColorProperty(const:SEARCH_MATCH_OUTLINE_COLOR)
     end
 end

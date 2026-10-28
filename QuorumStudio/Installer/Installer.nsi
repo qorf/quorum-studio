@@ -9,10 +9,16 @@
 ;--------------------------------
 ;General
 
-    ;Name and file
-    !define PRODUCT_VERSION "8.0.3.0"
+    ;Name and file. InstallerBuilder gives the version from outside:
+    ;makensis -DVERSION=8.5.0 -DPRODUCT_VERSION=8.5.0.0 Installer.nsi
+    ;PRODUCT_VERSION must have four numbers.
+    !ifndef VERSION
+        !define VERSION "8.0.3"
+    !endif
+    !ifndef PRODUCT_VERSION
+        !define PRODUCT_VERSION "${VERSION}.0"
+    !endif
     !define REGISTRY_KEY "Software\QuorumStudio"
-    !define VERSION "8.0.3"
 
     VIProductVersion "${PRODUCT_VERSION}"
     VIFileVersion "${PRODUCT_VERSION}"

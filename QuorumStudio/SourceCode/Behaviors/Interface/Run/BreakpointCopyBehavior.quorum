@@ -1,0 +1,42 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.Interface.BreakpointsTab
+use Libraries.Development.Environment.Studio.Interface.BreakpointFileItem
+use Libraries.Development.Environment.Studio.Interface.BreakpointItem
+
+/*
+Copies the selected row of the Breakpoints tab: a breakpoint as
+"File:line", or a file's row as each of its breakpoints, one a line.
+*/
+class BreakpointCopyBehavior is Behavior
+    BreakpointsTab breakpointsTab = undefined
+
+    action SetBreakpointsTab(BreakpointsTab tab)
+        breakpointsTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if breakpointsTab = undefined
+            return now
+        end
+
+        ListItem row = breakpointsTab:GetSelectedRow()
+        text value = ""
+        if row is BreakpointItem
+            BreakpointItem pointRow = cast(BreakpointItem, row)
+            value = pointRow:GetCopyText()
+        elseif row is BreakpointFileItem
+            BreakpointFileItem fileItem = cast(BreakpointFileItem, row)
+            value = fileItem:GetCopyText()
+        end
+
+        if value not= ""
+            GameStateManager manager
+            manager:GetGame():SetClipboard(value)
+        end
+    end
+end

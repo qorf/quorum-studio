@@ -1,0 +1,141 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.CharacterIcon
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Containers.Array
+
+/*
+The row that stands for a run of library frames in the Call Stack tab
+(C1): "3 library frames hidden" and, in the accent color, "Show". While
+they're shown, it reads "3 library frames" and "Hide", and the frames
+sit under it. Activating it shows or hides them.
+*/
+class CallStackLibraryItem is ListItem, FoldClickRow
+    // The library frames this row stands for, top first.
+    Array<CallStackItem> rows
+    boolean shown = false
+    // See-through, so the text lines up with the frames' action names.
+    CharacterIcon spacer
+    Label toggleText
+
+    // The same glyph as CallStackItem's marker, so the space is the same.
+    constant integer SPACER_MARK = 61537
+    // How far past the words a click still counts, in points.
+    constant number FOLD_SLACK = 4
+
+    on create
+        parent:ListItem:icon:Hide()
+
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        spacer:SetAcceptsMouseInput(false)
+        spacer:SetAccessibilityCode(spacer:parent:Item:NOT_ACCESSIBLE)
+        spacer:SetHorizontalLayoutMode(spacer:parent:Control:MAINTAIN_ASPECT_RATIO)
+        spacer:SetVerticalLayoutMode(spacer:parent:Control:STANDARD)
+        spacer:SetPercentageWidth(1.0)
+        spacer:SetPercentageHeight(1.0)
+        spacer:SetLeftMargin(6)
+        spacer:SetTopMargin(7)
+        spacer:SetBottomMargin(7)
+        Add(0, spacer)
+
+        toggleText:SetAccessibilityCode(toggleText:parent:Item:NOT_ACCESSIBLE)
+        toggleText:SetAcceptsMouseInput(false)
+        toggleText:SetPositionOnBaseLine(false)
+        toggleText:SetLeftMargin(16)
+        Add(toggleText)
+    end
+
+    /*
+    This action sets the spacer's font and the color of "Show" and "Hide".
+    */
+    action Setup(Font iconFont, ColorGroup accentColor)
+        if iconFont not= undefined
+            spacer:LoadCharacter(SPACER_MARK, iconFont)
+        end
+        Color clear
+        clear:SetColor(0.0, 0.0, 0.0, 0.0)
+        spacer:SetColor(clear)
+        spacer:SetIconColor(clear)
+        if accentColor not= undefined
+            toggleText:SetColor(accentColor)
+        end
+        Refresh()
+    end
+
+    action AddRow(CallStackItem row)
+        rows:Add(row)
+        Refresh()
+    end
+
+    action GetRows returns Array<CallStackItem>
+        return rows
+    end
+
+    action IsShown returns boolean
+        return shown
+    end
+
+    action SetShown(boolean value)
+        shown = value
+        Refresh()
+    end
+
+    // Updates the text and the spoken name after a frame is added or the
+    // row is shown or hidden.
+    action Refresh
+        integer count = rows:GetSize()
+        text countText = "" + count + " library frames"
+        if count = 1
+            countText = "1 library frame"
+        end
+
+        if shown
+            SetText(countText)
+            toggleText:SetText("Hide")
+            SetName(countText + ", shown. Return hides them")
+        else
+            SetText(countText + " hidden")
+            toggleText:SetText("Show")
+            SetName(countText + ", hidden. Return shows them")
+        end
+    end
+
+    // The text Copy puts on the clipboard: each frame this row stands for,
+    // one per line.
+    action GetCopyText returns text
+        text result = ""
+        integer index = 0
+        repeat while index < rows:GetSize()
+            if index > 0
+                result = result + "
+"
+            end
+            result = result + rows:Get(index):GetCopyText()
+            index = index + 1
+        end
+        return result
+    end
+
+    action IsOnFoldControl(number x, number y) returns boolean
+        number slack = FOLD_SLACK * GetInterfaceScale()
+        return x >= toggleText:GetGlobalX() - slack and x <= toggleText:GetGlobalX() + toggleText:GetWidth() + slack
+    end
+
+    /*
+    The text a screen reader reads for this row: its whole name, with every
+    column, rather than the first label alone. The label still shows what
+    SetText gave it.
+    */
+    action GetText returns text
+        return GetName()
+    end
+end

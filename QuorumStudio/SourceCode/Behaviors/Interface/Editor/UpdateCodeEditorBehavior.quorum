@@ -29,6 +29,7 @@ use Libraries.System.DateTime
 use Libraries.Language.Compile.Hints.UseHint
 use Libraries.Development.Versioning.DiffResult
 use Libraries.Development.Environment.Studio.Interface.StatusLineGutter
+use Libraries.Development.Environment.Studio.Interface.StudioBlockEditor
 use Libraries.Containers.HashTable
 use Libraries.Development.Environment.Studio.Interface.BreakpointTextStyle
 use Libraries.Language.Compile.Parsing.QuorumLexer
@@ -325,6 +326,13 @@ foundBlock = editor:AddTextStyle("SemanticsName", style)
         HashTable<integer, GutterAnnotation> annotationHash = ConvertToAnnotation()
         annotationGutter:SetAnnotations(annotationHash)
 
+        // Studio's block editor draws git's changes in its own lane, as the
+        // text editor does. The annotations above are still read aloud.
+        if editor is StudioBlockEditor
+            StudioBlockEditor studioEditor = cast(StudioBlockEditor, editor)
+            studioEditor:GetStatusGutter():SetDiffResult(diffResult)
+        end
+
         File f = path
         if table not= undefined
             Class clazz = table:GetClassInFile(f:GetAbsolutePath())
@@ -514,6 +522,8 @@ annotation:SetName("Deleted Line")
         mainFileTokens:SetMaxSize(500)
         constant text DEBUGGER_STYLE = "Debugger"
         TextStyle debuggerStyle = box:GetTextStyle(DEBUGGER_STYLE)
+        // Breakpoint lines come from their highlights, before those are cleared.
+        box:SyncBreakpointLines()
         box:EmptyTextStyles()
 
         TokenIterator<Token> tokenIterator = lexer:GetIterator()
@@ -681,25 +691,17 @@ annotation:SetName("Deleted Line")
         caretStyle:SetHighlight(caretHighlight)
         box:AddTextStyle("Caret", caretStyle)
 
-        //add breakpoints
+        //add breakpoints. Rehash first merges any that edits moved onto one line.
         manager:RehashBreakpoints(path:GetAbsolutePath())
         Iterator<Breakpoint> breakpoints = manager:GetBreakpointIterator(path:GetAbsolutePath())
         repeat while breakpoints:HasNext()
             Breakpoint bp = breakpoints:Next()
-            integer line = bp:GetLine()
-            ColoredHighlight breakpointHighlight
-            breakpointHighlight:SetColor(breakpointColor)
-            breakpointHighlight:SetLineHighlight(true)
-            breakpointHighlight:SetRenderPriority(1)
-            BreakpointTextStyle breakpointStyle
-            integer index = box:GetIndexOfLine(line)
-            breakpointStyle:SetIndex(index)
-            breakpointStyle:SetHighlight(breakpointHighlight)
-            breakpointStyle:SetBreakpoint(bp)
-            breakpointStyle:SetBox(box)
-            breakpointStyle:SetBreakpoint(bp)
-            breakpointStyle:SetLine(line)
-            box:AddTextStyle("Breakpoint" + box:IncrementBreakpoint(), breakpointStyle)
+            if bp:GetLine() >= box:GetLineCount()
+                // Its line is gone: the file got shorter.
+                manager:RemoveBreakpoint(bp)
+            else
+                box:AddBreakpointStyle(bp)
+            end
         end
 
         //add the debugger line

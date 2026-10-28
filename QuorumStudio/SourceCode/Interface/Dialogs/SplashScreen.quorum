@@ -21,13 +21,16 @@ use Libraries.Compute.Random
 use Libraries.Interface.Accessibility
 use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Layouts.ManualLayout
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Interface.Options.InterfaceOptions
 
 class SplashScreen is Dialog, CompilerListener
     boolean initialized = false
     Icon logo
     Label studio
     Label loading
-    ProgressBar progress
+    Label version
+    SplashProgressBar progress
     Library library = undefined
     number currentPercent = 0
     GameStateManager manager
@@ -40,6 +43,14 @@ class SplashScreen is Dialog, CompilerListener
     Array<text> doneLabels
     boolean playMessage = false
     text notification = ""
+
+    // The card's width, the logo's size and the space around them, in
+    // points (S2). The card is sized by its contents, never the window.
+    constant number CARD_WIDTH = 320
+    constant number LOGO_SIZE = 84
+    constant number EDGE_SPACE = 24
+    // ProgressBar's own height, 20 points.
+    constant number BAR_ROW_HEIGHT = 20
 
     on create
         SetModal(true)
@@ -81,7 +92,6 @@ parsingLabels:Add("Spacebar heating reenabled")
         doneLabels:Add("Hiding in the corner. Eating all your breakfast.")
         doneLabels:Add("INTENSIFYING TYPOES")
         doneLabels:Add("REINTENSFYING TYPTOES")
-    progress:SetCornerRounding(0.1, 0.1, 0.1, 0.1)
 end
 
     action UpdatePercentageComplete(number percent)
@@ -114,18 +124,19 @@ end
 
     action Initialize
         if initialized
-            output "WARNING: Re-initializing the FindDialog."
+            return now
         end
-
         initialized = true
 
         QuorumStudio qs = cast(QuorumStudio, manager:GetGame())
         SetName("Loading")
-        SetPercentageWidth(0.40)
-        
-        logo:Load("Resources/Graphics/Interface/SplashLogo.png")
-
         LayoutProperties properties
+
+        // A fixed width in points, so the window's size only moves the card.
+        SetPercentageWidth(0)
+        SetPixelWidth(CARD_WIDTH)
+        SetCornerPixelRounding(12, 12, 12, 12)
+
         Control panel
         FlowLayout panelLayout
         panel:SetLayout(panelLayout)
@@ -133,65 +144,66 @@ end
         panel:SetPercentageWidth(1.0)
         panel:SetVerticalLayoutMode(properties:FIT_CONTENTS)
         panel:SetBorderStyle(properties:ALL)
-        panel:SetBorderThickness(1.2)
-        panel:SetCornerPixelRounding(10,10,10,10)
-        SetCornerRounding(0.1,0.1,0.1,0.1)
+        panel:SetBorderThickness(1)
+        panel:SetCornerPixelRounding(12, 12, 12, 12)
         panel:SetBorderColor(GetBorderColor())
 
-        // Make a region to contain the logo. It'll use a ManualLayout so we can center the logo within it.
-        Control logoRegion
-        logoRegion:SetPercentageWidth(0.25)
-        logoRegion:SetPercentageHeight(1.0)
-        logoRegion:SetVerticalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        // The logo, centered in a row of its own.
+        Control logoRow
         ManualLayout logoLayout
-        logoRegion:SetLayout(logoLayout)
-        panel:Add(logoRegion)
+        logoRow:SetLayout(logoLayout)
+        logoRow:SetPercentageWidth(1.0)
+        logoRow:SetVerticalLayoutMode(properties:STANDARD)
+        logoRow:SetPixelHeight(LOGO_SIZE)
+        logoRow:SetTopMargin(EDGE_SPACE)
 
-        logo:SetPercentageWidth(0.75)
-        logo:SetPercentageHeight(0.75)
-        logo:SetHorizontalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        logo:Load("Resources/Graphics/Interface/BunnySplash.png")
+        logo:SetHorizontalLayoutMode(properties:STANDARD)
+        logo:SetVerticalLayoutMode(properties:STANDARD)
+        // LOGO_SIZE tall, as wide as the picture's shape allows.
+        number logoWidth = LOGO_SIZE
+        if logo:GetRegionHeight() > 0
+            logoWidth = LOGO_SIZE * logo:GetRegionWidth() / cast(number, logo:GetRegionHeight())
+        end
+        logo:SetPixelWidth(logoWidth)
+        logo:SetPixelHeight(LOGO_SIZE)
         LayoutProperties logoProperties = logo:GetDefaultLayoutProperties()
-
-        // Position the logo from its center (set origin), and put the origin at the center of the region
         logoProperties:SetPercentageOriginX(0.5)
-        logoProperties:SetPercentageOriginY(0.5)
         logo:SetPercentageX(0.5)
-        logo:SetPercentageY(0.5)
-        logoRegion:Add(logo)
+        logoRow:Add(logo)
+        panel:Add(logoRow)
 
-        Control textRegion
-        ManualLayout regionLayout
-        textRegion:SetLayout(regionLayout)
-        textRegion:SetPercentageWidth(0.75)
-        textRegion:SetPercentageHeight(logoRegion:GetPercentageHeight() / 3.0)
-        textRegion:SetVerticalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
-        panel:Add(textRegion)
-
-        studio:SetText(qs:GetDisplayName())
+        // The name, then the version, muted.
+        studio:SetText("Quorum Studio")
         studio:SetFontSize(20)
-        LayoutProperties studioProperties = studio:GetDefaultLayoutProperties()
-        studioProperties:SetPercentageOriginX(0.5)
-        studioProperties:SetPercentageOriginY(1.0)
-        studio:SetPercentageX(0.5)
-        studio:SetPercentageY(0.95)
-        textRegion:Add(studio)
-        
-        loading:SetText("Loading ...")
-        LayoutProperties loadingProperties = loading:GetDefaultLayoutProperties()
-        loadingProperties:SetPercentageOriginX(0.5)
-        loadingProperties:SetPercentageOriginY(0.5)
-        loading:SetPercentageX(0.5)
-        loading:SetPercentageY(0.5)
-        textRegion:Add(loading)        
+        AddCenteredRow(panel, studio, 28, 14)
 
-        progress:SetPercentageWidth(0.9)
-        progress:SetPercentageX(0.05)
-        progress:SetPercentageHeight(0.15)
-        progress:SetPercentageY(0.1)
-        progress:SetBorderThickness(1)
-        progress:SetPixelHeight(0)
-        progress:SetCornerPixelRounding(5,5,5,5)
-        textRegion:Add(progress)
+        text versionText = qs:GetVersion()
+        if qs:GetDisplayName():Contains("Vulkan")
+            versionText = versionText + ", Vulkan beta"
+        end
+        version:SetText(versionText)
+        ColorGroup muted = GetMutedColor()
+        if muted not= undefined
+            version:SetColor(muted)
+        end
+        AddCenteredRow(panel, version, 20, 2)
+
+        // The bar, centered, most of the card's width. It keeps its own
+        // height (ProgressBar's BAR_HEIGHT), which leaves room for the fill
+        // inside its edge.
+        progress:SetHorizontalLayoutMode(properties:STANDARD)
+        progress:SetPercentageWidth(0.85)
+        progress:SetBorderThickness(0)
+        AddCenteredRow(panel, progress, BAR_ROW_HEIGHT, 18)
+
+        // The message, under the bar. Long ones wrap onto a second line,
+        // which the row has room for.
+        loading:SetText("Loading ...")
+        loading:SetPercentageWidth(0.85)
+        loading:SetAlignment(loading:CENTER_ALIGN)
+        Control messageRow = AddCenteredRow(panel, loading, 44, 6)
+        messageRow:SetBottomMargin(EDGE_SPACE - 10)
 
         ControlShaderView view
         view:Initialize()
@@ -199,7 +211,42 @@ end
 
         Add(panel)
         progress:SetFocusable(true)
-        
+    end
+
+    /*
+    This action puts a piece in a full-width row of its own, centered, and
+    adds the row to the panel. The panel's FlowLayout then only stacks rows.
+    */
+    private action AddCenteredRow(Control panel, Control piece, number rowHeight, number topMargin) returns Control
+        LayoutProperties properties
+        Control row
+        ManualLayout rowLayout
+        row:SetLayout(rowLayout)
+        row:SetPercentageWidth(1.0)
+        row:SetVerticalLayoutMode(properties:STANDARD)
+        row:SetPixelHeight(rowHeight)
+        row:SetTopMargin(topMargin)
+
+        LayoutProperties pieceProperties = piece:GetDefaultLayoutProperties()
+        pieceProperties:SetPercentageOriginX(0.5)
+        pieceProperties:SetPercentageOriginY(0.5)
+        piece:SetPercentageX(0.5)
+        piece:SetPercentageY(0.5)
+        if piece is Label
+            Label label = cast(Label, piece)
+            label:SetPositionOnBaseLine(false)
+        end
+        row:Add(piece)
+        panel:Add(row)
+        return row
+    end
+
+    private action GetMutedColor returns ColorGroup
+        InterfaceOptions options = manager:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetTabFontColor()
     end
 
     action OnShow

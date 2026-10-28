@@ -8,7 +8,6 @@ use Libraries.Language.Debug.Debugger
 use Libraries.Language.Debug.VariablesModel
 use Libraries.Containers.Array
 use Libraries.Language.Debug.Variable
-use Libraries.Language.Debug.VariableRow
 use Libraries.System.File
 use Libraries.Interface.Controls.TextBox
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
@@ -18,21 +17,26 @@ use Libraries.Interface.Controls.TextStyles.ColoredHighlight
 use Libraries.Interface.Controls.TextStyles.TextStyle
 use Libraries.Development.Environment.Studio.Build.BuildManager
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Development.Environment.Studio.Interface.GutterSupport
 use Libraries.Game.GameStateManager
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Development.Environment.Configuration.OptionsConstants
 use Libraries.Game.Graphics.ColorGroup
 use Libraries.Interface.Controls.Blocks.CodeEditor
 use Libraries.Interface.Controls.LineNumberGutter
-use Libraries.Language.Debug.VariableNameComparison
+use Libraries.Development.Environment.Studio.Interface.VariablesTab
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Language.Compile.CompilerResult
+use Libraries.Language.Compile.Symbol.SymbolTable
 
 class UpdateVariablesBehavior is Behavior
     boolean finished = false
     OutputEditorTabPane tabs = undefined
     Tab tab = undefined
+    // Unused: the Variables tab is a list now. BuildManager still sets it.
     TreeTable variablesTable = undefined
     Debugger debugger = undefined
-    VariableRow titleRow
     TextBox oldTextBox = undefined
     CodeEditor oldCodeEditor = undefined
     File newFile = undefined
@@ -41,13 +45,9 @@ class UpdateVariablesBehavior is Behavior
     Color debuggerColor
     public constant text DEBUGGER_ANNOTATION = "Debugger"
     BuildManager manager = undefined
-    VariableNameComparison comparison
 
     on create
         SetRunOnUpdate(true)
-        titleRow:SetName("Name")
-        titleRow:SetType("Type")
-        titleRow:SetValue("Value")
         debuggerColor:SetColor(189.0/255.0, 230.0/255.0, 170.0/255.0, 1.0)
     end
 
@@ -143,11 +143,9 @@ class UpdateVariablesBehavior is Behavior
                 oldCodeEditor:ClearDebuggerLine()
             end
 
-            //update the debugger color
-            GameStateManager m
-            InterfaceOptions io = m:GetInterfaceOptions()
-            OptionsConstants const
-            Color debugColor = cast(Color, io:GetColorProperty(const:EDITOR_BREAKPOINT_HIT_COLOR))
+            //update the debugger color: G1's faint green band, as in the block editor
+            GutterSupport gutterSupport
+            Color debugColor = gutterSupport:GetStoppedBandColor()
 
             Tab old = codeEditorTabPane:GetSelectedTab()
             Tab tab1 = codeEditorTabPane:OpenNewTab(newFile)
@@ -187,27 +185,38 @@ class UpdateVariablesBehavior is Behavior
                 end
             end
 
-            variablesTable:EmptyRows()
-            variablesTable:Add(titleRow)
-
-            VariablesModel model = debugger:GetVariablesModel()
-            Array<Variable> value = model:GetRoot()
-            if value not= undefined
-                value:Sort(comparison)
-                i = 0
-                repeat while i < value:GetSize()
-                    Variable variable = value:Get(i)
-                    VariableRow row
-                    row:SetVariable(variable)
-                    row:SetVariablesModel(model)
-                    variablesTable:Add(row)
-                    i = i + 1
-                end
-                variablesTable:Resize()
+            // The current frame's variables, in the Variables tab.
+            if GetSelectedTab() is VariablesTab
+                VariablesTab variablesTab = cast(VariablesTab, GetSelectedTab())
+                VariablesModel model = debugger:GetVariablesModel()
+                variablesTab:SetSymbolTable(GetProgramSymbolTable())
+                variablesTab:ShowVariables(model, model:GetRoot())
             end
         end
 
         
+    end
+
+    // The symbols of the program stopped in, for the tab's Go to type, or
+    // undefined if the file isn't in a project that's been built.
+    private action GetProgramSymbolTable returns SymbolTable
+        if newFile = undefined or manager = undefined
+            return undefined
+        end
+        GameStateManager gameState
+        if not (gameState:GetGame() is QuorumStudio)
+            return undefined
+        end
+        QuorumStudio studio = cast(QuorumStudio, gameState:GetGame())
+        Project project = studio:GetProjectManager():IsProjectSourceFile(newFile)
+        if project = undefined
+            return undefined
+        end
+        CompilerResult result = manager:GetRecentCompilerResult(project:GetLocation():GetAbsolutePath())
+        if result = undefined
+            return undefined
+        end
+        return result:symbolTable
     end
 
     action IsFinished returns boolean

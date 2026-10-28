@@ -1,0 +1,29 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.Interface.ErrorTab
+
+/*
+Copies every error in the Errors tab, one per line, file by file.
+*/
+class ErrorCopyAllBehavior is Behavior
+    ErrorTab errorTab = undefined
+
+    action SetErrorTab(ErrorTab tab)
+        errorTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if errorTab = undefined
+            return now
+        end
+
+        text value = errorTab:GetAllCopyText()
+        if value not= ""
+            GameStateManager manager
+            manager:GetGame():SetClipboard(value)
+        end
+    end
+end

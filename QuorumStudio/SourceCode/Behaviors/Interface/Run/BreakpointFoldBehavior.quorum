@@ -1,0 +1,63 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Development.Environment.Studio.Interface.BreakpointsTab
+use Libraries.Development.Environment.Studio.Interface.BreakpointFileItem
+use Libraries.Development.Environment.Studio.Interface.BreakpointItem
+
+/*
+Folds or unfolds a file's breakpoints in the Breakpoints tab (B1). It works
+on the row it's run on, or the selected row. On a breakpoint row,
+collapsing folds the file it's under.
+*/
+class BreakpointFoldBehavior is Behavior
+    public constant integer TOGGLE = 0
+    public constant integer COLLAPSE = 1
+    public constant integer EXPAND = 2
+
+    BreakpointsTab breakpointsTab = undefined
+    integer mode = TOGGLE
+
+    action SetBreakpointsTab(BreakpointsTab tab)
+        breakpointsTab = tab
+    end
+
+    action SetMode(integer value)
+        mode = value
+    end
+
+    action Run(BehaviorEvent event)
+        if breakpointsTab = undefined
+            return now
+        end
+
+        ListItem row = undefined
+        if event:GetItem() is ListItem
+            row = cast(ListItem, event:GetItem())
+        else
+            row = breakpointsTab:GetSelectedRow()
+        end
+
+        BreakpointFileItem fileItem = undefined
+        if row is BreakpointFileItem
+            fileItem = cast(BreakpointFileItem, row)
+        elseif row is BreakpointItem and mode = COLLAPSE
+            BreakpointItem pointRow = cast(BreakpointItem, row)
+            fileItem = pointRow:GetFileItem()
+        end
+
+        if fileItem = undefined
+            return now
+        end
+
+        if mode = TOGGLE
+            breakpointsTab:ToggleFile(fileItem)
+        elseif mode = COLLAPSE
+            breakpointsTab:SetFileExpanded(fileItem, false)
+        else
+            breakpointsTab:SetFileExpanded(fileItem, true)
+        end
+    end
+end

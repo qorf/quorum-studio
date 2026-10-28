@@ -1,76 +1,105 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.TreeTable
 use Libraries.Development.Environment.Studio.Build.BuildManager
-use Libraries.Interface.Layouts.Layout
-use Libraries.Interface.Controls.Tree
+use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Resources
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Development.Environment.Studio.Behaviors.FoldClickBehavior
+use Libraries.Development.Environment.Studio.Behaviors.VariablesFoldBehavior
+use Libraries.Development.Environment.Studio.Behaviors.VariablesCopyBehavior
+use Libraries.Development.Environment.Studio.Behaviors.VariablesMenuBehavior
 use Libraries.Language.Debug.Debugger
 use Libraries.Language.Debug.VariablesModel
-use Libraries.Containers.Array
 use Libraries.Language.Debug.Variable
-use Libraries.Interface.Controls.TreeItem
-use Libraries.Interface.Events.TreeChangeListener
-use Libraries.Interface.Events.TreeChangeEvent
+use Libraries.Language.Debug.VariableNameComparison
+use Libraries.Language.Compile.Library
+use Libraries.Language.Compile.Symbol.SymbolTable
+use Libraries.Language.Compile.Symbol.Class
+use Libraries.Containers.Array
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Layouts.LayoutProperties
-use Libraries.Interface.Controls.Icon
-use Libraries.Interface.Controls.TreeTable
-use Libraries.Language.Debug.VariableTypeColumn
-use Libraries.Language.Debug.VariableNameColumn
-use Libraries.Language.Debug.VariableValueColumn
-use Libraries.Interface.Controls.TreeTableColumn
-use Libraries.Language.Debug.VariableRow
-use Libraries.Interface.Events.FocusEvent
-use Libraries.Interface.Selections.TreeTableSelection
-use Libraries.Interface.Controls.TreeTableCell
+use Libraries.Interface.Behaviors.Controls.ListActivationBehavior
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Game.InputTable
+use Libraries.Game.InputSet
+use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Interface.Views.ControlShaderView
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.System.File
 
-class VariablesTab is Tab, TreeChangeListener
+/*
+The Variables tab (V1): the current frame's variables as a quiet tree table
+on a List, with muted column titles above it. Each shown line of the tree is
+a row of the list, so the list only draws what's visible. A value's children
+are fetched when it's opened, and a collection with more than RANGE_SIZE
+items opens into ranges, each fetched when it's opened.
+*/
+class VariablesTab is Tab
     BuildManager manager = undefined
     Resources resources = undefined
     Behaviors behaviors = undefined
     Debugger debugger = undefined
     BreakpointScrollPane pane
-    TreeTable variablesTree
     boolean updateDebuggerInformation = false
-    VariableNameColumn nameColumn
-    VariableTypeColumn typeColumn
-    VariableValueColumn valueColumn
-    VariableRow titleRow
 
-    on create
-        nameColumn:SetPixelWidth(0)
-        nameColumn:SetPercentageWidth(0.333)
+    // The titles above the list, and the list.
+    Control body
+    FlowLayout bodyLayout
+    Control header
+    ColumnRowLayout headerColumns
+    Control headerSpacer
+    Label nameTitle
+    Label typeTitle
+    Label valueTitle
+    List variableList
 
-        typeColumn:SetPixelWidth(0)
-        typeColumn:SetPercentageWidth(0.333)
+    VariablesModel model = undefined
+    // The stopped program's symbols, for Go to type.
+    SymbolTable projectTable = undefined
+    VariableNameComparison comparison
+    // The rows' input group, made when the first row is added.
+    boolean rowInputReady = false
+    FoldClickBehavior foldClickBehavior
 
-        valueColumn:SetPixelWidth(0)
-        valueColumn:SetPercentageWidth(0.334)
+    VariablesTabPopupMenu menu
+    VariablesFoldBehavior toggleBehavior
+    VariablesFoldBehavior collapseBehavior
+    VariablesFoldBehavior expandBehavior
+    VariablesCopyBehavior copyBehavior
+    VariablesMenuBehavior menuBehavior
 
-        variablesTree:Add(cast(TreeTableColumn, nameColumn))
-        variablesTree:Add(cast(TreeTableColumn, typeColumn))
-        variablesTree:Add(cast(TreeTableColumn, valueColumn))
-
-        titleRow:SetName("Name")
-        titleRow:SetType("Type")
-        titleRow:SetValue("Value")
-        variablesTree:Add(titleRow)
-    end
+    // A collection with more items than this opens into ranges.
+    public constant integer RANGE_SIZE = 100
+    // The titles' shares of the width, the same as VariableItem's columns.
+    constant number NAME_SHARE = 0.35
+    constant number TYPE_SHARE = 0.25
+    constant number VALUE_SHARE = 0.40
+    constant text ROW_INPUT_GROUP = "VariableListItem"
 
     action GetBehaviors returns Behaviors
         return behaviors
-    end
-
-    action GetDebuggerTreeTable returns TreeTable
-        return variablesTree
     end
 
     action SetBehaviors(Behaviors behaviors)
         me:behaviors = behaviors
         manager = behaviors:GetBuildManager()
         debugger = manager:GetDebugger()
+    end
+
+    // The tab is a list now. BuildManager still passes this along, so it's
+    // kept, and is undefined.
+    action GetDebuggerTreeTable returns TreeTable
+        return undefined
     end
 
     action GetResources returns Resources
@@ -89,22 +118,533 @@ class VariablesTab is Tab, TreeChangeListener
         me:manager = build
     end
 
-
     action Setup
-        LayoutProperties properties = variablesTree:GetDefaultLayoutProperties()
-        properties:SetHorizontalLayoutMode(properties:STANDARD)
-        properties:SetPercentageWidth(1)
-        //pane:SetBackgroundColor(resources:GetBackgroundColor())
-        pane:Add(variablesTree)
-        pane:Resize()
-
-        SetName("Variables")
-        SetRelatedItem(GetPane())
         DisplayCloseButton(true)
-        SetFocusTarget(variablesTree)
+        SetName("Variables")
+
+        LayoutProperties bodyProperties = body:GetDefaultLayoutProperties()
+        bodyProperties:SetHorizontalLayoutMode(bodyProperties:STANDARD)
+        bodyProperties:SetVerticalLayoutMode(bodyProperties:STANDARD)
+        bodyProperties:SetPercentageX(0)
+        bodyProperties:SetPercentageY(0)
+        bodyProperties:SetPercentageWidth(1)
+        bodyProperties:SetPercentageHeight(1)
+        body:SetLayout(bodyLayout)
+
+        // The titles: one line, in the rows' columns, after a space as wide
+        // as the rows' chevron.
+        header:SetLayout(headerColumns)
+        header:SetAccessibilityCode(header:parent:Item:NOT_ACCESSIBLE)
+        LayoutProperties headerProperties = header:GetDefaultLayoutProperties()
+        headerProperties:SetHorizontalLayoutMode(headerProperties:STANDARD)
+        headerProperties:SetPercentageWidth(1)
+        headerProperties:SetVerticalLayoutMode(headerProperties:FIT_FONT)
+        Font defaultFont = header:GetDefaultFont()
+        if defaultFont not= undefined
+            headerProperties:SetFont(defaultFont)
+            headerProperties:SetFontSize(header:GetDefaultFontSize())
+        end
+
+        headerSpacer:SetAccessibilityCode(headerSpacer:parent:Item:NOT_ACCESSIBLE)
+        headerSpacer:SetFocusable(false)
+        headerSpacer:SetAcceptsMouseInput(false)
+        headerSpacer:SetHorizontalLayoutMode(headerSpacer:MAINTAIN_ASPECT_RATIO)
+        headerSpacer:SetVerticalLayoutMode(headerSpacer:STANDARD)
+        headerSpacer:SetPercentageWidth(1.0)
+        headerSpacer:SetPercentageHeight(1.0)
+        headerSpacer:SetLeftMargin(4)
+        headerSpacer:SetTopMargin(4)
+        headerSpacer:SetBottomMargin(4)
+        header:Add(headerSpacer)
+
+        SetupTitle(nameTitle)
+        nameTitle:SetLeftMargin(4)
+        SetupTitle(typeTitle)
+        SetupTitle(valueTitle)
+        headerColumns:AddColumn(nameTitle, NAME_SHARE)
+        headerColumns:AddColumn(typeTitle, TYPE_SHARE)
+        headerColumns:AddColumn(valueTitle, VALUE_SHARE)
+        headerColumns:SetColumnText(0, "Name")
+        headerColumns:SetColumnText(1, "Type")
+        headerColumns:SetColumnText(2, "Value")
+        // The title row's band (L3): a tinted background with a line under
+        // it. Dark mode's band and line are clear, so it looks as it did.
+        OptionsConstants const
+        ColorGroup headerBackground = GetThemeColor(const:LIST_HEADER_BACKGROUND_COLOR, undefined)
+        if headerBackground not= undefined
+            ControlShaderView headerView
+            headerView:Initialize()
+            header:SetView2D(headerView)
+            header:SetBackgroundColor(headerBackground)
+            ColorGroup headerLine = GetThemeColor(const:LIST_HEADER_BORDER_COLOR, undefined)
+            if headerLine not= undefined
+                headerProperties:SetBorderStyle(headerProperties:BOTTOM)
+                header:SetBorderColor(headerLine)
+                header:SetBorderThickness(1)
+            end
+        end
+        ColorTitles()
+        body:Add(header)
+
+        variableList:SetName("Variables")
+        LayoutProperties listProperties = variableList:GetDefaultLayoutProperties()
+        listProperties:SetHorizontalLayoutMode(listProperties:STANDARD)
+        listProperties:SetPercentageWidth(1)
+        listProperties:SetVerticalLayoutMode(listProperties:FILL)
+        body:Add(variableList)
+
+        toggleBehavior:SetVariablesTab(me)
+        toggleBehavior:SetMode(toggleBehavior:TOGGLE)
+        collapseBehavior:SetVariablesTab(me)
+        collapseBehavior:SetMode(collapseBehavior:COLLAPSE)
+        expandBehavior:SetVariablesTab(me)
+        expandBehavior:SetMode(expandBehavior:EXPAND)
+        copyBehavior:SetVariablesTab(me)
+        copyBehavior:SetMode(copyBehavior:VALUE)
+        menuBehavior:SetVariablesTab(me)
+        menu:SetVariablesTab(me)
+
+        SetRelatedItem(body)
+        SetFocusTarget(variableList)
+
+        // The list's keys: copy the value, the menu, Return to open or
+        // close, and the arrows to close or go up, and open or go down.
+        KeyboardEvent keys
+        InputTable listTable = variableList:CopyAndActivateInputTable("VariableList")
+
+        InputSet metaC
+        metaC:SetKeyboardInput(keys:C)
+        metaC:AddModifier(metaC:META)
+        listTable:Add(metaC, copyBehavior)
+
+        InputSet controlC
+        controlC:SetKeyboardInput(keys:C)
+        controlC:AddModifier(controlC:CONTROL)
+        listTable:Add(controlC, copyBehavior)
+
+        InputSet shiftF10
+        shiftF10:SetKeyboardInput(keys:F10)
+        shiftF10:AddModifier(shiftF10:SHIFT)
+        listTable:Add(shiftF10, menuBehavior)
+
+        InputSet enterSet
+        enterSet:SetKeyboardInput(keys:ENTER)
+        ListActivationBehavior activate
+        listTable:Add(enterSet, activate)
+
+        InputSet leftSet
+        leftSet:SetKeyboardInput(keys:LEFT)
+        listTable:Add(leftSet, collapseBehavior)
+
+        InputSet rightSet
+        rightSet:SetKeyboardInput(keys:RIGHT)
+        listTable:Add(rightSet, expandBehavior)
+    end
+
+    private action SetupTitle(Label title)
+        title:SetAccessibilityCode(title:parent:Item:NOT_ACCESSIBLE)
+        title:SetPositionOnBaseLine(false)
+        title:SetAcceptsMouseInput(false)
+        header:Add(title)
+    end
+
+    /*
+    This action shows a stop's variables: the top rows, sorted by name, all
+    closed. The model fetches a row's children when it's opened.
+    */
+    action ShowVariables(VariablesModel newModel, Array<Variable> roots)
+        model = newModel
+        EmptyRows()
+
+        ColorGroup muted = GetMutedColor()
+        ColorTitles()
+
+        if roots not= undefined
+            roots:Sort(comparison)
+            ColorGroup numberColor = GetNumberColor()
+            integer index = 0
+            repeat while index < roots:GetSize()
+                VariableItem row
+                row:Setup(roots:Get(index), undefined, 0, muted, numberColor)
+                PrepareRow(row)
+                variableList:Add(row)
+                index = index + 1
+            end
+        end
+        variableList:Resize()
+        variableList:SetScrollPercentageY(0)
+    end
+
+    action EmptyRows
+        variableList:Deselect()
+        repeat while variableList:GetSize() > 0
+            variableList:Remove(variableList:GetSize() - 1)
+        end
+    end
+
+    /*
+    This action opens or closes a row. Opening fetches its children the
+    first time, then puts their rows in the list under it, with any rows
+    under them that were open before. Closing takes them out, so the list
+    only holds what's shown.
+    */
+    action SetExpanded(VariableItem row, boolean expand)
+        if row:IsLeaf() or row:IsExpanded() = expand
+            return now
+        end
+        integer index = variableList:GetIndexOf(row)
+        if index < 0
+            return now
+        end
+
+        if expand
+            if not row:IsLoaded()
+                if not LoadRows(row)
+                    return now
+                end
+            end
+            row:SetExpanded(true)
+            AddShownRows(row, index + 1)
+        else
+            integer count = CountShownRows(row)
+            repeat count times
+                variableList:Remove(index + 1)
+            end
+            row:SetExpanded(false)
+        end
+        RefreshList()
+        variableList:Select(row)
+    end
+
+    // Closes every row, leaving the top rows.
+    action CollapseAll
+        VariableItem selected = GetSelectedRow()
+        integer index = variableList:GetSize() - 1
+        repeat while index >= 0
+            ListItem listItem = variableList:GetListItem(index)
+            if listItem is VariableItem
+                VariableItem row = cast(VariableItem, listItem)
+                if row:GetParentRow() not= undefined
+                    variableList:Remove(index)
+                else
+                    CloseLoaded(row)
+                end
+            end
+            index = index - 1
+        end
+        RefreshList()
+
+        if selected not= undefined
+            repeat while selected:GetParentRow() not= undefined
+                selected = selected:GetParentRow()
+            end
+            variableList:Select(selected)
+        end
+    end
+
+    /*
+    This action fetches a row's children and makes their rows. A large
+    collection, or a large range, gets range rows instead. It returns false
+    if the program has moved on and nothing could be fetched.
+    */
+    private action LoadRows(VariableItem row) returns boolean
+        if model = undefined
+            return false
+        end
+
+        Variable variable = row:GetVariable()
+        integer first = 0
+        integer last = 0
+        if row:IsRange()
+            first = row:GetRangeStart()
+            last = row:GetRangeStop()
+        else
+            last = model:GetElementCount(variable)
+        end
+
+        if last - first > RANGE_SIZE
+            AddRanges(row, first, last)
+        else
+            Array<Variable> children = undefined
+            if row:IsRange()
+                children = model:GetChildren(variable, first, last)
+            else
+                children = model:GetChildren(variable, 0, 0)
+            end
+            // Undefined once the program has moved on.
+            if children = undefined
+                return false
+            end
+            if not row:IsRange()
+                children:Sort(comparison)
+            end
+
+            ColorGroup muted = GetMutedColor()
+            ColorGroup numberColor = GetNumberColor()
+            integer index = 0
+            repeat while index < children:GetSize()
+                VariableItem child
+                child:Setup(children:Get(index), row, row:GetDepth() + 1, muted, numberColor)
+                PrepareRow(child)
+                row:GetRows():Add(child)
+                index = index + 1
+            end
+        end
+        row:SetLoaded(true)
+        return true
+    end
+
+    /*
+    This action splits a collection's items, first up to last, into ranges.
+    Each range holds RANGE_SIZE items or, for very large collections,
+    RANGE_SIZE smaller ranges, so no level has more than RANGE_SIZE rows.
+    */
+    private action AddRanges(VariableItem row, integer first, integer last)
+        integer span = RANGE_SIZE
+        repeat while last - first > span * RANGE_SIZE
+            span = span * RANGE_SIZE
+        end
+
+        ColorGroup muted = GetMutedColor()
+        integer start = first
+        repeat while start < last
+            integer stop = start + span
+            if stop > last
+                stop = last
+            end
+            VariableItem range
+            range:SetupRange(row, start, stop, row:GetDepth() + 1, muted)
+            PrepareRow(range)
+            row:GetRows():Add(range)
+            start = stop
+        end
+    end
+
+    // Puts an open row's rows in the list from index on, and theirs if
+    // they're open. It returns the index after the last row put in.
+    private action AddShownRows(VariableItem row, integer index) returns integer
+        integer at = index
+        Array<VariableItem> rows = row:GetRows()
+        integer counter = 0
+        repeat while counter < rows:GetSize()
+            VariableItem child = rows:Get(counter)
+            // A row kept from before may still be hidden from scrolling;
+            // a hidden row isn't added to the Mac's accessibility tree.
+            child:Show()
+            variableList:Add(at, child)
+            at = at + 1
+            if child:IsExpanded()
+                at = AddShownRows(child, at)
+            end
+            counter = counter + 1
+        end
+        return at
+    end
+
+    // How many rows are shown under an open row.
+    private action CountShownRows(VariableItem row) returns integer
+        integer count = 0
+        Array<VariableItem> rows = row:GetRows()
+        integer counter = 0
+        repeat while counter < rows:GetSize()
+            VariableItem child = rows:Get(counter)
+            count = count + 1
+            if child:IsExpanded()
+                count = count + CountShownRows(child)
+            end
+            counter = counter + 1
+        end
+        return count
+    end
+
+    // Marks a row, and every row fetched under it, as closed.
+    private action CloseLoaded(VariableItem row)
+        if row:IsExpanded()
+            row:SetExpanded(false)
+        end
+        Array<VariableItem> rows = row:GetRows()
+        integer counter = 0
+        repeat while counter < rows:GetSize()
+            CloseLoaded(rows:Get(counter))
+            counter = counter + 1
+        end
+    end
+
+    // List:Add and List:Remove don't redraw; recompute the scroll ratios
+    // for the new length, then rebuild the visible rows.
+    private action RefreshList
+        variableList:Resize()
+        variableList:SetScrollPercentageY(variableList:GetScrollPercentageY())
+    end
+
+    /*
+    This action returns a row's children as text, one per line: an item's
+    value, or a field's name and value. It's the one place a large
+    collection is read in full, and only when asked.
+    */
+    action GetCopyAllText(VariableItem row) returns text
+        if model = undefined or row:IsLeaf()
+            return ""
+        end
+
+        Array<Variable> children = undefined
+        if row:IsRange()
+            children = model:GetChildren(row:GetVariable(), row:GetRangeStart(), row:GetRangeStop())
+        else
+            children = model:GetChildren(row:GetVariable(), 0, 0)
+        end
+        if children = undefined
+            return ""
+        end
+
+        text lineFeed = ""
+        lineFeed = lineFeed:GetLineFeed()
+        text digits = "0123456789"
+        text result = ""
+        integer index = 0
+        repeat while index < children:GetSize()
+            Variable child = children:Get(index)
+            text childName = child:GetName()
+            if index > 0
+                result = result + lineFeed
+            end
+            if childName:GetSize() > 0 and digits:Contains(childName:GetCharacter(0))
+                result = result + child:GetValue()
+            else
+                result = result + childName + " = " + child:GetValue()
+            end
+            index = index + 1
+        end
+        return result
+    end
+
+    /*
+    This action opens the file of a row's type, if it's a class in the
+    program or the standard library.
+    */
+    action GoToType(VariableItem row)
+        text key = row:GetFullType()
+        if key = ""
+            return now
+        end
+
+        Class found = undefined
+        if projectTable not= undefined
+            found = projectTable:GetClass(key)
+        end
+        if found = undefined and manager not= undefined
+            Library library = manager:GetLibrary()
+            if library not= undefined and library:GetSymbolTable() not= undefined
+                found = library:GetSymbolTable():GetClass(key)
+            end
+        end
+        if found = undefined
+            return now
+        end
+        File file = found:GetFile()
+        if file = undefined
+            return now
+        end
+
+        GameStateManager gameState
+        if gameState:GetGame() is QuorumStudio
+            QuorumStudio studio = cast(QuorumStudio, gameState:GetGame())
+            studio:GetTabPane():OpenNewTab(file)
+        end
+    end
+
+    // The symbols of the stopped program. Undefined keeps the last ones.
+    action SetSymbolTable(SymbolTable table)
+        if table not= undefined
+            projectTable = table
+        end
+    end
+
+    // The row that's selected, or undefined.
+    action GetSelectedRow returns VariableItem
+        ListItem listItem = variableList:GetSelection():GetListItem()
+        if listItem is VariableItem
+            return cast(VariableItem, listItem)
+        end
+        return undefined
+    end
+
+    action GetList returns List
+        return variableList
     end
 
     action GetPane returns BreakpointScrollPane
         return pane
+    end
+
+    // Each row opens or closes when activated, and gets the rows' input
+    // group (a right click opens the menu) and the shared menu.
+    private action PrepareRow(VariableItem row)
+        if not rowInputReady
+            InputTable rowTable = row:CopyAndActivateInputTable(ROW_INPUT_GROUP)
+            MouseEvent mouse
+            InputSet rightClick
+            rightClick:SetMouseInput(mouse:RIGHT)
+            rowTable:Add(rightClick, menuBehavior)
+            InputSet controlClick
+            controlClick:SetMouseInput(mouse:LEFT)
+            controlClick:AddModifier(controlClick:CONTROL)
+            rowTable:Add(controlClick, menuBehavior)
+            // One left click on a chevron folds the row (FoldClickBehavior);
+            // ClickDownBehavior, already in the table, still selects it.
+            InputSet leftClick
+            leftClick:SetMouseInput(mouse:LEFT)
+            rowTable:Add(leftClick, foldClickBehavior)
+            rowInputReady = true
+        else
+            row:SetInputGroup(ROW_INPUT_GROUP)
+        end
+        row:SetPopupMenu(menu)
+        row:SetActivationBehavior(toggleBehavior)
+    end
+
+    // The titles' color: the theme's, or the tabs' muted color.
+    private action ColorTitles
+        OptionsConstants const
+        ColorGroup titleColor = GetThemeColor(const:LIST_HEADER_FONT_COLOR, GetMutedColor())
+        if titleColor not= undefined
+            nameTitle:SetColor(titleColor)
+            typeTitle:SetColor(titleColor)
+            valueTitle:SetColor(titleColor)
+        end
+    end
+
+    // A color from Studio's theme, or the fallback when the theme has none.
+    private action GetThemeColor(text key, ColorGroup fallback) returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return fallback
+        end
+        ColorGroup value = options:GetColorProperty(key)
+        if value = undefined
+            return fallback
+        end
+        return value
+    end
+
+    private action GetMutedColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetTabFontColor()
+    end
+
+    // Numbers use the blue of a focused tab's name, which reads on both
+    // the light and dark themes.
+    private action GetNumberColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetTabSelectionFontColor()
     end
 end

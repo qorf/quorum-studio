@@ -1,0 +1,63 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Development.Environment.Studio.Interface.ErrorFileItem
+use Libraries.Development.Environment.Studio.Interface.ErrorItem
+
+/*
+Folds or unfolds a file's errors in the Errors tab (E3). It works on the
+row it's run on, or the selected row. On an error row, collapsing folds
+the file it's under.
+*/
+class ErrorFoldBehavior is Behavior
+    public constant integer TOGGLE = 0
+    public constant integer COLLAPSE = 1
+    public constant integer EXPAND = 2
+
+    ErrorTab errorTab = undefined
+    integer mode = TOGGLE
+
+    action SetErrorTab(ErrorTab tab)
+        errorTab = tab
+    end
+
+    action SetMode(integer value)
+        mode = value
+    end
+
+    action Run(BehaviorEvent event)
+        if errorTab = undefined
+            return now
+        end
+
+        ListItem row = undefined
+        if event:GetItem() is ListItem
+            row = cast(ListItem, event:GetItem())
+        else
+            row = errorTab:GetSelectedRow()
+        end
+
+        ErrorFileItem fileItem = undefined
+        if row is ErrorFileItem
+            fileItem = cast(ErrorFileItem, row)
+        elseif row is ErrorItem and mode = COLLAPSE
+            ErrorItem errorRow = cast(ErrorItem, row)
+            fileItem = errorRow:GetFileItem()
+        end
+
+        if fileItem = undefined
+            return now
+        end
+
+        if mode = TOGGLE
+            errorTab:ToggleFile(fileItem)
+        elseif mode = COLLAPSE
+            errorTab:SetFileExpanded(fileItem, false)
+        else
+            errorTab:SetFileExpanded(fileItem, true)
+        end
+    end
+end

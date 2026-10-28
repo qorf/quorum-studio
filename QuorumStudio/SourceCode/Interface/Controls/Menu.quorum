@@ -16,6 +16,8 @@ use Libraries.Interface.Selections.MenuSelection
 use Libraries.Development.Environment.Studio.Behaviors.DefaultMenuOpenBehavior
 use Libraries.Interface.Events.FocusEvent
 use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Development.Environment.Configuration.OptionsConstants
 use Libraries.Interface.Events.SelectionListener
 use Libraries.Interface.Events.SelectionEvent
 use Libraries.Development.Environment.Studio.Behaviors.CheckForUpdatesBehavior
@@ -121,9 +123,34 @@ class Menu is MenuBar, SelectionListener
         menuItems:Add(teamMenu)
         menuItems:Add(windowsMenu)
         menuItems:Add(helpMenu)
+        InsetTitles(menuItems)
         Add(menuItems)
         SetSelectingState(false)
         SetDefaultPopupShortcut()
+    end
+
+    // Light mode's titles sit inside the bar (M2b): the theme's top and
+    // bottom margins keep a title's hover and open tint clear of the
+    // bar's bottom line. A theme without them (dark mode) changes nothing.
+    private action InsetTitles(Array<MenuItem> titles)
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return now
+        end
+        OptionsConstants const
+        number topInset = options:GetNumberProperty(const:MENU_TITLE_TOP_INSET)
+        number bottomInset = options:GetNumberProperty(const:MENU_TITLE_BOTTOM_INSET)
+        if topInset:IsNotANumber() or bottomInset:IsNotANumber()
+            return now
+        end
+        integer counter = 0
+        repeat while counter < titles:GetSize()
+            LayoutProperties titleProperties = titles:Get(counter):GetDefaultLayoutProperties()
+            titleProperties:SetTopMargin(topInset)
+            titleProperties:SetBottomMargin(bottomInset)
+            counter = counter + 1
+        end
     end
 
     //Adding the mouse listeners will give unintended results for now

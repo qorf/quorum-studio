@@ -1,0 +1,197 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Containers.Array
+use Libraries.System.File
+
+/*
+A file's row in the Search Results tab (S1): a fold arrow, the file's
+name, and, muted, its last two folders and how many matches it has. Its
+matching lines are the rows under it while it's expanded.
+*/
+class SearchFileItem is ListItem, FoldClickRow
+    File file = undefined
+    // This file's line rows, kept for putting back after a fold.
+    Array<SearchMatchItem> rows
+    // Matches, not rows: one row can hold several matches.
+    integer matchCount = 0
+    boolean expanded = true
+    // The tree's chevron (ListChevronView), turned down while expanded.
+    Control arrow
+    ListChevronView chevron = undefined
+    Label detail
+    // How far past the chevron's edges a click still counts, in points.
+    constant number FOLD_SLACK = 4
+
+    on create
+        // The fold arrow replaces ListItem's own picture.
+        parent:ListItem:icon:Hide()
+
+        // The pieces sit centered on the row's line.
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        // Sized like the tree's arrow.
+        arrow:SetAccessibilityCode(arrow:parent:Item:NOT_ACCESSIBLE)
+        arrow:SetFocusable(false)
+        // A drawing only: a click on it reaches the row, whose
+        // FoldClickBehavior folds it.
+        arrow:SetAcceptsMouseInput(false)
+        arrow:SetHorizontalLayoutMode(arrow:MAINTAIN_ASPECT_RATIO)
+        arrow:SetVerticalLayoutMode(arrow:STANDARD)
+        arrow:SetPercentageWidth(1.0)
+        arrow:SetPercentageHeight(1.0)
+        arrow:SetLeftMargin(4)
+        arrow:SetTopMargin(4)
+        arrow:SetBottomMargin(4)
+        Add(0, arrow)
+
+        detail:SetAccessibilityCode(detail:parent:Item:NOT_ACCESSIBLE)
+        detail:SetAcceptsMouseInput(false)
+        detail:SetPositionOnBaseLine(false)
+        detail:SetLeftMargin(12)
+        Add(detail)
+    end
+
+    /*
+    This action sets the file this row stands for and the color of its muted
+    details. The chevron is made here, when the graphics exist.
+    */
+    action Setup(File value, ColorGroup mutedColor)
+        file = value
+        if mutedColor not= undefined
+            detail:SetColor(mutedColor)
+        end
+
+        ListChevronView view
+        chevron = view
+        chevron:Initialize(16, 32)
+        arrow:SetView2D(chevron)
+        chevron:UseThemeColor()
+        Refresh()
+    end
+
+    action GetFile returns File
+        return file
+    end
+
+    action GetRows returns Array<SearchMatchItem>
+        return rows
+    end
+
+    // Adds a line's row, and counts its matches.
+    action AddRow(SearchMatchItem row)
+        rows:Add(row)
+        matchCount = matchCount + row:GetMatchCount()
+    end
+
+    action GetMatchCount returns integer
+        return matchCount
+    end
+
+    action IsExpanded returns boolean
+        return expanded
+    end
+
+    action SetExpanded(boolean value)
+        expanded = value
+        Refresh()
+    end
+
+    /*
+    This action updates the name, the arrow and the details after rows are
+    added or the row is folded.
+    */
+    action Refresh
+        text fileName = "(no file)"
+        text folder = ""
+        if file not= undefined
+            fileName = file:GetFileName()
+            folder = ShortFolder(file:GetAbsolutePath(), fileName)
+        end
+
+        text countText = "" + matchCount + " matches"
+        if matchCount = 1
+            countText = "1 match"
+        end
+
+        SetText(fileName)
+        if folder = ""
+            detail:SetText(countText)
+        else
+            detail:SetText(folder + ", " + countText)
+        end
+
+        if chevron not= undefined
+            chevron:SetToggleState(expanded)
+        end
+
+        text state = "expanded"
+        if not expanded
+            state = "collapsed"
+        end
+        SetName(fileName + ", " + countText + ", " + state)
+    end
+
+    // The last two folders a file is in, as ErrorFileItem shows them.
+    // Copy file path gives the full path.
+    private action ShortFolder(text path, text fileName) returns text
+        if path:GetSize() <= fileName:GetSize()
+            return ""
+        end
+        text folder = path:GetSubtext(0, path:GetSize() - fileName:GetSize() - 1)
+        // Windows paths use backslashes (Unicode 92).
+        text backslash = ""
+        backslash = backslash:GetUnicodeValue(92)
+        integer last = folder:GetSize() - 1
+        integer slashes = 0
+        repeat while last >= 0
+            text character = folder:GetCharacter(last)
+            if character = "/" or character = backslash
+                slashes = slashes + 1
+                if slashes = 2
+                    return folder:GetSubtext(last + 1, folder:GetSize())
+                end
+            end
+            last = last - 1
+        end
+        return folder
+    end
+
+    // The text Copy puts on the clipboard: every matching line in this
+    // file, one per line.
+    action GetCopyText returns text
+        text newLine = ""
+        newLine = newLine:GetLineFeed()
+        text result = ""
+        integer index = 0
+        repeat while index < rows:GetSize()
+            if index > 0
+                result = result + newLine
+            end
+            result = result + rows:Get(index):GetCopyText()
+            index = index + 1
+        end
+        return result
+    end
+
+    action IsOnFoldControl(number x, number y) returns boolean
+        number slack = FOLD_SLACK * GetInterfaceScale()
+        return x >= arrow:GetGlobalX() - slack and x <= arrow:GetGlobalX() + arrow:GetWidth() + slack
+    end
+
+    /*
+    The text a screen reader reads for this row: its whole name, with every
+    column, rather than the first label alone. The label still shows what
+    SetText gave it.
+    */
+    action GetText returns text
+        return GetName()
+    end
+end

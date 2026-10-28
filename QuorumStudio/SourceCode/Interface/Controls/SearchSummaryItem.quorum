@@ -1,0 +1,56 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+
+/*
+The first row of the Search Results tab (S1): a muted line such as
+"12 matches of Print in 3 files". The text is in its own label, so the
+row's selection colors don't change it.
+*/
+class SearchSummaryItem is ListItem
+    Label detail
+    text summary = ""
+
+    on create
+        parent:ListItem:icon:Hide()
+        parent:ListItem:label:Hide()
+
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        detail:SetAccessibilityCode(detail:parent:Item:NOT_ACCESSIBLE)
+        detail:SetAcceptsMouseInput(false)
+        detail:SetPositionOnBaseLine(false)
+        detail:SetLeftMargin(8)
+        Add(detail)
+    end
+
+    // This action sets the summary text and its muted color.
+    action Setup(text value, ColorGroup mutedColor)
+        summary = value
+        if mutedColor not= undefined
+            detail:SetColor(mutedColor)
+        end
+        detail:SetText(value)
+        SetName(value)
+    end
+
+    // The text Copy puts on the clipboard.
+    action GetCopyText returns text
+        return summary
+    end
+
+    /*
+    The text a screen reader reads for this row: its whole name, with every
+    column, rather than the first label alone. The label still shows what
+    SetText gave it.
+    */
+    action GetText returns text
+        return GetName()
+    end
+end

@@ -1,0 +1,341 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.Control
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Containers.Array
+use Libraries.Language.Debug.Variable
+
+/*
+A row of the Variables tab (V1): an indent, the tree's chevron, then the
+name, the short type name and the value in three columns. The value is
+styled by kind: undefined muted, numbers blue, text in quotes. A range row,
+such as "[0 - 99]", stands for part of a large collection, and its items
+are fetched when it's opened.
+*/
+class VariableItem is ListItem, FoldClickRow
+    // The variable shown, or for a range row, the collection it's part of.
+    Variable variable = undefined
+    VariableItem parentRow = undefined
+    integer depth = 0
+    boolean expanded = false
+    boolean loaded = false
+    boolean leaf = true
+    boolean isRange = false
+    // A range row's first item, and the item after its last.
+    integer rangeStart = 0
+    integer rangeStop = 0
+    // The rows under this one, kept after they're fetched.
+    Array<VariableItem> rows
+
+    text variableName = ""
+    text fullType = ""
+    text valueText = ""
+
+    // The tree's chevron (ListChevronView), turned down while expanded.
+    Control arrow
+    ListChevronView chevron = undefined
+    Label typeLabel
+    Label valueLabel
+    ColumnRowLayout columns
+
+    // The columns' shares of the row's width.
+    public constant number NAME_SHARE = 0.35
+    public constant number TYPE_SHARE = 0.25
+    public constant number VALUE_SHARE = 0.40
+    // How far each level is indented, in points.
+    constant number INDENT = 16
+    // A longer value is cut short when shown; copying gives all of it.
+    constant integer MOST_SHOWN = 300
+    // How far past the chevron's edges a click still counts, in points.
+    constant number FOLD_SLACK = 4
+
+    on create
+        // The chevron replaces ListItem's own picture.
+        parent:ListItem:icon:Hide()
+        SetLayout(columns)
+
+        // Sized like the tree's arrow.
+        arrow:SetAccessibilityCode(arrow:parent:Item:NOT_ACCESSIBLE)
+        arrow:SetFocusable(false)
+        // A drawing only: a click on it reaches the row, whose
+        // FoldClickBehavior folds it.
+        arrow:SetAcceptsMouseInput(false)
+        arrow:SetHorizontalLayoutMode(arrow:MAINTAIN_ASPECT_RATIO)
+        arrow:SetVerticalLayoutMode(arrow:STANDARD)
+        arrow:SetPercentageWidth(1.0)
+        arrow:SetPercentageHeight(1.0)
+        arrow:SetLeftMargin(4)
+        arrow:SetTopMargin(4)
+        arrow:SetBottomMargin(4)
+        Add(0, arrow)
+
+        typeLabel:SetAccessibilityCode(typeLabel:parent:Item:NOT_ACCESSIBLE)
+        typeLabel:SetPositionOnBaseLine(false)
+        typeLabel:SetAcceptsMouseInput(false)
+        Add(typeLabel)
+
+        valueLabel:SetAccessibilityCode(valueLabel:parent:Item:NOT_ACCESSIBLE)
+        valueLabel:SetPositionOnBaseLine(false)
+        valueLabel:SetAcceptsMouseInput(false)
+        Add(valueLabel)
+
+        columns:AddColumn(parent:ListItem:label, NAME_SHARE)
+        columns:AddColumn(typeLabel, TYPE_SHARE)
+        columns:AddColumn(valueLabel, VALUE_SHARE)
+    end
+
+    /*
+    This action sets the variable this row shows, the row it's under
+    (undefined at the top), how deep it is, and the colors for muted text
+    and numbers. The chevron is made here, when the graphics exist.
+    */
+    action Setup(Variable newVariable, VariableItem owner, integer level, ColorGroup mutedColor, ColorGroup numberColor)
+        variable = newVariable
+        parentRow = owner
+        depth = level
+        variableName = newVariable:GetName()
+        fullType = newVariable:GetTypeName()
+        valueText = newVariable:GetValue()
+        // Primitives, undefined and empty collections don't open.
+        leaf = newVariable:IsPrimitive() or valueText = "undefined" or valueText = "size = 0"
+
+        text shown = valueText
+        if shown:GetSize() > MOST_SHOWN
+            shown = shown:GetSubtext(0, MOST_SHOWN) + "..."
+        end
+        columns:SetColumnText(0, variableName)
+        columns:SetColumnText(1, GetShortType())
+        columns:SetColumnText(2, shown)
+
+        if mutedColor not= undefined
+            typeLabel:SetColor(mutedColor)
+        end
+        if valueText = "undefined"
+            if mutedColor not= undefined
+                valueLabel:SetColor(mutedColor)
+            end
+        elseif fullType = "integer" or fullType = "number"
+            if numberColor not= undefined
+                valueLabel:SetColor(numberColor)
+            end
+        end
+        PrepareChevron()
+    end
+
+    /*
+    This action makes this row a range of a large collection: the items from
+    start up to, but not including, stop. The collection is the variable of
+    the row it's under.
+    */
+    action SetupRange(VariableItem owner, integer start, integer stop, integer level, ColorGroup mutedColor)
+        isRange = true
+        leaf = false
+        parentRow = owner
+        variable = owner:GetVariable()
+        rangeStart = start
+        rangeStop = stop
+        depth = level
+        variableName = "[" + start + " - " + (stop - 1) + "]"
+        fullType = ""
+        valueText = "" + (stop - start) + " items"
+
+        columns:SetColumnText(0, variableName)
+        columns:SetColumnText(1, "")
+        columns:SetColumnText(2, valueText)
+        if mutedColor not= undefined
+            valueLabel:SetColor(mutedColor)
+        end
+        PrepareChevron()
+    end
+
+    // The indent, and the chevron for a row that opens.
+    private action PrepareChevron
+        arrow:SetLeftMargin(4 + depth * INDENT)
+        if not leaf
+            ListChevronView view
+            chevron = view
+            chevron:Initialize(16, 32)
+            arrow:SetView2D(chevron)
+            chevron:UseThemeColor()
+        end
+        Refresh()
+    end
+
+    // The class's own name, such as "Array" for "Libraries.Containers.Array".
+    action GetShortType returns text
+        integer index = fullType:GetSize() - 1
+        repeat while index >= 0
+            if fullType:GetCharacter(index) = "."
+                return fullType:GetSubtext(index + 1, fullType:GetSize())
+            end
+            index = index - 1
+        end
+        return fullType
+    end
+
+    // Updates the chevron and the name a screen reader says.
+    action Refresh
+        if chevron not= undefined
+            chevron:SetToggleState(expanded)
+        end
+
+        text spoken = variableName
+        if fullType not= ""
+            spoken = spoken + ", " + fullType
+        end
+        if valueText not= ""
+            spoken = spoken + ", " + valueText
+        end
+        if not leaf
+            if expanded
+                spoken = spoken + ", expanded"
+            else
+                spoken = spoken + ", collapsed"
+            end
+        end
+        SetName(spoken)
+    end
+
+    /*
+    This action returns the expression for this row's value, as you'd write
+    it, such as "me:items:Get(3)" or "phoneBook:GetValue("Jane")".
+    */
+    action GetExpression returns text
+        if isRange
+            if parentRow = undefined
+                return ""
+            end
+            return parentRow:GetExpression()
+        end
+
+        // The row this one is a child of, past any ranges between.
+        VariableItem owner = parentRow
+        repeat while owner not= undefined and owner:IsRange()
+            owner = owner:GetParentRow()
+        end
+        if owner = undefined
+            return variableName
+        end
+
+        text base = owner:GetExpression()
+        if IsElement()
+            if owner:GetFullType():EndsWith("HashTable")
+                return base + ":GetValue(" + GetEntryKey() + ")"
+            end
+            return base + ":Get(" + variableName + ")"
+        end
+        if owner:GetFullType():EndsWith("HashNode")
+            if variableName = "value"
+                return base
+            elseif variableName = "key"
+                return owner:GetEntryKey()
+            end
+        end
+        return base + ":" + variableName
+    end
+
+    // Whether this row is an item of a collection, named by its position.
+    action IsElement returns boolean
+        if isRange or variableName:GetSize() = 0
+            return false
+        end
+        text digits = "0123456789"
+        integer index = 0
+        repeat while index < variableName:GetSize()
+            if not digits:Contains(variableName:GetCharacter(index))
+                return false
+            end
+            index = index + 1
+        end
+        return true
+    end
+
+    // A hash table entry's key, from its value "key => value".
+    action GetEntryKey returns text
+        integer split = valueText:IndexOf(" => ")
+        if split < 0
+            return valueText
+        end
+        return valueText:GetSubtext(0, split)
+    end
+
+    action GetVariable returns Variable
+        return variable
+    end
+
+    action GetParentRow returns VariableItem
+        return parentRow
+    end
+
+    action GetDepth returns integer
+        return depth
+    end
+
+    action GetRows returns Array<VariableItem>
+        return rows
+    end
+
+    action GetVariableName returns text
+        return variableName
+    end
+
+    action GetFullType returns text
+        return fullType
+    end
+
+    action GetValue returns text
+        return valueText
+    end
+
+    action IsRange returns boolean
+        return isRange
+    end
+
+    action GetRangeStart returns integer
+        return rangeStart
+    end
+
+    action GetRangeStop returns integer
+        return rangeStop
+    end
+
+    action IsLeaf returns boolean
+        return leaf
+    end
+
+    action IsLoaded returns boolean
+        return loaded
+    end
+
+    action SetLoaded(boolean value)
+        loaded = value
+    end
+
+    action IsExpanded returns boolean
+        return expanded
+    end
+
+    action SetExpanded(boolean value)
+        expanded = value
+        Refresh()
+    end
+
+    action IsOnFoldControl(number x, number y) returns boolean
+        if leaf
+            return false
+        end
+        number slack = FOLD_SLACK * GetInterfaceScale()
+        return x >= arrow:GetGlobalX() - slack and x <= arrow:GetGlobalX() + arrow:GetWidth() + slack
+    end
+
+    /*
+    The text a screen reader reads for this row: its whole name, with every
+    column, rather than the first label alone. The label still shows what
+    SetText gave it.
+    */
+    action GetText returns text
+        return GetName()
+    end
+end

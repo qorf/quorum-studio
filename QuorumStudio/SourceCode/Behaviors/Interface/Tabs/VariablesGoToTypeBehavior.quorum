@@ -1,0 +1,29 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.VariablesTab
+use Libraries.Development.Environment.Studio.Interface.VariableItem
+
+/*
+Opens the class of the selected row's type in the Variables tab (V1), if
+it's in the program or the standard library.
+*/
+class VariablesGoToTypeBehavior is Behavior
+    VariablesTab variablesTab = undefined
+
+    action SetVariablesTab(VariablesTab tab)
+        variablesTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if variablesTab = undefined
+            return now
+        end
+
+        VariableItem row = variablesTab:GetSelectedRow()
+        if row not= undefined
+            variablesTab:GoToType(row)
+        end
+    end
+end

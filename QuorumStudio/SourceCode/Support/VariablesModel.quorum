@@ -11,12 +11,17 @@ class VariablesModel
         return GetChildren(var, 0, 0)
     end
 
+    // The children from item i up to, but not including, item j. A range
+    // of (0, 0) means all of them. Undefined if the program isn't stopped.
     system action GetChildren(Variable var, integer i, integer j) returns Array<Variable>
     system action IsLeaf(Variable var) returns boolean
-    system action GetChildrenCount(Variable var)
+    system action GetChildrenCount(Variable var) returns integer
+    // How many children a variable has: a collection's items, such as an
+    // array's size, or another object's fields.
+    system action GetElementCount(Variable var) returns integer
     system action GetDisplayName(Variable var) returns text
     system action GetValueAt(Variable var, VariablesColumn column) returns Object
-    system action IsReadOnly(Variable var, VariablesColumn column)
+    system action IsReadOnly(Variable var, VariablesColumn column) returns boolean
     system action SetValueAt(Variable var, VariablesColumn column)
     system action GetWatchResult(Watch watch) returns Object
 end

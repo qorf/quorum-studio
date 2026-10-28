@@ -1,0 +1,46 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Views.DefaultTreeMenuView
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Development.Environment.Configuration.OptionsConstants
+
+/*
+The fold chevron on the rows of Studio's lists (Variables, Errors, Search
+Results and Breakpoints). DefaultTreeMenuView loads a new picture when its
+size changes, and loading a picture turns a Drawable white, so this view
+keeps its color and puts it back after each resize.
+*/
+class ListChevronView is DefaultTreeMenuView
+    ColorGroup tint = undefined
+
+    action SetTint(ColorGroup value)
+        tint = value
+        SetColor(value)
+    end
+
+    // The theme's chevron color, or the tree's accent when it has none.
+    action UseThemeColor
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return now
+        end
+        OptionsConstants const
+        ColorGroup value = options:GetColorProperty(const:LIST_CHEVRON_COLOR)
+        if value = undefined
+            value = options:GetTreeItemAccentColor()
+        end
+        if value not= undefined
+            SetTint(value)
+        end
+    end
+
+    action UpdateSize(number width, number height)
+        parent:DefaultTreeMenuView:UpdateSize(width, height)
+        if tint not= undefined
+            SetColor(tint)
+        end
+    end
+end

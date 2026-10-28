@@ -1,0 +1,1593 @@
+use Libraries.System.File
+use Libraries.System.Process
+use Libraries.System.ProcessListener
+use Libraries.System.ProcessEvent
+use Libraries.System.Properties
+use Libraries.Containers.Array
+use Libraries.Containers.HashTable
+use Libraries.Data.Formats.JavaScriptObjectNotation
+
+/*
+    InstallerBuilder makes Quorum Studio's installers from the built copy of
+    Studio beside this project (../QuorumStudio). Build Studio as usual
+    first, so its Run and Library folders are current. What the installers
+    are made from is in this project's Installer folder: Installer/Mac and
+    Installer/Windows. What they're made into goes in Installer/Build, which
+    git ignores: the finished installers in Installer/Build/<version>, ready
+    to upload, and what's made on the way in Installer/Build/Work.
+
+    The version is this project's own version (Project Version in
+    Project/Project.qp, set in Quorum Studio's project properties), so it is
+    set in one place. README.md says how to use all of this, and how to get
+    the certificates.
+
+    Mac:
+
+    One installer per kind of Mac, Apple Silicon or Intel:
+    Quorum-Studio-Mac-ARM.pkg and Quorum-Studio-Mac-INTEL.pkg. They differ
+    only in the JDK they carry: QuorumStudio/Java/jdk (arm64) or
+    QuorumStudio/Java-INTEL/jdk (x86_64). Neither is in git, so each is
+    copied onto the building Mac by hand. Each installer is made in five
+    steps:
+
+    1. QuorumStudio.app is built in Installer/Build/Work. Studio's files go
+       in Contents/app, not Contents/MacOS: codesign treats every file in
+       Contents/MacOS as code, and can't sign a jar there. The launcher
+       script (Installer/Mac/QuorumStudio) changes to Contents/app before it
+       starts Java, so Studio finds its files as before.
+    2. Every native is checked to run on the macOS the app says it needs
+       (LSMinimumSystemVersion in Installer/Mac/Info.plist).
+    3. The app is signed from the inside out: the natives inside jars, any
+       app inside it, the loose natives, the JDK, and then the app itself.
+       Notarization looks inside jars, and LWJGL copies its natives out of
+       its jars when a game runs, so each native carries its own signature.
+       Programs get Java's entitlements (Installer/Mac/QuorumStudio.entitlements);
+       libraries can't take entitlements.
+    4. Packages builds the installer from Installer/Mac/QuorumStudio.pkgproj,
+       which installs Build/Work/QuorumStudio.app as it is, and signs it. The
+       version is written into that project first. Don't add Studio's files
+       to the project by hand; it would install the old layout.
+    5. Apple notarizes the installer, and the ticket is stapled to it.
+
+    A local installer (localOnly) is for our own machines. It is signed ad
+    hoc, with no certificate, which is all Apple Silicon needs to run code,
+    and it isn't notarized. Copied over a network or a USB drive, it installs
+    with no warning. Downloaded in a browser, macOS asks first (right-click
+    the installer and choose Open).
+
+    A release needs two certificates from the Apple Developer account in this
+    Mac's keychain: "Developer ID Application" for the app and "Developer ID
+    Installer" for the installer. With one of each, they are found
+    automatically. Notarizing needs a notarytool profile in the keychain,
+    made once with:
+
+    xcrun notarytool store-credentials QuorumNotary --key AuthKey_<KeyID>.p8 --key-id <KeyID> --issuer <IssuerID>
+
+    Windows:
+
+    NSIS (makensis) runs on Installer/Windows/Run.nsi, which makes the
+    QuorumStudio.exe launcher, and then on Installer/Windows/Installer.nsi,
+    which makes Quorum-Studio-Windows.exe. Each script is given, with
+    makensis -D options, where Studio and the Windows JDK are, where to put
+    what it makes, and the version. Unless the installer is local, each is
+    also given a signtool command, which NSIS runs on the launcher, on the
+    uninstaller as it's made inside the installer, and on the installer.
+
+    On Windows, NSIS comes from https://nsis.sourceforge.io (3.08 or later),
+    and Studio's own Java/jdk is the Windows JDK the installer carries.
+    signtool comes with the Windows SDK, and signs with the code signing
+    certificate on its USB key.
+
+    On a Mac, NSIS comes from Homebrew (brew install makensis), and the
+    Windows JDK from QuorumStudio/Java-WINDOWS/jdk, or else from the one
+    AutoBuild downloads (quorum-natives/download/jdk/windows). signtool runs
+    only on Windows, so a Windows installer made on a Mac is local only, and
+    unsigned.
+
+    Settings are kept in Settings.json in this project, so a build can also
+    run without the window. Progress is written as
+    lines like "Progress: 42", and the last line says how it finished.
+*/
+class InstallerBuilder is ProcessListener
+    public constant text APPLE_SILICON = "AppleSilicon"
+    public constant text INTEL = "Intel"
+    public constant text WINDOWS = "Windows"
+    public constant text PROGRESS_PREFIX = "Progress: "
+    public constant text FINISHED_PREFIX = "Finished: "
+    public constant text SUCCEEDED = "succeeded"
+    public constant text FAILED = "failed"
+    constant text SETTINGS_FILE = "Settings.json"
+
+    // The Mac tools, by their full paths: a program started from Quorum
+    // Studio may not have Homebrew's or Packages' folders on its PATH.
+    constant text CHMOD = "/bin/chmod"
+    constant text CODESIGN = "/usr/bin/codesign"
+    constant text COPY = "/bin/cp"
+    constant text DITTO = "/usr/bin/ditto"
+    constant text FILE_TYPE = "/usr/bin/file"
+    constant text FIND = "/usr/bin/find"
+    constant text LIPO = "/usr/bin/lipo"
+    constant text PACKAGESBUILD = "/usr/local/bin/packagesbuild"
+    constant text PKGUTIL = "/usr/sbin/pkgutil"
+    constant text PLIST_BUDDY = "/usr/libexec/PlistBuddy"
+    constant text REMOVE = "/bin/rm"
+    constant text RSYNC = "/usr/bin/rsync"
+    constant text SECURITY = "/usr/bin/security"
+    constant text SPCTL = "/usr/sbin/spctl"
+    constant text UNZIP = "/usr/bin/unzip"
+    constant text VTOOL = "/usr/bin/vtool"
+    constant text XATTR = "/usr/bin/xattr"
+    constant text XCRUN = "/usr/bin/xcrun"
+    constant text ZIP = "/usr/bin/zip"
+
+    // SSL.com's timestamp server, for the Windows signatures. A timestamp
+    // keeps a signature valid after the certificate expires.
+    constant text WINDOWS_TIMESTAMP_SERVER = "http://ts.ssl.com"
+
+    // Which installers to make.
+    public boolean buildAppleSilicon = true
+    public boolean buildIntel = false
+    public boolean buildWindows = false
+
+    // True for an installer for our own machines, made with no certificates.
+    public boolean localOnly = true
+
+    // The Mac certificates' names, such as "Developer ID Application: Name
+    // (TEAMID)". Blank finds the only one of its kind in the keychain.
+    public text appIdentity = ""
+    public text installerIdentity = ""
+
+    // The notarytool keychain profile.
+    public text notaryProfile = "QuorumNotary"
+
+    // The Windows certificate's subject name. Blank lets signtool pick it.
+    public text windowsCertificate = ""
+
+    // Where things are. Set in on create, from the working directory, which
+    // is this project's folder when Quorum Studio runs it.
+    text studio = ""
+    text macFolder = ""
+    text windowsFolder = ""
+    text buildFolder = ""
+    text workFolder = ""
+    text app = ""
+    text contents = ""
+    text appFiles = ""
+    text packagesProject = ""
+    text entitlements = ""
+
+    // Read from the Packages project when a Mac installer is made.
+    text version = ""
+
+    // Which installer is being made, of how many, for the progress.
+    integer installerIndex = 0
+    integer installerCount = 1
+
+    // Set by the ProcessListener actions. Process:Run waits until the
+    // process ends and its last output and ProcessStopped have arrived.
+    integer lastExit = -1
+    Array<text> lastOutput
+
+    // Everything logged, for the window when it runs the build itself.
+    Array<text> messages
+
+    on create
+        File here
+        File projectFolder
+        projectFolder:SetAbsolutePath(here:GetWorkingDirectory())
+        studio = projectFolder:GetParentDirectory():GetAbsolutePath() + "/QuorumStudio"
+        macFolder = projectFolder:GetAbsolutePath() + "/Installer/Mac"
+        windowsFolder = projectFolder:GetAbsolutePath() + "/Installer/Windows"
+        buildFolder = projectFolder:GetAbsolutePath() + "/Installer/Build"
+        workFolder = buildFolder + "/Work"
+        app = workFolder + "/QuorumStudio.app"
+        contents = app + "/Contents"
+        appFiles = contents + "/app"
+        packagesProject = macFolder + "/QuorumStudio.pkgproj"
+        entitlements = macFolder + "/QuorumStudio.entitlements"
+    end
+
+    /*
+        Makes each installer that was chosen, in turn, and stops at the first
+        one that fails. Returns true if they were all made.
+    */
+    action Build returns boolean
+        Array<text> installers
+        if buildAppleSilicon
+            installers:Add(APPLE_SILICON)
+        end
+        if buildIntel
+            installers:Add(INTEL)
+        end
+        if buildWindows
+            installers:Add(WINDOWS)
+        end
+
+        if installers:GetSize() = 0
+            Log("No installers were chosen.")
+            Log(FINISHED_PREFIX + FAILED)
+            return false
+        end
+
+        Properties properties
+        if buildWindows and not properties:IsWindows() and not localOnly
+            Log("A Windows installer can only be signed on Windows. Make it on Windows, or check Local only to make an unsigned one here.")
+            Log(FINISHED_PREFIX + FAILED)
+            return false
+        end
+
+        installerCount = installers:GetSize()
+        installerIndex = 0
+        boolean succeeded = true
+        repeat while succeeded and installerIndex < installerCount
+            text kind = installers:Get(installerIndex)
+            if kind = WINDOWS
+                succeeded = BuildWindows()
+            else
+                succeeded = BuildMac(kind)
+            end
+            installerIndex = installerIndex + 1
+        end
+
+        if succeeded
+            output PROGRESS_PREFIX + "100"
+            Log(FINISHED_PREFIX + SUCCEEDED)
+        else
+            Log(FINISHED_PREFIX + FAILED)
+        end
+        return succeeded
+    end
+
+    /*
+        Makes one Mac installer: APPLE_SILICON or INTEL.
+    */
+    action BuildMac(text kind) returns boolean
+        text architecture = "arm64"
+        text jdk = studio + "/Java/jdk"
+        if kind = INTEL
+            architecture = "x86_64"
+            jdk = studio + "/Java-INTEL/jdk"
+        end
+
+        Log("")
+        Log("Making the " + kind + " installer")
+        if not CheckMacBuild(architecture, jdk)
+            return false
+        end
+        if not MakeApp(jdk)
+            return false
+        end
+        if not CheckMinimumMacOS()
+            return false
+        end
+        if not SignNativesInJars()
+            return false
+        end
+        if not SignAppsInside()
+            return false
+        end
+        if not SignLooseNatives()
+            return false
+        end
+        if not SignJdk()
+            return false
+        end
+        if not SignApp()
+            return false
+        end
+
+        text installer = BuildPackage(kind)
+        if installer = ""
+            return false
+        end
+        if not localOnly
+            if not Notarize(installer)
+                return false
+            end
+        end
+        Log("Installer: " + installer)
+        return true
+    end
+
+    /*
+        Checks that Packages, the JDK and, for a release, the certificates
+        and the notary profile are all there before anything is built.
+    */
+    action CheckMacBuild(text architecture, text jdk) returns boolean
+        Step("Checking what the build needs", 0)
+
+        if not Exists(PACKAGESBUILD)
+            return Fail("Packages isn't installed. Install it from http://s.sudre.free.fr/Software/Packages/about.html")
+        end
+
+        version = ReadVersion()
+        if version = ""
+            return Fail("Could not read the version from Project/Project.qp. Set it in this project's properties in Quorum Studio.")
+        end
+        // The Packages project has the version in three places: the
+        // package's version, the title the installer's window shows, and
+        // the project's name, which Packages names the .pkg after.
+        Array<text> versions = Parameters("-c", "Set :PACKAGES:0:PACKAGE_SETTINGS:VERSION " + version)
+        versions:Add("-c")
+        versions:Add("Set :PROJECT:PROJECT_PRESENTATION:TITLE:LOCALIZATIONS:0:VALUE Quorum Studio " + version)
+        versions:Add("-c")
+        versions:Add("Set :PROJECT:PROJECT_SETTINGS:NAME Quorum Studio " + version)
+        versions:Add(packagesProject)
+        if not RunTool(PLIST_BUDDY, versions)
+            return ToolFailed("Could not set the version in " + packagesProject)
+        end
+        Log("Version: " + version + " (this project's version)")
+
+        text java = jdk + "/Contents/Home/bin/java"
+        if not Exists(java)
+            return Fail("There's no JDK at " + jdk + ". It isn't in git, so copy one there by hand.")
+        end
+        RunTool(LIPO, Parameters("-archs", java))
+        text architectures = Joined(lastOutput)
+        text padded = " " + architectures + " "
+        if not padded:Contains(" " + architecture + " ")
+            return Fail("The JDK at " + jdk + " is for " + architectures + ", not " + architecture + ".")
+        end
+        Log("JDK: " + jdk + " (" + architectures + ")")
+
+        if localOnly
+            Log("Local only: signed with no certificate, and not notarized.")
+            return true
+        end
+
+        if appIdentity = ""
+            appIdentity = FindIdentity("Developer ID Application", "codesigning")
+        end
+        if appIdentity = ""
+            return Fail("There isn't exactly one " + Quoted("Developer ID Application") + " certificate in the keychain. Install it, or type its name.")
+        end
+        if installerIdentity = ""
+            installerIdentity = FindIdentity("Developer ID Installer", "basic")
+        end
+        if installerIdentity = ""
+            return Fail("There isn't exactly one " + Quoted("Developer ID Installer") + " certificate in the keychain. Install it, or type its name.")
+        end
+        Log("Signing the app as: " + appIdentity)
+        Log("Signing the installer as: " + installerIdentity)
+
+        if not RunTool(XCRUN, Parameters("notarytool", "history", "--keychain-profile", notaryProfile))
+            return Fail("The notary profile " + Quoted(notaryProfile) + " doesn't work. Make it with: xcrun notarytool store-credentials " + notaryProfile + " --key AuthKey_<KeyID>.p8 --key-id <KeyID> --issuer <IssuerID>")
+        end
+        Log("Notarizing with the profile: " + notaryProfile)
+        return true
+    end
+
+    /*
+        Builds QuorumStudio.app in the build folder from Studio's files and
+        the chosen JDK.
+    */
+    action MakeApp(text jdk) returns boolean
+        Step("Building QuorumStudio.app", 5)
+
+        RunTool(REMOVE, Parameters("-rf", app))
+        CreateFolder(contents + "/MacOS")
+        CreateFolder(contents + "/Resources")
+        CreateFolder(appFiles + "/Java")
+
+        text plist = contents + "/Info.plist"
+        if not RunTool(COPY, Parameters(macFolder + "/Info.plist", plist))
+            return ToolFailed("Could not copy Info.plist")
+        end
+        Array<text> versions = Parameters("-c", "Set :CFBundleName Quorum Studio " + version)
+        versions:Add("-c")
+        versions:Add("Set :CFBundleShortVersionString " + version)
+        versions:Add("-c")
+        versions:Add("Set :CFBundleVersion " + version)
+        versions:Add(plist)
+        if not RunTool(PLIST_BUDDY, versions)
+            return ToolFailed("Could not set the version in Info.plist")
+        end
+
+        text launcher = contents + "/MacOS/QuorumStudio"
+        if not RunTool(COPY, Parameters(studio + "/Resources/Graphics/Interface/Quorum.icns", contents + "/Resources/"))
+            return ToolFailed("Could not copy the icon")
+        end
+        if not RunTool(COPY, Parameters(macFolder + "/QuorumStudio", launcher))
+            return ToolFailed("Could not copy the launcher")
+        end
+        RunTool(CHMOD, Parameters("755", launcher))
+
+        if not CopyIn("Configuration", "Configuration")
+            return false
+        end
+        if not CopyIn("External", "External")
+            return false
+        end
+        if not CopyIn("Library", "Library")
+            return false
+        end
+        if not CopyIn("Resources", "Resources")
+            return false
+        end
+        if not CopyIn("Templates", "Templates")
+            return false
+        end
+        if not CopyIn("Run/jni", "jni")
+            return false
+        end
+        if not CopyIn("Run/libraries", "libraries")
+            return false
+        end
+        if not CopyIn("Run/QuorumStudio.jar", "QuorumStudio.jar")
+            return false
+        end
+        if not CopyIn("Run/QuorumStandardLibrary.jar", "QuorumStandardLibrary.jar")
+            return false
+        end
+        if not CopyIn("Run/QuorumStandardPlugins.jar", "QuorumStandardPlugins.jar")
+            return false
+        end
+
+        // ditto keeps the JDK's symbolic links and permissions as they are.
+        if not RunTool(DITTO, Parameters(jdk, appFiles + "/Java/jdk"))
+            return ToolFailed("Could not copy the JDK")
+        end
+
+        RemoveOldGameNatives()
+
+        // Studio runs games with the natives in jni, and copies those in
+        // Library/Compiled/Run/jni into each project.
+        if not Exists(appFiles + "/jni/Mac.so") or not Exists(appFiles + "/Library/Compiled/Run/jni/Mac.so")
+            return Fail("There's no Mac.so in jni or Library/Compiled/Run/jni. Studio's library copy or its Run folder is from before Mac.so: copy the current library into QuorumStudio/Library and build Studio again.")
+        end
+
+        // Some JDK files are read-only, which stops signing them. Extended
+        // attributes (such as Finder information) make codesign fail, and
+        // the installer drops them anyway.
+        RunTool(CHMOD, Parameters("-R", "u+w", app))
+        RunTool(XATTR, Parameters("-cr", app))
+
+        Log("Built " + app)
+        return true
+    end
+
+    /*
+        Copies a file or folder from Studio into the app's files. Leaves out
+        the files Packages always left out, and the old Mac speech natives,
+        which Mac.so's AppleSpeak replaced. Notarization rejects the Carbon
+        ones: they predate the 10.9 SDK, and one is PowerPC.
+    */
+    action CopyIn(text from, text into) returns boolean
+        text source = studio + "/" + from
+        text destination = appFiles + "/" + into
+        File sourceFile
+        sourceFile:SetAbsolutePath(source)
+        if not sourceFile:Exists()
+            return Fail("Missing " + source)
+        end
+
+        if sourceFile:IsDirectory()
+            Array<text> parameters = Parameters("-a")
+            Array<text> leftOut = Parameters(".DS_Store", ".git", ".gitignore", ".svn", "CVS", ".cvsignore")
+            leftOut:Add(".cvspass")
+            leftOut:Add(".pbdevelopment")
+            leftOut:Add("libCarbonSpeakJNI*.jnilib")
+            leftOut:Add("CocoaSpeechServer.app")
+            integer i = 0
+            repeat while i < leftOut:GetSize()
+                parameters:Add("--exclude")
+                parameters:Add(leftOut:Get(i))
+                i = i + 1
+            end
+            parameters:Add(source + "/")
+            parameters:Add(destination + "/")
+            if not RunTool(RSYNC, parameters)
+                return ToolFailed("Could not copy " + source)
+            end
+        else
+            if not RunTool(COPY, Parameters("-p", source, destination))
+                return ToolFailed("Could not copy " + source)
+            end
+        end
+        return true
+    end
+
+    /*
+        The Mac game natives are one universal Mac.so now. The old Mac files
+        (libGameEngineCPlugins.so and libGameEngineCPluginsArm.so) can linger
+        in build folders, which add files but never remove them, and nothing
+        loads them on the Mac. Android's files of the same name aren't Mac
+        code, so only the Mac ones are removed.
+    */
+    action RemoveOldGameNatives
+        RunTool(FIND, Parameters(appFiles, "-type", "f", "-name", "libGameEngineCPlugins*.so", "-print"))
+        Array<text> found = Copied(lastOutput)
+        HashTable<text, text> types = FileTypes(found)
+        integer i = 0
+        repeat while i < found:GetSize()
+            text path = found:Get(i)
+            if IsMachO(path, types)
+                File old
+                old:SetAbsolutePath(path)
+                old:Delete()
+                Log("  left out the old " + Relative(path))
+            end
+            i = i + 1
+        end
+    end
+
+    /*
+        Checks that every loose native runs on the macOS the app says it
+        needs. Natives inside jars and the JDK aren't checked.
+    */
+    action CheckMinimumMacOS returns boolean
+        Step("Checking each native's minimum macOS", 28)
+        RunTool(PLIST_BUDDY, Parameters("-c", "Print :LSMinimumSystemVersion", contents + "/Info.plist"))
+        text minimum = Joined(lastOutput)
+        Log("The app says it needs macOS " + minimum + " (LSMinimumSystemVersion in Info.plist).")
+
+        Array<text> programs
+        Array<text> libraries
+        FindMachO(appFiles, Parameters(appFiles + "/Java"), programs, libraries)
+        Array<text> natives = Copied(programs)
+        integer i = 0
+        repeat while i < libraries:GetSize()
+            natives:Add(libraries:Get(i))
+            i = i + 1
+        end
+
+        integer tooNew = 0
+        i = 0
+        repeat while i < natives:GetSize()
+            text path = natives:Get(i)
+            text needs = NeedsMacOS(path)
+            if needs not= "" and IsNewer(needs, minimum)
+                Log("  " + Relative(path) + " needs macOS " + needs)
+                tooNew = tooNew + 1
+            end
+            i = i + 1
+        end
+
+        if tooNew > 0
+            return Fail("These natives need a newer macOS than " + minimum + ". Rebuild them for " + minimum + ", or raise LSMinimumSystemVersion in Installer/Mac/Info.plist.")
+        end
+        Log("Every native runs on macOS " + minimum + ".")
+        return true
+    end
+
+    /*
+        The newest macOS a native needs, over all its architectures, or ""
+        for a file too old to say.
+    */
+    action NeedsMacOS(text path) returns text
+        RunTool(VTOOL, Parameters("-show-build", path))
+        text newest = ""
+        integer i = 0
+        repeat while i < lastOutput:GetSize()
+            text line = lastOutput:Get(i):Trim()
+            if line:StartsWith("minos ")
+                text needs = line:GetSubtext(6):Trim()
+                if newest = "" or IsNewer(needs, newest)
+                    newest = needs
+                end
+            end
+            i = i + 1
+        end
+        return newest
+    end
+
+    action SignNativesInJars returns boolean
+        Step("Signing the natives inside jars", 32)
+        RunTool(FIND, Parameters(appFiles, "-name", "*.jar", "-type", "f", "-not", "-path", appFiles + "/Java/*", "-print"))
+        Array<text> jars = Copied(lastOutput)
+        integer i = 0
+        repeat while i < jars:GetSize()
+            if not SignJarNatives(jars:Get(i))
+                return false
+            end
+            ReportProgress(32 + 26 * (i + 1) / jars:GetSize())
+            i = i + 1
+        end
+        return true
+    end
+
+    /*
+        Unpacks the natives in a jar, signs them, and puts them back at the
+        same paths, so the jar's order and manifest are kept.
+    */
+    action SignJarNatives(text jar) returns boolean
+        RunTool(UNZIP, Parameters("-Z1", jar))
+        Array<text> entries = Copied(lastOutput)
+        Array<text> natives
+        boolean javaSigned = false
+        integer i = 0
+        repeat while i < entries:GetSize()
+            text entry = entries:Get(i)
+            if entry:EndsWith(".dylib") or entry:EndsWith(".jnilib") or entry:EndsWith(".so")
+                natives:Add(entry)
+            end
+            if IsJarSignature(entry)
+                javaSigned = true
+            end
+            i = i + 1
+        end
+        if natives:GetSize() = 0
+            return true
+        end
+
+        text work = workFolder + "/jar-natives"
+        RunTool(REMOVE, Parameters("-rf", work))
+        CreateFolder(work)
+        Array<text> unpack = Parameters("-q", "-o", jar)
+        AddAll(unpack, natives)
+        unpack:Add("-d")
+        unpack:Add(work)
+        if not RunTool(UNZIP, unpack)
+            return ToolFailed("Could not unpack the natives in " + jar)
+        end
+
+        Array<text> paths
+        i = 0
+        repeat while i < natives:GetSize()
+            paths:Add(work + "/" + natives:Get(i))
+            i = i + 1
+        end
+        HashTable<text, text> types = FileTypes(paths)
+
+        Array<text> signed
+        Array<text> programs
+        Array<text> libraries
+        i = 0
+        repeat while i < natives:GetSize()
+            text path = paths:Get(i)
+            if IsMachO(path, types)
+                signed:Add(natives:Get(i))
+                if IsProgram(path, types)
+                    programs:Add(path)
+                else
+                    libraries:Add(path)
+                end
+            end
+            i = i + 1
+        end
+
+        if signed:GetSize() > 0
+            if javaSigned
+                RunTool(REMOVE, Parameters("-rf", work))
+                return Fail(jar + " is a signed jar. Changing its natives would break its Java signature.")
+            end
+            if not SignFiles(programs, true) or not SignFiles(libraries, false)
+                return false
+            end
+            Array<text> repack = Parameters("-q", "-X", jar)
+            AddAll(repack, signed)
+            if not RunTool(ZIP, repack, work)
+                return ToolFailed("Could not put the signed natives back in " + jar)
+            end
+            Log("  signed " + signed:GetSize() + " in " + Relative(jar))
+        end
+        RunTool(REMOVE, Parameters("-rf", work))
+        return true
+    end
+
+    // True for a Java signature's files: META-INF/<name>.SF, .RSA, .DSA or .EC.
+    action IsJarSignature(text entry) returns boolean
+        if not entry:StartsWith("META-INF/")
+            return false
+        end
+        text name = entry:GetSubtext(9)
+        if name:Contains("/")
+            return false
+        end
+        return name:EndsWith(".SF") or name:EndsWith(".RSA") or name:EndsWith(".DSA") or name:EndsWith(".EC")
+    end
+
+    action SignAppsInside returns boolean
+        Step("Signing apps inside Studio", 60)
+        Array<text> inside = AppsInside()
+        integer i = 0
+        repeat while i < inside:GetSize()
+            text inner = inside:Get(i)
+            Array<text> noFolders
+            if not SignMachOIn(inner, noFolders)
+                return false
+            end
+            if not SignFiles(Parameters(inner), true)
+                return false
+            end
+            Log("  signed " + Relative(inner))
+            i = i + 1
+        end
+        return true
+    end
+
+    // The .app folders inside Studio's files, outside the JDK.
+    action AppsInside returns Array<text>
+        Array<text> parameters = Parameters(appFiles, "-name", "*.app", "-type", "d", "-not", "-path", appFiles + "/Java/*")
+        parameters:Add("-prune")
+        parameters:Add("-print")
+        RunTool(FIND, parameters)
+        return Copied(lastOutput)
+    end
+
+    action SignLooseNatives returns boolean
+        Step("Signing the loose natives", 62)
+        Array<text> skip = AppsInside()
+        skip:Add(appFiles + "/Java")
+        return SignMachOIn(appFiles, skip)
+    end
+
+    action SignJdk returns boolean
+        Step("Signing the JDK", 66)
+        text jdk = appFiles + "/Java/jdk"
+        Array<text> noFolders
+        if not SignMachOIn(jdk, noFolders)
+            return false
+        end
+        if not SignFiles(Parameters(jdk), false)
+            return false
+        end
+        Log("  signed the JDK bundle")
+        return true
+    end
+
+    /*
+        Signs the app last, which seals Info.plist, the launcher and every
+        other file in it, and checks the signature.
+    */
+    action SignApp returns boolean
+        Step("Signing QuorumStudio.app", 74)
+        if not SignFiles(Parameters(app), true)
+            return false
+        end
+        if not RunTool(CODESIGN, Parameters("--verify", "--deep", "--strict", "--verbose=2", app))
+            return ToolFailed("The app's signature doesn't check out")
+        end
+        Log("The app's signature checks out.")
+        if not localOnly
+            // Says "Unnotarized Developer ID" until Apple notarizes the installer.
+            RunTool(SPCTL, Parameters("-a", "-vv", "-t", "exec", app))
+            LogAll(lastOutput)
+        end
+        return true
+    end
+
+    /*
+        Builds the installer with Packages and names it for its kind of Mac.
+        Returns its path, or "" if it failed.
+    */
+    action BuildPackage(text kind) returns text
+        Step("Building the installer with Packages", 80)
+        DeleteInstallers()
+
+        Array<text> parameters
+        if not localOnly
+            parameters:Add("--identity")
+            parameters:Add(installerIdentity)
+        end
+        parameters:Add(packagesProject)
+        if not RunTool(PACKAGESBUILD, parameters)
+            ToolFailed("Packages couldn't build the installer")
+            return ""
+        end
+
+        text built = ""
+        Array<text> installers = Installers()
+        if installers:GetSize() > 0
+            built = installers:Get(0)
+        end
+        if built = ""
+            Fail("Packages made no installer in " + workFolder)
+            return ""
+        end
+
+        text name = "Quorum-Studio-Mac-ARM.pkg"
+        if kind = INTEL
+            name = "Quorum-Studio-Mac-INTEL.pkg"
+        end
+        text installer = VersionFolder() + "/" + name
+        if not MoveReplacing(built, installer)
+            Fail("Could not move the installer to " + installer)
+            return ""
+        end
+
+        if not localOnly
+            if not RunTool(PKGUTIL, Parameters("--check-signature", installer))
+                ToolFailed("The installer isn't signed")
+                return ""
+            end
+        end
+        return installer
+    end
+
+    // The .pkg files directly in the build folder.
+    action Installers returns Array<text>
+        Array<text> found
+        File folder
+        folder:SetAbsolutePath(workFolder)
+        Array<File> files = folder:GetDirectoryListing()
+        integer i = 0
+        repeat while i < files:GetSize()
+            File item = files:Get(i)
+            if item:IsFile() and item:GetFileName():EndsWith(".pkg")
+                found:Add(item:GetAbsolutePath())
+            end
+            i = i + 1
+        end
+        return found
+    end
+
+    /*
+        Removes the installers a previous build left in the build folder, so
+        the one Packages makes is the only one there. Installers kept in the
+        folders inside it are left alone.
+    */
+    action DeleteInstallers
+        Array<text> old = Installers()
+        integer i = 0
+        repeat while i < old:GetSize()
+            File item
+            item:SetAbsolutePath(old:Get(i))
+            item:Delete()
+            i = i + 1
+        end
+    end
+
+    action Notarize(text installer) returns boolean
+        Step("Notarizing (this usually takes a few minutes)", 88)
+        RunTool(XCRUN, Parameters("notarytool", "submit", installer, "--keychain-profile", notaryProfile, "--wait"))
+        Array<text> result = Copied(lastOutput)
+        LogAll(result)
+
+        boolean accepted = false
+        text submission = ""
+        integer i = 0
+        repeat while i < result:GetSize()
+            text line = result:Get(i):Trim()
+            if line:Contains("status: Accepted")
+                accepted = true
+            end
+            if submission = "" and line:StartsWith("id: ")
+                submission = line:GetSubtext(4)
+            end
+            i = i + 1
+        end
+        if not accepted
+            return Fail("Apple didn't accept it. See why with: xcrun notarytool log " + submission + " --keychain-profile " + notaryProfile)
+        end
+
+        Step("Stapling the ticket to the installer", 96)
+        if not RunTool(XCRUN, Parameters("stapler", "staple", installer))
+            return ToolFailed("Could not staple the ticket")
+        end
+        RunTool(SPCTL, Parameters("-a", "-vv", "-t", "install", installer))
+        LogAll(lastOutput)
+        return true
+    end
+
+    /*
+        Signs every native in a folder, leaving out the folders in skip.
+        Candidates are libraries by name and anything marked executable;
+        only the ones that are Mac code are signed.
+    */
+    action SignMachOIn(text folder, Array<text> skip) returns boolean
+        Array<text> programs
+        Array<text> libraries
+        FindMachO(folder, skip, programs, libraries)
+        if not SignFiles(programs, true) or not SignFiles(libraries, false)
+            return false
+        end
+        integer count = programs:GetSize() + libraries:GetSize()
+        Log("  signed " + count + " in " + Relative(folder))
+        return true
+    end
+
+    /*
+        Finds the Mac code in a folder, leaving out the folders in skip, and
+        sorts it into programs and libraries. Static libraries (.a) are
+        archives, not code to sign, and are left out.
+    */
+    action FindMachO(text folder, Array<text> skip, Array<text> programs, Array<text> libraries)
+        Array<text> parameters = Parameters(folder)
+        integer i = 0
+        repeat while i < skip:GetSize()
+            parameters:Add("-path")
+            parameters:Add(skip:Get(i))
+            parameters:Add("-prune")
+            parameters:Add("-o")
+            i = i + 1
+        end
+        Array<text> rest = Parameters("-type", "f", "(", "-name", "*.dylib", "-o")
+        AddAll(parameters, rest)
+        AddAll(parameters, Parameters("-name", "*.jnilib", "-o", "-name", "*.so", "-o"))
+        AddAll(parameters, Parameters("-perm", "+111", ")", "-print"))
+        RunTool(FIND, parameters)
+        Array<text> candidates = Copied(lastOutput)
+
+        HashTable<text, text> types = FileTypes(candidates)
+        i = 0
+        repeat while i < candidates:GetSize()
+            text path = candidates:Get(i)
+            if IsMachO(path, types)
+                if IsProgram(path, types)
+                    programs:Add(path)
+                else
+                    libraries:Add(path)
+                end
+            end
+            i = i + 1
+        end
+    end
+
+    /*
+        Signs files with codesign, all in one go. Programs get Java's
+        entitlements; libraries can't take them. A local build signs ad hoc,
+        with no certificate and no timestamp.
+    */
+    action SignFiles(Array<text> files, boolean programs) returns boolean
+        if files:GetSize() = 0
+            return true
+        end
+        Array<text> parameters = Parameters("--force", "--options", "runtime")
+        if localOnly
+            parameters:Add("--timestamp=none")
+            parameters:Add("--sign")
+            parameters:Add("-")
+        else
+            parameters:Add("--timestamp")
+            parameters:Add("--sign")
+            parameters:Add(appIdentity)
+        end
+        if programs
+            parameters:Add("--entitlements")
+            parameters:Add(entitlements)
+        end
+        AddAll(parameters, files)
+
+        if RunTool(CODESIGN, parameters)
+            return true
+        end
+        // Apple's timestamp server sometimes fails. Try once more.
+        if RunTool(CODESIGN, parameters)
+            return true
+        end
+        return ToolFailed("Could not sign " + Relative(files:Get(0)) + " (and " + (files:GetSize() - 1) + " more)")
+    end
+
+    /*
+        Asks the file tool what each file is, in one go. Returns each path
+        with its description, such as "Mach-O 64-bit dynamically linked
+        shared library arm64".
+    */
+    action FileTypes(Array<text> paths) returns HashTable<text, text>
+        HashTable<text, text> types
+        if paths:GetSize() = 0
+            return types
+        end
+        Array<text> parameters
+        AddAll(parameters, paths)
+        RunTool(FILE_TYPE, parameters)
+
+        // Each line is "path: description". A universal file adds a line per
+        // architecture, "path (for architecture arm64):", which is skipped.
+        integer i = 0
+        repeat while i < lastOutput:GetSize()
+            text line = lastOutput:Get(i)
+            integer colon = line:IndexOf(": ")
+            if colon > 0
+                text path = line:GetSubtext(0, colon)
+                if not types:HasKey(path)
+                    types:Add(path, line:GetSubtext(colon + 2))
+                end
+            end
+            i = i + 1
+        end
+        return types
+    end
+
+    action IsMachO(text path, HashTable<text, text> types) returns boolean
+        if path:EndsWith(".a") or not types:HasKey(path)
+            return false
+        end
+        return types:GetValue(path):Contains("Mach-O")
+    end
+
+    action IsProgram(text path, HashTable<text, text> types) returns boolean
+        return IsMachO(path, types) and types:GetValue(path):Contains("executable")
+    end
+
+    // True if version left is newer than version right, such as 13.0 and 11.0.
+    action IsNewer(text left, text right) returns boolean
+        Array<text> leftParts = VersionParts(left)
+        Array<text> rightParts = VersionParts(right)
+        integer i = 0
+        repeat while i < leftParts:GetSize() or i < rightParts:GetSize()
+            integer leftPart = 0
+            integer rightPart = 0
+            if i < leftParts:GetSize()
+                leftPart = leftParts:Get(i):ParseInteger()
+            end
+            if i < rightParts:GetSize()
+                rightPart = rightParts:Get(i):ParseInteger()
+            end
+            if leftPart > rightPart
+                return true
+            elseif leftPart < rightPart
+                return false
+            end
+            i = i + 1
+        end
+        return false
+    end
+
+    // The numbers in a version, such as 13, 0 and 1 in 13.0.1. Split by
+    // hand, since Split's delimiter is a pattern, where "." matches anything.
+    action VersionParts(text value) returns Array<text>
+        Array<text> parts
+        text rest = value:Trim()
+        integer dot = rest:IndexOf(".")
+        repeat while dot >= 0
+            parts:Add(rest:GetSubtext(0, dot))
+            rest = rest:GetSubtext(dot + 1)
+            dot = rest:IndexOf(".")
+        end
+        parts:Add(rest)
+        return parts
+    end
+
+    /*
+        Makes the Windows installer with NSIS, on Windows or on a Mac. The
+        scripts in Installer/Windows are given where Studio and the JDK are,
+        where to put what they make, the version, and, unless the installer
+        is local, a command that signs a program. NSIS runs that command on
+        the launcher, the uninstaller and the installer as it makes each.
+    */
+    action BuildWindows returns boolean
+        Log("")
+        Log("Making the Windows installer")
+        Step("Checking what the build needs", 0)
+        Properties properties
+        boolean onWindows = properties:IsWindows()
+
+        version = ReadVersion()
+        if version = ""
+            return Fail("Could not read the version from Project/Project.qp. Set it in this project's properties in Quorum Studio.")
+        end
+        Log("Version: " + version + " (this project's version)")
+
+        text makensis = FindMakensis()
+        if makensis = ""
+            if onWindows
+                return Fail("NSIS isn't installed. Install it from https://nsis.sourceforge.io")
+            end
+            return Fail("NSIS isn't installed. Install it with: brew install makensis")
+        end
+
+        // On Windows, Studio's own Java is the Windows JDK. A Mac has the Mac
+        // JDK there, so the Windows one comes from elsewhere.
+        text jdk = studio + "/Java/jdk"
+        if not onWindows
+            jdk = FindWindowsJdk()
+        end
+        if jdk = "" or not Exists(jdk + "/bin/javaw.exe")
+            if onWindows
+                return Fail("There's no Windows JDK at " + studio + "/Java/jdk.")
+            end
+            return Fail("There's no Windows JDK. Copy one to " + studio + "/Java-WINDOWS/jdk, or run AutoBuild with Windows checked, which downloads one.")
+        end
+        Log("Windows JDK: " + jdk)
+
+        Array<text> signing
+        if localOnly
+            Log("Local only: not signed.")
+        else
+            text signtool = FindSigntool()
+            if signtool = ""
+                return Fail("Could not find signtool. Install the Windows SDK.")
+            end
+            Log("Signing with: " + signtool)
+            signing:Add("-DSIGN=" + WindowsSignCommand(signtool))
+        end
+
+        // makensis stops at once on a Mac when no locale is set, as when
+        // Quorum Studio starts a program.
+        HashTable<text, text> environment
+        if not onWindows
+            environment:Add("LC_ALL", "en_US.UTF-8")
+        end
+
+        // makensis takes options after "-" everywhere; "/" works only on Windows.
+        CreateFolder(workFolder)
+        text launcher = workFolder + "/QuorumStudio.exe"
+        Step("Making the launcher, QuorumStudio.exe (Run.nsi)", 5)
+        Array<text> launcherParameters = Parameters("-V2", "-DOUTPUT=" + launcher)
+        AddAll(launcherParameters, signing)
+        launcherParameters:Add("Run.nsi")
+        if not RunTool(makensis, launcherParameters, windowsFolder, environment)
+            return ToolFailed("NSIS couldn't make the launcher")
+        end
+
+        Step("Making the installer (Installer.nsi); this takes a few minutes", 15)
+        text installer = VersionFolder() + "/Quorum-Studio-Windows.exe"
+        Array<text> parameters = Parameters("-V2", "-DSTUDIO=" + studio, "-DJDK=" + jdk, "-DLAUNCHER=" + launcher, "-DOUTPUT=" + installer)
+        parameters:Add("-DVERSION=" + version)
+        parameters:Add("-DPRODUCT_VERSION=" + FourPartVersion(version))
+        AddAll(parameters, signing)
+        parameters:Add("Installer.nsi")
+        if not RunTool(makensis, parameters, windowsFolder, environment)
+            return ToolFailed("NSIS couldn't make the installer")
+        end
+        Log("Installer: " + installer)
+        return true
+    end
+
+    /*
+        The command NSIS runs to sign a program, with the program's name
+        after it. With no certificate name, signtool picks the best one itself
+        (/a); the USB key must be plugged in, and it asks for the key's PIN.
+    */
+    action WindowsSignCommand(text signtool) returns text
+        text command = Quoted(signtool) + " sign /fd sha256 /tr " + WINDOWS_TIMESTAMP_SERVER + " /td sha256"
+        if windowsCertificate = ""
+            return command + " /a"
+        end
+        return command + " /n " + Quoted(windowsCertificate)
+    end
+
+    /*
+        The Windows JDK for an installer made on a Mac:
+        QuorumStudio/Java-WINDOWS/jdk, or the one AutoBuild downloads for the
+        Windows natives. Returns "" if there's neither.
+    */
+    action FindWindowsJdk returns text
+        text own = studio + "/Java-WINDOWS/jdk"
+        if Exists(own + "/bin/javaw.exe")
+            return own
+        end
+        File studioFolder
+        studioFolder:SetAbsolutePath(studio)
+        text repositories = studioFolder:GetParentDirectory():GetParentDirectory():GetAbsolutePath()
+        text downloaded = repositories + "/quorum-natives/download/jdk/windows/x64/jdk-11.0.15+10"
+        if Exists(downloaded + "/bin/javaw.exe")
+            return downloaded
+        end
+        return ""
+    end
+
+    // A version with four numbers, as Windows wants for a program's version:
+    // 8.5.0 is 8.5.0.0, and 1.0 is 1.0.0.0.
+    action FourPartVersion(text value) returns text
+        Array<text> parts = VersionParts(value)
+        text result = ""
+        integer i = 0
+        repeat while i < 4
+            if i > 0
+                result = result + "."
+            end
+            if i < parts:GetSize()
+                result = result + parts:Get(i)
+            else
+                result = result + "0"
+            end
+            i = i + 1
+        end
+        return result
+    end
+
+    // The folder for this version's installers, ready to upload: build/<version>.
+    action VersionFolder returns text
+        text folder = buildFolder + "/" + version
+        CreateFolder(folder)
+        return folder
+    end
+
+    // Moves a file, replacing what's there. Returns true if it moved.
+    action MoveReplacing(text from, text into) returns boolean
+        File old
+        old:SetAbsolutePath(into)
+        if old:Exists()
+            old:Delete()
+        end
+        File moving
+        moving:SetAbsolutePath(from)
+        if not moving:Exists()
+            return false
+        end
+        return moving:Move(into)
+    end
+
+    /*
+        NSIS's makensis: on Windows where its installer puts it, or on the
+        PATH; on a Mac where Homebrew puts it. Returns "" if it isn't found.
+    */
+    action FindMakensis returns text
+        Properties properties
+        Array<text> places
+        if properties:IsWindows()
+            places = Parameters("C:/Program Files (x86)/NSIS/makensis.exe", "C:/Program Files/NSIS/makensis.exe")
+        else
+            places = Parameters("/opt/homebrew/bin/makensis", "/usr/local/bin/makensis")
+        end
+        integer i = 0
+        repeat while i < places:GetSize()
+            if Exists(places:Get(i))
+                return places:Get(i)
+            end
+            i = i + 1
+        end
+        if properties:IsWindows()
+            return "makensis"
+        end
+        return ""
+    end
+
+    // The newest signtool in the Windows SDK, or "" if there's none.
+    action FindSigntool returns text
+        File kits
+        kits:SetAbsolutePath("C:/Program Files (x86)/Windows Kits/10/bin")
+        if not kits:Exists()
+            return ""
+        end
+        text best = ""
+        text bestVersion = ""
+        Array<File> versions = kits:GetDirectoryListing()
+        integer i = 0
+        repeat while i < versions:GetSize()
+            File folder = versions:Get(i)
+            text name = folder:GetFileName()
+            text candidate = folder:GetAbsolutePath() + "/x64/signtool.exe"
+            if name:StartsWith("10.") and Exists(candidate)
+                if bestVersion = "" or IsNewer(name, bestVersion)
+                    best = candidate
+                    bestVersion = name
+                end
+            end
+            i = i + 1
+        end
+        return best
+    end
+
+    /*
+        This project's version: the line "Project Version" : "8.5.0" in
+        Project/Project.qp. Returns "" if it can't be read.
+    */
+    action ReadVersion returns text
+        File projectFile
+        projectFile:SetPath("Project/Project.qp")
+        if not projectFile:Exists()
+            return ""
+        end
+        Array<text> lines = projectFile:Read():SplitIntoLines()
+        integer i = 0
+        repeat while i < lines:GetSize()
+            text line = lines:Get(i):Trim()
+            if line:StartsWith(DoubleQuote() + "Project Version" + DoubleQuote())
+                integer colon = line:IndexOf(":")
+                text value = line:GetSubtext(colon + 1):Trim()
+                value = value:Replace(DoubleQuote(), "")
+                value = value:Replace(",", "")
+                return value:Trim()
+            end
+            i = i + 1
+        end
+        return ""
+    end
+
+    /*
+        The names of the certificates of one kind in the keychain, such as
+        "Developer ID Application". policy is codesigning for the app's
+        certificate and basic for the installer's.
+    */
+    action ListIdentities(text kind, text policy) returns Array<text>
+        Array<text> names
+        RunTool(SECURITY, Parameters("find-identity", "-v", "-p", policy))
+        integer i = 0
+        repeat while i < lastOutput:GetSize()
+            // A line is: 1) <hash> "Developer ID Application: Name (TEAMID)"
+            text line = lastOutput:Get(i):Trim()
+            integer start = line:IndexOf(kind + ": ")
+            if start >= 0 and line:EndsWith(DoubleQuote())
+                text name = line:GetSubtext(start, line:GetSize() - 1)
+                if not names:Has(name)
+                    names:Add(name)
+                end
+            end
+            i = i + 1
+        end
+        return names
+    end
+
+    // The only certificate of a kind in the keychain, or "" if there are
+    // none or several.
+    action FindIdentity(text kind, text policy) returns text
+        Array<text> names = ListIdentities(kind, policy)
+        if names:GetSize() = 1
+            return names:Get(0)
+        end
+        return ""
+    end
+
+    /*
+        Reads Settings.json, if there is one. A setting it doesn't have keeps
+        its default.
+    */
+    action LoadSettings
+        File settings
+        settings:SetPath(SETTINGS_FILE)
+        if not settings:Exists()
+            return now
+        end
+        JavaScriptObjectNotation json
+        json:Read(settings)
+        buildAppleSilicon = BooleanSetting(json, "appleSilicon", buildAppleSilicon)
+        buildIntel = BooleanSetting(json, "intel", buildIntel)
+        buildWindows = BooleanSetting(json, "windows", buildWindows)
+        localOnly = BooleanSetting(json, "localOnly", localOnly)
+        appIdentity = TextSetting(json, "appIdentity", appIdentity)
+        installerIdentity = TextSetting(json, "installerIdentity", installerIdentity)
+        notaryProfile = TextSetting(json, "notaryProfile", notaryProfile)
+        windowsCertificate = TextSetting(json, "windowsCertificate", windowsCertificate)
+    end
+
+    action BooleanSetting(JavaScriptObjectNotation json, text key, boolean default) returns boolean
+        if json:HasValue(key)
+            return json:GetBoolean(key)
+        end
+        return default
+    end
+
+    action TextSetting(JavaScriptObjectNotation json, text key, text default) returns text
+        if json:HasValue(key)
+            return json:GetValue(key)
+        end
+        return default
+    end
+
+    /*
+        Writes the settings to Settings.json. They are names, not secrets:
+        the certificates' keys stay in the keychain or on the USB key.
+    */
+    action SaveSettings
+        JavaScriptObjectNotation json
+        json:Add("appleSilicon", buildAppleSilicon)
+        json:Add("intel", buildIntel)
+        json:Add("windows", buildWindows)
+        json:Add("localOnly", localOnly)
+        json:Add("appIdentity", appIdentity)
+        json:Add("installerIdentity", installerIdentity)
+        json:Add("notaryProfile", notaryProfile)
+        json:Add("windowsCertificate", windowsCertificate)
+        json:SetPrettyPrint(true)
+        File settings
+        settings:SetPath(SETTINGS_FILE)
+        settings:Write(json:ToText())
+    end
+
+    action GetMessages returns Array<text>
+        return messages
+    end
+
+    /*
+        Runs a program and waits for it to finish. Returns true if it
+        succeeded. Its output is in lastOutput.
+    */
+    action RunTool(text program, Array<text> parameters) returns boolean
+        return RunTool(program, parameters, "")
+    end
+
+    action RunTool(text program, Array<text> parameters, text folder) returns boolean
+        HashTable<text, text> environment
+        return RunTool(program, parameters, folder, environment)
+    end
+
+    // Runs a program with more environment variables, beside this program's own.
+    action RunTool(text program, Array<text> parameters, text folder, HashTable<text, text> environment) returns boolean
+        lastExit = -1
+        lastOutput:Empty()
+
+        Process process
+        if folder not= ""
+            File directory
+            directory:SetAbsolutePath(folder)
+            process:SetDirectory(directory)
+        end
+        process:SetName(program)
+        process:SetParameters(parameters)
+        process:SetEnvironment(environment)
+        // By default output arrives every 50 milliseconds, which adds up
+        // over the hundreds of programs a build runs.
+        process:SetMonitorWaitTime(5)
+        process:AddListener(me)
+        check
+            process:Run()
+        detect e
+            lastOutput:Add("Could not start " + program + ": " + e:GetErrorMessage())
+            return false
+        end
+        return lastExit = 0
+    end
+
+    action ProcessStarted(ProcessEvent event)
+    end
+
+    action ProcessStopped(ProcessEvent event)
+        lastExit = event:GetExit()
+    end
+
+    action Output(ProcessEvent event)
+        AddOutput(event:GetOutput())
+    end
+
+    action Error(ProcessEvent event)
+        AddOutput(event:GetOutput())
+    end
+
+    // Output can arrive several lines at a time; it's kept a line at a time.
+    action AddOutput(text value)
+        if value = undefined
+            return now
+        end
+        Array<text> lines = value:SplitIntoLines()
+        integer i = 0
+        repeat while i < lines:GetSize()
+            if lines:Get(i):Trim() not= ""
+                lastOutput:Add(lines:Get(i))
+            end
+            i = i + 1
+        end
+    end
+
+    action Log(text message)
+        messages:Add(message)
+        output message
+    end
+
+    // Starts a step of one installer. percent is how far along that
+    // installer is, from 0 to 100.
+    action Step(text title, number percent)
+        Log("")
+        Log("== " + title)
+        ReportProgress(percent)
+    end
+
+    action ReportProgress(number percent)
+        integer overall = cast(integer, (installerIndex * 100 + percent) / installerCount)
+        output PROGRESS_PREFIX + overall
+    end
+
+    action Fail(text message) returns boolean
+        Log("")
+        Log("Failed: " + message)
+        return false
+    end
+
+    // Fails, showing the end of the last program's output, which says why.
+    action ToolFailed(text message) returns boolean
+        integer start = lastOutput:GetSize() - 30
+        if start < 0
+            start = 0
+        end
+        integer i = start
+        repeat while i < lastOutput:GetSize()
+            Log("    " + lastOutput:Get(i))
+            i = i + 1
+        end
+        return Fail(message + ".")
+    end
+
+    action LogAll(Array<text> lines)
+        integer i = 0
+        repeat while i < lines:GetSize()
+            Log("  " + lines:Get(i))
+            i = i + 1
+        end
+    end
+
+    // A path inside the app, from the app's folder, for shorter messages.
+    action Relative(text path) returns text
+        if path:StartsWith(app + "/")
+            return path:GetSubtext(app:GetSize() + 1)
+        end
+        return path
+    end
+
+    action Exists(text path) returns boolean
+        File item
+        item:SetAbsolutePath(path)
+        return item:Exists()
+    end
+
+    action CreateFolder(text path)
+        File folder
+        folder:SetAbsolutePath(path)
+        folder:CreateDirectories()
+    end
+
+    action Quoted(text value) returns text
+        return DoubleQuote() + value + DoubleQuote()
+    end
+
+    action DoubleQuote returns text
+        text quote = ""
+        return quote:GetDoubleQuote()
+    end
+
+    // The lines of a program's output as one line.
+    action Joined(Array<text> lines) returns text
+        text result = ""
+        integer i = 0
+        repeat while i < lines:GetSize()
+            if i > 0
+                result = result + " "
+            end
+            result = result + lines:Get(i):Trim()
+            i = i + 1
+        end
+        return result
+    end
+
+    // A copy of an array, since lastOutput changes with the next program.
+    action Copied(Array<text> lines) returns Array<text>
+        Array<text> result
+        AddAll(result, lines)
+        return result
+    end
+
+    action AddAll(Array<text> into, Array<text> items)
+        integer i = 0
+        repeat while i < items:GetSize()
+            into:Add(items:Get(i))
+            i = i + 1
+        end
+    end
+
+    // Short lists of parameters for RunTool.
+    action Parameters(text first) returns Array<text>
+        Array<text> result
+        result:Add(first)
+        return result
+    end
+
+    action Parameters(text first, text second) returns Array<text>
+        Array<text> result = Parameters(first)
+        result:Add(second)
+        return result
+    end
+
+    action Parameters(text first, text second, text third) returns Array<text>
+        Array<text> result = Parameters(first, second)
+        result:Add(third)
+        return result
+    end
+
+    action Parameters(text first, text second, text third, text fourth) returns Array<text>
+        Array<text> result = Parameters(first, second, third)
+        result:Add(fourth)
+        return result
+    end
+
+    action Parameters(text first, text second, text third, text fourth, text fifth) returns Array<text>
+        Array<text> result = Parameters(first, second, third, fourth)
+        result:Add(fifth)
+        return result
+    end
+
+    action Parameters(text first, text second, text third, text fourth, text fifth, text sixth) returns Array<text>
+        Array<text> result = Parameters(first, second, third, fourth, fifth)
+        result:Add(sixth)
+        return result
+    end
+
+    action Parameters(text first, text second, text third, text fourth, text fifth, text sixth, text seventh) returns Array<text>
+        Array<text> result = Parameters(first, second, third, fourth, fifth, sixth)
+        result:Add(seventh)
+        return result
+    end
+
+    action Parameters(text first, text second, text third, text fourth, text fifth, text sixth, text seventh, text eighth) returns Array<text>
+        Array<text> result = Parameters(first, second, third, fourth, fifth, sixth, seventh)
+        result:Add(eighth)
+        return result
+    end
+
+    action Parameters(text first, text second, text third, text fourth, text fifth, text sixth, text seventh, text eighth, text ninth) returns Array<text>
+        Array<text> result = Parameters(first, second, third, fourth, fifth, sixth, seventh, eighth)
+        result:Add(ninth)
+        return result
+    end
+end

@@ -1,0 +1,69 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.Behaviors.ErrorCopyBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ErrorCopyAllBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ErrorCopyPathBehavior
+
+/*
+The Errors tab's menu (E3): Go to line, Copy error, Copy all errors and
+Copy file path. Each acts on the tab's selected row.
+*/
+class ErrorTabPopupMenu is PopupMenu
+    MenuItem goToLine
+    MenuItem copyError
+    MenuItem copyAll
+    MenuItem copyPath
+    ErrorCopyBehavior copyBehavior
+    ErrorCopyAllBehavior copyAllBehavior
+    ErrorCopyPathBehavior copyPathBehavior
+    boolean built = false
+
+    action SetErrorTab(ErrorTab tab)
+        copyBehavior:SetErrorTab(tab)
+        copyAllBehavior:SetErrorTab(tab)
+        copyPathBehavior:SetErrorTab(tab)
+    end
+
+    // The items are made when the menu first opens, when Studio's
+    // behaviors exist.
+    private action Build
+        if built
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+
+        goToLine:SetName("Go to line")
+        goToLine:SetShortcut("Return")
+        goToLine:SetBehavior(studio:GetBehaviors():GetJumpToErrorBehavior())
+
+        copyError:SetName("Copy error")
+        copyError:SetBehavior(copyBehavior)
+
+        copyAll:SetName("Copy all errors")
+        copyAll:SetBehavior(copyAllBehavior)
+
+        copyPath:SetName("Copy file path")
+        copyPath:SetBehavior(copyPathBehavior)
+
+        Add(goToLine)
+        Add(copyError)
+        Add(copyAll)
+        Add(copyPath)
+        built = true
+    end
+
+    action OpenAtCursor
+        Build()
+        parent:PopupMenu:OpenAtCursor()
+    end
+
+    action OpenAt(number x, number y)
+        Build()
+        parent:PopupMenu:OpenAt(x, y)
+    end
+end

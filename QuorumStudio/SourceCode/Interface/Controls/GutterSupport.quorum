@@ -1,0 +1,124 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Containers.Array
+use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Interface.Controls.ScrollableLineControl
+use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Interface.Controls.Blocks.Block
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Development.Environment.Configuration.OptionsConstants
+
+/*
+Shared by Studio's two gutters, StudioLineGutter and StatusLineGutter, so
+the text editor and the block editor draw their rows the same way (G1).
+*/
+class GutterSupport
+    // How strong the stopped line's band is.
+    constant number STOPPED_BAND_ALPHA = 0.14
+
+    /*
+    This action returns the text line shown on each visible row, from the
+    first row down: item 0 is the first row's line. In a text box a row is
+    a text line. In the block editor a row is a navigation row, and each
+    block's rows show its text lines in order from its start line, as
+    CodeEditorLineNumberGutter numbers them. Like the library's gutters, it
+    stops after the first row below the bottom edge.
+    */
+    action GetTextLines(ScrollableLineControl control, integer startLine) returns Array<integer>
+        Array<integer> lines
+        if control = undefined
+            return lines
+        end
+
+        integer totalLines = control:GetLineCount()
+        number barOffset = 0
+        if control:IsShowingHorizontalBar()
+            barOffset = control:GetBarThickness() * control:GetInterfaceScale()
+        end
+
+        boolean blocks = control is CodeEditor
+        Block block = undefined
+        integer blockStartLine = 0
+        integer blockSubLine = 0
+        if blocks
+            CodeEditor editor = cast(CodeEditor, control)
+            block = editor:GetBlockAtNavigationIndex(startLine)
+            if block not= undefined and block:IsNavigable() = false
+                block = block:GetNextNavigableBlock()
+            end
+            if block = undefined
+                return lines
+            end
+            blockStartLine = block:GetStartLine()
+            // The first row can be partway through its block.
+            if block:GetNavigationIndex() < startLine
+                blockSubLine = startLine - block:GetNavigationIndex()
+            end
+        end
+
+        integer row = startLine
+        boolean last = false
+        repeat while row < totalLines and last = false
+            if control:GetLineY(row) + barOffset < 0
+                last = true
+            end
+
+            if blocks
+                lines:Add(blockStartLine + blockSubLine)
+            else
+                lines:Add(row)
+            end
+            row = row + 1
+
+            if blocks
+                if row > block:GetNavigationEndIndex()
+                    block = block:GetNextNavigableBlock()
+                    blockSubLine = 0
+                    if block = undefined
+                        last = true
+                    else
+                        blockStartLine = block:GetStartLine()
+                    end
+                else
+                    blockSubLine = blockSubLine + 1
+                end
+            end
+        end
+        return lines
+    end
+
+    /*
+    This action returns a theme color, or the fallback when the theme
+    doesn't have it.
+    */
+    action GetThemeColor(text key, ColorGroup fallback) returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return fallback
+        end
+        ColorGroup value = options:GetColorProperty(key)
+        if value = undefined
+            return fallback
+        end
+        return value
+    end
+
+    /*
+    This action returns the faint band for the line the debugger is stopped
+    on: the Call Stack tab's green, mostly see-through. Both editors use it.
+    */
+    action GetStoppedBandColor returns Color
+        Color band
+        band:SetColor(110.0 / 255.0, 200.0 / 255.0, 120.0 / 255.0, STOPPED_BAND_ALPHA)
+        OptionsConstants optionsConstants
+        ColorGroup group = GetThemeColor(optionsConstants:CALL_STACK_CURRENT_COLOR, undefined)
+        if group not= undefined and group is Color
+            Color green = cast(Color, group)
+            band:SetColor(green:GetRed(), green:GetGreen(), green:GetBlue(), STOPPED_BAND_ALPHA)
+        end
+        return band
+    end
+end

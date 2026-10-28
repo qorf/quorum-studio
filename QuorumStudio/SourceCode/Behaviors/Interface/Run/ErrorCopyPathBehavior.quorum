@@ -1,0 +1,42 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Game.GameStateManager
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Development.Environment.Studio.Interface.ErrorFileItem
+use Libraries.Development.Environment.Studio.Interface.ErrorItem
+
+/*
+Copies the full path of the selected row's file in the Errors tab.
+*/
+class ErrorCopyPathBehavior is Behavior
+    ErrorTab errorTab = undefined
+
+    action SetErrorTab(ErrorTab tab)
+        errorTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if errorTab = undefined
+            return now
+        end
+
+        ListItem row = errorTab:GetSelectedRow()
+        File file = undefined
+        if row is ErrorItem
+            ErrorItem errorRow = cast(ErrorItem, row)
+            file = errorRow:GetError():GetFile()
+        elseif row is ErrorFileItem
+            ErrorFileItem fileItem = cast(ErrorFileItem, row)
+            file = fileItem:GetFile()
+        end
+
+        if file not= undefined
+            GameStateManager manager
+            manager:GetGame():SetClipboard(file:GetAbsolutePath())
+        end
+    end
+end

@@ -30,6 +30,7 @@ package org.debugger.jdi.views;
 
 import com.sun.jdi.ObjectReference;
 import com.sun.jdi.ReferenceType;
+import com.sun.jdi.StringReference;
 import com.sun.jdi.Value;
 import java.util.HashMap;
 import java.util.logging.Level;
@@ -49,6 +50,7 @@ import org.debugger.jdi.views.quorum.ListView;
 import org.debugger.jdi.views.quorum.Number32BitArrayView;
 import org.debugger.jdi.views.quorum.Number64BitArrayView;
 import org.debugger.jdi.views.quorum.NumberView;
+import org.debugger.jdi.views.quorum.PrimitiveView;
 import org.debugger.jdi.views.quorum.QuorumVariableView;
 import org.debugger.jdi.views.quorum.StackView;
 import org.debugger.jdi.views.quorum.TextObjectView;
@@ -200,6 +202,51 @@ public class QuorumView extends JDIVariableView {
         return "undefined";
     }
 
+    /**
+     * Boxed values, such as a Quorum Integer or Text object, are shown like
+     * the primitives they hold, so they have no children.
+     *
+     * @param variable
+     */
+    @Override
+    public void convertTypeName(JDIVariable variable) {
+        String original = variable.getTypeName();
+        super.convertTypeName(variable);
+        //a field's declared type may be the class's interface, such as Integer_
+        if (original.endsWith("_")) {
+            original = original.substring(0, original.length() - 1);
+        }
+        if (views.get(original) instanceof PrimitiveView) {
+            variable.setPrimitive(true);
+        }
+    }
+
+    /**
+     * Text is shown in quotes, with line breaks and tabs written out, so it
+     * fits on one line and can't be mistaken for undefined.
+     *
+     * @param value
+     * @return
+     */
+    public static String quote(String value) {
+        String result = value.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
+        return "\"" + result + "\"";
+    }
+
+    /**
+     * This returns how a value is shown when it has no view of its own:
+     * text in quotes, and anything else as JDI writes it.
+     *
+     * @param value
+     * @return
+     */
+    public static String toDisplay(Value value) {
+        if (value instanceof StringReference) {
+            return quote(((StringReference) value).value());
+        }
+        return value.toString();
+    }
+
     @Override
     public String getValue(Value value) {
         if (value instanceof ObjectReference) {
@@ -208,10 +255,11 @@ public class QuorumView extends JDIVariableView {
             QuorumVariableView view = views.get(name);
             if (view != null) {
                 view.setThread(this.getThread());
+                view.setMachine(this.getMachine());
                 return view.getValue(value);
             }
             if (name.compareTo("java.lang.String") == 0) {
-                return value.toString();
+                return toDisplay(value);
             }
             return "#" + ref.hashCode();
         } else if (value == null) {
@@ -232,16 +280,42 @@ public class QuorumView extends JDIVariableView {
 
     @Override
     public Variable[] getSpecialVariableChildren(ObjectReference reference) {
+        return getSpecialVariableChildren(reference, 0, 0);
+    }
+
+    @Override
+    public Variable[] getSpecialVariableChildren(ObjectReference reference, int from, int to) {
+        QuorumVariableView view = getView(reference);
+        if (view != null) {
+            return view.getSpecialVariableChildren(reference, from, to);
+        }
+        return new Variable[0];
+    }
+
+    @Override
+    public int getSpecialVariableCount(ObjectReference reference) {
+        QuorumVariableView view = getView(reference);
+        if (view != null) {
+            return view.getElementCount(reference);
+        }
+        return 0;
+    }
+
+    /**
+     * This returns the view for a value's type, ready to read it, or null if
+     * it has none.
+     *
+     * @param reference
+     * @return
+     */
+    private QuorumVariableView getView(ObjectReference reference) {
         ReferenceType type = reference.referenceType();
         QuorumVariableView view = views.get(type.name());
         if (view != null) {
             view.setThread(this.getThread());
             view.setMachine(this.getMachine());
-            Variable[] vars = view.getSpecialVariableChildren(reference);
-            return vars;
         }
-
-        return new Variable[0];
+        return view;
     }
 
     public JDIVariable convert(Value value) {

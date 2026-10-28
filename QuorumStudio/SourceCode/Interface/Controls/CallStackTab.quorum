@@ -1,43 +1,70 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Tab
-use Libraries.Interface.Controls.Tab
-
-use Libraries.Interface.Controls.Tab
 use Libraries.Development.Environment.Studio.Build.BuildManager
-use Libraries.Interface.Layouts.Layout
+use Libraries.Development.Environment.Studio.Build.BuildInformation
 use Libraries.Development.Environment.Resources
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Development.Environment.Studio.Behaviors.FoldClickBehavior
 use Libraries.Language.Debug.Debugger
-use Libraries.Language.Debug.VariablesModel
-use Libraries.Containers.Array
-use Libraries.Language.Debug.Variable
-use Libraries.Interface.Controls.Spreadsheet
-use Libraries.Interface.Controls.Column
-use Libraries.Interface.Controls.Cell
-use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Language.Debug.StackFrame
-use Libraries.Development.Environment.Studio.Build.BuildInformation
 use Libraries.Language.Compile.CompilerResult
+use Libraries.Language.Compile.Library
 use Libraries.Language.Compile.Symbol.SymbolTable
 use Libraries.Language.Compile.Symbol.Class
+use Libraries.Containers.Array
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.ListItem
+use Libraries.Game.InputTable
+use Libraries.Game.InputSet
+use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Interface.Behaviors.Controls.ListActivationBehavior
+use Libraries.Interface.Behaviors.Controls.OpenPopupMenuBehavior
+use Libraries.System.File
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Development.Environment.Studio.Behaviors.CallStackFoldBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CallStackCopyBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CallStackMenuBehavior
 
-class CallStackTab is Tab  
+/*
+The Call Stack tab (C1): one row per frame, the frame the program is
+stopped in first, with a green marker. Runs of library frames fold into
+one "N library frames hidden" row. It's a List, so only the visible rows
+are drawn, even for a deep stack.
+*/
+class CallStackTab is Tab
     BuildManager manager = undefined
     Resources resources = undefined
     Behaviors behaviors = undefined
     Debugger debugger = undefined
+    // Kept only for GetPane; the list is the tab's content now.
     BreakpointScrollPane pane
-    Spreadsheet table
-    boolean updateDebuggerInformation = false
-    Column actionColumn
-    Column lineColumn
-    Column classColumn
-    Column fileColumn
-    Cell headerAction
-    Cell headerClass
-    Cell headerLine
-    Cell headerFile
+
+    List callStackList
+    // Every frame's row, top first, shown or not, for Copy stack trace.
+    Array<CallStackItem> allRows
+    // Whether library frames are shown. Kept across steps.
+    boolean libraryShown = false
+    // Font Awesome, for the marker.
+    Font iconFont
+    boolean iconFontLoaded = false
+    // The rows' input group, made when the first row is added.
+    boolean rowInputReady = false
+    FoldClickBehavior foldClickBehavior
+
+    CallStackPopupMenu menu
+    CallStackFoldBehavior foldBehavior
+    CallStackCopyBehavior copyBehavior
+    CallStackMenuBehavior menuBehavior
+    OpenPopupMenuBehavior openMenuBehavior
+
+    constant text ROW_INPUT_GROUP = "CallStackListItem"
 
     action GetBehaviors returns Behaviors
         return behaviors
@@ -47,7 +74,6 @@ class CallStackTab is Tab
         me:behaviors = behaviors
         manager = behaviors:GetBuildManager()
         debugger = manager:GetDebugger()
-        table:SetCellActivationBehavior(behaviors:GetJumpToCallStackBehavior())
     end
 
     action GetResources returns Resources
@@ -68,94 +94,314 @@ class CallStackTab is Tab
 
     action Setup
         DisplayCloseButton(true)
-        table:Add(actionColumn)
-
-        LayoutProperties messageProperties = actionColumn:GetDefaultLayoutProperties()
-        messageProperties:SetPixelWidth(0)
-        messageProperties:SetPercentageWidth(0.15)
-        
-        LayoutProperties lineProperties = lineColumn:GetDefaultLayoutProperties()
-        lineProperties:SetPixelWidth(0)
-        lineProperties:SetPercentageWidth(0.1)
-
-        LayoutProperties classProperties = classColumn:GetDefaultLayoutProperties()
-        classProperties:SetPixelWidth(0)
-        classProperties:SetPercentageWidth(0.25)
-
-        LayoutProperties fileProperties = fileColumn:GetDefaultLayoutProperties()
-        fileProperties:SetPixelWidth(0)
-        fileProperties:SetPercentageWidth(0.5)
-
-        headerAction:SetText("Action")
-        headerLine:SetText("Line")
-        headerClass:SetText("Class")
-        headerFile:SetText("File")
-
-        actionColumn:Add(headerAction)
-        lineColumn:Add(headerLine)
-        classColumn:Add(headerClass)
-        fileColumn:Add(headerFile)
-
-        table:Add(lineColumn)
-        table:Add(classColumn)
-        table:Add(fileColumn)
-
-        LayoutProperties properties = table:GetDefaultLayoutProperties()
-        properties:SetHorizontalLayoutMode(properties:FILL)
-
-        pane:Add(table)
-        pane:Resize()
         SetName("Call Stack")
-        SetRelatedItem(GetPane())
-        DisplayCloseButton(true)
-        SetFocusTarget(table)
+
+        callStackList:SetName("Call Stack")
+        LayoutProperties listProperties = callStackList:GetDefaultLayoutProperties()
+        listProperties:SetPercentageX(0)
+        listProperties:SetPercentageY(0)
+        listProperties:SetPercentageWidth(1)
+        listProperties:SetPercentageHeight(1)
+
+        foldBehavior:SetCallStackTab(me)
+        copyBehavior:SetCallStackTab(me)
+        menuBehavior:SetCallStackTab(me)
+        menu:SetCallStackTab(me)
+
+        SetRelatedItem(callStackList)
+        SetFocusTarget(callStackList)
+
+        // The list's keys: copy, the menu, and Return to go to the line or
+        // show and hide library frames.
+        KeyboardEvent keys
+        InputTable listTable = callStackList:CopyAndActivateInputTable("CallStackList")
+
+        InputSet metaC
+        metaC:SetKeyboardInput(keys:C)
+        metaC:AddModifier(metaC:META)
+        listTable:Add(metaC, copyBehavior)
+
+        InputSet controlC
+        controlC:SetKeyboardInput(keys:C)
+        controlC:AddModifier(controlC:CONTROL)
+        listTable:Add(controlC, copyBehavior)
+
+        InputSet shiftF10
+        shiftF10:SetKeyboardInput(keys:F10)
+        shiftF10:AddModifier(shiftF10:SHIFT)
+        listTable:Add(shiftF10, menuBehavior)
+
+        InputSet enterSet
+        enterSet:SetKeyboardInput(keys:ENTER)
+        ListActivationBehavior activate
+        listTable:Add(enterSet, activate)
     end
 
-    action Empty 
-        table:Empty()
-        actionColumn:Empty()
-        lineColumn:Empty()
-        classColumn:Empty()
-        fileColumn:Empty()
-
-        table:Add(actionColumn)
-        table:Add(lineColumn)
-        table:Add(classColumn)
-        table:Add(fileColumn)
-
-        actionColumn:Add(headerAction)
-        lineColumn:Add(headerLine)
-        classColumn:Add(headerClass)
-        fileColumn:Add(headerFile)
+    action Empty
+        callStackList:Deselect()
+        // List has no Empty of its own; removing from the end is quick.
+        repeat while callStackList:GetSize() > 0
+            callStackList:Remove(callStackList:GetSize() - 1)
+        end
+        allRows:Empty()
+        // List:Remove doesn't redraw; recompute the scroll ratios for the
+        // new length, then rebuild the visible rows.
+        callStackList:Resize()
+        callStackList:SetScrollPercentageY(callStackList:GetScrollPercentageY())
     end
 
-    action Add(StackFrame frame, BuildInformation info)
-        Cell actionCell
-        Cell lineCell
-        Cell classNameCell
-        Cell fileNameCell
-        
-        actionCell:SetText(frame:GetName())
-        lineCell:SetText("" + frame:GetLine())
-        classNameCell:SetText("" + frame:GetDotName())
+    /*
+    This action shows a new stack, top first, in place of the old one. The
+    frame at the top is the one the program is stopped in. The info gives
+    the project and its symbol table, to find each frame's file.
+    */
+    action SetFrames(Array<StackFrame> frames, BuildInformation info)
+        Empty()
+        LoadIconFont()
+        ColorGroup markColor = GetCurrentColor()
+        ColorGroup mutedColor = GetMutedColor()
+        ColorGroup toggleColor = GetToggleColor()
 
-        CompilerResult result = info:result
-        SymbolTable table = result:symbolTable
-        Class clazz = table:GetClass(frame:GetQuorumName())
-        if clazz not= undefined
-            text value = clazz:GetFile():GetAbsolutePath()
-            fileNameCell:SetText(value)
-        else
-            fileNameCell:SetText("")
+        // The fold row for the run of library frames being read, if any.
+        CallStackLibraryItem libraryRun = undefined
+        integer index = 0
+        repeat while index < frames:GetSize()
+            StackFrame frame = frames:Get(index)
+            File source = FindFile(frame, info)
+            boolean isLibrary = IsLibraryFile(source, info)
+            boolean isCurrent = (index = 0)
+
+            CallStackItem row
+            row:Setup(frame, source, isLibrary, isCurrent, iconFont, markColor, mutedColor)
+            Prepare(row)
+            if behaviors not= undefined
+                row:SetActivationBehavior(behaviors:GetJumpToCallStackBehavior())
+            end
+            allRows:Add(row)
+
+            if isLibrary and not isCurrent
+                // A library frame: one fold row stands for the whole run.
+                if libraryRun = undefined
+                    CallStackLibraryItem newRun
+                    libraryRun = newRun
+                    libraryRun:Setup(iconFont, toggleColor)
+                    libraryRun:SetShown(libraryShown)
+                    Prepare(libraryRun)
+                    libraryRun:SetActivationBehavior(foldBehavior)
+                    callStackList:Add(libraryRun)
+                end
+                libraryRun:AddRow(row)
+                if libraryShown
+                    callStackList:Add(row)
+                end
+            else
+                // A project frame, or the current one, ends any run.
+                libraryRun = undefined
+                callStackList:Add(row)
+            end
+            index = index + 1
         end
 
-        actionColumn:Add(actionCell)
-        lineColumn:Add(lineCell)
-        classColumn:Add(classNameCell)
-        fileColumn:Add(fileNameCell)
+        // List:Add doesn't redraw; recompute the scroll ratios for the new
+        // length, go back to the top, and rebuild the visible rows.
+        callStackList:Resize()
+        callStackList:SetScrollPercentageY(0)
+
+        // Someone reading the list keeps their place at the current frame.
+        if callStackList:IsFocused() and callStackList:GetSize() > 0
+            callStackList:Select(0)
+        end
+    end
+
+    /*
+    This action shows or hides library frames, under every fold row at
+    once. The choice is kept for the next step.
+    */
+    action ToggleLibraryFrames(CallStackLibraryItem activated)
+        libraryShown = not libraryShown
+        if not libraryShown
+            // The selection may be a frame that's about to be taken out.
+            callStackList:Deselect()
+        end
+
+        // From the bottom up, so the indexes above don't move.
+        integer index = callStackList:GetSize() - 1
+        repeat while index >= 0
+            ListItem row = callStackList:GetListItem(index)
+            if row is CallStackLibraryItem
+                CallStackLibraryItem libraryRow = cast(CallStackLibraryItem, row)
+                Array<CallStackItem> hidden = libraryRow:GetRows()
+                if libraryShown
+                    integer offset = 0
+                    repeat while offset < hidden:GetSize()
+                        // Shown first: a hidden row isn't added for screen readers.
+                        hidden:Get(offset):Show()
+                        callStackList:Add(index + 1 + offset, hidden:Get(offset))
+                        offset = offset + 1
+                    end
+                else
+                    repeat hidden:GetSize() times
+                        callStackList:Remove(index + 1)
+                    end
+                end
+                libraryRow:SetShown(libraryShown)
+            end
+            index = index - 1
+        end
+
+        // List:Add and List:Remove don't redraw; recompute the scroll ratios
+        // for the new length, then rebuild the visible rows.
+        callStackList:Resize()
+        callStackList:SetScrollPercentageY(callStackList:GetScrollPercentageY())
+        if activated not= undefined
+            callStackList:Select(activated)
+        end
+    end
+
+    // The row that's selected, or undefined.
+    action GetSelectedRow returns ListItem
+        return callStackList:GetSelection():GetListItem()
+    end
+
+    action GetList returns List
+        return callStackList
+    end
+
+    // Every frame, shown or folded, one per line, top first.
+    action GetStackTraceText returns text
+        text result = ""
+        integer index = 0
+        repeat while index < allRows:GetSize()
+            if index > 0
+                result = result + "
+"
+            end
+            result = result + allRows:Get(index):GetCopyText()
+            index = index + 1
+        end
+        return result
     end
 
     action GetPane returns BreakpointScrollPane
         return pane
+    end
+
+    // The frame's source file: the project's symbol table first, then the
+    // standard library's. Undefined for Java code.
+    private action FindFile(StackFrame frame, BuildInformation info) returns File
+        text key = frame:GetQuorumName()
+        Class clazz = undefined
+        if info not= undefined and info:result not= undefined
+            CompilerResult result = info:result
+            SymbolTable projectTable = result:symbolTable
+            if projectTable not= undefined
+                clazz = projectTable:GetClass(key)
+            end
+        end
+        if clazz = undefined and manager not= undefined
+            Library library = manager:GetLibrary()
+            if library not= undefined
+                SymbolTable libraryTable = library:GetSymbolTable()
+                if libraryTable not= undefined
+                    clazz = libraryTable:GetClass(key)
+                end
+            end
+        end
+        if clazz = undefined
+            return undefined
+        end
+        return clazz:GetFile()
+    end
+
+    // A frame is a library frame when it has no Quorum source, or its file
+    // isn't in the project's folder.
+    private action IsLibraryFile(File source, BuildInformation info) returns boolean
+        if source = undefined
+            return true
+        end
+        if info = undefined or info:project = undefined
+            return false
+        end
+        File projectFolder = info:project:GetLocation()
+        if projectFolder = undefined
+            return false
+        end
+        text folderPath = projectFolder:GetAbsolutePath()
+        text path = source:GetAbsolutePath()
+        if not path:StartsWith(folderPath) or path:GetSize() = folderPath:GetSize()
+            return true
+        end
+        // So "/Code/Game" doesn't match "/Code/Game2/Main.quorum". Windows
+        // paths use backslashes (Unicode 92).
+        text backslash = ""
+        backslash = backslash:GetUnicodeValue(92)
+        text next = path:GetCharacter(folderPath:GetSize())
+        return not (next = "/" or next = backslash)
+    end
+
+    // Each row gets the rows' input group (right click opens the menu)
+    // and the shared menu.
+    private action Prepare(ListItem row)
+        if not rowInputReady
+            InputTable rowTable = row:CopyAndActivateInputTable(ROW_INPUT_GROUP)
+            MouseEvent mouse
+            InputSet rightClick
+            rightClick:SetMouseInput(mouse:RIGHT)
+            rowTable:Add(rightClick, openMenuBehavior)
+            InputSet controlClick
+            controlClick:SetMouseInput(mouse:LEFT)
+            controlClick:AddModifier(controlClick:CONTROL)
+            rowTable:Add(controlClick, openMenuBehavior)
+            // One left click on a chevron folds the row (FoldClickBehavior);
+            // ClickDownBehavior, already in the table, still selects it.
+            InputSet leftClick
+            leftClick:SetMouseInput(mouse:LEFT)
+            rowTable:Add(leftClick, foldClickBehavior)
+            rowInputReady = true
+        else
+            row:SetInputGroup(ROW_INPUT_GROUP)
+        end
+        row:SetPopupMenu(menu)
+    end
+
+    private action LoadIconFont
+        if iconFontLoaded
+            return now
+        end
+        File iconFile
+        iconFile:SetPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
+        iconFont:LoadFont(iconFile)
+        iconFont:SetSize(32)
+        iconFontLoaded = true
+    end
+
+    private action GetMutedColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetTabFontColor()
+    end
+
+    // The color of "Show" and "Hide", the tree's accent, like the Errors
+    // tab's fold arrow.
+    private action GetToggleColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetTreeItemAccentColor()
+    end
+
+    private action GetCurrentColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        OptionsConstants const
+        return options:GetColorProperty(const:CALL_STACK_CURRENT_COLOR)
     end
 end

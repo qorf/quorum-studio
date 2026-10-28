@@ -1,0 +1,42 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.Interface.ErrorTab
+use Libraries.Development.Environment.Studio.Interface.ErrorFileItem
+use Libraries.Development.Environment.Studio.Interface.ErrorItem
+
+/*
+Copies the selected row of the Errors tab: an error as
+"File:line: message", or a file's row as all of its errors.
+*/
+class ErrorCopyBehavior is Behavior
+    ErrorTab errorTab = undefined
+
+    action SetErrorTab(ErrorTab tab)
+        errorTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if errorTab = undefined
+            return now
+        end
+
+        ListItem row = errorTab:GetSelectedRow()
+        text value = ""
+        if row is ErrorItem
+            ErrorItem errorRow = cast(ErrorItem, row)
+            value = errorRow:GetCopyText()
+        elseif row is ErrorFileItem
+            ErrorFileItem fileItem = cast(ErrorFileItem, row)
+            value = fileItem:GetCopyText()
+        end
+
+        if value not= ""
+            GameStateManager manager
+            manager:GetGame():SetClipboard(value)
+        end
+    end
+end

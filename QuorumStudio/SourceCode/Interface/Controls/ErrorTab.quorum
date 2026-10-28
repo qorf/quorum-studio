@@ -1,46 +1,70 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Tab
-
-use Libraries.Interface.Controls.Tab
 use Libraries.Development.Environment.Studio.Build.BuildManager
-use Libraries.Interface.Layouts.Layout
-use Libraries.Interface.Controls.Tree
 use Libraries.Development.Environment.Resources
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Development.Environment.Studio.Behaviors.FoldClickBehavior
 use Libraries.Language.Debug.Debugger
-use Libraries.Language.Debug.VariablesModel
-use Libraries.Containers.Array
-use Libraries.Language.Debug.Variable
-use Libraries.Interface.Controls.TreeItem
-use Libraries.Interface.Events.TreeChangeListener
-use Libraries.Interface.Events.TreeChangeEvent
-use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Containers.HashTable
 use Libraries.Interface.Layouts.LayoutProperties
-use Libraries.Interface.Controls.Icon
-use Libraries.Interface.Controls.Spreadsheet
-use Libraries.Interface.Controls.Column
-use Libraries.Interface.Controls.Cell
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.ListItem
 use Libraries.Language.Compile.CompilerError
-use Libraries.Development.Environment.Studio.Behaviors.JumpToErrorBehavior
 use Libraries.Game.InputTable
 use Libraries.Game.InputSet
+use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.ColorGroup
 use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Interface.Behaviors.Controls.ListActivationBehavior
+use Libraries.Interface.Behaviors.Controls.OpenPopupMenuBehavior
+use Libraries.System.File
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Development.Environment.Studio.Behaviors.ErrorFoldBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ErrorCopyBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ErrorCopyAllBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ErrorCopyPathBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ErrorMenuBehavior
 
+/*
+The Errors tab (E3): the build's errors as a List, grouped by file. Each
+file is a row that folds, with its errors as indented rows under it. Only
+what's shown is in the list, and the list only draws what's visible, so
+many errors stay fast.
+*/
 class ErrorTab is Tab
     BuildManager manager = undefined
     Resources resources = undefined
     Behaviors behaviors = undefined
     Debugger debugger = undefined
     BreakpointScrollPane pane
-    Spreadsheet table
     boolean updateDebuggerInformation = false
-    Column messageColumn
-    Column lineColumn
-    Column fileColumn
-    Cell headerMessage
-    Cell headerFile
-    Cell headerLine
+
+    List errorList
+    // A file's row, by the file's absolute path.
+    HashTable<text, ErrorFileItem> fileItems
+    // Font Awesome, for the fold arrows and the error marks.
+    Font iconFont
+    boolean iconFontLoaded = false
+    // The rows' input group, made when the first row is added.
+    boolean rowInputReady = false
+    FoldClickBehavior foldClickBehavior
+
+    ErrorTabPopupMenu menu
+    ErrorFoldBehavior toggleBehavior
+    ErrorFoldBehavior collapseBehavior
+    ErrorFoldBehavior expandBehavior
+    ErrorCopyBehavior copyBehavior
+    ErrorCopyAllBehavior copyAllBehavior
+    ErrorCopyPathBehavior copyPathBehavior
+    ErrorMenuBehavior menuBehavior
+    OpenPopupMenuBehavior openMenuBehavior
+
+    constant text NO_FILE = "(no file)"
+    constant text ROW_INPUT_GROUP = "ErrorListItem"
 
     action GetBehaviors returns Behaviors
         return behaviors
@@ -50,7 +74,6 @@ class ErrorTab is Tab
         me:behaviors = behaviors
         manager = behaviors:GetBuildManager()
         debugger = manager:GetDebugger()
-        table:SetCellActivationBehavior(behaviors:GetJumpToErrorBehavior())
     end
 
     action GetResources returns Resources
@@ -71,105 +94,228 @@ class ErrorTab is Tab
 
     action Setup
         DisplayCloseButton(true)
-        table:SetName("Errors")
-        table:Add(messageColumn)
-
-        LayoutProperties messageProperties = messageColumn:GetDefaultLayoutProperties()
-        messageProperties:SetPixelWidth(0)
-        messageProperties:SetPercentageWidth(0.6)
-        
-        LayoutProperties lineProperties = lineColumn:GetDefaultLayoutProperties()
-        lineProperties:SetPixelWidth(0)
-        lineProperties:SetPercentageWidth(0.1)
-
-        LayoutProperties fileProperties = fileColumn:GetDefaultLayoutProperties()
-        fileProperties:SetPixelWidth(0)
-        fileProperties:SetPercentageWidth(0.30)
-
-        headerMessage:SetText("Message")
-        headerMessage:SetName("Message Header")
-        headerLine:SetText("Line")
-        headerLine:SetName("Line Header")
-        headerFile:SetText("File")
-        headerFile:SetName("File Header")
-        
-        messageColumn:SetName("Message Column")
-        lineColumn:SetName("Line Column")
-        fileColumn:SetName("File Column")
-
-        messageColumn:Add(headerMessage)
-        lineColumn:Add(headerLine)
-        fileColumn:Add(headerFile)
-
-        table:Add(lineColumn)
-        table:Add(fileColumn)
-
-        LayoutProperties properties = table:GetDefaultLayoutProperties()
-        properties:SetHorizontalLayoutMode(properties:FILL)
-
-        pane:Add(table)
-        pane:Resize()
         SetName("Errors")
-        SetRelatedItem(GetPane())
-        DisplayCloseButton(true)
-        SetFocusTarget(table)
 
+        errorList:SetName("Errors")
+        LayoutProperties listProperties = errorList:GetDefaultLayoutProperties()
+        listProperties:SetPercentageX(0)
+        listProperties:SetPercentageY(0)
+        listProperties:SetPercentageWidth(1)
+        listProperties:SetPercentageHeight(1)
+
+        toggleBehavior:SetErrorTab(me)
+        toggleBehavior:SetMode(toggleBehavior:TOGGLE)
+        collapseBehavior:SetErrorTab(me)
+        collapseBehavior:SetMode(collapseBehavior:COLLAPSE)
+        expandBehavior:SetErrorTab(me)
+        expandBehavior:SetMode(expandBehavior:EXPAND)
+        copyBehavior:SetErrorTab(me)
+        copyAllBehavior:SetErrorTab(me)
+        copyPathBehavior:SetErrorTab(me)
+        menuBehavior:SetErrorTab(me)
+        menu:SetErrorTab(me)
+
+        SetRelatedItem(errorList)
+        SetFocusTarget(errorList)
+
+        // The list's keys: copy, the menu, Return to go to the line, and
+        // the arrows to fold a file.
         KeyboardEvent keys
-        InputTable inputTable = table:CopyAndActivateInputTable("CompilerErrorSpreadsheetInputTable")
-        InputSet metaX
-        metaX:SetKeyboardInput(keys:X)
-        metaX:AddModifier(metaX:META)
+        InputTable listTable = errorList:CopyAndActivateInputTable("ErrorList")
 
-        InputSet metaV
-        metaV:SetKeyboardInput(keys:V)
-        metaV:AddModifier(metaV:META)
+        InputSet metaC
+        metaC:SetKeyboardInput(keys:C)
+        metaC:AddModifier(metaC:META)
+        listTable:Add(metaC, copyBehavior)
 
-        InputSet ctrlX
-        ctrlX:SetKeyboardInput(keys:X)
-        ctrlX:AddModifier(ctrlX:CONTROL)
+        InputSet controlC
+        controlC:SetKeyboardInput(keys:C)
+        controlC:AddModifier(controlC:CONTROL)
+        listTable:Add(controlC, copyBehavior)
 
-        InputSet ctrlV
-        ctrlV:SetKeyboardInput(keys:V)
-        ctrlV:AddModifier(ctrlV:CONTROL)
+        InputSet shiftF10
+        shiftF10:SetKeyboardInput(keys:F10)
+        shiftF10:AddModifier(shiftF10:SHIFT)
+        listTable:Add(shiftF10, menuBehavior)
 
-        inputTable:RemoveKey(metaX)
-        inputTable:RemoveKey(metaV)
-        inputTable:RemoveKey(ctrlX)
-        inputTable:RemoveKey(ctrlV)
+        InputSet enterSet
+        enterSet:SetKeyboardInput(keys:ENTER)
+        ListActivationBehavior activate
+        listTable:Add(enterSet, activate)
+
+        InputSet leftSet
+        leftSet:SetKeyboardInput(keys:LEFT)
+        listTable:Add(leftSet, collapseBehavior)
+
+        InputSet rightSet
+        rightSet:SetKeyboardInput(keys:RIGHT)
+        listTable:Add(rightSet, expandBehavior)
     end
 
-    action Empty 
-        messageColumn:Empty()
-        lineColumn:Empty()
-        fileColumn:Empty()
-
-        messageColumn:Add(headerMessage)
-        lineColumn:Add(headerLine)
-        fileColumn:Add(headerFile)
+    action Empty
+        errorList:Deselect()
+        repeat while errorList:GetSize() > 0
+            errorList:Remove(errorList:GetSize() - 1)
+        end
+        fileItems:Empty()
     end
 
     action AddError(CompilerError error)
-        Cell m
-        Cell l
-        StateCell f
-        
-        m:SetName(error:GetErrorMessage())
-        m:SetText(error:GetErrorMessage())
-        l:SetName("" + error:GetLineNumber())
-        l:SetText("" + error:GetLineNumber())
+        LoadIconFont()
+
+        text key = NO_FILE
         if error:GetFile() not= undefined
-            f:SetName("" + error:GetFile():GetFileName() + ": " + error:GetFile():GetAbsolutePath())
-            f:SetText("" + error:GetFile():GetFileName() + ": " + error:GetFile():GetAbsolutePath())
-            f:SetObject(error:GetFile())
+            key = error:GetFile():GetAbsolutePath()
         end
 
-        messageColumn:Add(m)
-        lineColumn:Add(l)
-        fileColumn:Add(cast(Cell, f))
+        ErrorFileItem fileItem = fileItems:GetValue(key)
+        if fileItem = undefined
+            ErrorFileItem newFile
+            fileItem = newFile
+            fileItem:Setup(error:GetFile(), GetMutedColor())
+            fileItems:Add(key, fileItem)
+            Prepare(fileItem)
+            fileItem:SetActivationBehavior(toggleBehavior)
+            errorList:Add(fileItem)
+        end
+
+        ErrorItem row
+        row:Setup(error, fileItem, iconFont, GetMarkColor(), GetMutedColor())
+        Prepare(row)
+        if behaviors not= undefined
+            row:SetActivationBehavior(behaviors:GetJumpToErrorBehavior())
+        end
+
+        if fileItem:IsExpanded()
+            // Under its file, after the errors already there.
+            integer at = errorList:GetIndexOf(fileItem) + fileItem:GetRows():GetSize() + 1
+            errorList:Add(at, row)
+        end
+        fileItem:GetErrors():Add(error)
+        fileItem:AddRow(row)
+        fileItem:Refresh()
+    end
+
+    /*
+    This action folds or unfolds a file's errors. Folding takes its error
+    rows out of the list, so the list only holds what's shown.
+    */
+    action ToggleFile(ErrorFileItem fileItem)
+        SetFileExpanded(fileItem, not fileItem:IsExpanded())
+    end
+
+    action SetFileExpanded(ErrorFileItem fileItem, boolean expanded)
+        if fileItem:IsExpanded() = expanded
+            return now
+        end
+
+        integer fileIndex = errorList:GetIndexOf(fileItem)
+        integer count = fileItem:GetRows():GetSize()
+        if expanded
+            integer index = 0
+            repeat while index < count
+                // Shown first: a hidden row isn't added for screen readers.
+                fileItem:GetRows():Get(index):Show()
+                errorList:Add(fileIndex + 1 + index, fileItem:GetRows():Get(index))
+                index = index + 1
+            end
+        else
+            repeat count times
+                errorList:Remove(fileIndex + 1)
+            end
+        end
+        fileItem:SetExpanded(expanded)
+        // List:Add and List:Remove don't redraw; recompute the scroll ratios
+        // for the new length, then rebuild the visible rows.
+        errorList:Resize()
+        errorList:SetScrollPercentageY(errorList:GetScrollPercentageY())
+        errorList:Select(fileItem)
+    end
+
+    // The row that's selected, or undefined.
+    action GetSelectedRow returns ListItem
+        return errorList:GetSelection():GetListItem()
+    end
+
+    action GetList returns List
+        return errorList
+    end
+
+    // Every error in the tab, one per line, file by file.
+    action GetAllCopyText returns text
+        text result = ""
+        integer index = 0
+        repeat while index < errorList:GetSize()
+            ListItem row = errorList:GetListItem(index)
+            if row is ErrorFileItem
+                ErrorFileItem fileItem = cast(ErrorFileItem, row)
+                if result not= ""
+                    result = result + "
+"
+                end
+                result = result + fileItem:GetCopyText()
+            end
+            index = index + 1
+        end
+        return result
     end
 
     action GetPane returns BreakpointScrollPane
         return pane
     end
 
+    // Each row gets the rows' input group (right click opens the menu)
+    // and the shared menu.
+    private action Prepare(ListItem row)
+        if not rowInputReady
+            InputTable rowTable = row:CopyAndActivateInputTable(ROW_INPUT_GROUP)
+            MouseEvent mouse
+            InputSet rightClick
+            rightClick:SetMouseInput(mouse:RIGHT)
+            rowTable:Add(rightClick, openMenuBehavior)
+            InputSet controlClick
+            controlClick:SetMouseInput(mouse:LEFT)
+            controlClick:AddModifier(controlClick:CONTROL)
+            rowTable:Add(controlClick, openMenuBehavior)
+            // One left click on a chevron folds the row (FoldClickBehavior);
+            // ClickDownBehavior, already in the table, still selects it.
+            InputSet leftClick
+            leftClick:SetMouseInput(mouse:LEFT)
+            rowTable:Add(leftClick, foldClickBehavior)
+            rowInputReady = true
+        else
+            row:SetInputGroup(ROW_INPUT_GROUP)
+        end
+        row:SetPopupMenu(menu)
+    end
+
+    private action LoadIconFont
+        if iconFontLoaded
+            return now
+        end
+        File iconFile
+        iconFile:SetPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
+        iconFont:LoadFont(iconFile)
+        iconFont:SetSize(32)
+        iconFontLoaded = true
+    end
+
+    private action GetMutedColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetTabFontColor()
+    end
+
+    private action GetMarkColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        OptionsConstants const
+        return options:GetColorProperty(const:ERRORS_MARK_COLOR)
+    end
 end

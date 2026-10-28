@@ -1,0 +1,50 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Item
+use Libraries.Language.Object
+use Libraries.Interface.Controls.ListItem
+use Libraries.Game.Layer2D
+use Libraries.Compute.Vector3
+use Libraries.Development.Environment.Studio.Interface.FoldClickRow
+
+/*
+A left click on a list row, in the Variables, Errors, Breakpoints, Search
+Results and Call Stack tabs. If it landed on the row's fold control, the
+row is selected and activated, which folds or unfolds it, as one click on
+the Projects tree's arrow does. Elsewhere on the row it does nothing; the
+row's usual click handling selects it.
+*/
+class FoldClickBehavior is Behavior
+    action Run(BehaviorEvent event)
+        MouseEvent mouse = event:GetMouseEvent()
+        if mouse = undefined or not mouse:IsLeftButtonEvent()
+            return now
+        end
+        Item item = event:GetItem()
+        if not (item is FoldClickRow) or not (item is ListItem)
+            return now
+        end
+
+        ListItem row = cast(ListItem, item)
+        Layer2D layer = row:GetLayer()
+        if layer = undefined or layer:GetCamera() = undefined
+            return now
+        end
+        Vector3 point = layer:GetCamera():ScreenToWorldCoordinates(mouse:GetX() - layer:GetViewportX(), mouse:GetY() - layer:GetViewportY())
+
+        // FoldClickRow isn't an Item, so the cast goes through Object.
+        Object rowObject = item
+        FoldClickRow foldRow = cast(FoldClickRow, rowObject)
+        if foldRow:IsOnFoldControl(point:GetX(), point:GetY())
+            row:Select()
+            row:Activate()
+        end
+    end
+
+    action IsFinished returns boolean
+        return true
+    end
+end

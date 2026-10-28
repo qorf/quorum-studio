@@ -12,7 +12,7 @@ shared class LightQuorumStudio is LightModeOptions, LightBlockOptions
         OptionsConstants const
         Color playButtons = color:CustomColor(0.0 / MAX, 100.0 / MAX, 0.0 / MAX, 1)
         Color folderButtons = color:CustomColor(80.0 / MAX, 80.0 / MAX, 80.0 / MAX, 1)
-        Color stopButton = color:CustomColor(160.0 / MAX, 0.0 / MAX, 0.0 / MAX, 1)
+        Color stopButton = color:CustomColor(190.0 / MAX, 30.0 / MAX, 40.0 / MAX, 1)
         SetColorProperty(const:TOOLBAR_PLAY_BUTTON_COLOR, playButtons)
         SetColorProperty(const:TOOLBAR_DEBUGGER_BUTTONS_COLOR, color:CustomColor(113.0 / MAX, 83.0 / MAX, 38.0 / MAX, 1))
         SetColorProperty(const:TOOLBAR_FOLDER_BUTTONS_COLOR, folderButtons)
@@ -22,9 +22,110 @@ shared class LightQuorumStudio is LightModeOptions, LightBlockOptions
         //groups, and filled Run and Debug buttons.
         SetColorProperty(const:TOOLBAR_ICON_COLOR, color:CustomColor(102.0 / MAX, 102.0 / MAX, 102.0 / MAX, 1))
         SetColorProperty(const:TOOLBAR_HOVER_COLOR, color:CustomColor(218.0 / MAX, 218.0 / MAX, 218.0 / MAX, 1))
-        SetColorProperty(const:TOOLBAR_SEPARATOR_COLOR, color:CustomColor(200.0 / MAX, 200.0 / MAX, 200.0 / MAX, 1))
+        SetColorProperty(const:TOOLBAR_SEPARATOR_COLOR, color:CustomColor(183.0 / MAX, 196.0 / MAX, 212.0 / MAX, 1))
         SetColorProperty(const:TOOLBAR_RUN_FILL_COLOR, color:CustomColor(46.0 / MAX, 140.0 / MAX, 64.0 / MAX, 1))
         SetColorProperty(const:TOOLBAR_DEBUG_FILL_COLOR, color:CustomColor(38.0 / MAX, 117.0 / MAX, 191.0 / MAX, 1))
+        // Toolbar icons colored by group, darker than dark mode's so they
+        // read on a light bar (3.9 to 5.5 to 1).
+        SetColorProperty(const:TOOLBAR_FILE_ICON_COLOR, color:CustomColor(36.0 / MAX, 104.0 / MAX, 184.0 / MAX, 1))
+        SetColorProperty(const:TOOLBAR_EDIT_ICON_COLOR, color:CustomColor(110.0 / MAX, 76.0 / MAX, 190.0 / MAX, 1))
+        SetColorProperty(const:TOOLBAR_BUILD_ICON_COLOR, color:CustomColor(166.0 / MAX, 108.0 / MAX, 10.0 / MAX, 1))
+        SetColorProperty(const:TOOLBAR_STEP_ICON_COLOR, color:CustomColor(0.0 / MAX, 128.0 / MAX, 112.0 / MAX, 1))
+        // The Errors tab's mark beside each error (E3), the Stop red.
+        SetColorProperty(const:ERRORS_MARK_COLOR, color:CustomColor(190.0 / MAX, 30.0 / MAX, 40.0 / MAX, 1))
+        // The Breakpoints tab's dot (B1): at least 3 to 1 on every row state.
+        SetColorProperty(const:BREAKPOINT_DOT_COLOR, color:CustomColor(190.0 / MAX, 30.0 / MAX, 40.0 / MAX, 1))
+        // The Search Results tab's match outline (H3), the build amber.
+        SetColorProperty(const:SEARCH_MATCH_OUTLINE_COLOR, color:CustomColor(166.0 / MAX, 108.0 / MAX, 10.0 / MAX, 1))
+        // The Call Stack tab's marker on the current frame (C1), a green like
+        // the editor's stopped line, darker so it reads on a light background.
+        SetColorProperty(const:CALL_STACK_CURRENT_COLOR, color:CustomColor(30.0 / MAX, 130.0 / MAX, 50.0 / MAX, 1))
+        // The editor's gutter (G1), darker than dark mode's so they read on
+        // white: each is at least 4.5 to 1 on the editor; the numbers are on
+        // the gutter (238, 242, 247), 4.8 to 1.
+        SetColorProperty(const:GIT_ADDED_COLOR, color:CustomColor(0.0 / MAX, 128.0 / MAX, 112.0 / MAX, 1))
+        SetColorProperty(const:GIT_MODIFIED_COLOR, color:CustomColor(36.0 / MAX, 104.0 / MAX, 184.0 / MAX, 1))
+        SetColorProperty(const:GIT_DELETED_COLOR, color:CustomColor(190.0 / MAX, 30.0 / MAX, 40.0 / MAX, 1))
+        SetColorProperty(const:GUTTER_HINT_COLOR, color:CustomColor(150.0 / MAX, 98.0 / MAX, 0.0 / MAX, 1))
+        SetColorProperty(const:GUTTER_NUMBER_COLOR, color:CustomColor(94.0 / MAX, 108.0 / MAX, 126.0 / MAX, 1))
+        SetColorProperty(const:GUTTER_STOPPED_NUMBER_COLOR, color:CustomColor(0.0 / MAX, 0.0 / MAX, 0.0 / MAX, 1))
+        // The lists' title row (L3): a blue-gray band with a line under it
+        // and navy labels (9.8 to 1), and navy chevrons (11.4 to 1 on white).
+        Color navy = color:CustomColor(24.0 / MAX, 58.0 / MAX, 102.0 / MAX, 1)
+        SetColorProperty(const:LIST_HEADER_BACKGROUND_COLOR, color:CustomColor(232.0 / MAX, 238.0 / MAX, 246.0 / MAX, 1))
+        SetColorProperty(const:LIST_HEADER_BORDER_COLOR, color:CustomColor(201.0 / MAX, 214.0 / MAX, 230.0 / MAX, 1))
+        SetColorProperty(const:LIST_HEADER_FONT_COLOR, navy)
+        SetColorProperty(const:LIST_CHEVRON_COLOR, navy)
+        // A selected list row, while its list has the focus (L3).
+        SetSelectionColor("ListItem", color:CustomColor(214.0 / MAX, 228.0 / MAX, 245.0 / MAX, 1))
+
+        // D2: the chrome takes a cool tint of Studio's blue. The editor,
+        // lists and text fields stay white.
+        Color barTint = color:CustomColor(230.0 / MAX, 236.0 / MAX, 243.0 / MAX, 1)
+        Color sidePanelTint = color:CustomColor(238.0 / MAX, 242.0 / MAX, 247.0 / MAX, 1)
+        Color chromeLine = color:CustomColor(183.0 / MAX, 196.0 / MAX, 212.0 / MAX, 1)
+        SetMenuBarBackgroundColor(barTint)
+        SetToolBarBackgroundColor(barTint)
+        // The Projects, Scene and Palette panes, and the tree rows' labels,
+        // which take the rows' background.
+        SetScrollPaneBackgroundColor(sidePanelTint)
+        SetTreeItemBackgroundColor(sidePanelTint)
+        SetTreeItemUnfocusedSelectionColor(color:CustomColor(207.0 / MAX, 220.0 / MAX, 236.0 / MAX, 1))
+        // Both tab bars, the editor's and the output's. The selected tab is
+        // white with the blue top line (LightModeOptions), and navy whether
+        // or not its pane has the focus.
+        SetTabBarBackgroundColor(color:CustomColor(213.0 / MAX, 223.0 / MAX, 235.0 / MAX, 1))
+        SetTabBarBorderColor(chromeLine)
+        SetTabBackgroundColor(color:CustomColor(223.0 / MAX, 230.0 / MAX, 239.0 / MAX, 1))
+        SetTabUnfocusedSelectionFontColor(navy)
+        SetGutterBackgroundColor(sidePanelTint)
+        SetGutterBorderColor(chromeLine)
+
+        // Menus (M2b): a pale panel with a blue-gray edge, 7-point corners
+        // and a soft shadow, and dark text. The selected row and the open
+        // or hovered title share the tint and navy text; only the row has
+        // the 3-point Studio-blue tag on its left (MenuItem gives titles
+        // no border).
+        Color menuText = color:CustomColor(28.0 / MAX, 43.0 / MAX, 62.0 / MAX, 1)
+        Color menuTint = color:CustomColor(207.0 / MAX, 220.0 / MAX, 236.0 / MAX, 1)
+        Color studioBlue = color:CustomColor(38.0 / MAX, 117.0 / MAX, 191.0 / MAX, 1)
+        SetMenuBarBorderColor(chromeLine)
+        SetMenuItemFontColor(menuText)
+        SetMenuItemMouseOverColor(menuTint)
+        SetMenuItemSelectionColor(menuTint)
+        SetMenuItemUnfocusedSelectionColor(menuTint)
+        SetMenuItemSelectionFontColor(navy)
+        SetMenuItemMouseOverFontColor(navy)
+        SetMenuItemSelectionBorderColor(studioBlue)
+        SetMenuItemUnfocusedSelectionBorderColor(studioBlue)
+        // The shortcuts' muted color, navy on the selected row (read by
+        // MenuItem once library step L2 is in).
+        SetMenuItemAccentColor(color:CustomColor(84.0 / MAX, 98.0 / MAX, 117.0 / MAX, 1))
+        // 5-point corners on the rows and the title pills, instead of the
+        // library's 30 percent.
+        SetMenuItemTopLeftRounding(0)
+        SetMenuItemTopRightRounding(0)
+        SetMenuItemBottomLeftRounding(0)
+        SetMenuItemBottomRightRounding(0)
+        SetMenuItemTopLeftPixelRounding(5)
+        SetMenuItemTopRightPixelRounding(5)
+        SetMenuItemBottomLeftPixelRounding(5)
+        SetMenuItemBottomRightPixelRounding(5)
+        SetMenuPanelBackgroundColor(color:CustomColor(244.0 / MAX, 247.0 / MAX, 251.0 / MAX, 1))
+        SetMenuPanelBorderColor(chromeLine)
+        SetMenuPanelTopLeftPixelRounding(7)
+        SetMenuPanelTopRightPixelRounding(7)
+        SetMenuPanelBottomLeftPixelRounding(7)
+        SetMenuPanelBottomRightPixelRounding(7)
+        // A soft shadow just below the panel, instead of the theme's strong
+        // offset one.
+        SetMenuPanelShadowColor(color:CustomColor(0.0, 0.0, 0.0, 0.16))
+        SetMenuPanelShadowX(0)
+        SetMenuPanelShadowY(-3)
+        SetMenuPanelShadowEdgeFade(8)
+        // The titles sit inside the bar, clear of its bottom line (Menu).
+        SetNumberProperty(const:MENU_TITLE_TOP_INSET, 2)
+        SetNumberProperty(const:MENU_TITLE_BOTTOM_INSET, 3)
 
         Color comments = color:CustomColor(68.0 / MAX, 80.0 / MAX, 91.0 / MAX, 1)
         Color textColor = color:CustomColor(160.0 / MAX, 50.0 / MAX, 50.0 / MAX, 1)

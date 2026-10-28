@@ -1,74 +1,82 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Tab
-use Libraries.Interface.Controls.Tree
-use Libraries.Game.Graphics.Color
-use Libraries.Development.Environment.Resources
-use Libraries.Development.Environment.Studio.Behaviors.Behaviors
-use Libraries.Development.Environment.Studio.Build.BuildManager
-use Libraries.Language.Debug.Debugger
-use Libraries.Interface.Controls.TreeItem
-use Libraries.Interface.Layouts.Layout
-use Libraries.Language.Debug.BreakpointListener
-use Libraries.Language.Debug.BreakpointEvent
-use Libraries.Language.Debug.Breakpoint
-use Libraries.System.File
-use Libraries.Containers.Iterator
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.Blocks.CodeEditor
 use Libraries.Interface.Layouts.LayoutProperties
-use Libraries.Interface.Layouts.ManualLayout
-use Libraries.Interface.Controls.TreeTable
-use Libraries.Language.Debug.BreakpointFileColumn
-use Libraries.Interface.Controls.TreeTableColumn
-use Libraries.Language.Debug.BreakpointRow
-use Libraries.Language.Debug.BreakpointLineColumn
-use Libraries.Containers.HashTable
-use Libraries.Interface.Layouts.FlowLayout
-use Libraries.Development.Environment.Studio.Behaviors.DeleteBreakpointBehavior
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Interface.Behaviors.Controls.ListActivationBehavior
+use Libraries.Interface.Behaviors.Controls.OpenPopupMenuBehavior
+use Libraries.Interface.Accessibility
 use Libraries.Game.InputTable
 use Libraries.Game.InputSet
-use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Game.GameStateManager
-use Libraries.Game.Game
-use Libraries.Interface.Events.FocusEvent
-use Libraries.Interface.Selections.TreeTableSelection
-use Libraries.Interface.Controls.TreeTableCell
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Containers.Array
+use Libraries.Containers.HashTable
+use Libraries.Containers.Iterator
+use Libraries.System.File
+use Libraries.Language.Debug.Breakpoint
+use Libraries.Language.Debug.BreakpointEvent
+use Libraries.Language.Debug.BreakpointListener
+use Libraries.Development.Environment.Resources
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Development.Environment.Studio.Behaviors.FoldClickBehavior
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Development.Environment.Studio.Behaviors.BreakpointFoldBehavior
+use Libraries.Development.Environment.Studio.Behaviors.BreakpointGoToLineBehavior
+use Libraries.Development.Environment.Studio.Behaviors.BreakpointRemoveBehavior
+use Libraries.Development.Environment.Studio.Behaviors.BreakpointCopyBehavior
+use Libraries.Development.Environment.Studio.Behaviors.BreakpointMenuBehavior
 
+/*
+The Breakpoints tab (B1): every breakpoint as a List, grouped by file. Each
+file is a row that folds, with its breakpoints as indented rows under it:
+a red dot, "line N" and the code on that line.
+
+The tab keeps nothing of its own about breakpoints. Whenever the
+BreakpointManager changes, the list is rebuilt from it once, on the next
+frame. Which files are folded is kept by path, so it survives rebuilds.
+*/
 class BreakpointsTab is Tab, BreakpointListener
+    // Kept for GetPane; the list is the tab's content.
     BreakpointScrollPane pane
     Resources resources = undefined
     Behaviors behaviors = undefined
     BuildManager manager = undefined
-    Debugger debugger = undefined
-    TreeTable breakpointTree
-    BreakpointFileColumn fileColumn
-    BreakpointLineColumn lineColumn
-    HashTable<text, BreakpointRow> rows
-    DeleteBreakpointBehavior deleteBehavior
 
-    on create
-        fileColumn:SetPixelWidth(0)
-        fileColumn:SetPercentageWidth(0.85)
+    List breakpointList
+    // The paths of the files the user folded. Every other file is open.
+    HashTable<text, text> collapsedPaths
+    boolean isSetup = false
+    boolean needsRebuild = true
+    // Font Awesome, for the dots, and the editor's font, for the code.
+    Font iconFont
+    Font codeFont
+    boolean fontsLoaded = false
+    // The rows' input group, made when the first row is added.
+    boolean rowInputReady = false
+    FoldClickBehavior foldClickBehavior
 
-        lineColumn:SetPixelWidth(0)
-        lineColumn:SetPercentageWidth(0.15)
-        breakpointTree:Add(cast(TreeTableColumn, fileColumn))
-        breakpointTree:Add(cast(TreeTableColumn, lineColumn))
-        BreakpointRow row
-        row:SetFile("File")
-        row:SetLine("Line")
-        breakpointTree:Add(row)
-    end
+    BreakpointsTabPopupMenu menu
+    BreakpointFoldBehavior toggleBehavior
+    BreakpointFoldBehavior collapseBehavior
+    BreakpointFoldBehavior expandBehavior
+    BreakpointGoToLineBehavior goToLineBehavior
+    BreakpointRemoveBehavior removeBehavior
+    BreakpointCopyBehavior copyBehavior
+    BreakpointMenuBehavior menuBehavior
+    OpenPopupMenuBehavior openMenuBehavior
 
-    action GainedFocus(FocusEvent event)
-        TreeTableSelection selection = breakpointTree:GetSelection()
-        if selection:IsEmpty() and breakpointTree:GetColumnsSize() > 0 
-            and breakpointTree:GetRows() not= undefined and breakpointTree:GetRows():GetSize() > 0
-        
-            TreeTableCell cell = breakpointTree:GetCell(0,0)
-            breakpointTree:Select(cell)
-            cell:Focus()
-        end
-    end
+    constant text ROW_INPUT_GROUP = "BreakpointListItem"
 
     action GetBehaviors returns Behaviors
         return behaviors
@@ -77,10 +85,8 @@ class BreakpointsTab is Tab, BreakpointListener
     action SetBehaviors(Behaviors behaviors)
         me:behaviors = behaviors
         manager = behaviors:GetBuildManager()
-        debugger = manager:GetDebugger()
-
-        deleteBehavior:SetBuildManager(manager)
         manager:Add(me)
+        needsRebuild = true
     end
 
     action GetResources returns Resources
@@ -95,105 +101,529 @@ class BreakpointsTab is Tab, BreakpointListener
         return pane
     end
 
-    private action Rehash(text path)
-        //this key doesn't exist, so do nothing.
-        if rows:HasKey(path) 
-            //if it has this path, go find that and kill it, if you have to.
-            BreakpointRow parentRow = rows:GetValue(path)
-            //rows:RemoveAllKeys(path)
-            breakpointTree:Remove(parentRow)
-            rows:RemoveKey(path)
-        else 
-            return now
-        end
-
-        //we killed the value, because we had to, so now make a new one and reset this thing.
-        BreakpointRow rowFile
-        rowFile:SetFile(path)
-        rows:Add(path, rowFile)
-
-        Iterator<Breakpoint> iterator = manager:GetBreakpointIterator(path)
-        repeat while iterator not= undefined and iterator:HasNext()
-            Breakpoint bp = iterator:Next()
-            BreakpointRow row
-            row:SetBreakpoint(bp)
-
-            
-            rows:Add(path + bp:GetLine() , row)
-            breakpointTree:Add(rowFile)
-            rowFile:AddRow(row)
-        end
-    end
-
-    action ToggledBreakpoint(BreakpointEvent event)
-        if event:IsRehashEvent()
-            Rehash(event:GetPath())
-            return now
-        end
-        Breakpoint point = event:GetBreakpoint()
-        File file = point:GetFile()
-        integer line = point:GetLine()
-        
-        if event:IsAdded()
-            BreakpointRow row
-            row:SetBreakpoint(point)
-            
-            if rows:HasKey(file:GetAbsolutePath()) 
-                //if it has this path, go find that and add this
-                BreakpointRow rowFile = rows:GetValue(file:GetAbsolutePath())
-                if rowFile not= undefined
-                    rowFile:AddRow(row)
-                    rows:Add(file:GetPath()+line, row)
-                end
-            else
-                BreakpointRow rowFile
-                rowFile:SetFile(file:GetAbsolutePath())
-                rows:Add(file:GetAbsolutePath(), rowFile)
-                rows:Add(file:GetPath()+line, row)
-                breakpointTree:Add(rowFile)
-                rowFile:AddRow(row)
-            end
-            
-            breakpointTree:Resize()
-        else
-            if rows:HasKey(file:GetPath() + line) 
-                BreakpointRow parentRow = rows:GetValue(file:GetAbsolutePath())
-                BreakpointRow childRow = rows:GetValue(file:GetPath() + line)
-                if childRow not= undefined
-                    boolean value = breakpointTree:Remove(childRow)
-                    rows:RemoveKey(file:GetPath()+line)
-                    //remove the file row if the file has no more breakpoints
-                    if parentRow:IsEmpty()
-                        breakpointTree:Remove(parentRow)
-                        rows:RemoveKey(file:GetAbsolutePath())
-                    end
-                end
-                breakpointTree:Resize()
-            end
-        end
-    end
-
     action Setup
-        LayoutProperties properties = breakpointTree:GetDefaultLayoutProperties()
-        properties:SetHorizontalLayoutMode(properties:STANDARD)
-        properties:SetPercentageWidth(1)
-        //pane:SetBackgroundColor(resources:GetBackgroundColor())
-        pane:Add(breakpointTree)
-        pane:Resize()
-
-        SetName("Breakpoints")
-        SetRelatedItem(GetPane())
         DisplayCloseButton(true)
- 
-        InputTable inputTable = breakpointTree:CopyAndActivateInputTable("QuorumStudioBreakpointTreeTable")
-        InputSet set
-        KeyboardEvent keys
-        set:SetKeyboardInput(keys:FORWARD_DELETE)
-        inputTable:Add(set, deleteBehavior)
+        SetName("Breakpoints")
 
-        InputSet set2
-        set2:SetKeyboardInput(keys:BACKSPACE)
-        inputTable:Add(set2, deleteBehavior)
-        SetFocusTarget(breakpointTree)
+        breakpointList:SetName("Breakpoints")
+        LayoutProperties listProperties = breakpointList:GetDefaultLayoutProperties()
+        listProperties:SetPercentageX(0)
+        listProperties:SetPercentageY(0)
+        listProperties:SetPercentageWidth(1)
+        listProperties:SetPercentageHeight(1)
+
+        toggleBehavior:SetBreakpointsTab(me)
+        toggleBehavior:SetMode(toggleBehavior:TOGGLE)
+        collapseBehavior:SetBreakpointsTab(me)
+        collapseBehavior:SetMode(collapseBehavior:COLLAPSE)
+        expandBehavior:SetBreakpointsTab(me)
+        expandBehavior:SetMode(expandBehavior:EXPAND)
+        goToLineBehavior:SetBreakpointsTab(me)
+        removeBehavior:SetBreakpointsTab(me)
+        removeBehavior:SetMode(removeBehavior:SELECTED)
+        copyBehavior:SetBreakpointsTab(me)
+        menuBehavior:SetBreakpointsTab(me)
+        menu:SetBreakpointsTab(me)
+
+        SetRelatedItem(breakpointList)
+        SetFocusTarget(breakpointList)
+
+        // The list's keys: Return, the arrows to fold, Delete, copy and the menu.
+        KeyboardEvent keys
+        InputTable listTable = breakpointList:CopyAndActivateInputTable("BreakpointList")
+
+        InputSet enterSet
+        enterSet:SetKeyboardInput(keys:ENTER)
+        ListActivationBehavior activate
+        listTable:Add(enterSet, activate)
+
+        InputSet leftSet
+        leftSet:SetKeyboardInput(keys:LEFT)
+        listTable:Add(leftSet, collapseBehavior)
+
+        InputSet rightSet
+        rightSet:SetKeyboardInput(keys:RIGHT)
+        listTable:Add(rightSet, expandBehavior)
+
+        InputSet deleteSet
+        deleteSet:SetKeyboardInput(keys:FORWARD_DELETE)
+        listTable:Add(deleteSet, removeBehavior)
+
+        InputSet backspaceSet
+        backspaceSet:SetKeyboardInput(keys:BACKSPACE)
+        listTable:Add(backspaceSet, removeBehavior)
+
+        InputSet metaC
+        metaC:SetKeyboardInput(keys:C)
+        metaC:AddModifier(metaC:META)
+        listTable:Add(metaC, copyBehavior)
+
+        InputSet controlC
+        controlC:SetKeyboardInput(keys:C)
+        controlC:AddModifier(controlC:CONTROL)
+        listTable:Add(controlC, copyBehavior)
+
+        InputSet shiftF10
+        shiftF10:SetKeyboardInput(keys:F10)
+        shiftF10:AddModifier(shiftF10:SHIFT)
+        listTable:Add(shiftF10, menuBehavior)
+
+        isSetup = true
+        needsRebuild = true
+    end
+
+    // Any change to the breakpoints: the list is rebuilt once, on the next frame.
+    action ToggledBreakpoint(BreakpointEvent event)
+        needsRebuild = true
+    end
+
+    /*
+    The tab is updated every frame while it's in the tab bar, whichever tab
+    is showing. Item2D's own Update does nothing, so there's no parent call.
+    */
+    action Update(number seconds)
+        if needsRebuild
+            Rebuild()
+        end
+    end
+
+    /*
+    This action rebuilds the list from the BreakpointManager: a row per file,
+    sorted by file name, then its breakpoints by line. It keeps the selection
+    on the same breakpoint or file if it's still there, or else at the same
+    place in the list.
+    */
+    action Rebuild
+        needsRebuild = false
+        if not isSetup or manager = undefined
+            return now
+        end
+        LoadFonts()
+
+        // What's selected now, to select again after.
+        Breakpoint selectedPoint = undefined
+        text selectedPath = ""
+        integer selectedIndex = -1
+        ListItem selected = GetSelectedRow()
+        if selected not= undefined
+            selectedIndex = breakpointList:GetIndexOf(selected)
+            if selected is BreakpointItem
+                BreakpointItem selectedRow = cast(BreakpointItem, selected)
+                selectedPoint = selectedRow:GetBreakpoint()
+            elseif selected is BreakpointFileItem
+                BreakpointFileItem selectedFile = cast(BreakpointFileItem, selected)
+                selectedPath = selectedFile:GetPath()
+            end
+        end
+
+        // List has no Empty; remove from the end.
+        breakpointList:Deselect()
+        repeat while breakpointList:GetSize() > 0
+            breakpointList:Remove(breakpointList:GetSize() - 1)
+        end
+
+        ColorGroup mutedColor = GetMutedColor()
+        ColorGroup markColor = GetMarkColor()
+        ListItem reselect = undefined
+        integer total = 0
+
+        Array<text> paths = GetSortedPaths()
+        integer pathIndex = 0
+        repeat while pathIndex < paths:GetSize()
+            text path = paths:Get(pathIndex)
+            Array<Breakpoint> points = GetSortedBreakpoints(path)
+            if points:GetSize() > 0
+                File file = points:Get(0):GetFile()
+                BreakpointFileItem fileItem
+                fileItem:Setup(file, GetPlace(file), GetStatus(file), mutedColor)
+                fileItem:SetExpanded(not collapsedPaths:HasKey(path))
+                Prepare(fileItem)
+                fileItem:SetActivationBehavior(toggleBehavior)
+                breakpointList:Add(fileItem)
+                if selectedPath not= "" and path = selectedPath
+                    reselect = fileItem
+                end
+
+                Array<text> lines = GetLines(file)
+                integer pointIndex = 0
+                repeat while pointIndex < points:GetSize()
+                    Breakpoint point = points:Get(pointIndex)
+                    text lineText = ""
+                    if lines not= undefined and point:GetLine() < lines:GetSize()
+                        lineText = lines:Get(point:GetLine())
+                    end
+
+                    BreakpointItem row
+                    row:Setup(point, fileItem, lineText, iconFont, codeFont, markColor, mutedColor)
+                    Prepare(row)
+                    row:SetActivationBehavior(goToLineBehavior)
+                    fileItem:AddRow(row)
+                    if fileItem:IsExpanded()
+                        breakpointList:Add(row)
+                    end
+
+                    if selectedPoint not= undefined and point = selectedPoint
+                        if fileItem:IsExpanded()
+                            reselect = row
+                        else
+                            reselect = fileItem
+                        end
+                    end
+                    pointIndex = pointIndex + 1
+                end
+                fileItem:Refresh()
+                total = total + points:GetSize()
+            end
+            pathIndex = pathIndex + 1
+        end
+
+        if total = 0
+            breakpointList:SetName("Breakpoints, none")
+        elseif total = 1
+            breakpointList:SetName("Breakpoints, 1 breakpoint")
+        else
+            breakpointList:SetName("Breakpoints, " + total + " breakpoints")
+        end
+
+        // The selected row is gone, as after Delete: keep the same place.
+        if reselect = undefined and selectedIndex >= 0 and breakpointList:GetSize() > 0
+            integer index = selectedIndex
+            if index >= breakpointList:GetSize()
+                index = breakpointList:GetSize() - 1
+            end
+            reselect = breakpointList:GetListItem(index)
+        end
+
+        // List:Add and List:Remove don't redraw; recompute the scroll ratios
+        // for the new length, then rebuild the visible rows.
+        breakpointList:Resize()
+        breakpointList:SetScrollPercentageY(breakpointList:GetScrollPercentageY())
+        if reselect not= undefined
+            breakpointList:Select(reselect)
+        end
+    end
+
+    /*
+    This action folds or unfolds a file's breakpoints. Folding takes its rows
+    out of the list, so the list only holds what's shown. The choice is kept
+    by path, for the next rebuild.
+    */
+    action ToggleFile(BreakpointFileItem fileItem)
+        SetFileExpanded(fileItem, not fileItem:IsExpanded())
+    end
+
+    action SetFileExpanded(BreakpointFileItem fileItem, boolean expanded)
+        if fileItem:IsExpanded() = expanded
+            return now
+        end
+
+        integer fileIndex = breakpointList:GetIndexOf(fileItem)
+        integer count = fileItem:GetRows():GetSize()
+        if expanded
+            integer index = 0
+            repeat while index < count
+                // Shown first: a hidden row isn't added for screen readers.
+                fileItem:GetRows():Get(index):Show()
+                breakpointList:Add(fileIndex + 1 + index, fileItem:GetRows():Get(index))
+                index = index + 1
+            end
+            if collapsedPaths:HasKey(fileItem:GetPath())
+                collapsedPaths:RemoveKey(fileItem:GetPath())
+            end
+        else
+            repeat count times
+                breakpointList:Remove(fileIndex + 1)
+            end
+            collapsedPaths:Add(fileItem:GetPath(), fileItem:GetPath())
+        end
+        fileItem:SetExpanded(expanded)
+        // List:Add and List:Remove don't redraw; recompute the scroll ratios
+        // for the new length, then rebuild the visible rows.
+        breakpointList:Resize()
+        breakpointList:SetScrollPercentageY(breakpointList:GetScrollPercentageY())
+        breakpointList:Select(fileItem)
+    end
+
+    // The row that's selected, or undefined.
+    action GetSelectedRow returns ListItem
+        return breakpointList:GetSelection():GetListItem()
+    end
+
+    action GetList returns List
+        return breakpointList
+    end
+
+    // Removes these breakpoints, a copy the caller made, and says how many.
+    action RemoveBreakpoints(Array<Breakpoint> points)
+        if manager = undefined or points:IsEmpty()
+            return now
+        end
+        Announce(manager:RemoveBreakpoints(points))
+    end
+
+    action RemoveBreakpointsNotInOpenProjects
+        if manager = undefined
+            return now
+        end
+        Announce(manager:RemoveBreakpointsNotInOpenProjects())
+    end
+
+    private action Announce(integer removed)
+        text message = "Removed " + removed + " breakpoints"
+        if removed = 0
+            message = "No breakpoints removed"
+        elseif removed = 1
+            message = "Removed 1 breakpoint"
+        end
+        GameStateManager gameState
+        Accessibility accessibility = gameState:GetAccessibility()
+        if accessibility not= undefined
+            accessibility:Notify(breakpointList, message)
+        end
+    end
+
+    // Each row gets the rows' input group (right click opens the menu)
+    // and the shared menu.
+    private action Prepare(ListItem row)
+        if not rowInputReady
+            InputTable rowTable = row:CopyAndActivateInputTable(ROW_INPUT_GROUP)
+            MouseEvent mouse
+            InputSet rightClick
+            rightClick:SetMouseInput(mouse:RIGHT)
+            rowTable:Add(rightClick, openMenuBehavior)
+            InputSet controlClick
+            controlClick:SetMouseInput(mouse:LEFT)
+            controlClick:AddModifier(controlClick:CONTROL)
+            rowTable:Add(controlClick, openMenuBehavior)
+            // One left click on a chevron folds the row (FoldClickBehavior);
+            // ClickDownBehavior, already in the table, still selects it.
+            InputSet leftClick
+            leftClick:SetMouseInput(mouse:LEFT)
+            rowTable:Add(leftClick, foldClickBehavior)
+            rowInputReady = true
+        else
+            row:SetInputGroup(ROW_INPUT_GROUP)
+        end
+        row:SetPopupMenu(menu)
+    end
+
+    // The paths with breakpoints, sorted by file name, then by path.
+    private action GetSortedPaths returns Array<text>
+        HashTable<text, text> pathsBySortKey
+        Array<text> sortKeys
+        Iterator<text> paths = manager:GetBreakpointManager():GetPaths()
+        repeat while paths:HasNext()
+            text path = paths:Next()
+            text sortKey = path
+            Iterator<Breakpoint> points = manager:GetBreakpointIterator(path)
+            if points:HasNext()
+                Breakpoint first = points:Next()
+                if first:GetFile() not= undefined
+                    text fileName = first:GetFile():GetFileName()
+                    sortKey = fileName:ToLowerCase() + " " + path
+                end
+            end
+            pathsBySortKey:Add(sortKey, path)
+            sortKeys:Add(sortKey)
+        end
+        sortKeys:Sort()
+
+        Array<text> result
+        integer index = 0
+        repeat while index < sortKeys:GetSize()
+            result:Add(pathsBySortKey:GetValue(sortKeys:Get(index)))
+            index = index + 1
+        end
+        return result
+    end
+
+    // A file's breakpoints, sorted by line.
+    private action GetSortedBreakpoints(text path) returns Array<Breakpoint>
+        Array<Breakpoint> sorted
+        Iterator<Breakpoint> points = manager:GetBreakpointIterator(path)
+        repeat while points:HasNext()
+            Breakpoint point = points:Next()
+            integer at = sorted:GetSize()
+            repeat while at > 0 and sorted:Get(at - 1):GetLine() > point:GetLine()
+                at = at - 1
+            end
+            sorted:Add(at, point)
+        end
+        return sorted
+    end
+
+    /*
+    This action returns a file's lines: the open editor's text if the file is
+    open, or else the file on disk. It returns undefined if neither can be read.
+    */
+    private action GetLines(File file) returns Array<text>
+        if file = undefined
+            return undefined
+        end
+        CodeEditorTabPane editors = manager:GetCodeEditorTabPane()
+        if editors not= undefined and editors:IsOpen(file)
+            Tab opened = editors:GetOpenTab(file)
+            if opened is EditorTab
+                EditorTab editor = cast(EditorTab, opened)
+                if editor:GetTextBox() not= undefined
+                    return SplitLines(editor:GetTextBox():GetText())
+                end
+                CodeEditor blocks = editor:GetBlockEditor()
+                if blocks not= undefined
+                    return SplitLines(blocks:GetText())
+                end
+            end
+        end
+
+        if file:Exists() = false
+            return undefined
+        end
+        Array<text> lines = undefined
+        check
+            lines = SplitLines(file:Read())
+        detect error
+            lines = undefined
+        end
+        return lines
+    end
+
+    private action SplitLines(text value) returns Array<text>
+        if value = undefined
+            return undefined
+        end
+        return value:Split(value:GetLineFeed())
+    end
+
+    /*
+    This action says where a file is: "Library: Interface/Controls" for the
+    standard library, the project folder and the folders under it for a file
+    in an open project, and otherwise its last two folders.
+    */
+    private action GetPlace(File file) returns text
+        if file = undefined
+            return ""
+        end
+        text path = file:GetAbsolutePath()
+        text fileName = file:GetFileName()
+
+        if manager:IsStandardLibraryFile(file)
+            return "Library: " + LibraryFolder(path, fileName)
+        end
+
+        Project project = FindProject(file)
+        if project not= undefined and project:GetLocation() not= undefined
+            File location = project:GetLocation()
+            text root = location:GetAbsolutePath()
+            text folderName = location:GetFileName()
+            if path:StartsWith(root) and root:GetSize() >= folderName:GetSize()
+                integer start = root:GetSize() - folderName:GetSize()
+                integer stop = path:GetSize() - fileName:GetSize() - 1
+                if stop > start
+                    return path:GetSubtext(start, stop)
+                end
+            end
+        end
+        return ShortFolder(path, fileName)
+    end
+
+    // Empty for a file that's in use, otherwise why it's muted.
+    private action GetStatus(File file) returns text
+        if file = undefined or file:Exists() = false
+            return "file not found"
+        end
+        if manager:IsBreakpointFileInUse(file)
+            return ""
+        end
+        return "not in an open project"
+    end
+
+    private action FindProject(File file) returns Project
+        ProjectManager projects = manager:GetProjectManager()
+        if projects = undefined or file = undefined
+            return undefined
+        end
+        return projects:IsProjectSourceFile(file)
+    end
+
+    // The folders under the library's "Libraries" folder, such as
+    // "Interface/Controls".
+    private action LibraryFolder(text path, text fileName) returns text
+        text backslash = ""
+        backslash = backslash:GetUnicodeValue(92)
+        text marker = "/Libraries/"
+        integer found = path:IndexOf(marker)
+        if found < 0
+            marker = backslash + "Libraries" + backslash
+            found = path:IndexOf(marker)
+        end
+        if found < 0
+            return ShortFolder(path, fileName)
+        end
+        integer start = found + marker:GetSize()
+        integer stop = path:GetSize() - fileName:GetSize() - 1
+        if stop <= start
+            return "Libraries"
+        end
+        return path:GetSubtext(start, stop)
+    end
+
+    // The last two folders a file is in, such as "OldGame/SourceCode".
+    private action ShortFolder(text path, text fileName) returns text
+        if path:GetSize() <= fileName:GetSize()
+            return ""
+        end
+        text folder = path:GetSubtext(0, path:GetSize() - fileName:GetSize() - 1)
+        // Windows paths use backslashes (Unicode 92).
+        text backslash = ""
+        backslash = backslash:GetUnicodeValue(92)
+        integer last = folder:GetSize() - 1
+        integer slashes = 0
+        repeat while last >= 0
+            text character = folder:GetCharacter(last)
+            if character = "/" or character = backslash
+                slashes = slashes + 1
+                if slashes = 2
+                    return folder:GetSubtext(last + 1, folder:GetSize())
+                end
+            end
+            last = last - 1
+        end
+        return folder
+    end
+
+    private action LoadFonts
+        if fontsLoaded
+            return now
+        end
+        File iconFile
+        iconFile:SetPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
+        iconFont:LoadFont(iconFile)
+        iconFont:SetSize(32)
+
+        // The editor's font (CodeTextBox:GetDefaultFont).
+        File codeFile
+        codeFile:SetPath("Resources/Fonts/FiraCode-Retina.ttf")
+        codeFont:LoadFont(codeFile)
+        fontsLoaded = true
+    end
+
+    private action GetMutedColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetTabFontColor()
+    end
+
+    // The breakpoint dot's own theme color.
+    private action GetMarkColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        OptionsConstants const
+        return options:GetColorProperty(const:BREAKPOINT_DOT_COLOR)
     end
 end

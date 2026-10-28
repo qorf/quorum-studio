@@ -28,30 +28,33 @@
  */
 package org.debugger.jdi.views.quorum;
 
-import com.sun.jdi.ClassNotLoadedException;
 import com.sun.jdi.Field;
-import com.sun.jdi.IncompatibleThreadStateException;
 import com.sun.jdi.IntegerValue;
-import com.sun.jdi.InvalidTypeException;
-import com.sun.jdi.InvocationException;
 import com.sun.jdi.ObjectReference;
 import com.sun.jdi.ThreadReference;
 import com.sun.jdi.Value;
 import com.sun.jdi.VirtualMachine;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.debugger.Variable;
 import org.debugger.jdi.JDIVariable;
+import org.debugger.jdi.views.JDIVariableView;
+import org.debugger.jdi.views.QuorumView;
 
 /**
- * This is a view for the hashtable class.
+ * This is a view for the hashtable class. Its items are its entries, each
+ * a HashNode with a key and a value, in the order they sit in the table's
+ * buckets. They're read from the table's fields, without calling into the
+ * running program.
  * 
  * @author Andreas Stefik
  */
 public class HashView extends QuorumVariableView {
     public final String key = "quorum.Libraries.Containers.HashTable";
+    private static final String ARRAY = "array";
+    private static final String SIZE = "size";
+    private static final String NEXT = "next";
+    private final ArrayView arrays = new ArrayView();
     
     @Override
     public String getStaticKey() {
@@ -65,45 +68,63 @@ public class HashView extends QuorumVariableView {
 
     @Override
     public Variable[] getSpecialVariableChildren(ObjectReference reference) {
-        List<Value> args = new LinkedList<>();
-        List<Variable> variables = new LinkedList<Variable>();
-        ThreadReference thread = this.getThread();
-        VirtualMachine machine = this.getMachine();
-        Field fieldArray = reference.referenceType().fieldByName("array");
-        if(fieldArray != null) {
-            Value value = reference.getValue(fieldArray);
-            if(value != null && value instanceof ObjectReference) {
-                ObjectReference array = (ObjectReference) value;
-                try {
-                    Value sval = array.invokeMethod(thread,
-                            array.referenceType().methodsByName("GetSize").get(0),args, 0);
-                    
-                    if (sval instanceof IntegerValue) {
-                        IntegerValue s = (IntegerValue) sval;
-                        int size = s.intValue();
-                        for(int i = 0; i < size; i++) {
-                            args = new LinkedList<>();
-                            IntegerValue position = machine.mirrorOf(i);
-                            args.add(position);
+        return getSpecialVariableChildren(reference, 0, 0);
+    }
 
-                            Value result = array.invokeMethod(thread,
-                                array.referenceType().methodsByName("Get").get(0),args, 0);
-                            if(result != null) {
-                                JDIVariable variable = getQuorumView().convert(result);
-                                variable.setName("" + i);
-                                variables.add(variable);
-                            }
-                        }
-                        int a = 5;
-                        
-                        return (Variable[]) variables.toArray(new JDIVariable[0]);
-                    }
-                } catch (InvalidTypeException | ClassNotLoadedException | IncompatibleThreadStateException | InvocationException ex) {
-                    Logger.getLogger(HashView.class.getName()).log(Level.SEVERE, null, ex);
+    @Override
+    public Variable[] getSpecialVariableChildren(ObjectReference reference, int from, int to) {
+        int[] range = JDIVariableView.clampRange(from, to, getElementCount(reference));
+        int start = range[0];
+        int end = range[1];
+        List<Variable> variables = new ArrayList<>();
+        Field fieldArray = reference.referenceType().fieldByName(ARRAY);
+        if(fieldArray == null || end <= start) {
+            return new Variable[0];
+        }
+        Value value = reference.getValue(fieldArray);
+        if(!(value instanceof ObjectReference)) {
+            return new Variable[0];
+        }
+
+        ObjectReference array = (ObjectReference) value;
+        List<Value> buckets = arrays.getElementValues(array, 0, arrays.getElementCount(array));
+        Field next = null;
+        int i = 0;
+        for(Value bucket : buckets) {
+            Value node = bucket;
+            while(node instanceof ObjectReference && i < end) {
+                ObjectReference current = (ObjectReference) node;
+                if(i >= start) {
+                    JDIVariable variable = getQuorumView().convert(current);
+                    variable.setName("" + i);
+                    variables.add(variable);
                 }
+                if(next == null) {
+                    next = current.referenceType().fieldByName(NEXT);
+                    if(next == null) {
+                        break;
+                    }
+                }
+                node = current.getValue(next);
+                i++;
+            }
+            if(i >= end) {
+                break;
             }
         }
-        return new Variable[0];
+        return variables.toArray(new Variable[0]);
+    }
+
+    @Override
+    public int getElementCount(ObjectReference reference) {
+        Field size = reference.referenceType().fieldByName(SIZE);
+        if(size != null) {
+            Value value = reference.getValue(size);
+            if(value instanceof IntegerValue) {
+                return ((IntegerValue) value).intValue();
+            }
+        }
+        return 0;
     }
 
     @Override
@@ -111,14 +132,27 @@ public class HashView extends QuorumVariableView {
         if(value == null) {
             return getQuorumView().getNull();
         } else if(value instanceof ObjectReference) {
-            ObjectReference ref = (ObjectReference) value;
-            Field size = ref.referenceType().fieldByName("size");
-            Value v = ref.getValue(size);
-            JDIVariable variable = getQuorumView().convert(v);
-            return "size = " + variable.getValue();
-            //return "#" + ref.hashCode();
+            return "size = " + getElementCount((ObjectReference) value);
         }  else {
             return value.toString();
         }
+    }
+
+    @Override
+    public void setThread(ThreadReference thread) {
+        super.setThread(thread);
+        arrays.setThread(thread);
+    }
+
+    @Override
+    public void setMachine(VirtualMachine machine) {
+        super.setMachine(machine);
+        arrays.setMachine(machine);
+    }
+
+    @Override
+    public void setQuorumView(QuorumView quorumView) {
+        super.setQuorumView(quorumView);
+        arrays.setQuorumView(quorumView);
     }
 }

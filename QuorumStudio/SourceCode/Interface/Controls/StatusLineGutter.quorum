@@ -1,68 +1,63 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Containers.Array
-use Libraries.Game.Graphics.Label
-use Libraries.Game.Graphics.Font
-use Libraries.Interface.Layouts.LayoutProperties
-use Libraries.Interface.Controls.Gutter
-use Libraries.Interface.Controls.TextBox
-use Libraries.Game.Graphics.Drawable
-use Libraries.Game.Graphics.Color
-use Libraries.Game.Graphics.Glyph
-use Libraries.Development.Versioning.Git
-use Libraries.System.File
-use Libraries.Development.Versioning.StatusResult
-use Libraries.Development.Versioning.DiffResult
 use Libraries.Containers.HashTable
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Game.Graphics.Drawable
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.Gutter
+use Libraries.Interface.Controls.ScrollableLineControl
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Development.Versioning.DiffResult
 use Libraries.Development.Versioning.DiffEdit
 use Libraries.Development.Versioning.GitConstants
 use Libraries.Language.Compile.Hints.Hint
-use Libraries.Interface.Controls.ScrollableLineControl
-use Libraries.Game.Graphics.ColorGroup
 
+/*
+The lane between the line numbers and the code (G1). A thin bar marks each
+line git sees as added or changed, and a small red wedge marks where lines
+were deleted. A line with a hint and no change gets a short yellow mark.
+It works in both editors: GutterSupport finds the text line on each of the
+block editor's rows.
+*/
 class StatusLineGutter is Gutter
+    // Sizes in points.
+    constant integer LANE_WIDTH = 8
+    constant integer BAR_WIDTH = 3
+    // The space between the bar and the code.
+    constant integer RIGHT_GAP = 2
+    constant integer WEDGE_WIDTH = 5
+    constant integer WEDGE_HEIGHT = 6
+    // A hint's mark is this part of its row's height.
+    constant number HINT_MARK_RATIO = 0.4
+
     Color color
     on create
         LayoutProperties properties = GetDefaultLayoutProperties()
-        properties:SetLeftMargin(12)
-        properties:SetRightMargin(8)
         properties:SetBorderThickness(0)
     end
 
     Array<Drawable> drawables
-    
-    Color hintColor = color:CustomColor(246/255.0, 217/255.0, 87/255.0,1)
-    Color gitModifiedColor = color:CustomColor(160/255.0, 200/255.0, 255/255.0,1)
-    Color gitAddedColor = color:CustomColor(150/255.0, 255/255.0, 150/255.0,1)
-    Color gitRemovedColor = color:CustomColor(255/255.0, 160/255.0, 180/255.0,1)
-    Color yellow = color:Yellow()
+    Array<Drawable> wedges
+
+    // For a theme without the gutter's colors: the light theme's.
+    Color hintColor = color:CustomColor(150/255.0, 98/255.0, 0/255.0,1)
+    Color gitModifiedColor = color:CustomColor(36/255.0, 104/255.0, 184/255.0,1)
+    Color gitAddedColor = color:CustomColor(0/255.0, 128/255.0, 112/255.0,1)
+    Color gitRemovedColor = color:CustomColor(190/255.0, 30/255.0, 40/255.0,1)
 
     GitConstants gitConstants
+    OptionsConstants optionsConstants
+    GutterSupport support
     DiffResult result = undefined
     HashTable<integer, Hint> hintLocations = undefined
+    boolean drawnOnce = false
+    integer startRow = 0
 
     action GetGutterThickness returns number
-        ScrollableLineControl control = GetControl()
-
-        integer fontSize = control:GetFontSize()
-        Font font = control:GetFont()
-        LayoutProperties properties = GetCurrentLayoutProperties()
-        if properties = undefined
-            properties = GetDefaultLayoutProperties()
-        end
-
-        integer glyphsRequired = 2
-        /*
-        We assume the space required for the "0" glyph is a good predictor of
-        the space used for each glyph in the font. For monospaced fonts this
-        will be accurate and the choice of glyph is arbitrary. For other fonts,
-        this is only an approximation, which may require some extra space via
-        padding in order to look correct.
-        */
-        number rightMargin = properties:GetRightMargin()
-        number leftMargin = properties:GetLeftMargin()
-        Glyph glyph = font:GetGlyph("0")
-        return glyph:horizontalAdvance * 1.5 + properties:GetLeftMargin() + rightMargin
+        return LANE_WIDTH * GetInterfaceScale()
     end
 
     action GetBackgroundColor returns ColorGroup
@@ -81,88 +76,106 @@ class StatusLineGutter is Gutter
         return parent:Control:GetBackgroundColor()
     end
 
+    /*
+    This action redraws the lane from the row it last drew from. It does
+    nothing before the first draw.
+    */
+    action Refresh
+        if drawnOnce and GetControl() not= undefined
+            UpdateVisuals(startRow)
+        end
+    end
+
     action UpdateVisuals(integer startLine)
         Empty()
-        
+        drawnOnce = true
+        startRow = startLine
+
         ScrollableLineControl control = GetControl()
-        integer fontSize = control:GetFontSize()
-        Font font = control:GetFont()
-        LayoutProperties properties = GetCurrentLayoutProperties()
-        if properties = undefined
-            properties = GetDefaultLayoutProperties()
+        if control = undefined
+            return now
         end
 
-        text linesInText = "" + control:GetLineCount()
-        integer glyphsRequired = 2
-        /*
-        We assume the space required for the "0" glyph is a good predictor of
-        the space used for each glyph in the font. For monospaced fonts this
-        will be accurate and the choice of glyph is arbitrary. For other fonts,
-        this is only an approximation, which may require some extra space via
-        padding in order to look correct.
-        */
-        Drawable firstLabel = GetDrawable(0)
-        number rightMargin = properties:GetRightMargin()
-        number leftMargin = properties:GetLeftMargin()
-        Glyph glyph = font:GetGlyph("0")
-        number width = glyph:horizontalAdvance * 1.5 + properties:GetLeftMargin() + rightMargin
-        integer descent = font:GetMaximumDescent()
-        
-        integer totalLines = control:GetLineCount()
-        boolean last = false
+        number scale = GetInterfaceScale()
+        number width = GetGutterThickness()
+        number barWidth = BAR_WIDTH * scale
+        number barX = width - (BAR_WIDTH + RIGHT_GAP) * scale
+        integer wedgeWidth = cast(integer, WEDGE_WIDTH * scale)
+        integer wedgeHeight = cast(integer, WEDGE_HEIGHT * scale)
+        integer wedgeMiddle = cast(integer, WEDGE_HEIGHT * scale / 2.0)
 
+        // As the number gutter, so the bars line up with the numbers.
+        number barOffset = 0
+        if control:IsShowingHorizontalBar()
+            barOffset = control:GetBarThickness() * control:GetInterfaceScale()
+        end
+
+        ColorGroup addedColor = support:GetThemeColor(optionsConstants:GIT_ADDED_COLOR, gitAddedColor)
+        ColorGroup modifiedColor = support:GetThemeColor(optionsConstants:GIT_MODIFIED_COLOR, gitModifiedColor)
+        ColorGroup deletedColor = support:GetThemeColor(optionsConstants:GIT_DELETED_COLOR, gitRemovedColor)
+        ColorGroup hintMarkColor = support:GetThemeColor(optionsConstants:GUTTER_HINT_COLOR, hintColor)
+
+        Array<DiffEdit> edits = undefined
+        if result not= undefined
+            edits = result:GetEdits()
+        end
+
+        Array<integer> textLines = support:GetTextLines(control, startLine)
         integer counter = 0
-        number y = control:GetHeight()
-        repeat while counter + startLine < totalLines and last = false
-            if y < 0
-                last = true
-            end
-
-            number lineHeight = control:GetLineHeight(counter + startLine)
-
-            Drawable drawable = GetDrawable(counter)
-            integer myWidth = cast(integer, width - rightMargin - leftMargin)
-            integer myHeight = cast(integer, lineHeight - 2)
-            drawable:SetSize(myWidth, myHeight)
-            
-            drawable:SetPosition(width - drawable:GetWidth() - rightMargin, y + descent + 1)
+        integer wedgeCount = 0
+        repeat while counter < textLines:GetSize()
+            integer row = startLine + counter
+            integer textLine = textLines:Get(counter)
+            number y = control:GetLineY(row) + barOffset
+            number height = control:GetLineHeight(row)
 
             boolean hasDiffSpot = false
-            if result not= undefined
-                Array<DiffEdit> edits = result:GetEdits()
-                if edits:GetSize() > counter + startLine
-                    DiffEdit edit = edits:Get(counter + startLine)
-                    integer type = edit:GetEditType()
-                    if type = gitConstants:EDIT_INSERT
-                        drawable:SetColor(gitAddedColor)
-                        Add(drawable)
-                        hasDiffSpot = true
-                    elseif type = gitConstants:EDIT_CHANGE
-                        drawable:SetColor(gitModifiedColor)
-                        Add(drawable)
-                        hasDiffSpot = true
-                    
-                    elseif type = gitConstants:EDIT_EQUAL and edit:HasDeletion()
-                        drawable:SetColor(gitRemovedColor)
-                        Add(drawable)
-                        hasDiffSpot = true
-                    end
+            if edits not= undefined and textLine < edits:GetSize()
+                DiffEdit edit = edits:Get(textLine)
+                integer type = edit:GetEditType()
+                if type = gitConstants:EDIT_INSERT
+                    AddBar(counter, barX, y, barWidth, height, addedColor)
+                    hasDiffSpot = true
+                elseif type = gitConstants:EDIT_CHANGE
+                    AddBar(counter, barX, y, barWidth, height, modifiedColor)
+                    hasDiffSpot = true
+                elseif type = gitConstants:EDIT_EQUAL and edit:HasDeletion()
+                    // Lines were deleted below this one: a wedge on the row's lower edge.
+                    Drawable wedge = GetWedge(wedgeCount)
+                    wedge:LoadFilledTriangle(0, 0, 0, wedgeHeight, wedgeWidth, wedgeMiddle, deletedColor)
+                    wedge:SetPosition(barX, y - wedgeMiddle)
+                    wedgeCount = wedgeCount + 1
+                    hasDiffSpot = true
                 end
             end
 
-            if not hasDiffSpot and hintLocations not= undefined //if there's no diff spot, add a hint normally
-                Hint hint = hintLocations:GetValue(counter + startLine + 1)
+            //if there's no diff spot, add a hint normally
+            if not hasDiffSpot and hintLocations not= undefined
+                Hint hint = hintLocations:GetValue(textLine + 1)
                 if hint not= undefined
-                    drawable:SetColor(yellow)
-                    Add(drawable)
+                    number markHeight = height * HINT_MARK_RATIO
+                    AddBar(counter, barX, y + (height - markHeight) / 2.0, barWidth, markHeight, hintMarkColor)
                 end
             end
-            y = y - lineHeight
             counter = counter + 1
         end
 
+        // The wedges go on top, since each one crosses into the next row.
+        integer index = 0
+        repeat while index < wedgeCount
+            Add(wedges:Get(index))
+            index = index + 1
+        end
     end
- 
+
+    private action AddBar(integer index, number x, number y, number barWidth, number barHeight, ColorGroup barColor)
+        Drawable bar = GetDrawable(index)
+        bar:SetSize(cast(integer, barWidth + 0.5), cast(integer, barHeight + 0.5))
+        bar:SetPosition(x, y)
+        bar:SetColor(barColor)
+        Add(bar)
+    end
+
     private action GetDrawable(integer index) returns Drawable
         if drawables:GetSize() <= index or drawables:Get(index) = undefined
             Drawable drawable
@@ -175,19 +188,32 @@ class StatusLineGutter is Gutter
             return drawables:Get(index)
         end
     end
+
+    // Loaded as a triangle each time it's drawn, at the current scale.
+    private action GetWedge(integer index) returns Drawable
+        if wedges:GetSize() <= index or wedges:Get(index) = undefined
+            Drawable wedge
+            wedges:Add(index, wedge)
+            return wedge
+        end
+        return wedges:Get(index)
+    end
+
     action GetDiffResult returns DiffResult
         return result
     end
 
     action SetDiffResult(DiffResult result)
         me:result = result
+        Refresh()
     end
+
     action GetHintLocations returns HashTable<integer, Hint>
         return hintLocations
     end
 
     action SetHintLocations(HashTable<integer, Hint> hintLocations)
         me:hintLocations = hintLocations
+        Refresh()
     end
-
 end

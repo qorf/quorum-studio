@@ -1,0 +1,119 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.CharacterIcon
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Language.Compile.CompilerError
+
+/*
+An error's row in the Errors tab (E3), under its file: a red mark, the
+message, and, muted, its line number. Activating it goes to the line.
+*/
+class ErrorItem is ListItem
+    CompilerError error = undefined
+    ErrorFileItem fileItem = undefined
+    CharacterIcon mark
+    Label lineDetail
+
+    // Font Awesome's circle-exclamation.
+    constant integer ERROR_MARK = 61546
+
+    on create
+        // The mark replaces ListItem's own picture.
+        parent:ListItem:icon:Hide()
+
+        // The pieces sit centered on the row's line.
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        mark:SetAcceptsMouseInput(false)
+        mark:SetAccessibilityCode(mark:parent:Item:NOT_ACCESSIBLE)
+        mark:SetHorizontalLayoutMode(mark:parent:Control:MAINTAIN_ASPECT_RATIO)
+        mark:SetVerticalLayoutMode(mark:parent:Control:STANDARD)
+        mark:SetPercentageWidth(1.0)
+        mark:SetPercentageHeight(1.0)
+        // Indented under its file's row.
+        mark:SetLeftMargin(28)
+        mark:SetTopMargin(8)
+        mark:SetBottomMargin(8)
+        Add(0, mark)
+
+        lineDetail:SetAccessibilityCode(lineDetail:parent:Item:NOT_ACCESSIBLE)
+        lineDetail:SetPositionOnBaseLine(false)
+        lineDetail:SetLeftMargin(12)
+        Add(lineDetail)
+    end
+
+    /*
+    This action sets the error this row shows, the file row it sits under,
+    the font its mark is drawn from, and its colors.
+    */
+    action Setup(CompilerError value, ErrorFileItem parentFile, Font iconFont, ColorGroup markColor, ColorGroup mutedColor)
+        error = value
+        fileItem = parentFile
+
+        if iconFont not= undefined
+            mark:LoadCharacter(ERROR_MARK, iconFont)
+        end
+        // Both: CharacterIcon's LoadGraphics colors it from its icon color.
+        if markColor not= undefined
+            mark:SetColor(markColor)
+            mark:SetIconColor(markColor)
+        end
+        if mutedColor not= undefined
+            lineDetail:SetColor(mutedColor)
+        end
+
+        // Rows are one line tall, so a message with line breaks is shown
+        // on one line. Copy keeps it as it is.
+        text message = OneLine(error:GetErrorMessage())
+        SetText(message)
+        lineDetail:SetText("line " + error:GetLineNumber())
+        SetName("Line " + error:GetLineNumber() + ", " + message)
+    end
+
+    action GetError returns CompilerError
+        return error
+    end
+
+    action GetFileItem returns ErrorFileItem
+        return fileItem
+    end
+
+    // The text Copy puts on the clipboard, such as
+    // "Main.quorum:74: The symbol ';' is not valid. Please remove it".
+    action GetCopyText returns text
+        text fileName = "(no file)"
+        if error:GetFile() not= undefined
+            fileName = error:GetFile():GetFileName()
+        end
+        return fileName + ":" + error:GetLineNumber() + ": " + error:GetErrorMessage()
+    end
+
+    /*
+    The text a screen reader reads for this row: its whole name, with every
+    column, rather than the first label alone. The label still shows what
+    SetText gave it.
+    */
+    action GetText returns text
+        return GetName()
+    end
+
+    // The text with its line breaks as spaces, and each run of spaces as one.
+    private action OneLine(text value) returns text
+        if value = undefined
+            return ""
+        end
+        text result = value:Replace(value:GetCarriageReturn(), " ")
+        result = result:Replace(result:GetLineFeed(), " ")
+        repeat while result:Contains("  ")
+            result = result:Replace("  ", " ")
+        end
+        return result:Trim()
+    end
+end

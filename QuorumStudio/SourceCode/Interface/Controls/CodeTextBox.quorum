@@ -76,11 +76,14 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     text staticKey = ""
     Class clazz = undefined
     public constant text CARET_STYLE = "Caret"
+    // The stopped line's style, added by UpdateVariablesBehavior.
+    public constant text DEBUGGER_STYLE = "Debugger"
     Color caretColor
     Color breakpointColor
     Array<Token> lexer = undefined
     QuorumLexerConstants categories
-    LineNumberGutter gutter
+    // Line numbers with the breakpoint dot and the stopped-line arrow (G1).
+    StudioLineGutter gutter
     StatusLineGutter statusGutter
     EditorTab tab = undefined
 
@@ -248,13 +251,21 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
 
     action GutterClicked(GutterEvent event)
         integer line = event:GetLine()
-        if line >= GetLineCount()
+        if line < 0 or line >= GetLineCount() or manager = undefined
             return now
         end
-        if clazz not= undefined
-            File file = clazz:GetFile()
-            manager:ToggleBreakpoint(file, line)
+        // The editor's own file, as the keyboard toggle uses.
+        File file = GetFile()
+        if file = undefined and clazz not= undefined
+            file = clazz:GetFile()
         end
+        if file = undefined
+            return now
+        end
+        // Breakpoints whose lines moved since the last build are found where
+        // they are now, so a click on one removes it.
+        SyncBreakpointLines()
+        manager:ToggleBreakpoint(file, line)
     end
 
     action SelectionChanged(SelectionEvent selection)
@@ -264,9 +275,10 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             integer caret = GetCaretPosition()
             boolean value1 = RemoveTextStyle(CARET_STYLE)
 
-            boolean hasBreakpoint = HasTextStyle("Breakpoint" + GetCaretLine())
-            boolean hasDebuggerLine = HasTextStyle("Debugger")
-            if not hasBreakpoint and not hasDebuggerLine
+            // A breakpoint's line has no tint of its own (G1), so the
+            // caret's line is highlighted there too.
+            boolean hasDebuggerLine = HasTextStyle(DEBUGGER_STYLE)
+            if not hasDebuggerLine
                 ColoredHighlight caretHighlight
                 caretHighlight:SetColor(caretColor)
                 caretHighlight:SetLineHighlight(true)
@@ -279,9 +291,174 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         end
     end
 
+    // Breakpoint styles are named by a counter, not their line, so look on
+    // the line itself.
+    private action HasBreakpointOnLine(integer line) returns boolean
+        Array<TextStyle> styles = GetTextStylesOnLine(line)
+        if styles = undefined
+            return false
+        end
+        integer index = 0
+        repeat while index < styles:GetSize()
+            if styles:Get(index) is BreakpointTextStyle
+                return true
+            end
+            index = index + 1
+        end
+        return false
+    end
+
     action IncrementBreakpoint returns integer
         breakpointAmount = breakpointAmount + 1
         return breakpointAmount
+    end
+
+    /*
+    This action highlights a breakpoint's line. The highlight covers the
+    line's text, so it's only deleted when its whole line is, and then the
+    breakpoint goes too (see RemoveTextStyle).
+    */
+    action AddBreakpointStyle(Breakpoint point)
+        if point = undefined
+            return now
+        end
+        integer line = point:GetLine()
+        if line < 0 or line >= GetLineCount()
+            return now
+        end
+
+        // Already highlighted.
+        Array<TextStyle> existing = GetTextStylesOnLine(line)
+        if existing not= undefined
+            integer index = 0
+            repeat while index < existing:GetSize()
+                TextStyle style = existing:Get(index)
+                if style is BreakpointTextStyle
+                    BreakpointTextStyle other = cast(BreakpointTextStyle, style)
+                    if other:GetBreakpoint() = point
+                        return now
+                    end
+                end
+                index = index + 1
+            end
+        end
+
+        integer start = GetIndexOfLine(line)
+        integer stop = GetSize()
+        if line + 1 < GetLineCount()
+            stop = GetIndexOfLine(line + 1) - GetDefaultLineSeparator():GetSize()
+        end
+        integer size = stop - start
+        if size < 0
+            size = 0
+        end
+
+        // G1 marks a breakpoint with the gutter's dot only. The style stays,
+        // with a see-through highlight, because it keeps the breakpoint on
+        // its line as the text is edited.
+        Color clear
+        clear:SetColor(0.0, 0.0, 0.0, 0.0)
+        ColoredHighlight breakpointHighlight
+        breakpointHighlight:SetColor(clear)
+        breakpointHighlight:SetLineHighlight(true)
+        breakpointHighlight:SetRenderPriority(1)
+        BreakpointTextStyle breakpointStyle
+        // The index is set before the box, so setting it doesn't change the
+        // breakpoint's line.
+        breakpointStyle:SetIndex(start)
+        breakpointStyle:SetSize(size)
+        breakpointStyle:SetHighlight(breakpointHighlight)
+        breakpointStyle:SetBreakpoint(point)
+        breakpointStyle:SetBox(me)
+        breakpointStyle:SetLine(line)
+        AddTextStyle("Breakpoint" + IncrementBreakpoint(), breakpointStyle)
+    end
+
+    /*
+    This action sets each breakpoint's line from where its highlight is now.
+    Every edit moves the highlights, so they're always right. A breakpoint's
+    own line can lag, because TextBox:Insert(index, value, false) moves the
+    styles before it changes the text. It's called before a toggle and before
+    each rebuild of the highlights.
+    */
+    action SyncBreakpointLines
+        Array<TextStyle> styles = parent:TextBox:textStyles
+        integer index = 0
+        repeat while index < styles:GetSize()
+            TextStyle style = styles:Get(index)
+            if style is BreakpointTextStyle
+                BreakpointTextStyle breakpointStyle = cast(BreakpointTextStyle, style)
+                Breakpoint point = breakpointStyle:GetBreakpoint()
+                if point not= undefined
+                    integer line = GetLineIndexOfCharacter(style:GetIndex())
+                    point:SetLine(line)
+                    breakpointStyle:SetLine(line)
+                end
+            end
+            index = index + 1
+        end
+    end
+
+    /*
+    TextBox deletes a style when an edit deletes all of its text. A
+    breakpoint's highlight covers its line, so that means the line was
+    deleted, and the breakpoint goes too.
+
+    A breakpoint already removed from the manager, as when it's toggled off,
+    is left alone. EmptyTextStyles doesn't come through here, so rebuilding
+    the highlights doesn't remove anything.
+    */
+    action RemoveTextStyle(TextStyle style) returns boolean
+        boolean removed = parent:TextBox:RemoveTextStyle(style)
+        if removed and style is BreakpointTextStyle and manager not= undefined
+            BreakpointTextStyle breakpointStyle = cast(BreakpointTextStyle, style)
+            Breakpoint point = breakpointStyle:GetBreakpoint()
+            if point not= undefined and manager:GetBreakpointManager():HasBreakpoint(point)
+                manager:RemoveBreakpoint(point)
+            end
+        end
+        if removed and style is BreakpointTextStyle
+            gutter:Refresh()
+        end
+        return removed
+    end
+
+    /*
+    The gutter draws its dots and arrow from the breakpoint and debugger
+    styles, so it's redrawn when one of them comes or goes.
+    */
+    action AddTextStyle(text name, TextStyle style)
+        parent:TextBox:AddTextStyle(name, style)
+        if style not= undefined and (name = DEBUGGER_STYLE or style is BreakpointTextStyle)
+            gutter:Refresh()
+        end
+    end
+
+    action RemoveTextStyle(text name) returns boolean
+        boolean removed = parent:TextBox:RemoveTextStyle(name)
+        if removed and name = DEBUGGER_STYLE
+            gutter:Refresh()
+        end
+        return removed
+    end
+
+    /*
+    This action returns the lines with breakpoints, from their styles, which
+    follow edits. The gutter draws its dots from it.
+    */
+    action GetBreakpointLines returns HashTable<integer, integer>
+        HashTable<integer, integer> lines
+        Array<TextStyle> styles = parent:TextBox:textStyles
+        integer index = 0
+        repeat while index < styles:GetSize()
+            TextStyle style = styles:Get(index)
+            if style is BreakpointTextStyle
+                integer line = GetLineIndexOfCharacter(style:GetIndex())
+                lines:Add(line, line)
+            end
+            index = index + 1
+        end
+        return lines
     end
 
     action Changed(BreakpointTextStyle style, integer newIndex)
@@ -295,34 +472,34 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
             return now
         end
         Breakpoint bp = event:GetBreakpoint()
+        if bp = undefined or bp:GetFile() = undefined or GetFile() = undefined
+            return now
+        end
         if bp:GetFile():GetAbsolutePath() not= GetFile():GetAbsolutePath()
             return now
         end
-        integer line = bp:GetLine()
-        Array<TextStyle> styles = GetTextStylesOnLine(line)
 
-        boolean wasRemoved = false
-        if styles not= undefined and not event:IsAdded()
-            i = 0
-            repeat while i < styles:GetSize()
-                TextStyle style = styles:Get(i)
-                if style is BreakpointTextStyle
+        if event:IsAdded()
+            AddBreakpointStyle(bp)
+            return now
+        end
+
+        // Only this breakpoint's own highlight goes. Another breakpoint may
+        // have been moved onto the same line by an edit.
+        Array<TextStyle> styles = GetTextStylesOnLine(bp:GetLine())
+        if styles = undefined
+            return now
+        end
+        integer index = 0
+        repeat while index < styles:GetSize()
+            TextStyle style = styles:Get(index)
+            if style is BreakpointTextStyle
+                BreakpointTextStyle breakpointStyle = cast(BreakpointTextStyle, style)
+                if breakpointStyle:GetBreakpoint() = bp
                     RemoveTextStyle(style)
-                    wasRemoved = true
                 end
-                i = i + 1
             end
-        else
-            ColoredHighlight breakpointHighlight
-            breakpointHighlight:SetColor(breakpointColor)
-            breakpointHighlight:SetLineHighlight(true)
-            breakpointHighlight:SetRenderPriority(1)
-            BreakpointTextStyle breakpointStyle
-            breakpointStyle:SetIndex(GetIndexOfLine(line))
-            breakpointStyle:SetHighlight(breakpointHighlight)
-            breakpointStyle:SetBreakpoint(bp)
-            breakpointStyle:SetBox(me)
-            AddTextStyle("Breakpoint" + IncrementBreakpoint(), breakpointStyle)
+            index = index + 1
         end
     end
 

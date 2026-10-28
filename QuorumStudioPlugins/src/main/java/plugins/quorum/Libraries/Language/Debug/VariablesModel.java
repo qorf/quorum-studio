@@ -7,6 +7,7 @@ package plugins.quorum.Libraries.Language.Debug;
 
 import org.debugger.Variable;
 import org.debugger.jdi.JDIDebugger;
+import org.debugger.jdi.JDIVariablesModel;
 import quorum.Libraries.Containers.Array;
 import quorum.Libraries.Containers.Array_;
 import quorum.Libraries.Language.Debug.Variable_;
@@ -23,16 +24,18 @@ public class VariablesModel {
     private JDIDebugger debugger = null;
     org.debugger.VariablesModel variablesModel = null;
     
-    public Array_ GetChildren(Variable_ variable, int to, int from) {
+    /*
+     * The children from item from up to, but not including, item to. A
+     * range of (0, 0) means all of them.
+     */
+    public Array_ GetChildren(Variable_ variable, int from, int to) {
         if(variablesModel != null) {
-            
-            
             Variable[] children = null;
             if(variable == null) {
-               children = variablesModel.getChildren(null, to, from);
+               children = variablesModel.getChildren(null, from, to);
             } else {
                 Variable v = ((quorum.Libraries.Language.Debug.Variable) variable).plugin_.getVariable();
-                children = variablesModel.getChildren(v, to, from);
+                children = variablesModel.getChildren(v, from, to);
             }
             
             Array array = new Array();
@@ -56,7 +59,22 @@ public class VariablesModel {
         return true;
     }
 
+    /*
+     * How many children a variable has: a collection's items, such as an
+     * array's size, or another object's fields.
+     */
+    public int GetElementCount(Variable_ variable) {
+        if(variable != null && variablesModel instanceof JDIVariablesModel) {
+            Variable v = ((quorum.Libraries.Language.Debug.Variable) variable).plugin_.getVariable();
+            return ((JDIVariablesModel) variablesModel).getElementCount(v);
+        }
+        return 0;
+    }
+
     public int GetChildrenCount(Variable_ variable) {
+        if(variable == null) {
+            return variablesModel == null ? 0 : variablesModel.getChildrenCount(null);
+        }
         if(variablesModel != null) {
             Variable v = ((quorum.Libraries.Language.Debug.Variable) variable).plugin_.getVariable();
             return variablesModel.getChildrenCount(v);

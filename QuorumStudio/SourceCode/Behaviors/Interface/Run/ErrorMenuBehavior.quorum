@@ -1,0 +1,34 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Development.Environment.Studio.Interface.ErrorTab
+
+/*
+Opens the Errors tab's menu at the selected row, for Shift+F10. A right
+click opens it through the row's own input group instead.
+*/
+class ErrorMenuBehavior is Behavior
+    ErrorTab errorTab = undefined
+
+    action SetErrorTab(ErrorTab tab)
+        errorTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if errorTab = undefined
+            return now
+        end
+
+        ListItem row = errorTab:GetSelectedRow()
+        if row = undefined
+            return now
+        end
+        PopupMenu menu = row:GetPopupMenu()
+        if menu not= undefined
+            menu:OpenAt(row:GetGlobalX(), row:GetGlobalY())
+        end
+    end
+end

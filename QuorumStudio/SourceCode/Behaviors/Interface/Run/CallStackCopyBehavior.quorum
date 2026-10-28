@@ -1,0 +1,52 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.Interface.CallStackTab
+use Libraries.Development.Environment.Studio.Interface.CallStackItem
+use Libraries.Development.Environment.Studio.Interface.CallStackLibraryItem
+
+/*
+Copies from the Call Stack tab: the selected frame as
+"Main.Update (Main.quorum:42)", a fold row as the frames it stands for,
+or, when copying all, the whole stack, one frame per line.
+*/
+class CallStackCopyBehavior is Behavior
+    CallStackTab callStackTab = undefined
+    boolean copyingAll = false
+
+    action SetCallStackTab(CallStackTab tab)
+        callStackTab = tab
+    end
+
+    action SetCopyingAll(boolean value)
+        copyingAll = value
+    end
+
+    action Run(BehaviorEvent event)
+        if callStackTab = undefined
+            return now
+        end
+
+        text value = ""
+        if copyingAll
+            value = callStackTab:GetStackTraceText()
+        else
+            ListItem row = callStackTab:GetSelectedRow()
+            if row is CallStackItem
+                CallStackItem frameRow = cast(CallStackItem, row)
+                value = frameRow:GetCopyText()
+            elseif row is CallStackLibraryItem
+                CallStackLibraryItem libraryRow = cast(CallStackLibraryItem, row)
+                value = libraryRow:GetCopyText()
+            end
+        end
+
+        if value not= ""
+            GameStateManager gameState
+            gameState:GetGame():SetClipboard(value)
+        end
+    end
+end

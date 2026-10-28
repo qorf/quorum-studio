@@ -1,0 +1,83 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Game.GameStateManager
+use Libraries.Language.Debug.Breakpoint
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Studio.Interface.BreakpointsTab
+use Libraries.Development.Environment.Studio.Interface.BreakpointFileItem
+use Libraries.Development.Environment.Studio.Interface.BreakpointItem
+
+/*
+Opens a breakpoint's file at its line, from the Breakpoints tab (B1): the
+row it's run on, or the tab's selected row. On a file's row, it goes to that
+file's first breakpoint.
+*/
+class BreakpointGoToLineBehavior is Behavior
+    BreakpointsTab breakpointsTab = undefined
+
+    action SetBreakpointsTab(BreakpointsTab tab)
+        breakpointsTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        ListItem row = undefined
+        if event:GetItem() is ListItem
+            row = cast(ListItem, event:GetItem())
+        elseif breakpointsTab not= undefined
+            row = breakpointsTab:GetSelectedRow()
+        end
+
+        BreakpointItem pointRow = undefined
+        if row is BreakpointItem
+            pointRow = cast(BreakpointItem, row)
+        elseif row is BreakpointFileItem
+            BreakpointFileItem fileItem = cast(BreakpointFileItem, row)
+            if fileItem:GetRows():GetSize() > 0
+                pointRow = fileItem:GetRows():Get(0)
+            end
+        end
+        if pointRow = undefined
+            return now
+        end
+
+        Breakpoint point = pointRow:GetBreakpoint()
+        File file = point:GetFile()
+        if file = undefined or file:Exists() = false
+            return now
+        end
+
+        check
+            GameStateManager gameState
+            QuorumStudio studio = cast(QuorumStudio, gameState:GetGame())
+            CodeEditorTabPane editors = studio:GetTabPane()
+            Tab opened = editors:OpenNewTab(file)
+            if not (opened is EditorTab)
+                return now
+            end
+            EditorTab tab = cast(EditorTab, opened)
+            integer line = point:GetLine()
+
+            // A tab holds a text box in text mode, and the block editor in
+            // block mode; each moves to the line its own way.
+            TextBox box = tab:GetTextBox()
+            CodeEditor blocks = tab:GetBlockEditor()
+            if box not= undefined
+                box:SetCaretPositionToLine(line)
+            elseif blocks not= undefined
+                blocks:SelectBlockAtTextLine(line)
+                blocks:GoToLine(line)
+            end
+        detect e
+            e:OutputStackTrace()
+        end
+    end
+end

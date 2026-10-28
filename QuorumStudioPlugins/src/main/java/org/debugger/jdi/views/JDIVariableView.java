@@ -65,6 +65,68 @@ public abstract class JDIVariableView implements VariableView {
      * @return 
      */
     public abstract Variable[] getSpecialVariableChildren(ObjectReference reference);
+
+    /**
+     * This returns the special children from item from up to, but not
+     * including, item to. A range of (0, 0) means all of them.
+     *
+     * @param reference
+     * @param from
+     * @param to
+     * @return
+     */
+    public Variable[] getSpecialVariableChildren(ObjectReference reference, int from, int to) {
+        return slice(getSpecialVariableChildren(reference), from, to);
+    }
+
+    /**
+     * This returns how many special children a value has, such as the
+     * number of items in an array.
+     *
+     * @param reference
+     * @return
+     */
+    public int getSpecialVariableCount(ObjectReference reference) {
+        return getSpecialVariableChildren(reference).length;
+    }
+
+    /**
+     * This clamps a range to a count of children. A range of (0, 0) means
+     * all of them. The result is the first child and the child after the
+     * last.
+     *
+     * @param from
+     * @param to
+     * @param count
+     * @return
+     */
+    public static int[] clampRange(int from, int to, int count) {
+        if (from == 0 && to == 0) {
+            return new int[] {0, count};
+        }
+        int start = Math.max(0, Math.min(from, count));
+        int end = Math.max(start, Math.min(to, count));
+        return new int[] {start, end};
+    }
+
+    /**
+     * This returns part of an array of children. A range of (0, 0) means
+     * all of them.
+     *
+     * @param all
+     * @param from
+     * @param to
+     * @return
+     */
+    public static Variable[] slice(Variable[] all, int from, int to) {
+        if (all == null || (from == 0 && to == 0)) {
+            return all;
+        }
+        int[] range = clampRange(from, to, all.length);
+        Variable[] part = new Variable[range[1] - range[0]];
+        System.arraycopy(all, range[0], part, 0, part.length);
+        return part;
+    }
     
     /**
      * This method converts the type name to a view appropriate name.

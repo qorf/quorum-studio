@@ -1,0 +1,60 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.Interface.VariablesTab
+use Libraries.Development.Environment.Studio.Interface.VariableItem
+
+/*
+Copies part of the selected row of the Variables tab (V1): its value, its
+name, the expression for it, its full type name, or, as text, every item
+or field under it.
+*/
+class VariablesCopyBehavior is Behavior
+    public constant integer VALUE = 0
+    public constant integer NAME = 1
+    public constant integer EXPRESSION = 2
+    public constant integer TYPE = 3
+    public constant integer ALL_TEXT = 4
+
+    VariablesTab variablesTab = undefined
+    integer mode = VALUE
+
+    action SetVariablesTab(VariablesTab tab)
+        variablesTab = tab
+    end
+
+    action SetMode(integer value)
+        mode = value
+    end
+
+    action Run(BehaviorEvent event)
+        if variablesTab = undefined
+            return now
+        end
+
+        VariableItem row = variablesTab:GetSelectedRow()
+        if row = undefined
+            return now
+        end
+
+        text result = ""
+        if mode = VALUE
+            result = row:GetValue()
+        elseif mode = NAME
+            result = row:GetVariableName()
+        elseif mode = EXPRESSION
+            result = row:GetExpression()
+        elseif mode = TYPE
+            result = row:GetFullType()
+        else
+            result = variablesTab:GetCopyAllText(row)
+        end
+
+        if result not= ""
+            GameStateManager manager
+            manager:GetGame():SetClipboard(result)
+        end
+    end
+end

@@ -1,0 +1,270 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Containers.Array
+use Libraries.Containers.HashTable
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Interface.Controls.LineNumberGutter
+use Libraries.Interface.Controls.ScrollableLineControl
+use Libraries.Interface.Controls.TextStyles.TextStyle
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Development.Environment.Configuration.IconConstants
+use Libraries.Language.Debug.Breakpoint
+use Libraries.Language.Debug.BreakpointManager
+use Libraries.System.File
+
+/*
+Studio's line number gutter, for the text editor and the block editor
+(G1). The numbers are muted, and the stopped line's is brighter. Left of
+the numbers is a marker lane: a red dot for a breakpoint, or a green arrow
+on the line the debugger is stopped on, which replaces the dot. Both are
+Font Awesome glyphs, as in the Breakpoints and Call Stack tabs.
+
+In the text editor the markers come from CodeTextBox's breakpoint and
+debugger styles, which follow edits. In the block editor they come from the
+breakpoint list and the stopped navigation row, and the gutter also places
+the editor's stopped-row band.
+*/
+class StudioLineGutter is LineNumberGutter
+    // Font Awesome's circle, as in the Breakpoints tab.
+    constant integer BREAKPOINT_MARK = 61713
+    // Font Awesome's arrow-right, as in the Call Stack tab.
+    constant integer STOPPED_MARK = 61537
+    // The marker's size and its lane's width, in points. The dot is one em
+    // wide and the arrow seven eighths, so the lane leaves room either side.
+    constant integer MARKER_SIZE = 13
+    constant integer MARKER_LANE_WIDTH = 16
+
+    Array<Label> numbers
+    Array<Label> markers
+    Font iconFont
+    boolean iconFontLoaded = false
+    boolean drawnOnce = false
+    GutterSupport support
+    OptionsConstants optionsConstants
+
+    action GetGutterThickness returns number
+        return parent:LineNumberGutter:GetGutterThickness() + MARKER_LANE_WIDTH * GetInterfaceScale()
+    end
+
+    // Only once: the block editor hands over its breakpoint list on every build.
+    action SetBreakpointManager(BreakpointManager breakpoints)
+        if breakpoints = undefined or breakpoints = GetBreakpointManager()
+            return now
+        end
+        parent:LineNumberGutter:SetBreakpointManager(breakpoints)
+    end
+
+    /*
+    This action redraws the gutter from the row it last drew from. It does
+    nothing before the first draw.
+    */
+    action Refresh
+        if drawnOnce and GetControl() not= undefined
+            UpdateVisuals(parent:LineNumberGutter:previousStartLine)
+        end
+    end
+
+    action UpdateVisuals(integer startLine)
+        Empty()
+        parent:LineNumberGutter:previousStartLine = startLine
+        drawnOnce = true
+
+        ScrollableLineControl control = GetControl()
+        if control = undefined
+            return now
+        end
+
+        integer fontSize = control:GetFontSize()
+        if GetDefaultLayoutProperties():HasNumberPropertyOverride("fontSize")
+            fontSize = GetFontSize()
+        end
+        Font font = PickFont()
+
+        LayoutProperties properties = GetCurrentLayoutProperties()
+        if properties = undefined
+            properties = GetDefaultLayoutProperties()
+        end
+
+        // As LineNumberGutter, with the marker lane on the left.
+        text linesInText = "" + control:GetLineCount()
+        integer glyphsRequired = linesInText:GetSize()
+        number leftMargin = properties:GetLeftMargin() * GetInterfaceScale()
+        number rightMargin = properties:GetRightMargin() * GetInterfaceScale()
+        number laneWidth = MARKER_LANE_WIDTH * GetInterfaceScale()
+        number width = font:GetGlyph("0"):horizontalAdvance * glyphsRequired + leftMargin + laneWidth + rightMargin
+
+        // If the horizontal scroll bar is visible, the rendering area is
+        // shorter than the gutter, as in LineNumberGutter.
+        number barOffset = 0
+        if control:IsShowingHorizontalBar()
+            barOffset = control:GetBarThickness() * control:GetInterfaceScale()
+        end
+
+        LoadIconFont()
+        ColorGroup mutedColor = support:GetThemeColor(optionsConstants:GUTTER_NUMBER_COLOR, GetFontColor())
+        ColorGroup stoppedNumberColor = support:GetThemeColor(optionsConstants:GUTTER_STOPPED_NUMBER_COLOR, GetFontColor())
+        ColorGroup dotColor = support:GetThemeColor(optionsConstants:BREAKPOINT_DOT_COLOR, GetAccentColor())
+        ColorGroup arrowColor = support:GetThemeColor(optionsConstants:CALL_STACK_CURRENT_COLOR, GetSelectionColor())
+        text dotText = ""
+        dotText = dotText:GetUnicodeValue(BREAKPOINT_MARK)
+        text arrowText = ""
+        arrowText = arrowText:GetUnicodeValue(STOPPED_MARK)
+
+        // The text editor's breakpoints, from their styles.
+        HashTable<integer, integer> breakpointLines = undefined
+        CodeTextBox box = undefined
+        if control is CodeTextBox
+            box = cast(CodeTextBox, control)
+            breakpointLines = box:GetBreakpointLines()
+        end
+        integer stopRow = GetStoppedRow(box)
+
+        boolean bandPlaced = false
+        Array<integer> textLines = support:GetTextLines(control, startLine)
+        integer counter = 0
+        repeat while counter < textLines:GetSize()
+            integer row = startLine + counter
+            integer textLine = textLines:Get(counter)
+            number y = control:GetLineY(row) + barOffset
+            number height = control:GetLineHeight(row)
+            boolean stopped = stopRow not= -1 and row = stopRow
+
+            Label label = GetNumberLabel(counter)
+            if font not= undefined
+                label:SetFont(font)
+            end
+            label:SetSize(fontSize)
+            label:SetText("" + (textLine + 1))
+            label:SetPosition(width - label:GetWidth() - rightMargin, y + height / 2.0 - label:GetHeight() / 2.0)
+            if stopped
+                label:SetColor(stoppedNumberColor)
+            else
+                label:SetColor(mutedColor)
+            end
+            Add(label)
+
+            // The arrow replaces the dot on a breakpoint the program is stopped at.
+            text mark = ""
+            ColorGroup markColor = dotColor
+            if stopped
+                mark = arrowText
+                markColor = arrowColor
+            elseif HasBreakpoint(breakpointLines, row, textLine)
+                mark = dotText
+            end
+            if mark not= "" and iconFontLoaded
+                Label marker = GetMarker(counter)
+                marker:SetText(mark)
+                marker:SetColor(markColor)
+                marker:SetPosition(leftMargin + (laneWidth - marker:GetWidth()) / 2.0, y + height / 2.0 - marker:GetHeight() / 2.0)
+                Add(marker)
+            end
+
+            if stopped
+                PlaceBand(y, height)
+                bandPlaced = true
+            end
+            counter = counter + 1
+        end
+
+        if not bandPlaced
+            HideBand()
+        end
+    end
+
+    /*
+    This action returns the row the debugger is stopped on, or -1. The text
+    editor's is the line of its "Debugger" style, which follows edits. The
+    block editor keeps the stopped block's navigation row.
+    */
+    private action GetStoppedRow(CodeTextBox box) returns integer
+        if box = undefined
+            return GetDebuggerLine()
+        end
+        TextStyle style = box:GetTextStyle(box:DEBUGGER_STYLE)
+        if style = undefined
+            return -1
+        end
+        return box:GetLineIndexOfCharacter(style:GetIndex())
+    end
+
+    // A block's breakpoint is on its start line, so only its first row matches.
+    private action HasBreakpoint(HashTable<integer, integer> breakpointLines, integer row, integer textLine) returns boolean
+        if breakpointLines not= undefined
+            return breakpointLines:HasKey(row)
+        end
+        BreakpointManager breakpointManager = GetBreakpointManager()
+        File source = GetFile()
+        if breakpointManager = undefined or source = undefined
+            return false
+        end
+        Breakpoint point = breakpointManager:GetBreakpoint(source:GetAbsolutePath(), textLine)
+        return point not= undefined
+    end
+
+    // The block editor's band; the text editor's is a text style.
+    private action PlaceBand(number y, number height)
+        ScrollableLineControl control = GetControl()
+        if control is StudioBlockEditor
+            StudioBlockEditor editor = cast(StudioBlockEditor, control)
+            editor:ShowDebuggerBand(y, height)
+        end
+    end
+
+    private action HideBand
+        ScrollableLineControl control = GetControl()
+        if control is StudioBlockEditor
+            StudioBlockEditor editor = cast(StudioBlockEditor, control)
+            editor:HideDebuggerBand()
+        end
+    end
+
+    private action PickFont returns Font
+        Font font = GetFont()
+        if font = undefined
+            font = GetControl():GetFont()
+        end
+        return font
+    end
+
+    private action GetNumberLabel(integer index) returns Label
+        if numbers:GetSize() <= index or numbers:Get(index) = undefined
+            Label label
+            label:SetAccessibilityCode(label:parent:Item:NOT_ACCESSIBLE)
+            label:SetPositionOnBaseLine(IsPositioningOnBaseLine())
+            numbers:Add(index, label)
+            return label
+        end
+        return numbers:Get(index)
+    end
+
+    private action GetMarker(integer index) returns Label
+        // Only rows with a mark ask for one, so fill any gap first.
+        repeat while markers:GetSize() <= index
+            markers:Add(undefined)
+        end
+        if markers:Get(index) = undefined
+            Label marker
+            marker:SetAccessibilityCode(marker:parent:Item:NOT_ACCESSIBLE)
+            marker:SetPositionOnBaseLine(false)
+            marker:SetFont(iconFont)
+            marker:SetSize(MARKER_SIZE)
+            markers:Set(index, marker)
+        end
+        return markers:Get(index)
+    end
+
+    private action LoadIconFont
+        if iconFontLoaded
+            return now
+        end
+        IconConstants iconConstants
+        File iconFile
+        iconFile:SetPath(iconConstants:ICON_FONT_LOCATION)
+        iconFont:LoadFont(iconFile)
+        iconFontLoaded = true
+    end
+end

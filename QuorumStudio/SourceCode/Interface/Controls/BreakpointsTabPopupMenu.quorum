@@ -1,0 +1,78 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Development.Environment.Studio.Behaviors.BreakpointGoToLineBehavior
+use Libraries.Development.Environment.Studio.Behaviors.BreakpointRemoveBehavior
+use Libraries.Development.Environment.Studio.Behaviors.BreakpointCopyBehavior
+
+/*
+The Breakpoints tab's menu (B1): Go to line, Remove breakpoint, Remove all in
+this file, Remove breakpoints not in open projects, and Copy location. Each
+acts on the tab's selected row.
+*/
+class BreakpointsTabPopupMenu is PopupMenu
+    MenuItem goToLine
+    MenuItem removeOne
+    MenuItem removeFile
+    MenuItem removeUnused
+    MenuItem copyLocation
+    BreakpointGoToLineBehavior goToLineBehavior
+    BreakpointRemoveBehavior removeBehavior
+    BreakpointRemoveBehavior removeFileBehavior
+    BreakpointRemoveBehavior removeUnusedBehavior
+    BreakpointCopyBehavior copyBehavior
+    boolean built = false
+
+    action SetBreakpointsTab(BreakpointsTab tab)
+        goToLineBehavior:SetBreakpointsTab(tab)
+        removeBehavior:SetBreakpointsTab(tab)
+        removeBehavior:SetMode(removeBehavior:SELECTED)
+        removeFileBehavior:SetBreakpointsTab(tab)
+        removeFileBehavior:SetMode(removeFileBehavior:IN_FILE)
+        removeUnusedBehavior:SetBreakpointsTab(tab)
+        removeUnusedBehavior:SetMode(removeUnusedBehavior:NOT_IN_PROJECTS)
+        copyBehavior:SetBreakpointsTab(tab)
+    end
+
+    // The items are made when the menu first opens.
+    private action Build
+        if built
+            return now
+        end
+
+        goToLine:SetName("Go to line")
+        goToLine:SetShortcut("Return")
+        goToLine:SetBehavior(goToLineBehavior)
+
+        removeOne:SetName("Remove breakpoint")
+        removeOne:SetShortcut("Delete")
+        removeOne:SetBehavior(removeBehavior)
+
+        removeFile:SetName("Remove all in this file")
+        removeFile:SetBehavior(removeFileBehavior)
+
+        removeUnused:SetName("Remove breakpoints not in open projects")
+        removeUnused:SetBehavior(removeUnusedBehavior)
+
+        copyLocation:SetName("Copy location")
+        copyLocation:SetBehavior(copyBehavior)
+
+        Add(goToLine)
+        Add(removeOne)
+        Add(removeFile)
+        Add(removeUnused)
+        Add(copyLocation)
+        built = true
+    end
+
+    action OpenAtCursor
+        Build()
+        parent:PopupMenu:OpenAtCursor()
+    end
+
+    action OpenAt(number x, number y)
+        Build()
+        parent:PopupMenu:OpenAt(x, y)
+    end
+end

@@ -28,29 +28,36 @@
  */
 package org.debugger.jdi.views.quorum;
 
+import com.sun.jdi.ArrayReference;
 import com.sun.jdi.ClassNotLoadedException;
+import com.sun.jdi.Field;
 import com.sun.jdi.IncompatibleThreadStateException;
 import com.sun.jdi.IntegerValue;
 import com.sun.jdi.InvalidTypeException;
 import com.sun.jdi.InvocationException;
 import com.sun.jdi.ObjectReference;
-import com.sun.jdi.ThreadReference;
 import com.sun.jdi.Value;
-import com.sun.jdi.VirtualMachine;
-import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.debugger.Variable;
 import org.debugger.jdi.JDIVariable;
-import org.debugger.jdi.JDIVariablesModel;
+import org.debugger.jdi.views.JDIVariableView;
 
 /**
+ * A view of Quorum's arrays. An array keeps its items in its plugin, a Java
+ * array, so the items are read straight from it, only the range that's
+ * asked for, without calling into the running program. Calls are a fallback
+ * for an array without a plugin to read.
  *
  * @author Andreas Stefik
  */
 public class ArrayView extends QuorumVariableView {
     public final String key = "quorum.Libraries.Containers.Array";
+    private static final String PLUGIN = "plugin_";
+    private static final String SIZE = "size";
     
     @Override
     public String getStaticKey() {
@@ -64,37 +71,123 @@ public class ArrayView extends QuorumVariableView {
 
     @Override
     public Variable[] getSpecialVariableChildren(ObjectReference reference) {
-        List<Value> args = new LinkedList<>();
-        ThreadReference thread = this.getThread();
-        VirtualMachine machine = this.getMachine();
-        try {
-            Value sval = reference.invokeMethod(thread,
-                    reference.referenceType().methodsByName("GetSize").get(0),args, 0);
+        return getSpecialVariableChildren(reference, 0, 0);
+    }
 
-            if (sval instanceof IntegerValue) {
-                IntegerValue s = (IntegerValue) sval;
-                int size = s.intValue();
-                Variable[] variables = new Variable[size];
-                //loop through all of the values and get their 
-                //objects in the array
-                for(int i = 0; i < size; i++) {
-                    args = new LinkedList<>();
-                    IntegerValue position = machine.mirrorOf(i);
-                    args.add(position);
+    @Override
+    public Variable[] getSpecialVariableChildren(ObjectReference reference, int from, int to) {
+        int[] range = JDIVariableView.clampRange(from, to, getElementCount(reference));
+        List<Value> values = getElementValues(reference, range[0], range[1]);
+        Variable[] variables = new Variable[values.size()];
+        for (int i = 0; i < variables.length; i++) {
+            JDIVariable variable = getQuorumView().convert(values.get(i));
+            variable.setName("" + (range[0] + i));
+            variables[i] = variable;
+        }
+        return variables;
+    }
 
-                    Value result = reference.invokeMethod(thread,
-                        reference.referenceType().methodsByName("Get").get(0),args, 0);
-                    JDIVariable variable = getQuorumView().convert(result);
-                    variable.setName("" + i);
-                    variables[i] = variable;
+    @Override
+    public int getElementCount(ObjectReference reference) {
+        ObjectReference plugin = getPlugin(reference);
+        if (plugin != null) {
+            Field size = plugin.referenceType().fieldByName(SIZE);
+            if (size != null && !size.isStatic()) {
+                Value value = plugin.getValue(size);
+                if (value instanceof IntegerValue) {
+                    return ((IntegerValue) value).intValue();
                 }
-                return variables;
+            }
+            ArrayReference array = getBackingArray(plugin);
+            return array == null ? 0 : array.length();
+        }
+
+        try {
+            Value value = invoke(reference, "GetSize", Collections.<Value>emptyList());
+            if (value instanceof IntegerValue) {
+                return ((IntegerValue) value).intValue();
             }
         } catch (InvalidTypeException | ClassNotLoadedException | IncompatibleThreadStateException | InvocationException ex) {
-            Logger.getLogger(JDIVariablesModel.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(ArrayView.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
-        return new Variable[0];
+        return 0;
+    }
+
+    /**
+     * This returns the array's items from start up to, but not including,
+     * end. Hash tables use it to read their buckets.
+     *
+     * @param reference
+     * @param start
+     * @param end
+     * @return
+     */
+    public List<Value> getElementValues(ObjectReference reference, int start, int end) {
+        if (end <= start) {
+            return Collections.emptyList();
+        }
+        ObjectReference plugin = getPlugin(reference);
+        if (plugin != null) {
+            ArrayReference array = getBackingArray(plugin);
+            if (array == null) {
+                return Collections.emptyList();
+            }
+            end = Math.min(end, array.length());
+            if (end <= start) {
+                return Collections.emptyList();
+            }
+            return array.getValues(start, end - start);
+        }
+
+        List<Value> values = new ArrayList<>();
+        try {
+            for (int i = start; i < end; i++) {
+                List<Value> args = Collections.<Value>singletonList(reference.virtualMachine().mirrorOf(i));
+                values.add(invoke(reference, "Get", args));
+            }
+        } catch (InvalidTypeException | ClassNotLoadedException | IncompatibleThreadStateException | InvocationException ex) {
+            Logger.getLogger(ArrayView.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return values;
+    }
+
+    /**
+     * This returns the array's plugin, the Java object that holds its items,
+     * or null if it has none.
+     *
+     * @param reference
+     * @return
+     */
+    private ObjectReference getPlugin(ObjectReference reference) {
+        Field field = reference.referenceType().fieldByName(PLUGIN);
+        if (field == null) {
+            return null;
+        }
+        Value value = reference.getValue(field);
+        if (value instanceof ObjectReference) {
+            return (ObjectReference) value;
+        }
+        return null;
+    }
+
+    /**
+     * This returns the Java array inside a plugin, such as Array's items or
+     * Integer32BitArray's ints, or null if it hasn't made one yet.
+     *
+     * @param plugin
+     * @return
+     */
+    private ArrayReference getBackingArray(ObjectReference plugin) {
+        for (Field field : plugin.referenceType().allFields()) {
+            if (field.isStatic()) {
+                continue;
+            }
+            Value value = plugin.getValue(field);
+            if (value instanceof ArrayReference) {
+                return (ArrayReference) value;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -102,19 +195,7 @@ public class ArrayView extends QuorumVariableView {
         if(value == null) {
             return getQuorumView().getNull();
         } else if(value instanceof ObjectReference) {
-            ObjectReference ref = (ObjectReference) value;
-            try {
-                
-                List<Value> args = new LinkedList<>();
-                Value sval = ref.invokeMethod(getThread(),
-                        ref.referenceType().methodsByName("GetSize").get(0),args, 0);
-                if(sval != null && sval instanceof IntegerValue) {
-                    return "size = " + sval.toString();
-                }
-            } catch (InvalidTypeException | ClassNotLoadedException | IncompatibleThreadStateException | InvocationException ex) {
-                Logger.getLogger(ArrayView.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            return "#" + ref.hashCode();
+            return "size = " + getElementCount((ObjectReference) value);
         }  else {
             return value.toString();
         }

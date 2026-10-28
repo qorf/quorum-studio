@@ -28,6 +28,7 @@
  */
 package org.debugger.jdi.views.quorum;
 
+import org.debugger.jdi.views.QuorumView;
 import com.sun.jdi.Field;
 import com.sun.jdi.ObjectReference;
 import com.sun.jdi.ThreadReference;
@@ -55,7 +56,7 @@ public abstract class PrimitiveView extends QuorumVariableView{
             if(field != null) {
                 Value myInt = ref.getValue(field);
                 if(myInt != null) {
-                    return myInt.toString();
+                    return QuorumView.toDisplay(myInt);
                 }
             }
             return "#" + ref.hashCode();

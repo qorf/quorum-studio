@@ -1,0 +1,67 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Development.Environment.Studio.Behaviors.SearchCopyBehavior
+
+/*
+The Search Results tab's menu (S1): Go to match, Copy line, Copy all
+results and Copy file path. Each acts on the tab's selected row.
+*/
+class SearchResultsPopupMenu is PopupMenu
+    MenuItem goToMatch
+    MenuItem copyLine
+    MenuItem copyAll
+    MenuItem copyPath
+    SearchCopyBehavior copyLineBehavior
+    SearchCopyBehavior copyAllBehavior
+    SearchCopyBehavior copyPathBehavior
+    Behavior goBehavior = undefined
+    boolean built = false
+
+    action SetSearchResultsTab(SearchResultsTab tab, Behavior openBehavior)
+        copyLineBehavior:SetSearchResultsTab(tab)
+        copyLineBehavior:SetMode(copyLineBehavior:SELECTED_ROW)
+        copyAllBehavior:SetSearchResultsTab(tab)
+        copyAllBehavior:SetMode(copyAllBehavior:ALL_RESULTS)
+        copyPathBehavior:SetSearchResultsTab(tab)
+        copyPathBehavior:SetMode(copyPathBehavior:FILE_PATH)
+        goBehavior = openBehavior
+    end
+
+    // The items are made when the menu first opens, as in the Errors tab.
+    private action Build
+        if built
+            return now
+        end
+        goToMatch:SetName("Go to match")
+        goToMatch:SetShortcut("Return")
+        goToMatch:SetBehavior(goBehavior)
+
+        copyLine:SetName("Copy line")
+        copyLine:SetBehavior(copyLineBehavior)
+
+        copyAll:SetName("Copy all results")
+        copyAll:SetBehavior(copyAllBehavior)
+
+        copyPath:SetName("Copy file path")
+        copyPath:SetBehavior(copyPathBehavior)
+
+        Add(goToMatch)
+        Add(copyLine)
+        Add(copyAll)
+        Add(copyPath)
+        built = true
+    end
+
+    action OpenAtCursor
+        Build()
+        parent:PopupMenu:OpenAtCursor()
+    end
+
+    action OpenAt(number x, number y)
+        Build()
+        parent:PopupMenu:OpenAt(x, y)
+    end
+end

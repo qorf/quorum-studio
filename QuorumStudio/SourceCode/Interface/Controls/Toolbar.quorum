@@ -56,6 +56,8 @@ class Toolbar is ToolBar
     // How tall Run and Debug are, before the interface scale. Each one's
     // icon is centered in this at the size it was made.
     constant integer LABELED_BUTTON_HEIGHT = 24
+    // How much darker Run and Debug get under the mouse.
+    constant number HOVER_SHADE = 0.85
 
     // Run and Debug, whose text keeps LABEL_FONT_SIZE when SetFontSize
     // changes the icons.
@@ -121,28 +123,28 @@ class Toolbar is ToolBar
 
     action Setup
         // Files
-        AddButtonToToolbar(61892, const:TOOLBAR_ICON_COLOR, behaviors:GetOpenNewProjectBehavior(), "New Project", keymap:GetNewProjectKey():GetDisplayName())
-        AddButtonToToolbar(61897, const:TOOLBAR_ICON_COLOR, behaviors:GetOpenNewFileBehavior(), "New File", keymap:GetNewFileKey():GetDisplayName())
-        AddButtonToToolbar(61564, const:TOOLBAR_ICON_COLOR, behaviors:GetOpenProjectBehavior(), "Open Project", keymap:GetOpenProjectKey():GetDisplayName())
-        AddButtonToToolbar(61639, const:TOOLBAR_ICON_COLOR, behaviors:GetSaveAllBehavior(), "Save All", keymap:GetSaveAllKey():GetDisplayName())
+        AddButtonToToolbar(61892, const:TOOLBAR_FILE_ICON_COLOR, behaviors:GetOpenNewProjectBehavior(), "New Project", keymap:GetNewProjectKey():GetDisplayName())
+        AddButtonToToolbar(61897, const:TOOLBAR_FILE_ICON_COLOR, behaviors:GetOpenNewFileBehavior(), "New File", keymap:GetNewFileKey():GetDisplayName())
+        AddButtonToToolbar(61564, const:TOOLBAR_FILE_ICON_COLOR, behaviors:GetOpenProjectBehavior(), "Open Project", keymap:GetOpenProjectKey():GetDisplayName())
+        AddButtonToToolbar(61639, const:TOOLBAR_FILE_ICON_COLOR, behaviors:GetSaveAllBehavior(), "Save All", keymap:GetSaveAllKey():GetDisplayName())
         AddSeparator()
         // Undo and redo
-        AddButtonToToolbar(61666, const:TOOLBAR_ICON_COLOR, behaviors:GetUndoBehavior(), "Undo", keymap:GetUndoKey():GetDisplayName())
-        AddButtonToToolbar(61470, const:TOOLBAR_ICON_COLOR, behaviors:GetRedoBehavior(), "Redo", keymap:GetRedoKey():GetDisplayName())
+        AddButtonToToolbar(61666, const:TOOLBAR_EDIT_ICON_COLOR, behaviors:GetUndoBehavior(), "Undo", keymap:GetUndoKey():GetDisplayName())
+        AddButtonToToolbar(61470, const:TOOLBAR_EDIT_ICON_COLOR, behaviors:GetRedoBehavior(), "Redo", keymap:GetRedoKey():GetDisplayName())
         AddSeparator()
         // Build and run
-        AddButtonToToolbar(63203, const:TOOLBAR_ICON_COLOR, behaviors:GetThreadedBuildProjectBehavior(), "Build", keymap:GetBuildKey():GetDisplayName())
-        AddButtonToToolbar(57450, const:TOOLBAR_ICON_COLOR, behaviors:GetThreadedCleanBuildProjectBehavior(), "Clean and Build", keymap:GetCleanBuildKey():GetDisplayName())
+        AddButtonToToolbar(63203, const:TOOLBAR_BUILD_ICON_COLOR, behaviors:GetThreadedBuildProjectBehavior(), "Build", keymap:GetBuildKey():GetDisplayName())
+        AddButtonToToolbar(57450, const:TOOLBAR_BUILD_ICON_COLOR, behaviors:GetThreadedCleanBuildProjectBehavior(), "Clean and Build", keymap:GetCleanBuildKey():GetDisplayName())
         AddLabeledButtonToToolbar(61515, "Run", const:TOOLBAR_RUN_FILL_COLOR, behaviors:GetThreadedRunProjectBehavior(), "Run", keymap:GetRunKey():GetDisplayName())
         AddSeparator()
         // Debugging. Stop keeps its red: it is the one way to stop a program.
         AddLabeledButtonToToolbar(61832, "Debug", const:TOOLBAR_DEBUG_FILL_COLOR, behaviors:GetThreadedDebugProjectBehavior(), "Debug", keymap:GetDebugKey():GetDisplayName())
         AddButtonToToolbar(61517, const:TOOLBAR_STOP_BUTTON_COLOR, behaviors:GetThreadedStopBehavior(), "Stop", keymap:GetStopKey():GetDisplayName())
-        AddButtonToToolbar(61516, const:TOOLBAR_ICON_COLOR, behaviors:GetThreadedPauseBehavior(), "Pause", keymap:GetPauseKey():GetDisplayName())
-        AddButtonToToolbar(61520, const:TOOLBAR_ICON_COLOR, behaviors:GetThreadedContinueBehavior(), "Continue", keymap:GetContinueKey():GetDisplayName())
-        AddButtonToToolbar(61537, const:TOOLBAR_ICON_COLOR, behaviors:GetThreadedStepOverBehavior(), "Step Over", keymap:GetStepOverKey():GetDisplayName())
-        AddButtonToToolbar(61769, const:TOOLBAR_ICON_COLOR, behaviors:GetThreadedStepIntoBehavior(), "Step Into", keymap:GetStepIntoKey():GetDisplayName())
-        AddButtonToToolbar(61768, const:TOOLBAR_ICON_COLOR, behaviors:GetThreadedStepOutBehavior(), "Step Out", keymap:GetStepOutKey():GetDisplayName())
+        AddButtonToToolbar(61516, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedPauseBehavior(), "Pause", keymap:GetPauseKey():GetDisplayName())
+        AddButtonToToolbar(61520, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedContinueBehavior(), "Continue", keymap:GetContinueKey():GetDisplayName())
+        AddButtonToToolbar(61537, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedStepOverBehavior(), "Step Over", keymap:GetStepOverKey():GetDisplayName())
+        AddButtonToToolbar(61769, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedStepIntoBehavior(), "Step Into", keymap:GetStepIntoKey():GetDisplayName())
+        AddButtonToToolbar(61768, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedStepOutBehavior(), "Step Out", keymap:GetStepOutKey():GetDisplayName())
         SetupButtonFocus()
     end
 
@@ -176,6 +178,10 @@ class Toolbar is ToolBar
         GameStateManager manager
         InterfaceOptions options = manager:GetInterfaceOptions()
         ColorGroup co = options:GetColorProperty(optionsKey)
+        // A theme without the group colors uses the one icon color.
+        if co = undefined
+            co = options:GetColorProperty(const:TOOLBAR_ICON_COLOR)
+        end
         if co not= undefined
             Color co2 = cast(Color, co)
             button:SetFontColor(co2)
@@ -190,6 +196,9 @@ class Toolbar is ToolBar
         
         button:SetBackgroundColor(transparent)
         button:SetBorderThickness(0)
+        // Toolbar buttons are icons on the bar, not raised buttons.
+        button:SetTopAccent(false)
+        button:SetRaised(false)
         ColorGroup hover = options:GetColorProperty(const:TOOLBAR_HOVER_COLOR)
         if hover not= undefined
             button:SetMouseOverColor(hover)
@@ -260,6 +269,9 @@ class Toolbar is ToolBar
         end
         button:SetTopPadding(inset)
         button:SetBottomPadding(inset)
+        // Filled, but flat like the rest of the toolbar.
+        button:SetTopAccent(false)
+        button:SetRaised(false)
         LayoutProperties labeledProperties = button:GetDefaultLayoutProperties()
         labeledProperties:SetVerticalLayoutMode(labeledProperties:STANDARD)
         labeledProperties:SetPixelHeight(LABELED_BUTTON_HEIGHT)
@@ -274,6 +286,15 @@ class Toolbar is ToolBar
             // Run and Debug keep their color when focused: the control
             // shader draws a focused control in its focus color instead.
             button:SetFocusColor(fill)
+            // A hover a little darker than the fill, so the white word and
+            // icon still read. The theme's own hover is near white in light
+            // mode.
+            if fill is Color
+                Color fillColor = cast(Color, fill)
+                Color hover
+                hover:SetColor(fillColor:GetRed() * HOVER_SHADE, fillColor:GetGreen() * HOVER_SHADE, fillColor:GetBlue() * HOVER_SHADE, 1)
+                button:SetMouseOverColor(hover)
+            end
         end
         button:SetFontColor(white)
         button:SetIconColor(white)

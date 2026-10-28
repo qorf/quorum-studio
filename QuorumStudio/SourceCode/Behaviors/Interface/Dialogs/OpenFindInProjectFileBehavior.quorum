@@ -1,28 +1,46 @@
 package Libraries.Development.Environment.Studio.Behaviors
 
 use Libraries.Interface.Behaviors.Behavior
-use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
 use Libraries.Development.Environment.Studio.Interface.SearchResultsTab
-use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Studio.Interface.SearchFileItem
+use Libraries.Development.Environment.Studio.Interface.SearchMatchItem
 
+/*
+Opens a Search Results row's file at its match: the row it's run on
+(Return or a double click), or, from the menu, the selected row. On a
+file's row, from the menu, it goes to the file's first match.
+*/
 class OpenFindInProjectFileBehavior is Behavior
+    SearchResultsTab tab = undefined
 
     on create
         SetRunOnUpdate(true)
     end
-
-    SearchResultsTab tab = undefined
 
     action SetSearchResultsTab(SearchResultsTab tab)
         me:tab = tab
     end
 
     action Run(BehaviorEvent event)
-        if tab not= undefined
-            if event:GetItem() is TreeItem
-                TreeItem item = cast(TreeItem, event:GetItem())
-                tab:OpenTreeItemFile(item)
+        if tab = undefined
+            return now
+        end
+
+        ListItem row = undefined
+        if event:GetItem() is ListItem
+            row = cast(ListItem, event:GetItem())
+        else
+            row = tab:GetSelectedRow()
+        end
+
+        if row is SearchMatchItem
+            tab:OpenMatch(cast(SearchMatchItem, row))
+        elseif row is SearchFileItem
+            SearchFileItem fileItem = cast(SearchFileItem, row)
+            if not fileItem:GetRows():IsEmpty()
+                tab:OpenMatch(fileItem:GetRows():Get(0))
             end
         end
     end

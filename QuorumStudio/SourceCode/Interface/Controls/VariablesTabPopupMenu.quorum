@@ -1,0 +1,130 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
+use Libraries.System.Properties
+use Libraries.Development.Environment.Studio.Behaviors.VariablesCopyBehavior
+use Libraries.Development.Environment.Studio.Behaviors.VariablesFoldBehavior
+use Libraries.Development.Environment.Studio.Behaviors.VariablesGoToTypeBehavior
+
+/*
+The Variables tab's menu (V1): Copy value, Copy name, Copy expression,
+Copy type, Go to type and Collapse all. A row that opens, such as an object
+or a collection, also has Copy as text and Expand. Each acts on the tab's
+selected row.
+*/
+class VariablesTabPopupMenu is PopupMenu
+    VariablesTab variablesTab = undefined
+
+    MenuItem copyValue
+    MenuItem copyName
+    MenuItem copyExpression
+    MenuItem copyType
+    MenuItem copyAsText
+    MenuItem goToType
+    MenuItem expandItem
+    MenuItem collapseAll
+
+    VariablesCopyBehavior valueBehavior
+    VariablesCopyBehavior nameBehavior
+    VariablesCopyBehavior expressionBehavior
+    VariablesCopyBehavior typeBehavior
+    VariablesCopyBehavior textBehavior
+    VariablesGoToTypeBehavior goToTypeBehavior
+    VariablesFoldBehavior expandBehavior
+    VariablesFoldBehavior collapseAllBehavior
+    boolean built = false
+
+    action SetVariablesTab(VariablesTab tab)
+        variablesTab = tab
+        valueBehavior:SetVariablesTab(tab)
+        valueBehavior:SetMode(valueBehavior:VALUE)
+        nameBehavior:SetVariablesTab(tab)
+        nameBehavior:SetMode(nameBehavior:NAME)
+        expressionBehavior:SetVariablesTab(tab)
+        expressionBehavior:SetMode(expressionBehavior:EXPRESSION)
+        typeBehavior:SetVariablesTab(tab)
+        typeBehavior:SetMode(typeBehavior:TYPE)
+        textBehavior:SetVariablesTab(tab)
+        textBehavior:SetMode(textBehavior:ALL_TEXT)
+        goToTypeBehavior:SetVariablesTab(tab)
+        expandBehavior:SetVariablesTab(tab)
+        expandBehavior:SetMode(expandBehavior:EXPAND)
+        collapseAllBehavior:SetVariablesTab(tab)
+        collapseAllBehavior:SetMode(collapseAllBehavior:COLLAPSE_ALL)
+    end
+
+    // The items are made when the menu first opens.
+    private action Build
+        if built
+            return now
+        end
+
+        copyValue:SetName("Copy value")
+        Properties properties
+        if properties:IsMac()
+            copyValue:SetShortcut("Cmd+C")
+        else
+            copyValue:SetShortcut("Ctrl+C")
+        end
+        copyValue:SetBehavior(valueBehavior)
+
+        copyName:SetName("Copy name")
+        copyName:SetBehavior(nameBehavior)
+
+        copyExpression:SetName("Copy expression")
+        copyExpression:SetBehavior(expressionBehavior)
+
+        copyType:SetName("Copy type")
+        copyType:SetBehavior(typeBehavior)
+
+        copyAsText:SetName("Copy as text")
+        copyAsText:SetBehavior(textBehavior)
+
+        goToType:SetName("Go to type")
+        goToType:SetBehavior(goToTypeBehavior)
+
+        expandItem:SetName("Expand")
+        expandItem:SetBehavior(expandBehavior)
+
+        collapseAll:SetName("Collapse all")
+        collapseAll:SetBehavior(collapseAllBehavior)
+        built = true
+    end
+
+    // The items for the selected row: a row that opens has more.
+    private action Fill
+        Build()
+        Empty()
+        boolean opens = false
+        if variablesTab not= undefined
+            VariableItem row = variablesTab:GetSelectedRow()
+            if row not= undefined
+                opens = not row:IsLeaf()
+            end
+        end
+
+        Add(copyValue)
+        Add(copyName)
+        Add(copyExpression)
+        Add(copyType)
+        if opens
+            Add(copyAsText)
+        end
+        Add(goToType)
+        if opens
+            Add(expandItem)
+        end
+        Add(collapseAll)
+    end
+
+    action OpenAtCursor
+        Fill()
+        parent:PopupMenu:OpenAtCursor()
+    end
+
+    action OpenAt(number x, number y)
+        Fill()
+        parent:PopupMenu:OpenAt(x, y)
+    end
+end

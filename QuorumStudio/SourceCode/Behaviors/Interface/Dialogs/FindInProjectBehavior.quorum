@@ -10,7 +10,6 @@ use Libraries.Containers.HashTable
 use Libraries.Containers.Iterator
 use Libraries.System.FileReader
 use Libraries.Containers.MultipleLineText
-use Libraries.Interface.Controls.TreeItem
 use Libraries.Development.Environment.Studio.Interface.SearchResultsTab
 use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Game.GameStateManager
@@ -74,17 +73,10 @@ class FindInProjectBehavior is QuorumStudioBehavior
                     i = i + 1
                 end
 
-                //Move to another behavior?
+                // The tab builds its rows from these, in the files' order.
                 if searchResultsTab not= undefined
                     searchResultsTab:ClearSearchResults()
-                    TreeItem item
-                    if totalFinds > 5000
-                        item:SetName("Found " + totalFinds + " matches of " + find + " in " + totalFiles + " so far. The search was stopped because the limit for number of matching occurences was reached or exceeded.")
-                    else
-                        item:SetName("Found " + totalFinds + " matches of " + find + " in " + totalFiles + " files.")
-                    end
-                    searchResultsTab:InitializeSearchResultsTree(item)
-                    searchResultsTab:SetSearchResults(fileIndices)
+                    searchResultsTab:SetSearchResults(files, fileIndices, totalFinds, totalFiles, totalFinds > 5000)
                 end
             end
             dialog:Hide()
@@ -209,9 +201,12 @@ class FindInProjectBehavior is QuorumStudioBehavior
                     nextCharacter = textValue:GetCharacter(nextIndex)
                 end
                 if (not(IsSpecialCharacter(previousCharacter) or IsWhiteSpace(previousCharacter)) or (not(IsSpecialCharacter(nextCharacter) or IsWhiteSpace(nextCharacter))))
+                    // The next match slides into this place, so check this
+                    // place again rather than moving on.
                     indices:RemoveAt(i)
+                else
+                    i = i + 1
                 end
-                i = i + 1
             end 
         end
         

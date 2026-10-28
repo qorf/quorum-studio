@@ -29,6 +29,7 @@ use Libraries.Interface.Controls.Icon
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Development.Environment.Studio.Interface.KeyMap
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Development.Environment.Studio.Interface.StudioBlockEditor
 use Libraries.Game.GameStateManager
 use Libraries.Game.Game
 use Libraries.Development.Environment.Projects.ProjectManager
@@ -295,7 +296,11 @@ end
         
         CodeEditor editor = undefined
         ParserToBlockListener listener
-        CodeEditor editor2
+        // Studio's block editor, so gutter clicks reach the debugger.
+        StudioBlockEditor editor2
+        if behaviors not= undefined
+            editor2:SetBuildManager(behaviors:GetBuildManager())
+        end
         editor = editor2
         editor:SetBlockListener(listener)
         editor:AddFocusListener(codeEditorFocusChanged)

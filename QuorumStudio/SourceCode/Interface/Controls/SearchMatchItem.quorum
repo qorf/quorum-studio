@@ -1,0 +1,253 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.Glyph
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Containers.Array
+use Libraries.Containers.Support.Pair
+
+/*
+A line with matches in the Search Results tab (S1), under its file: a
+muted line number, then the line in the code font with a thin outline
+around each match (H3), and "N on this line" when it has more than one.
+Activating it opens the file at the line's first match.
+*/
+class SearchMatchItem is ListItem
+    SearchFileItem fileItem = undefined
+    integer lineNumber = 0
+    // The line without its indent, for Copy and for screen readers.
+    text lineText = ""
+    // Each match on this line, as start and end character indexes in the file.
+    Array<Pair<integer>> matches
+    // Each match's place in the shown text, as start and end indexes.
+    Array<Pair<integer>> outlineRanges
+    ColorGroup outlineColor = undefined
+    // One outline per range: a small Control with a clear background and a
+    // thin border. They're made in Setup, when the graphics exist.
+    Array<Control> outlines
+
+    // The outline's border and corner rounding, and the space it leaves on
+    // each side of the match, in points.
+    constant number OUTLINE_THICKNESS = 1.5
+    constant number OUTLINE_ROUNDING = 3
+    constant number OUTLINE_PADDING = 1
+
+    Label gutter
+    Label countDetail
+
+    on create
+        // No picture on a line's row.
+        parent:ListItem:icon:Hide()
+
+        // The pieces sit centered on the row's line.
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        // The line number, muted, indented under its file's row.
+        gutter:SetAccessibilityCode(gutter:parent:Item:NOT_ACCESSIBLE)
+        gutter:SetAcceptsMouseInput(false)
+        gutter:SetPositionOnBaseLine(false)
+        gutter:SetLeftMargin(28)
+        Add(0, gutter)
+
+        parent:ListItem:label:SetLeftMargin(12)
+
+        countDetail:SetAccessibilityCode(countDetail:parent:Item:NOT_ACCESSIBLE)
+        countDetail:SetAcceptsMouseInput(false)
+        countDetail:SetPositionOnBaseLine(false)
+        countDetail:SetLeftMargin(12)
+        countDetail:Hide()
+        Add(countDetail)
+    end
+
+    /*
+    This action sets everything the row shows:
+    - the file row it sits under;
+    - its line number, and the line number as shown, padded on the left so
+      the file's lines align;
+    - the shown text, and where the matches are in it;
+    - the matches in the file;
+    - the line for Copy;
+    - the code font, and the muted and outline colors.
+    */
+    action Setup(SearchFileItem parentFile, integer line, text gutterText, text shown, Array<Pair<integer>> ranges, Array<Pair<integer>> found, text copyLine, Font codeFont, ColorGroup mutedColor, ColorGroup matchColor)
+        fileItem = parentFile
+        lineNumber = line
+        lineText = copyLine
+        matches = found
+        outlineRanges = ranges
+        outlineColor = matchColor
+
+        // The line and its number are in the code font. ListItem's
+        // LoadGraphics gives the label the font from these properties.
+        if codeFont not= undefined
+            LayoutProperties properties = GetDefaultLayoutProperties()
+            properties:SetFont(codeFont)
+            gutter:SetFont(codeFont)
+        end
+        if mutedColor not= undefined
+            gutter:SetColor(mutedColor)
+            countDetail:SetColor(mutedColor)
+        end
+
+        gutter:SetText(gutterText)
+        SetText(shown)
+
+        text countText = ""
+        if matches:GetSize() > 1
+            countText = "" + matches:GetSize() + " on this line"
+            countDetail:SetText(countText)
+            countDetail:Show()
+        end
+
+        text readName = "Line " + lineNumber + ", " + lineText
+        if countText not= ""
+            readName = readName + ", " + countText
+        end
+        SetName(readName)
+
+        MakeOutlines()
+    end
+
+    /*
+    This action makes one outline per match. A ControlShaderView needs the
+    graphics, so this runs from Setup, not on create. Each outline is a
+    drawing only, so a click selects the row.
+    */
+    private action MakeOutlines
+        if outlineColor = undefined
+            return now
+        end
+        Color color
+        integer index = outlines:GetSize()
+        repeat while index < outlineRanges:GetSize()
+            Control outline
+            outline:SetAccessibilityCode(outline:parent:Item:NOT_ACCESSIBLE)
+            outline:SetFocusable(false)
+            outline:SetAcceptsMouseInput(false)
+            outline:SetBackgroundColor(color:Clear())
+            outline:SetBorderColor(outlineColor)
+            outline:SetBorderThickness(OUTLINE_THICKNESS)
+            outline:SetCornerPixelRounding(OUTLINE_ROUNDING, OUTLINE_ROUNDING, OUTLINE_ROUNDING, OUTLINE_ROUNDING)
+
+            ControlShaderView view
+            view:Initialize()
+            outline:SetView2D(view)
+
+            // First among the children. The layout gives it no width, so it
+            // doesn't move the text; PlaceOutlines sets its place and size.
+            Add(0, outline)
+            outlines:Add(outline)
+            index = index + 1
+        end
+    end
+
+    // The line number is drawn at the same size as the line.
+    action LoadGraphics(LayoutProperties properties)
+        parent:ListItem:LoadGraphics(properties)
+        if gutter:GetSize() not= properties:GetFontSize()
+            gutter:SetFontSize(properties:GetFontSize())
+        end
+    end
+
+    // After the layout places the text, put each outline around its match.
+    action Resize
+        parent:Control:Resize()
+        PlaceOutlines()
+    end
+
+    /*
+    This action puts each outline around its match. It adds up glyph
+    advances the way the label does, with a copy of the font at the size the
+    label draws at, and leaves a point of space on each side.
+    */
+    private action PlaceOutlines
+        if outlines:IsEmpty()
+            return now
+        end
+        Label line = parent:ListItem:label
+        Font font = line:GetFont()
+        if font = undefined or not font:IsLoaded()
+            return now
+        end
+
+        Font measure = font:Copy()
+        measure:SetSize(cast(integer, line:GetSize() * line:GetInterfaceScale()))
+
+        text shown = line:GetText()
+        number left = line:GetX() + line:GetHorizontalMargins()
+        number padding = OUTLINE_PADDING * line:GetInterfaceScale()
+        integer index = 0
+        repeat while index < outlineRanges:GetSize() and index < outlines:GetSize()
+            Pair<integer> range = outlineRanges:Get(index)
+            number startX = left + Advance(measure, shown, 0, range:GetFirstValue())
+            number width = Advance(measure, shown, range:GetFirstValue(), range:GetSecondValue())
+            Control outline = outlines:Get(index)
+            outline:SetPosition(startX - padding, line:GetY())
+            outline:SetSize(width + 2 * padding, line:GetHeight())
+            index = index + 1
+        end
+    end
+
+    // The width of the characters from startIndex up to endIndex.
+    private action Advance(Font measure, text shown, integer startIndex, integer endIndex) returns number
+        number total = 0
+        integer index = startIndex
+        repeat while index < endIndex and index < shown:GetSize()
+            Glyph glyph = measure:GetGlyph(shown:GetCharacter(index))
+            if glyph not= undefined
+                total = total + glyph:horizontalAdvance
+            end
+            index = index + 1
+        end
+        return total
+    end
+
+    action GetFileItem returns SearchFileItem
+        return fileItem
+    end
+
+    action GetLineNumber returns integer
+        return lineNumber
+    end
+
+    action GetMatchCount returns integer
+        return matches:GetSize()
+    end
+
+    // The first match on this line, where Go to match goes.
+    action GetFirstMatch returns Pair<integer>
+        if matches:IsEmpty()
+            return undefined
+        end
+        return matches:Get(0)
+    end
+
+    // The text Copy puts on the clipboard, such as
+    // "Main.quorum:12: output Print(value)".
+    action GetCopyText returns text
+        text fileName = "(no file)"
+        if fileItem not= undefined and fileItem:GetFile() not= undefined
+            fileName = fileItem:GetFile():GetFileName()
+        end
+        return fileName + ":" + lineNumber + ": " + lineText
+    end
+
+    /*
+    The text a screen reader reads for this row: its whole name, with every
+    column, rather than the first label alone. The label still shows what
+    SetText gave it.
+    */
+    action GetText returns text
+        return GetName()
+    end
+end

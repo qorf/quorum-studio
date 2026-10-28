@@ -1,0 +1,39 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Development.Environment.Studio.Interface.CallStackTab
+use Libraries.Development.Environment.Studio.Interface.CallStackLibraryItem
+
+/*
+Shows or hides the Call Stack tab's library frames, from a fold row
+("N library frames hidden", "Show"), by Return or a double click.
+*/
+class CallStackFoldBehavior is Behavior
+    CallStackTab callStackTab = undefined
+
+    action SetCallStackTab(CallStackTab tab)
+        callStackTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if callStackTab = undefined
+            return now
+        end
+
+        CallStackLibraryItem libraryRow = undefined
+        if event:GetItem() is CallStackLibraryItem
+            libraryRow = cast(CallStackLibraryItem, event:GetItem())
+        else
+            ListItem selected = callStackTab:GetSelectedRow()
+            if selected is CallStackLibraryItem
+                libraryRow = cast(CallStackLibraryItem, selected)
+            end
+        end
+        if libraryRow = undefined
+            return now
+        end
+        callStackTab:ToggleLibraryFrames(libraryRow)
+    end
+end

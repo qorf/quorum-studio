@@ -1,0 +1,393 @@
+use Libraries.Game.DesktopConfiguration
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.ProgressBar
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Forms.Form
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.System.File
+use Libraries.System.Process
+use Libraries.System.ProcessListener
+use Libraries.System.ProcessEvent
+use Libraries.System.Properties
+use Libraries.Containers.Array
+use Libraries.Containers.HashTable
+
+/*
+    Main opens a window for making Quorum Studio's installers. It is a form:
+    a banner with the version, then a grouping for the installers this
+    computer can make, one for the certificates to sign them with, and one
+    for the build's progress and log, with the Build installers button at the
+    bottom. How each installer is made is described in InstallerBuilder.
+
+    Build Studio as usual first, then run this project.
+
+    On a Mac, a build runs as a second copy of this program, so the window
+    keeps responding: a build can take a few minutes, and notarizing a few
+    more. The second copy reads the settings from Settings.json, and writes
+    what it does to InstallerBuilder.log, which the window reads twice a
+    second. The second copy also runs without the window, from a terminal
+    in this project's folder:
+
+    QUORUM_BUILD_INSTALLERS=yes java -jar Run/Default.jar
+
+    On Windows, the build runs in this program, so the window stops
+    responding until it's done.
+*/
+class Main is Form, ProcessListener
+    constant integer WIDTH = 960
+    constant integer HEIGHT = 940
+    constant text LOG_FILE = "InstallerBuilder.log"
+    constant text BUILD_VARIABLE = "QUORUM_BUILD_INSTALLERS"
+    // The log shows its last lines. Few enough that the whole form fits in the
+    // window: a form taller than its window scrolls, and its groupings move
+    // around while it does.
+    constant integer LOG_LINES = 6
+
+    InstallerBuilder builder
+    Properties properties
+    boolean onMac = false
+    boolean onWindows = false
+
+    Checkbox appleSiliconBox
+    Checkbox intelBox
+    Checkbox windowsBox
+    Checkbox localOnlyBox
+    TextField appIdentityField
+    TextField installerIdentityField
+    TextField notaryProfileField
+    TextField windowsCertificateField
+    Button buildButton
+    ProgressBar progress
+    Label statusLabel
+    TextBox logBox
+
+    boolean building = false
+
+    // On Windows the build starts a couple of frames after Build is pressed,
+    // so the window can say it won't respond before it stops.
+    integer framesUntilBuild = -1
+
+    // For reading the log from the second copy.
+    number secondsSinceRead = 0
+    text buildProcessId = ""
+    integer lastExit = -1
+
+    action Main
+        // The second copy, started by the window, builds and stops.
+        if properties:GetEnvironmentVariable(BUILD_VARIABLE) = "yes"
+            builder:LoadSettings()
+            builder:Build()
+            return now
+        end
+
+        onMac = properties:IsMac()
+        onWindows = properties:IsWindows()
+        builder:LoadSettings()
+
+        Page page = GetMainPage()
+        page:AddBanner("Quorum Studio Installers", VersionMessage() + " Build Studio as usual first.")
+
+        Grouping installers = page:AddGrouping("Installers")
+        installers:SetTitle("Which installers to make")
+        if onMac
+            appleSiliconBox = installers:AddCheckbox("Mac, Apple Silicon")
+            intelBox = installers:AddCheckbox("Mac, Intel")
+            windowsBox = installers:AddCheckbox("Windows (made on a Mac, it can only be local only)")
+        elseif onWindows
+            windowsBox = installers:AddCheckbox("Windows")
+        else
+            installers:AddLabel("Where", "Installers are made on a Mac or on Windows.")
+        end
+        localOnlyBox = installers:AddCheckbox("Local only: for our own computers, with no certificates")
+
+        Grouping certificates = page:AddGrouping("Certificates")
+        certificates:SetTitle("Certificates, for a release")
+        if onMac
+            certificates:AddLabel("Keychain", CertificatesMessage())
+            appIdentityField = AddField(certificates, "Developer ID Application certificate (blank finds it)")
+            installerIdentityField = AddField(certificates, "Developer ID Installer certificate (blank finds it)")
+            notaryProfileField = AddField(certificates, "Notary profile (made with xcrun notarytool store-credentials)")
+        else
+            windowsCertificateField = AddField(certificates, "Code signing certificate name (blank lets signtool pick it)")
+        end
+
+        Grouping build = page:AddGrouping("Build")
+        build:SetTitle("Build")
+        statusLabel = build:AddLabel("Status", "Choose the installers, then press Build installers.")
+        progress:SetName("Progress")
+        progress:SetMinimum(0)
+        progress:SetMaximum(100)
+        progress:SetValue(0)
+        build:Add(progress)
+        logBox = build:AddTextBox("Build log")
+        logBox:SetLayoutRows(LOG_LINES)
+
+        Grouping buttons = page:AddGrouping("Buttons")
+        buildButton = buttons:AddButton("Build installers")
+        BuildBehavior behavior
+        behavior:SetWindow(me)
+        buildButton:SetBehavior(behavior)
+        buttons:PositionFromBottom()
+
+        DesktopConfiguration desktop = GetDesktopConfiguration()
+        desktop:title = "Quorum Studio Installers"
+        desktop:resizable = true
+        Display(WIDTH, HEIGHT)
+    end
+
+    action CreateGame
+        parent:Form:CreateGame()
+        ShowSettings()
+    end
+
+    /*
+        Fills the controls in from Settings.json. This waits until the game is
+        running: a text field tells the game's input about each change to its
+        text, and there's no input before then.
+    */
+    action ShowSettings
+        if onMac
+            appleSiliconBox:SetToggleState(builder:buildAppleSilicon)
+            intelBox:SetToggleState(builder:buildIntel)
+            appIdentityField:SetText(builder:appIdentity)
+            installerIdentityField:SetText(builder:installerIdentity)
+            notaryProfileField:SetText(builder:notaryProfile)
+            windowsBox:SetToggleState(builder:buildWindows)
+        elseif onWindows
+            windowsBox:SetToggleState(true)
+            windowsCertificateField:SetText(builder:windowsCertificate)
+        end
+        localOnlyBox:SetToggleState(builder:localOnly)
+    end
+
+    // A text field with its label, which the form shows as the field's caption.
+    action AddField(Grouping group, text name) returns TextField
+        group:AddLabel(name + " label", name)
+        return group:AddTextField(name)
+    end
+
+    action VersionMessage returns text
+        return "Version " + builder:ReadVersion() + ", this project's version. Change it in the project's properties."
+    end
+
+    // Which Developer ID certificates are in this Mac's keychain.
+    action CertificatesMessage returns text
+        Array<text> apps = builder:ListIdentities("Developer ID Application", "codesigning")
+        Array<text> installers = builder:ListIdentities("Developer ID Installer", "basic")
+        return "In this Mac's keychain: " + Describe(apps, "Developer ID Application") + "; " + Describe(installers, "Developer ID Installer") + "."
+    end
+
+    action Describe(Array<text> names, text kind) returns text
+        if names:GetSize() = 0
+            return "no " + kind + " certificate"
+        elseif names:GetSize() = 1
+            return names:Get(0)
+        end
+        return names:GetSize() + " " + kind + " certificates"
+    end
+
+    action StartBuild
+        if building
+            return now
+        end
+        builder:buildAppleSilicon = onMac and appleSiliconBox:GetToggleState()
+        builder:buildIntel = onMac and intelBox:GetToggleState()
+        builder:buildWindows = (onMac or onWindows) and windowsBox:GetToggleState()
+        builder:localOnly = localOnlyBox:GetToggleState()
+        if onMac
+            builder:appIdentity = appIdentityField:GetText():Trim()
+            builder:installerIdentity = installerIdentityField:GetText():Trim()
+            builder:notaryProfile = notaryProfileField:GetText():Trim()
+        else
+            builder:windowsCertificate = windowsCertificateField:GetText():Trim()
+        end
+
+        if not builder:buildAppleSilicon and not builder:buildIntel and not builder:buildWindows
+            statusLabel:SetText("Choose at least one installer.")
+            return now
+        end
+        builder:SaveSettings()
+
+        building = true
+        progress:SetValue(0)
+        logBox:SetText("")
+        if onWindows
+            statusLabel:SetText("Building. The window won't respond until it's done.")
+            framesUntilBuild = 2
+        else
+            statusLabel:SetText("Starting the build.")
+            StartBuildProcess()
+        end
+    end
+
+    /*
+        Starts the second copy of this program, which builds the installers.
+        A shell starts it in the background with its output going to the
+        log, and prints its process ID. That way this window doesn't wait
+        for it.
+    */
+    action StartBuildProcess
+        File log
+        log:SetPath(LOG_FILE)
+        if log:Exists()
+            log:Delete()
+        end
+
+        text java = properties:GetProperty("java.home") + "/bin/java"
+        text jar = properties:GetProperty("java.class.path")
+        text quote = ""
+        quote = quote:GetDoubleQuote()
+        text command = quote + "$0" + quote + " -jar " + quote + "$1" + quote
+            + " > " + quote + "$2" + quote + " 2>&1 < /dev/null & echo $!"
+
+        Array<text> parameters
+        parameters:Add("-c")
+        parameters:Add(command)
+        parameters:Add(java)
+        parameters:Add(jar)
+        parameters:Add(LOG_FILE)
+
+        HashTable<text, text> environment
+        environment:Add(BUILD_VARIABLE, "yes")
+
+        buildProcessId = ""
+        Process shell
+        shell:SetName("/bin/sh")
+        shell:SetParameters(parameters)
+        shell:SetEnvironment(environment)
+        shell:AddListener(me)
+        shell:Run()
+        if buildProcessId = ""
+            building = false
+            statusLabel:SetText("The build couldn't start.")
+        end
+    end
+
+    action Update(number seconds)
+        if framesUntilBuild > 0
+            framesUntilBuild = framesUntilBuild - 1
+            if framesUntilBuild = 0
+                framesUntilBuild = -1
+                builder:Build()
+                ShowLog(builder:GetMessages())
+                building = false
+            end
+            return now
+        end
+
+        if not building or onWindows
+            return now
+        end
+        secondsSinceRead = secondsSinceRead + seconds
+        if secondsSinceRead < 0.5
+            return now
+        end
+        secondsSinceRead = 0
+
+        File log
+        log:SetPath(LOG_FILE)
+        if log:Exists()
+            ShowLog(log:Read():SplitIntoLines())
+        end
+        // ShowLog stops the build when it reads the line saying it finished.
+        if building and not IsBuildRunning()
+            // It may have finished since the log was read.
+            if log:Exists()
+                ShowLog(log:Read():SplitIntoLines())
+            end
+            if building
+                building = false
+                statusLabel:SetText("The build stopped without finishing. See InstallerBuilder.log.")
+            end
+        end
+    end
+
+    /*
+        Shows the build's progress, its last message and the end of its log.
+        Lines like "Progress: 42" move the progress bar, and the last line
+        says whether it finished.
+    */
+    action ShowLog(Array<text> lines)
+        Array<text> shown
+        text status = ""
+        integer i = 0
+        repeat while i < lines:GetSize()
+            text line = lines:Get(i)
+            if line:StartsWith(builder:PROGRESS_PREFIX)
+                progress:SetValue(line:GetSubtext(builder:PROGRESS_PREFIX:GetSize()):Trim():ParseInteger())
+            elseif line:StartsWith(builder:FINISHED_PREFIX)
+                building = false
+                if line:EndsWith(builder:SUCCEEDED)
+                    progress:SetValue(100)
+                    status = "Done: the installers are made."
+                else
+                    status = "Done: the build failed. See the log below, or InstallerBuilder.log."
+                end
+            else
+                shown:Add(line)
+                if line:Trim() not= ""
+                    status = line:Trim()
+                end
+            end
+            i = i + 1
+        end
+
+        if status not= ""
+            statusLabel:SetText(status)
+        end
+
+        text lineFeed = ""
+        lineFeed = lineFeed:GetLineFeed()
+        text tail = ""
+        integer start = shown:GetSize() - LOG_LINES
+        if start < 0
+            start = 0
+        end
+        i = start
+        repeat while i < shown:GetSize()
+            tail = tail + shown:Get(i) + lineFeed
+            i = i + 1
+        end
+        logBox:SetText(tail)
+    end
+
+    // True while the second copy is running.
+    action IsBuildRunning returns boolean
+        if buildProcessId = ""
+            return false
+        end
+        Array<text> parameters
+        parameters:Add("-0")
+        parameters:Add(buildProcessId)
+        Process killCheck
+        killCheck:SetName("/bin/kill")
+        killCheck:SetParameters(parameters)
+        killCheck:AddListener(me)
+        lastExit = -1
+        killCheck:Run()
+        return lastExit = 0
+    end
+
+    action ProcessStarted(ProcessEvent event)
+    end
+
+    action ProcessStopped(ProcessEvent event)
+        lastExit = event:GetExit()
+    end
+
+    // The shell prints the second copy's process ID.
+    action Output(ProcessEvent event)
+        text value = event:GetOutput()
+        if value not= undefined and buildProcessId = ""
+            buildProcessId = value:Trim()
+        end
+    end
+
+    action Error(ProcessEvent event)
+    end
+end

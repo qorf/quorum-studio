@@ -56,12 +56,43 @@ public class StackView extends QuorumVariableView {
     
     @Override
     public Variable[] getSpecialVariableChildren(ObjectReference reference) {
-        Field list = reference.referenceType().fieldByName("list");
-        Value value = reference.getValue(list);
-        if(value instanceof ObjectReference) {
-            return view.getSpecialVariableChildren((ObjectReference)value);
+        return getSpecialVariableChildren(reference, 0, 0);
+    }
+
+    @Override
+    public Variable[] getSpecialVariableChildren(ObjectReference reference, int from, int to) {
+        ObjectReference list = getList(reference);
+        if(list != null) {
+            return view.getSpecialVariableChildren(list, from, to);
         }
         return new Variable[0];
+    }
+
+    @Override
+    public int getElementCount(ObjectReference reference) {
+        ObjectReference list = getList(reference);
+        if(list != null) {
+            return view.getElementCount(list);
+        }
+        return 0;
+    }
+
+    /**
+     * A stack keeps its items in a list.
+     *
+     * @param reference
+     * @return
+     */
+    private ObjectReference getList(ObjectReference reference) {
+        Field list = reference.referenceType().fieldByName("list");
+        if(list == null) {
+            return null;
+        }
+        Value value = reference.getValue(list);
+        if(value instanceof ObjectReference) {
+            return (ObjectReference) value;
+        }
+        return null;
     }
 
     @Override

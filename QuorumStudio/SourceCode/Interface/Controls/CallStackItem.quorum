@@ -1,0 +1,175 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.CharacterIcon
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Language.Debug.StackFrame
+use Libraries.System.File
+
+/*
+One frame's row in the Call Stack tab (C1): a green arrow on the frame
+the program is stopped in, the action's name, where it is ("Main.quorum,
+line 42"), and, muted, its class. Activating it goes to that line.
+*/
+class CallStackItem is ListItem
+    StackFrame frame = undefined
+    // The frame's Quorum source file, or undefined for Java code.
+    File file = undefined
+    boolean libraryFrame = false
+    boolean stoppedHere = false
+    CharacterIcon marker
+    Label place
+    Label className
+
+    // Font Awesome's arrow-right, the marker for the frame you're stopped in.
+    constant integer CURRENT_MARK = 61537
+
+    on create
+        // The marker replaces ListItem's own picture.
+        parent:ListItem:icon:Hide()
+
+        // The pieces sit centered on the row's line.
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        // Every row has a marker, so the action names line up. Only the
+        // current frame's can be seen; the others are see-through, since
+        // the row's layout leaves hidden pieces out.
+        marker:SetAcceptsMouseInput(false)
+        marker:SetAccessibilityCode(marker:parent:Item:NOT_ACCESSIBLE)
+        marker:SetHorizontalLayoutMode(marker:parent:Control:MAINTAIN_ASPECT_RATIO)
+        marker:SetVerticalLayoutMode(marker:parent:Control:STANDARD)
+        marker:SetPercentageWidth(1.0)
+        marker:SetPercentageHeight(1.0)
+        marker:SetLeftMargin(6)
+        marker:SetTopMargin(7)
+        marker:SetBottomMargin(7)
+        Add(0, marker)
+
+        place:SetAccessibilityCode(place:parent:Item:NOT_ACCESSIBLE)
+        place:SetAcceptsMouseInput(false)
+        place:SetPositionOnBaseLine(false)
+        place:SetLeftMargin(16)
+        Add(place)
+
+        className:SetAccessibilityCode(className:parent:Item:NOT_ACCESSIBLE)
+        className:SetAcceptsMouseInput(false)
+        className:SetPositionOnBaseLine(false)
+        className:SetLeftMargin(16)
+        Add(className)
+    end
+
+    /*
+    This action sets the frame this row shows, its source file (or
+    undefined), whether it's in the library, whether it's the frame the
+    program is stopped in, the marker's font, and the colors.
+    */
+    action Setup(StackFrame value, File source, boolean isLibrary, boolean isCurrent, Font iconFont, ColorGroup markColor, ColorGroup mutedColor)
+        frame = value
+        file = source
+        libraryFrame = isLibrary
+        stoppedHere = isCurrent
+
+        if iconFont not= undefined
+            marker:LoadCharacter(CURRENT_MARK, iconFont)
+        end
+        // Both: CharacterIcon's LoadGraphics colors it from its icon color.
+        if stoppedHere and markColor not= undefined
+            marker:SetColor(markColor)
+            marker:SetIconColor(markColor)
+        elseif not stoppedHere
+            Color clear
+            clear:SetColor(0.0, 0.0, 0.0, 0.0)
+            marker:SetColor(clear)
+            marker:SetIconColor(clear)
+        end
+
+        // Library frames, while shown, sit indented under their fold row.
+        if libraryFrame and not stoppedHere
+            marker:SetLeftMargin(22)
+        end
+
+        if mutedColor not= undefined
+            className:SetColor(mutedColor)
+        end
+
+        SetText(GetActionName())
+        place:SetText(GetPlaceText())
+        className:SetText(frame:GetQuorumName())
+        SetName(GetSpokenText())
+    end
+
+    action GetFrame returns StackFrame
+        return frame
+    end
+
+    action GetFile returns File
+        return file
+    end
+
+    action IsLibraryFrame returns boolean
+        return libraryFrame
+    end
+
+    action IsStoppedHere returns boolean
+        return stoppedHere
+    end
+
+    // The action's name, with Java's name for "on create" put back.
+    action GetActionName returns text
+        text name = frame:GetName()
+        if name = "<init>" or name = "<clinit>"
+            return "on create"
+        end
+        return name
+    end
+
+    // "Main.quorum, line 42", or "no source file" for Java code.
+    action GetPlaceText returns text
+        if file = undefined
+            return "no source file"
+        end
+        if frame:GetLine() < 1
+            return file:GetFileName()
+        end
+        return file:GetFileName() + ", line " + frame:GetLine()
+    end
+
+    // What a screen reader says, such as
+    // "Current frame, Update, Main.quorum, line 42, class Main".
+    action GetSpokenText returns text
+        text result = GetActionName() + ", " + GetPlaceText() + ", class " + frame:GetQuorumName()
+        if libraryFrame
+            result = "Library frame, " + result
+        end
+        if stoppedHere
+            result = "Current frame, " + result
+        end
+        return result
+    end
+
+    // The text Copy puts on the clipboard, such as
+    // "Main.Update (Main.quorum:42)".
+    action GetCopyText returns text
+        text where = "no source file"
+        if file not= undefined
+            where = file:GetFileName() + ":" + frame:GetLine()
+        end
+        return frame:GetQuorumName() + "." + GetActionName() + " (" + where + ")"
+    end
+
+    /*
+    The text a screen reader reads for this row: its whole name, with every
+    column, rather than the first label alone. The label still shows what
+    SetText gave it.
+    */
+    action GetText returns text
+        return GetName()
+    end
+end

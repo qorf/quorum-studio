@@ -1,0 +1,79 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Game.GameStateManager
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.Interface.SearchResultsTab
+use Libraries.Development.Environment.Studio.Interface.SearchSummaryItem
+use Libraries.Development.Environment.Studio.Interface.SearchFileItem
+use Libraries.Development.Environment.Studio.Interface.SearchMatchItem
+
+/*
+Copies from the Search Results tab (S1):
+- SELECTED_ROW: a line as "File:line: text", a file's row as all of its
+  lines, or the summary;
+- ALL_RESULTS: the summary and every line;
+- FILE_PATH: the full path of the selected row's file.
+*/
+class SearchCopyBehavior is Behavior
+    public constant integer SELECTED_ROW = 0
+    public constant integer ALL_RESULTS = 1
+    public constant integer FILE_PATH = 2
+
+    SearchResultsTab resultsTab = undefined
+    integer mode = SELECTED_ROW
+
+    action SetSearchResultsTab(SearchResultsTab tab)
+        resultsTab = tab
+    end
+
+    action SetMode(integer value)
+        mode = value
+    end
+
+    action Run(BehaviorEvent event)
+        if resultsTab = undefined
+            return now
+        end
+
+        text value = ""
+        if mode = ALL_RESULTS
+            value = resultsTab:GetAllCopyText()
+        else
+            ListItem row = resultsTab:GetSelectedRow()
+            if mode = FILE_PATH
+                File file = undefined
+                if row is SearchMatchItem
+                    SearchMatchItem lineRow = cast(SearchMatchItem, row)
+                    if lineRow:GetFileItem() not= undefined
+                        file = lineRow:GetFileItem():GetFile()
+                    end
+                elseif row is SearchFileItem
+                    SearchFileItem fileItem = cast(SearchFileItem, row)
+                    file = fileItem:GetFile()
+                end
+                if file not= undefined
+                    value = file:GetAbsolutePath()
+                end
+            else
+                if row is SearchMatchItem
+                    SearchMatchItem lineRow = cast(SearchMatchItem, row)
+                    value = lineRow:GetCopyText()
+                elseif row is SearchFileItem
+                    SearchFileItem fileItem = cast(SearchFileItem, row)
+                    value = fileItem:GetCopyText()
+                elseif row is SearchSummaryItem
+                    SearchSummaryItem summary = cast(SearchSummaryItem, row)
+                    value = summary:GetCopyText()
+                end
+            end
+        end
+
+        if value not= ""
+            GameStateManager manager
+            manager:GetGame():SetClipboard(value)
+        end
+    end
+end

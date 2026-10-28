@@ -27,6 +27,8 @@ use Libraries.Language.Debug.Breakpoint
 use Libraries.Interface.Controls.Blocks.CodeEditor
 use Libraries.Interface.Selections.CodeEditorSelection
 use Libraries.Interface.Controls.Blocks.Block
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Development.Environment.Studio.Interface.StudioBlockEditor
 
 class ToggleBreakpointBehavior is QuorumStudioBehavior
     BuildManager builder = undefined
@@ -51,6 +53,12 @@ class ToggleBreakpointBehavior is QuorumStudioBehavior
                 EditorTab editor = cast(EditorTab, tab)
                 TextBox box = editor:GetTextBox()
                 if box not= undefined
+                    // Breakpoints whose lines moved since the last build are
+                    // found where they are now.
+                    if box is CodeTextBox
+                        CodeTextBox codeBox = cast(CodeTextBox, box)
+                        codeBox:SyncBreakpointLines()
+                    end
                     TextBoxSelection boxSelection = box:GetSelection()
                     integer line = boxSelection:GetFirstLine()
                     File file = editor:GetFile()
@@ -58,13 +66,14 @@ class ToggleBreakpointBehavior is QuorumStudioBehavior
                 end
 
                 CodeEditor blockEditor = editor:GetBlockEditor()
-                if blockEditor not= undefined
+                if blockEditor not= undefined and blockEditor is StudioBlockEditor
+                    StudioBlockEditor studioEditor = cast(StudioBlockEditor, blockEditor)
                     CodeEditorSelection blockSelection = blockEditor:GetSelection()
-                    File file = blockEditor:GetFile()
+                    File file = studioEditor:GetBreakpointFile()
                     if blockSelection not= undefined and file not= undefined
-                        Block block = blockSelection:GetBlock()
-                        if block not= undefined
-                            integer line = block:GetEndLine()
+                        // The block's first line, as a gutter click uses.
+                        integer line = studioEditor:GetBreakpointLine(blockSelection:GetBlock())
+                        if line >= 0
                             builder:ToggleBreakpoint(file, line)
                         end
                     end

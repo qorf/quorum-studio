@@ -1,0 +1,66 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Containers.Array
+use Libraries.Language.Debug.Breakpoint
+use Libraries.Development.Environment.Studio.Interface.BreakpointsTab
+use Libraries.Development.Environment.Studio.Interface.BreakpointFileItem
+use Libraries.Development.Environment.Studio.Interface.BreakpointItem
+
+/*
+Removes breakpoints from the Breakpoints tab (B1):
+- SELECTED, the selected breakpoint, or every breakpoint in the selected
+  file's row (Delete);
+- IN_FILE, every breakpoint in the selected row's file;
+- NOT_IN_PROJECTS, every breakpoint whose file is gone or isn't in the
+  standard library or an open project.
+*/
+class BreakpointRemoveBehavior is Behavior
+    public constant integer SELECTED = 0
+    public constant integer IN_FILE = 1
+    public constant integer NOT_IN_PROJECTS = 2
+
+    BreakpointsTab breakpointsTab = undefined
+    integer mode = SELECTED
+
+    action SetBreakpointsTab(BreakpointsTab tab)
+        breakpointsTab = tab
+    end
+
+    action SetMode(integer value)
+        mode = value
+    end
+
+    action Run(BehaviorEvent event)
+        if breakpointsTab = undefined
+            return now
+        end
+
+        if mode = NOT_IN_PROJECTS
+            breakpointsTab:RemoveBreakpointsNotInOpenProjects()
+            return now
+        end
+
+        ListItem row = breakpointsTab:GetSelectedRow()
+        Array<Breakpoint> points = undefined
+        if row is BreakpointItem
+            BreakpointItem pointRow = cast(BreakpointItem, row)
+            if mode = SELECTED
+                Array<Breakpoint> one
+                one:Add(pointRow:GetBreakpoint())
+                points = one
+            else
+                points = pointRow:GetFileItem():GetBreakpoints()
+            end
+        elseif row is BreakpointFileItem
+            BreakpointFileItem fileItem = cast(BreakpointFileItem, row)
+            points = fileItem:GetBreakpoints()
+        end
+
+        if points not= undefined
+            breakpointsTab:RemoveBreakpoints(points)
+        end
+    end
+end

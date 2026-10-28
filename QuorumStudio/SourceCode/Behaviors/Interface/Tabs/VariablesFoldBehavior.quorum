@@ -1,0 +1,68 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.List
+use Libraries.Development.Environment.Studio.Interface.VariablesTab
+use Libraries.Development.Environment.Studio.Interface.VariableItem
+
+/*
+Opens or closes rows of the Variables tab (V1). It works on the row it's
+run on, or the selected row. Collapsing a closed row goes to the row it's
+under, and expanding an open row goes to its first row, as in a tree.
+*/
+class VariablesFoldBehavior is Behavior
+    public constant integer TOGGLE = 0
+    public constant integer COLLAPSE = 1
+    public constant integer EXPAND = 2
+    public constant integer COLLAPSE_ALL = 3
+
+    VariablesTab variablesTab = undefined
+    integer mode = TOGGLE
+
+    action SetVariablesTab(VariablesTab tab)
+        variablesTab = tab
+    end
+
+    action SetMode(integer value)
+        mode = value
+    end
+
+    action Run(BehaviorEvent event)
+        if variablesTab = undefined
+            return now
+        end
+
+        if mode = COLLAPSE_ALL
+            variablesTab:CollapseAll()
+            return now
+        end
+
+        VariableItem row = undefined
+        if event:GetItem() is VariableItem
+            row = cast(VariableItem, event:GetItem())
+        else
+            row = variablesTab:GetSelectedRow()
+        end
+        if row = undefined
+            return now
+        end
+
+        List list = variablesTab:GetList()
+        if mode = TOGGLE
+            variablesTab:SetExpanded(row, not row:IsExpanded())
+        elseif mode = COLLAPSE
+            if row:IsExpanded()
+                variablesTab:SetExpanded(row, false)
+            elseif row:GetParentRow() not= undefined
+                list:Select(row:GetParentRow())
+            end
+        else
+            if not row:IsExpanded()
+                variablesTab:SetExpanded(row, true)
+            elseif not row:GetRows():IsEmpty()
+                list:Select(row:GetRows():Get(0))
+            end
+        end
+    end
+end

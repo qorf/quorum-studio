@@ -1,0 +1,145 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.CharacterIcon
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Language.Debug.Breakpoint
+
+/*
+A breakpoint's row in the Breakpoints tab (B1), under its file: a red dot,
+"line N", and, in the code font, the code on that line. Activating it goes
+to the line.
+*/
+class BreakpointItem is ListItem
+    Breakpoint point = undefined
+    BreakpointFileItem fileItem = undefined
+    CharacterIcon mark
+    Label code
+    Font codeFont = undefined
+
+    // Font Awesome's circle.
+    constant integer BREAKPOINT_MARK = 61713
+    // Longer lines are cut, so a row stays one line.
+    constant integer MOST_CODE_CHARACTERS = 120
+
+    on create
+        // The dot replaces ListItem's own picture.
+        parent:ListItem:icon:Hide()
+
+        // The pieces sit centered on the row's line.
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        mark:SetAcceptsMouseInput(false)
+        mark:SetAccessibilityCode(mark:parent:Item:NOT_ACCESSIBLE)
+        mark:SetHorizontalLayoutMode(mark:parent:Control:MAINTAIN_ASPECT_RATIO)
+        mark:SetVerticalLayoutMode(mark:parent:Control:STANDARD)
+        mark:SetPercentageWidth(1.0)
+        mark:SetPercentageHeight(1.0)
+        // Indented under its file's row, and a little smaller than the text.
+        mark:SetLeftMargin(28)
+        mark:SetTopMargin(10)
+        mark:SetBottomMargin(10)
+        Add(0, mark)
+
+        code:SetAccessibilityCode(code:parent:Item:NOT_ACCESSIBLE)
+        code:SetAcceptsMouseInput(false)
+        code:SetPositionOnBaseLine(false)
+        code:SetLeftMargin(16)
+        Add(code)
+    end
+
+    /*
+    This action sets the breakpoint this row shows, the file row it sits
+    under, the text of its line, its fonts and its colors.
+    */
+    action Setup(Breakpoint value, BreakpointFileItem parentFile, text lineText, Font iconFont, Font fontForCode, ColorGroup markColor, ColorGroup mutedColor)
+        point = value
+        fileItem = parentFile
+        codeFont = fontForCode
+
+        if iconFont not= undefined
+            mark:LoadCharacter(BREAKPOINT_MARK, iconFont)
+        end
+        // Both: CharacterIcon's LoadGraphics colors it from its icon color.
+        if markColor not= undefined
+            mark:SetColor(markColor)
+            mark:SetIconColor(markColor)
+        end
+        if mutedColor not= undefined
+            code:SetColor(mutedColor)
+        end
+        if codeFont not= undefined
+            code:SetFont(codeFont)
+        end
+
+        text shown = Shorten(lineText)
+        integer lineNumber = point:GetLine() + 1
+        SetText("line " + lineNumber)
+        code:SetText(shown)
+        if shown = ""
+            SetName("Line " + lineNumber + ", blank line")
+        else
+            SetName("Line " + lineNumber + ", " + shown)
+        end
+    end
+
+    // The code keeps the code font, at the row's size.
+    action LoadGraphics(LayoutProperties properties)
+        parent:ListItem:LoadGraphics(properties)
+        if codeFont not= undefined and code:GetFont() not= codeFont
+            code:SetFont(codeFont)
+        end
+        if code:GetFont() not= undefined and properties:GetFontSize() not= code:GetSize()
+            code:SetSize(properties:GetFontSize())
+        end
+    end
+
+    action GetBreakpoint returns Breakpoint
+        return point
+    end
+
+    action GetFileItem returns BreakpointFileItem
+        return fileItem
+    end
+
+    // The text Copy puts on the clipboard, such as "Main.quorum:12".
+    action GetCopyText returns text
+        text fileName = "(no file)"
+        if point:GetFile() not= undefined
+            fileName = point:GetFile():GetFileName()
+        end
+        return fileName + ":" + (point:GetLine() + 1)
+    end
+
+    // The line without its indenting or line ending, tabs as spaces, and cut
+    // if it's long.
+    private action Shorten(text value) returns text
+        if value = undefined
+            return ""
+        end
+        text tab = ""
+        tab = tab:GetUnicodeValue(9)
+        text result = value:Replace(tab, " ")
+        result = result:Trim()
+        if result:GetSize() > MOST_CODE_CHARACTERS
+            result = result:GetSubtext(0, MOST_CODE_CHARACTERS) + "..."
+        end
+        return result
+    end
+
+    /*
+    The text a screen reader reads for this row: its whole name, with every
+    column, rather than the first label alone. The label still shows what
+    SetText gave it.
+    */
+    action GetText returns text
+        return GetName()
+    end
+end

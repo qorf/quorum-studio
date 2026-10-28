@@ -51,6 +51,10 @@ public class Debugger implements ProcessCoordinator{
     }
     
     public void Add(Breakpoint_ breakpoint) {
+        // Already there: adding again would leave a second request behind.
+        if(breakpoints.containsKey(breakpoint.GetStaticKey())) {
+            return;
+        }
         BreakpointWrapper wrapper = new BreakpointWrapper();
         wrapper.setBreakpoint(breakpoint);
         breakpoints.put(breakpoint.GetStaticKey(), wrapper);
@@ -58,13 +62,25 @@ public class Debugger implements ProcessCoordinator{
             debugger.add(wrapper);
         }
     }
-    
+
     public void Remove(Breakpoint_ breakpoint) {
-        if(breakpoints.containsKey(breakpoint.GetStaticKey())) {
-            BreakpointWrapper remove = breakpoints.remove(breakpoint.GetStaticKey());
-            if(debugger != null) {
-                debugger.remove(remove);
+        BreakpointWrapper remove = breakpoints.remove(breakpoint.GetStaticKey());
+        if(remove == null) {
+            // The breakpoint's line moved after it was added, so its key is
+            // out of date. Find it by the breakpoint itself.
+            Iterator<java.util.Map.Entry<String, BreakpointWrapper>> entries =
+                breakpoints.entrySet().iterator();
+            while(entries.hasNext()) {
+                java.util.Map.Entry<String, BreakpointWrapper> entry = entries.next();
+                if(entry.getValue().getBreakpoint() == breakpoint) {
+                    remove = entry.getValue();
+                    entries.remove();
+                    break;
+                }
             }
+        }
+        if(remove != null && debugger != null) {
+            debugger.remove(remove);
         }
     }
     

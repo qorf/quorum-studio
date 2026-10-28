@@ -47,6 +47,8 @@ class Options is ProjectListener
     constant text OPEN_FILES = "Open Files"
     constant text BREAKPOINTS = "Breakpoints"
     constant text BREAKPOINT = "Breakpoint"
+    constant text BREAKPOINT_FILE = "File"
+    constant text BREAKPOINT_LINE = "Line"
     constant text FRAME_RATE = "Frame Rate"
     constant text FRAMES_PER_SECOND_COUNTER = "Frames Per Second Counter"
     constant text SCALE = "Scale"
@@ -614,12 +616,36 @@ action GetBlocksScopeWidthScaling returns number
     end
 
 
-    private action JSONValueProcessor(text value) returns text
-        text result = value
-        i = 0
-        result:Replace("\", "\\")
+    /*
+    This action restores one saved breakpoint, unless its file is gone or its
+    line is past the end of the file.
+    */
+    private action LoadBreakpoint(text location, integer line, HashTable<text, integer> lineCounts)
+        if location = "" or line < 0 or manager = undefined
+            return now
+        end
+        File file
+        file:SetAbsolutePath(location)
+        if file:Exists() = false or file:IsFile() = false
+            return now
+        end
 
-        return result
+        integer count = 0
+        if lineCounts:HasKey(location)
+            count = lineCounts:GetValue(location)
+        else
+            check
+                text contents = file:Read()
+                count = contents:Split(contents:GetLineFeed()):GetSize()
+            detect error
+                count = 0
+            end
+            lineCounts:Add(location, count)
+        end
+
+        if line < count
+            manager:AddBreakpoint(file, line)
+        end
     end
 
     action Write
@@ -679,7 +705,7 @@ action GetBlocksScopeWidthScaling returns number
         repeat while openFileIterator:HasNext()
             File next = openFileIterator:Next()
             if next not= undefined
-                text path = JSONValueProcessor(next:GetAbsolutePath())
+                text path = next:GetAbsolutePath()
                 JavaScriptObjectNotation item
                 item:SetText(path)
                 openFiles:Add(item)
@@ -688,12 +714,20 @@ action GetBlocksScopeWidthScaling returns number
 
         Iterator<Breakpoint> breakpoints = manager:GetBreakpointIterator()
         if breakpoints:HasNext()
+            // An array of {"File": path, "Line": line}, so a file with several
+            // breakpoints doesn't repeat a key. Files that are gone are left out.
             JavaScriptObjectNotation activeBreakpoints
+            activeBreakpoints:SetArray()
             notation:Add(BREAKPOINTS, activeBreakpoints)
 
             repeat while breakpoints:HasNext()
                 Breakpoint bp = breakpoints:Next()
-                activeBreakpoints:Add(JSONValueProcessor(bp:GetFile():GetAbsolutePath()), bp:GetLine())
+                if bp:GetFile() not= undefined and bp:GetFile():Exists()
+                    JavaScriptObjectNotation item
+                    item:Add(BREAKPOINT_FILE, bp:GetFile():GetAbsolutePath())
+                    item:Add(BREAKPOINT_LINE, bp:GetLine())
+                    activeBreakpoints:Add(item)
+                end
             end
         end
            
@@ -704,7 +738,6 @@ action GetBlocksScopeWidthScaling returns number
         Iterator<text> openItems = projectTree:GetExpandState():GetValueIterator()
         repeat while openItems:HasNext()
             text path = openItems:Next()
-            path = JSONValueProcessor(path)
             JavaScriptObjectNotation item
             item:SetText(path)
             openTrees:Add(item)
@@ -852,18 +885,29 @@ if object:IsNumber()
                 return now
             end
 
-            i = 0
-            repeat while i < object:GetSize()
-                JavaScriptObjectNotation subobject = object:Get(i)
-                text location = subobject:GetKey()
-                integer line = subobject:GetInteger()
-
-                File file
-                file:SetAbsolutePath(location)
-                if file:Exists()
-                    manager:ToggleBreakpoint(file, line)
+            // How many lines each file has, so each is read once.
+            HashTable<text, integer> lineCounts
+            if object:IsArray()
+                object = object:GetArray()
+                integer breakpointIndex = 0
+                repeat while breakpointIndex < object:GetSize()
+                    JavaScriptObjectNotation item = object:Get(breakpointIndex)
+                    if item:IsObject() and item:HasValue(BREAKPOINT_FILE) and item:HasValue(BREAKPOINT_LINE)
+                        JavaScriptObjectNotation location = item:GetObject(BREAKPOINT_FILE)
+                        if location:IsText()
+                            LoadBreakpoint(location:GetText(), item:GetInteger(BREAKPOINT_LINE), lineCounts)
+                        end
+                    end
+                    breakpointIndex = breakpointIndex + 1
                 end
-                i = i + 1
+            else
+                // The older format: an object whose keys are paths, one per breakpoint.
+                integer oldIndex = 0
+                repeat while oldIndex < object:GetSize()
+                    JavaScriptObjectNotation subobject = object:Get(oldIndex)
+                    LoadBreakpoint(subobject:GetKey(), subobject:GetInteger(), lineCounts)
+                    oldIndex = oldIndex + 1
+                end
             end
         elseif key = TREE_STATE
             if object:IsEmpty() or not object:IsArray()

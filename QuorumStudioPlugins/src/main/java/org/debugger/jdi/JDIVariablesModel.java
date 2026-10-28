@@ -37,6 +37,7 @@ import com.sun.jdi.ReferenceType;
 import com.sun.jdi.StackFrame;
 import com.sun.jdi.ThreadReference;
 import com.sun.jdi.Value;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
@@ -82,73 +83,120 @@ public class JDIVariablesModel implements VariablesModel {
     public Variable[] getChildren(Variable node, int from, int to) {
         synchronized(debugger.getResumeMonitor()) {
             if (canReturnValues()) {
-                if (node == null) { //the root note
-                    try {
-                        StackFrame frame = thread.frame(0);
-                        List<LocalVariable> vars = frame.visibleVariables();
-                        int size = vars.size();
-                        Variable[] variables = new Variable[size + 1];
-
-                        //get the "this" pointer
-                        ObjectReference myThis = frame.thisObject();
-                        if(myThis != null) {
-                            JDIVariable me = new JDIVariable();
-                            me.setField(true);
-                            me.setName(view.getThis());
-                            me.setTypeName(myThis.referenceType().name());
-                            me.setValue(view.getValue(myThis));
-                            view.convertTypeName(me);
-                            variables[0] = me;
-
-                            //get local variables that are both in scope in this frame
-                            //and that exist at or before the current line number
-                            //of execution.
-                            Iterator<LocalVariable> iterator = vars.iterator();
-                            int i = 1;
-                            while (iterator.hasNext()) {
-                                LocalVariable local = iterator.next();
-                                JDIVariable var = convert(local, thread.frame(0));
-                                variables[i] = var;
-                                i++;
-                            }
-                            return variables;
-                        } else {
-                            return new Variable[0];
-                        }
-
-                    } catch (IncompatibleThreadStateException | AbsentInformationException ex) {
-                        Logger.getLogger(JDIVariablesModel.class.getName()).log(Level.SEVERE, null, ex);
+                try {
+                    if (node == null) { //the root node
+                        return getRootVariables();
                     }
-                } else {
-                    try {
-                        //get the children of this variable
-                        StackFrame frame = thread.frame(0);
-                        //if the variable is the "this" pointer, do this.
-                        if (node.getName().compareTo(view.getThis()) == 0) {
-                            ObjectReference myThis = frame.thisObject();
-                            return getFieldVariables(myThis);
-                        } else if (node.getReference() != null) { //a child of a variable
-                            if (node.getReference() instanceof ObjectReference) {
-                                ObjectReference ref = (ObjectReference) node.getReference();
-                                return getFieldVariables(ref);
-                            }
-                        } else if (node.getReference() == null) { //a local variable in scope
-                            LocalVariable local = frame.visibleVariableByName(node.getName());
-                            if (local != null) {
-                                Value value = frame.getValue(local);
-                                if (value instanceof ObjectReference) {
-                                    return getFieldVariables((ObjectReference) value);
-                                } else { //it isn't an object, so there are no children
-                                    Variable[] vars = new Variable[0];
-                                    return vars;
-                                }
-                            }
-                        }
-                    } catch (IncompatibleThreadStateException | AbsentInformationException ex) {
-                        Logger.getLogger(JDIVariablesModel.class.getName()).log(Level.SEVERE, null, ex);
+                    ObjectReference reference = resolve(node);
+                    if (reference == null) { //it isn't an object, so there are no children
+                        return new Variable[0];
                     }
-
+                    return getFieldVariables(reference, from, to);
+                } catch (IncompatibleThreadStateException | AbsentInformationException ex) {
+                    Logger.getLogger(JDIVariablesModel.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (RuntimeException ex) {
+                    //the program moved on, or the object was collected
+                    Logger.getLogger(JDIVariablesModel.class.getName()).log(Level.FINE, null, ex);
                 }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * This returns how many children a variable has: the items of a
+     * collection, such as an array's size, or the fields of any other
+     * object. It's 0 for a primitive or undefined value, or if the program
+     * isn't stopped.
+     *
+     * @param node
+     * @return
+     */
+    public int getElementCount(Variable node) {
+        synchronized(debugger.getResumeMonitor()) {
+            if (canReturnValues() && node != null && !node.isPrimitive()) {
+                try {
+                    ObjectReference reference = resolve(node);
+                    if (reference == null) {
+                        return 0;
+                    }
+                    if (view.isSpecialVariable(reference)) {
+                        view.setThread(thread);
+                        view.setMachine(getDebugger().getVirtualMachine());
+                        return view.getSpecialVariableCount(reference);
+                    }
+                    return getNumberFields(reference);
+                } catch (IncompatibleThreadStateException | AbsentInformationException ex) {
+                    Logger.getLogger(JDIVariablesModel.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (RuntimeException ex) {
+                    //the program moved on, or the object was collected
+                    Logger.getLogger(JDIVariablesModel.class.getName()).log(Level.FINE, null, ex);
+                }
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * This returns "me" and the local variables of the current frame.
+     *
+     * @return
+     */
+    private Variable[] getRootVariables() throws IncompatibleThreadStateException, AbsentInformationException {
+        StackFrame frame = thread.frame(0);
+        view.setThread(thread);
+        view.setMachine(getDebugger().getVirtualMachine());
+        List<Variable> variables = new ArrayList<>();
+
+        //get the "this" pointer
+        ObjectReference myThis = frame.thisObject();
+        if(myThis != null) {
+            JDIVariable me = new JDIVariable();
+            me.setField(true);
+            me.setName(view.getThis());
+            me.setTypeName(myThis.referenceType().name());
+            me.setValue(view.getValue(myThis));
+            me.setObjectReference(myThis);
+            view.convertTypeName(me);
+            variables.add(me);
+        }
+
+        //get local variables that are both in scope in this frame
+        //and that exist at or before the current line number
+        //of execution.
+        for (LocalVariable local : frame.visibleVariables()) {
+            variables.add(convert(local, frame));
+        }
+        return variables.toArray(new Variable[0]);
+    }
+
+    /**
+     * This returns the object a variable holds, or null if it holds a
+     * primitive or undefined. Variables keep the value they were read with,
+     * so their children come from the same object even after the program
+     * has moved on to other frames. The name is only looked up for a
+     * variable without one.
+     *
+     * @param node
+     * @return
+     */
+    private ObjectReference resolve(Variable node) throws IncompatibleThreadStateException, AbsentInformationException {
+        Object reference = node.getReference();
+        if (reference instanceof ObjectReference) {
+            return (ObjectReference) reference;
+        } else if (reference != null) {
+            return null;
+        }
+
+        StackFrame frame = thread.frame(0);
+        if (node.getName().compareTo(view.getThis()) == 0) {
+            return frame.thisObject();
+        }
+        LocalVariable local = frame.visibleVariableByName(node.getName());
+        if (local != null) {
+            Value value = frame.getValue(local);
+            if (value instanceof ObjectReference) {
+                return (ObjectReference) value;
             }
         }
         return null;
@@ -205,6 +253,7 @@ public class JDIVariablesModel implements VariablesModel {
             view.setThread(frame.thread());
             String viewed = view.getValue(value);
             var.setValue(viewed);
+            var.setObjectReference(value);
         } catch(Exception exception) {
             var.setValue(view.getNull()); //the variable may not be accessible
                                           //this seems to occur even if the
@@ -241,12 +290,12 @@ public class JDIVariablesModel implements VariablesModel {
      * @param frame
      * @return
      */
-    private Variable[] getFieldVariables(ObjectReference reference) {
+    private Variable[] getFieldVariables(ObjectReference reference, int from, int to) {
         ReferenceType type = reference.referenceType();
+        view.setThread(thread);
+        view.setMachine(getDebugger().getVirtualMachine());
         if(view.isSpecialVariable(reference)) {
-            view.setThread(thread);
-            view.setMachine(getDebugger().getVirtualMachine());
-            return view.getSpecialVariableChildren(reference);
+            return view.getSpecialVariableChildren(reference, from, to);
         }
         List<Field> fields = type.allFields();
         int num = getNumberFields(reference);
@@ -265,7 +314,7 @@ public class JDIVariablesModel implements VariablesModel {
                 i++;
             }
         }
-        return variables;
+        return JDIVariableView.slice(variables, from, to);
     }
     
     /**
@@ -306,56 +355,13 @@ public class JDIVariablesModel implements VariablesModel {
 
     @Override
     public int getChildrenCount(Variable node) {
-        synchronized(debugger.getResumeMonitor()) {
-            if (canReturnValues()) {
-                if (node == null) { //the root note
-                    try {
-                        StackFrame frame = thread.frame(0);
-                        List<LocalVariable> vars = frame.visibleVariables();
-                        List<Value> arguments = frame.getArgumentValues();
-                        return vars.size() + arguments.size() + 1; //don't forget "this"
-                    } catch (IncompatibleThreadStateException | AbsentInformationException ex) {
-                        Logger.getLogger(JDIVariablesModel.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                } else {
-                    if (node.isPrimitive()) { //no kids if primitive
-                        return 0;
-                    } else {
-                        try {
-                            //otherwise return any of its values
-                            StackFrame frame = thread.frame(0);
-                            //in this case, we are referencing the "this" object.
-                            if (node.getName().compareTo(view.getThis()) == 0) {
-                                ObjectReference myThis = frame.thisObject();
-                                return getNumberFields(myThis);
-                            } else if (node.getReference() == null) { //we are referencing a local variable
-                                LocalVariable local = frame.visibleVariableByName(node.getName());
-                                if (local != null) {
-                                    Value value = frame.getValue(local);
-                                    if (value != null && value instanceof ObjectReference) {
-                                        ObjectReference myThis = (ObjectReference) value;
-                                        return getNumberFields(myThis);
-                                    } else {
-                                        return 0;
-                                    }
-                                }
-                            } else if (node.getReference() != null) { //we are referencing a child variable not directly in scope.
-                                Object value = node.getReference();
-                                if (value != null && value instanceof ObjectReference) {
-                                    ObjectReference myThis = (ObjectReference) value;
-                                    return getNumberFields(myThis);
-                                } else {
-                                    return 0;
-                                }
-                            }
-                        } catch (IncompatibleThreadStateException | AbsentInformationException ex) {
-                            Logger.getLogger(JDIVariablesModel.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-                    }
-                }
+        if (node == null) { //the root node
+            synchronized(debugger.getResumeMonitor()) {
+                Variable[] root = getChildren(null, 0, 0);
+                return root == null ? 0 : root.length;
             }
         }
-        return 0;
+        return getElementCount(node);
     }
 
     @Override

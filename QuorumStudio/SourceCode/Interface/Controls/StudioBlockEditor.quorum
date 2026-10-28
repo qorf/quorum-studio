@@ -1,0 +1,201 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Interface.Controls.Blocks.CodeEditorRenderer
+use Libraries.Interface.Controls.Blocks.Block
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.Gutter
+use Libraries.Interface.Controls.LineNumberGutter
+use Libraries.Interface.Controls.AnnotationLineGutter
+use Libraries.Interface.Events.GutterEvent
+use Libraries.Development.Environment.Studio.Build.BuildManager
+use Libraries.Language.Compile.Symbol.Class
+use Libraries.Language.Debug.BreakpointManager
+use Libraries.Game.Graphics.Drawable
+use Libraries.System.File
+
+/*
+Studio's block editor. A click in its line number gutter toggles the
+breakpoint through the BuildManager, as CodeTextBox does, so the debugger
+hears about it while a program is being debugged. The library's editor
+changes only the breakpoint list.
+
+Its gutters are Studio's, the same as the text editor's (G1): line numbers
+with the breakpoint dot and the stopped-line arrow, then the git lane. The
+library's number and annotation gutters are taken out. The annotation
+gutter still gets its annotations, which blocks read aloud.
+*/
+class StudioBlockEditor is CodeEditor
+    BuildManager manager = undefined
+    StudioLineGutter studioGutter
+    StatusLineGutter statusGutter
+    // The faint band across the code on the stopped row, made when first
+    // shown. It's the renderer's, drawn under the blocks.
+    Drawable debuggerBand = undefined
+    boolean bandAdded = false
+    GutterSupport support
+
+    on create
+        LineNumberGutter libraryNumbers = parent:CodeEditor:lineGutter
+        libraryNumbers:RemoveGutterListener(me)
+        Remove(cast(Gutter, libraryNumbers))
+        AnnotationLineGutter libraryAnnotations = GetAnnotationLineGutter()
+        Remove(cast(Gutter, libraryAnnotations))
+
+        studioGutter:SetPositionOnBaseLine(false)
+        studioGutter:AddGutterListener(me)
+        Add(cast(Gutter, studioGutter))
+        Add(cast(Gutter, statusGutter))
+    end
+
+    action GetBuildManager returns BuildManager
+        return manager
+    end
+
+    action SetBuildManager(BuildManager manager)
+        me:manager = manager
+    end
+
+    action GetLineNumberGutter returns LineNumberGutter
+        return studioGutter
+    end
+
+    action GetStatusGutter returns StatusLineGutter
+        return statusGutter
+    end
+
+    action SetFile(File file)
+        parent:CodeEditor:SetFile(file)
+        studioGutter:SetFile(file)
+    end
+
+    // Not the library's: its number gutter is out and mustn't hear about
+    // breakpoints, since it has no editor to draw in.
+    action SetBreakpointManager(BreakpointManager breakpointManager)
+        parent:CodeEditor:breakpoints = breakpointManager
+        studioGutter:SetBreakpointManager(breakpointManager)
+    end
+
+    /*
+        This action selects the line and informs
+        the system that the debugger is stopped at this particular
+        block.
+    */
+    action SelectDebuggerLine(integer line)
+        Block block = SelectBlockAtTextLine(line)
+        if block not= undefined
+            studioGutter:SetDebuggerLine(block:GetNavigationIndex())
+        end
+    end
+
+    action ClearDebuggerLine
+        studioGutter:SetDebuggerLine(-1)
+    end
+
+    action GetDebuggerLine returns integer
+        return studioGutter:GetDebuggerLine()
+    end
+
+    /*
+    This action shows the faint green band across the code on the row the
+    debugger is stopped on (G1). The gutter calls it as it draws, with the
+    row's y and height, which are the editor's own: the gutters start at its
+    bottom-left corner. The band belongs to the renderer and is drawn over
+    its background and under the blocks, so its position is the renderer's.
+    The renderer leaves out the gutters and scroll bars and clips to itself.
+    */
+    action ShowDebuggerBand(number y, number height)
+        CodeEditorRenderer region = GetRenderer()
+        if region = undefined
+            HideDebuggerBand()
+            return now
+        end
+        number bottom = y - region:GetY()
+        number top = bottom + height
+        if bottom < 0
+            bottom = 0
+        end
+        if top > region:GetHeight()
+            top = region:GetHeight()
+        end
+        number width = region:GetWidth()
+        if width <= 0 or top <= bottom
+            HideDebuggerBand()
+            return now
+        end
+
+        if debuggerBand = undefined
+            Drawable band
+            band:LoadFilledRectangle(1, 1)
+            band:SetAcceptsMouseInput(false)
+            debuggerBand = band
+        end
+        debuggerBand:SetColor(support:GetStoppedBandColor())
+        debuggerBand:SetSize(cast(integer, width), cast(integer, top - bottom))
+        debuggerBand:SetPosition(0, bottom)
+        // Added once and then shown or hidden: removing a child asks for a layout.
+        if not bandAdded
+            region:AddUnderlay(debuggerBand)
+            bandAdded = true
+        end
+        debuggerBand:Show()
+    end
+
+    // The library editor's renderer, its scrollable region.
+    private action GetRenderer returns CodeEditorRenderer
+        Control region = GetScrollableRegion()
+        if region is CodeEditorRenderer
+            return cast(CodeEditorRenderer, region)
+        end
+        return undefined
+    end
+
+    action HideDebuggerBand
+        if debuggerBand not= undefined
+            debuggerBand:Hide()
+        end
+    end
+
+    action GutterClicked(GutterEvent event)
+        if manager = undefined
+            parent:CodeEditor:GutterClicked(event)
+            return now
+        end
+
+        Gutter gutter = event:GetGutter()
+        if gutter = undefined
+            return now
+        end
+        if not (gutter is LineNumberGutter)
+            return now
+        end
+        integer line = GetBreakpointLine(GetBlockAtNavigationIndex(event:GetLine()))
+        File file = GetBreakpointFile()
+        if line < 0 or file = undefined
+            return now
+        end
+        manager:ToggleBreakpoint(file, line)
+    end
+
+    /*
+    This action returns the line a block's breakpoint goes on: its first
+    line, whichever of its rows was clicked or selected. The gutter and the
+    keyboard both use it, so they agree. It returns -1 for no block.
+    */
+    action GetBreakpointLine(Block block) returns integer
+        if block = undefined
+            return -1
+        end
+        return block:GetStartLine()
+    end
+
+    // The editor's own file, or its class's.
+    action GetBreakpointFile returns File
+        File file = GetFile()
+        Class clazz = GetClass()
+        if file = undefined and clazz not= undefined
+            file = clazz:GetFile()
+        end
+        return file
+    end
+end

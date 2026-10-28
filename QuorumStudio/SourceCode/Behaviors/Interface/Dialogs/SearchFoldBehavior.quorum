@@ -1,0 +1,63 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Development.Environment.Studio.Interface.SearchResultsTab
+use Libraries.Development.Environment.Studio.Interface.SearchFileItem
+use Libraries.Development.Environment.Studio.Interface.SearchMatchItem
+
+/*
+Folds or unfolds a file's lines in the Search Results tab (S1). It works
+on the row it's run on, or the selected row. On a line's row, collapsing
+folds the file it's under.
+*/
+class SearchFoldBehavior is Behavior
+    public constant integer TOGGLE = 0
+    public constant integer COLLAPSE = 1
+    public constant integer EXPAND = 2
+
+    SearchResultsTab resultsTab = undefined
+    integer mode = TOGGLE
+
+    action SetSearchResultsTab(SearchResultsTab tab)
+        resultsTab = tab
+    end
+
+    action SetMode(integer value)
+        mode = value
+    end
+
+    action Run(BehaviorEvent event)
+        if resultsTab = undefined
+            return now
+        end
+
+        ListItem row = undefined
+        if event:GetItem() is ListItem
+            row = cast(ListItem, event:GetItem())
+        else
+            row = resultsTab:GetSelectedRow()
+        end
+
+        SearchFileItem fileItem = undefined
+        if row is SearchFileItem
+            fileItem = cast(SearchFileItem, row)
+        elseif row is SearchMatchItem and mode = COLLAPSE
+            SearchMatchItem lineRow = cast(SearchMatchItem, row)
+            fileItem = lineRow:GetFileItem()
+        end
+
+        if fileItem = undefined
+            return now
+        end
+
+        if mode = TOGGLE
+            resultsTab:ToggleFile(fileItem)
+        elseif mode = COLLAPSE
+            resultsTab:SetFileExpanded(fileItem, false)
+        else
+            resultsTab:SetFileExpanded(fileItem, true)
+        end
+    end
+end
