@@ -369,7 +369,10 @@ class Main is Form, ProcessListener
         file:SetPath(path)
         check
             if file:Exists()
-                Array<text> read = file:Read():SplitIntoLines()
+                // Windows ends lines with a carriage return and a line feed;
+                // SplitIntoLines splits on the line feed only.
+                text contents = file:Read()
+                Array<text> read = contents:Replace(contents:GetCarriageReturn(), ""):SplitIntoLines()
                 integer i = 0
                 repeat while i < read:GetSize()
                     lines:Add(read:Get(i))

@@ -108,6 +108,10 @@ class InstallerBuilder is ProcessListener
     constant text FIND = "/usr/bin/find"
     constant text LIPO = "/usr/bin/lipo"
     constant text PACKAGESBUILD = "/usr/local/bin/packagesbuild"
+    // The daemon packagesbuild hands its work to. Without it, packagesbuild
+    // waits forever.
+    constant text PACKAGES_DISPATCHER = "fr.whitebox.packages.build.dispatcher"
+    constant text PACKAGES_DISPATCHER_PLIST = "/Library/LaunchDaemons/fr.whitebox.packages.build.dispatcher.plist"
     constant text PKGUTIL = "/usr/sbin/pkgutil"
     constant text PLIST_BUDDY = "/usr/libexec/PlistBuddy"
     constant text REMOVE = "/bin/rm"
@@ -292,6 +296,27 @@ class InstallerBuilder is ProcessListener
     end
 
     /*
+        True when Packages' helper daemon is loaded. packagesbuild asks it to
+        build and waits for its answer, with no time limit, so a missing
+        daemon makes the build hang.
+    */
+    action IsPackagesHelperLoaded returns boolean
+        return RunTool("/bin/launchctl", Parameters("print", "system/" + PACKAGES_DISPATCHER))
+    end
+
+    /*
+        Asks macOS to start Packages' helper. macOS shows its own dialog for
+        an administrator's password; if it's cancelled or the start fails,
+        nothing changes and the check after this says so.
+    */
+    action StartPackagesHelper
+        text quote = ""
+        quote = quote:GetDoubleQuote()
+        text script = "do shell script " + quote + "/bin/launchctl bootstrap system " + PACKAGES_DISPATCHER_PLIST + quote + " with administrator privileges"
+        RunTool("/usr/bin/osascript", Parameters("-e", script))
+    end
+
+    /*
         Checks that Packages, the JDK and, for a release, the certificates
         and the notary profile are all there before anything is built.
     */
@@ -300,6 +325,18 @@ class InstallerBuilder is ProcessListener
 
         if not Exists(PACKAGESBUILD)
             return Fail("Packages isn't installed. Install it from http://s.sudre.free.fr/Software/Packages/about.html")
+        end
+        if not IsPackagesHelperLoaded()
+            Log("Packages' helper isn't running. Asking macOS to start it; enter an administrator's password if asked.")
+            StartPackagesHelper()
+            if not IsPackagesHelperLoaded()
+                Log("")
+                Log("To start it yourself, run this in Terminal:")
+                Log("sudo launchctl bootstrap system " + PACKAGES_DISPATCHER_PLIST)
+                Log("If that fails, allow Packages under System Settings, General, Login Items & Extensions.")
+                return Fail("Packages' helper isn't running, so packagesbuild would wait forever.")
+            end
+            Log("Packages' helper is running.")
         end
 
         version = ReadVersion()

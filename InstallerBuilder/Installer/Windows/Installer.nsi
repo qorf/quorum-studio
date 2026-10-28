@@ -1,3 +1,6 @@
+; Unicode, so NSIS builds a Unicode installer and reads paths with any letters.
+Unicode true
+
 ;NSIS Modern User Interface
 ;Quorum Studio Installer Script
 
