@@ -9,6 +9,10 @@ use Libraries.Game.Graphics.Label
 use Libraries.Game.Graphics.Font
 use Libraries.Game.Graphics.Color
 use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Accessibility
 use Libraries.Interface.Item
 use Libraries.System.File
@@ -115,6 +119,25 @@ class SendProgressPanel is Control
     /*
         Shows a send's checklist, for the Console it is above.
     */
+    // The checklist sits over the Console's backdrop, which shows dark gray
+    // in light mode, so it takes the console text box's background.
+    action LoadGraphics(LayoutProperties properties)
+        if GetView2D() = undefined
+            ControlShaderView view
+            view:Initialize()
+            SetView2D(view)
+        end
+        GameStateManager manager
+        InterfaceOptions options = manager:GetInterfaceOptions()
+        if options not= undefined
+            ColorGroup panelColor = options:GetTextBoxBackgroundColor()
+            if panelColor not= undefined
+                SetBackgroundColor(panelColor)
+            end
+        end
+        parent:Control:LoadGraphics(properties)
+    end
+
     action SetProgress(SendProgress value, OutputTab owner)
         progress = value
         tab = owner
