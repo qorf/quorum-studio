@@ -1095,7 +1095,7 @@ class InstallerBuilder is ProcessListener
         CreateFolder(workFolder)
         text launcher = workFolder + "/QuorumStudio.exe"
         Step("Making the launcher, QuorumStudio.exe (Run.nsi)", 5)
-        Array<text> launcherParameters = Parameters("-V2", "-DOUTPUT=" + launcher)
+        Array<text> launcherParameters = Parameters("-V2", "-DOUTPUT=" + NsisPath(launcher))
         AddAll(launcherParameters, signing)
         launcherParameters:Add("Run.nsi")
         if not RunTool(makensis, launcherParameters, windowsFolder, environment)
@@ -1104,7 +1104,7 @@ class InstallerBuilder is ProcessListener
 
         Step("Making the installer (Installer.nsi); this takes a few minutes", 15)
         text installer = VersionFolder() + "/Quorum-Studio-Windows.exe"
-        Array<text> parameters = Parameters("-V2", "-DSTUDIO=" + studio, "-DJDK=" + jdk, "-DLAUNCHER=" + launcher, "-DOUTPUT=" + installer)
+        Array<text> parameters = Parameters("-V2", "-DSTUDIO=" + NsisPath(studio), "-DJDK=" + NsisPath(jdk), "-DLAUNCHER=" + NsisPath(launcher), "-DOUTPUT=" + NsisPath(installer))
         parameters:Add("-DVERSION=" + version)
         parameters:Add("-DPRODUCT_VERSION=" + FourPartVersion(version))
         AddAll(parameters, signing)
@@ -1114,6 +1114,19 @@ class InstallerBuilder is ProcessListener
         end
         Log("Installer: " + installer)
         return true
+    end
+
+    /*
+        A path for NSIS. On Windows NSIS splits a File path at its last
+        backslash, so a path with forward slashes isn't found there; Windows
+        paths get backslashes. On a Mac a path is left as it is.
+    */
+    action NsisPath(text value) returns text
+        Properties properties
+        if properties:IsWindows()
+            return value:Replace("/", "\")
+        end
+        return value
     end
 
     /*
