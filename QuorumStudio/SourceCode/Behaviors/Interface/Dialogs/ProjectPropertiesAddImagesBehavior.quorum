@@ -39,7 +39,9 @@ class ProjectPropertiesAddImagesBehavior is QuorumStudioBehavior
         a default assets image sheet is created for the user. This could be replaced
         to not allow users to click add image button unless an image sheet exists and
         is selected. */
-        if imageSheetsList:IsEmpty()
+        // GetSize, not IsEmpty: a List always has child controls, so IsEmpty
+        // was never true and the default sheet was never made.
+        if imageSheetsList:GetSize() = 0
             me:dialog:AddNewImageSheet("assets")
             me:dialog:ToggleEnableImageSheets()
             imageSheetsList:Select(0)

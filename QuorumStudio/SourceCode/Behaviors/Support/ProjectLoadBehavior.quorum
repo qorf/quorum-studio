@@ -8,7 +8,6 @@ use Libraries.Development.Environment.Resources
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Concurrency.ThreadRunner
-use Libraries.Interface.Accessibility
 
 class ProjectLoadBehavior is Behavior
 
@@ -85,19 +84,12 @@ class ProjectLoadBehavior is Behavior
     action Update(number seconds)
         if loaded and not finished and not updatingUI
             updatingUI = true
-            tree:Add(item)
+            // At its place in the open order (Bugs 05 B), not at the end.
+            tree:AddProjectRow(project, item)
             tree:Resize()
             // The git marks (Tree T2), read on the git thread.
             tree:RefreshGitMarks(project)
-            finished = false
-
-            if studio not= undefined
-                Accessibility accessibility = studio:GetAccessibility()
-                if accessibility not= undefined
-                    accessibility:Notify(studio:GetFocus(), project:GetName() + " project loaded.")
-                end
-            end
-
+            finished = true
             runner:ShutDown()
         end
     end

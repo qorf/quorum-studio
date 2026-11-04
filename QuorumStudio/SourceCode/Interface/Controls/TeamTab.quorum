@@ -466,6 +466,20 @@ class TeamTab is Tab
     other threads use PostStatus.
     */
     action SetStatus(TeamStatus value)
+        // A status for another project: the last push's and the last
+        // pull's groups were about the old one, so they go (the user,
+        // 2026-11-04). To push is worked out again from the new status.
+        if ProjectPath(status) not= ProjectPath(value)
+            integer index = sections:GetSize() - 1
+            repeat while index >= 0
+                TeamGroupItem section = sections:Get(index)
+                if section:GetKey() not= GROUP_TO_PUSH
+                    sections:RemoveAt(index)
+                end
+                index = index - 1
+            end
+            pushResultPending = false
+        end
         status = value
         checking = false
         refreshQueued = false
@@ -492,6 +506,18 @@ class TeamTab is Tab
         pendingPushCommits = commits
         pendingPushNote = note
         pushResultPending = true
+    end
+
+    // The project folder a status is for, or "" for none.
+    private action ProjectPath(TeamStatus value) returns text
+        if value = undefined
+            return ""
+        end
+        File folder = value:GetProjectFolder()
+        if folder = undefined
+            return ""
+        end
+        return folder:GetAbsolutePath()
     end
 
     // Hide, on the last push group.

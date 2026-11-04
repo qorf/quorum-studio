@@ -38,6 +38,9 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
     // A status from another thread, applied on the next Update, as the
     // Team tab takes its status (TeamTab:PostStatus).
     TeamStatus pendingGitStatus = undefined
+    // The projects' folders, in the order they were opened (Bugs 05 B). A
+    // project's row goes at this place, whichever project loads first.
+    Array<text> projectOrder
     on create
         SetName("Projects")
         AddTreeChangeListener(me)
@@ -299,7 +302,50 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
         return path:Replace("\", "/")
     end
 
+    /*
+    This action adds a loaded project's row before the first row of a project
+    opened after it, so projects keep the order they were opened in, whichever
+    loads first. Projects still load in parallel.
+    */
+    action AddProjectRow(QuorumProject project, TreeItem item)
+        integer position = GetOpenPosition(project)
+        integer location = -1
+        integer counter = 0
+        Iterator<TreeItem> items = GetTreeItems()
+        repeat while items:HasNext() and location < 0
+            TreeItem current = items:Next()
+            if current is ProjectTreeItem
+                ProjectTreeItem row = cast(ProjectTreeItem, current)
+                if GetOpenPosition(row:GetProject()) > position
+                    location = counter
+                end
+            end
+            counter = counter + 1
+        end
+        if location < 0
+            Add(item)
+        else
+            Add(location, item)
+        end
+    end
+
+    // Where a project is in the open order. One not in it goes last.
+    private action GetOpenPosition(QuorumProject project) returns integer
+        if project = undefined
+            return projectOrder:GetSize()
+        end
+        integer position = projectOrder:GetFirstLocation(PathKey(project:GetLocation()))
+        if position < 0
+            return projectOrder:GetSize()
+        end
+        return position
+    end
+
      action OpenedProject(QuorumProject project)
+        text key = PathKey(project:GetLocation())
+        if not projectOrder:Has(key)
+            projectOrder:Add(key)
+        end
         ThreadRunner runner
         ThreadedBehavior threadBehavior
         ProjectLoadBehavior behave
@@ -323,6 +369,8 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
         end
         // Reopened later, the project gets a fresh status.
         gitStatuses:RemoveKey(PathKey(project:GetLocation()))
+        // and goes at the end.
+        projectOrder:Remove(PathKey(project:GetLocation()))
         Resize()
     end
 end

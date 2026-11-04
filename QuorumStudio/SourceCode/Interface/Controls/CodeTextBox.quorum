@@ -68,8 +68,9 @@ use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Game.Graphics.ColorGroup
 use Libraries.Development.Environment.Configuration.OptionsConstants
 use Libraries.Interface.Controls.Gutter
+use Libraries.Interface.Events.TextChangeListener
 
-class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener, AccessibleControl
+class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListener, AccessibleControl, TextChangeListener
     public constant text CODE_BOX_INPUT_GROUP = "Code Box Input Group"
     BuildManager manager = undefined
     GameStateManager gameStateManager
@@ -97,6 +98,20 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     boolean findIsMatchCase = false
     boolean dialogIsOpen = false
     integer findSelection = -1
+    // Edits so far, counted by TextChanged. Find's matches are character
+    // indices, so an edit after FindText can leave them stale (Bug C).
+    integer editCount = 0
+    // editCount when FindText last ran. Next, Previous, Replace and Replace
+    // All run Find again first when it differs (Bug C, safety net).
+    integer findTextEditCount = 0
+    // editCount when FindText last ran or the dialog opened. A FindText that
+    // sees it changed was run by an edit, not by the user (Bug B).
+    integer findLandingEditCount = 0
+    // Where the caret was when the user last landed on a match (Find, Next,
+    // Previous), and editCount then; -1 if they haven't. Closing the dialog
+    // selects the match only if the caret is still there (Bug B).
+    integer findCaretPosition = -1
+    integer findCaretEditCount = 0
     PreviousBehavior previousBehavior
     NextBehavior nextBehavior
     FindDialog findDialog = undefined
@@ -115,6 +130,16 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         statusGutter:AddGutterListener(me)
         SetPopupMenu(GeneratePopupMenu())
         SetMoveFocusOnTab(false)
+        // Added here, when the box is made, so the box is first in its own
+        // listener list and counts an edit before a dialog re-runs Find.
+        AddTextChangeListener(me)
+    end
+
+    /*
+    Counts edits, so Find can tell when its matches are stale.
+    */
+    action TextChanged(TextChangeEvent event)
+        editCount = editCount + 1
     end
 
     private action UpdateColors 
@@ -1411,13 +1436,25 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
 
     action SetIsDialogOpen(boolean state)
         dialogIsOpen = state
+        if state
+            // Edits made while the dialog was closed don't make the next
+            // FindText count as run by an edit.
+            findLandingEditCount = editCount
+        end
     end
-    
+
     action GetIsDialogOpen returns boolean
         return dialogIsOpen
     end
 
-    action FindText(text find, boolean wholeWord, boolean matchCase) 
+    action FindText(text find, boolean wholeWord, boolean matchCase)
+        // An edit since the last FindText (or since the dialog opened) means
+        // an edit re-ran this: the caret is where the user typed, not on a
+        // match the user chose (Bug B).
+        boolean ranByEdit = (editCount not= findLandingEditCount)
+        findTextEditCount = editCount
+        findLandingEditCount = editCount
+        findCaretPosition = -1
         findWord = find
         text textValue = GetText() //+ bufferSpace
         //if there is a current selection then it needs to be removed
@@ -1466,7 +1503,42 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
                 UpdateSelections()
             end
             SetSelection()
-        end            
+            if not ranByEdit
+                RememberFindCaret()
+            end
+        end
+    end
+
+    /*
+    Runs Find again if the text changed since it last ran, so Next, Previous
+    and Replace never step through stale indices (Bug C, safety net). The
+    dialogs normally re-run Find on each edit; this catches an edit they
+    missed.
+    */
+    private action RefreshFindIfEdited
+        if editCount not= findTextEditCount and findWord not= ""
+            FindText(findWord, findIsWholeWord, findIsMatchCase)
+        end
+    end
+
+    /*
+    Saves where the caret is after the user lands on a match, so closing
+    the dialog can tell whether the caret moved since (Bug B).
+    */
+    private action RememberFindCaret
+        findCaretPosition = GetCaretPosition()
+        findCaretEditCount = editCount
+    end
+
+    /*
+    True if the caret hasn't moved, and nothing was edited, since the user
+    last landed on a match with Find, Next or Previous.
+    */
+    private action IsCaretWhereFindLeftIt returns boolean
+        if findCaretPosition < 0
+            return false
+        end
+        return (GetCaretPosition() = findCaretPosition) and (editCount = findCaretEditCount)
     end
 
     /* Called by FindText()
@@ -1675,10 +1747,12 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     currentSelection highlight and remove the previousSelection highlight 
     from the textBox */
     action NextSelection()
+        RefreshFindIfEdited()
         if findIndices:GetSize() not= 0
             integer previousSelection = findSelection
             findSelection = findSelection + 1
             UpdateCurrentSelection(previousSelection, true)
+            RememberFindCaret()
         end
     end
 
@@ -1687,10 +1761,12 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     currentSelection highlight and remove the previousSelection highlight 
     from the textBox */
     action PreviousSelection()
+        RefreshFindIfEdited()
         if findIndices:GetSize() not= 0
             integer previousSelection = findSelection
             findSelection = findSelection - 1
             UpdateCurrentSelection(previousSelection, true)
+            RememberFindCaret()
         end
     end
     
@@ -1767,10 +1843,22 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     end
 
     action DialogClosed
+        DialogClosed(true)
+    end
+
+    /*
+    Called when Find or Replace closes. Removes the highlights. In the text
+    box that was searched (searchedHere), it also selects the current match,
+    but only if the caret hasn't moved and nothing was edited since the user
+    last landed on a match. Otherwise the caret stays where the user left it
+    (Bug B).
+    */
+    action DialogClosed(boolean searchedHere)
         RemoveFindReplaceStyles()
-        if findIndices:GetSize() not= 0
+        if searchedHere and findIndices:GetSize() not= 0 and IsCaretWhereFindLeftIt()
             UpdateCurrentSelection(-1, false)
         end
+        findCaretPosition = -1
     end
 
     /* removes the selection highlighting before updating the indices
@@ -1790,6 +1878,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     action Replace(text replaceWord) 
         //SetTextChangeListenerOn(false) *In the ReplaceBehavior
         me:replaceWord = replaceWord
+        RefreshFindIfEdited()
         if findSelection < 0
             findSelection = 0
         end
@@ -1810,6 +1899,7 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     replaced with blank text. */
     action ReplaceAll(text findWord, text replaceWord)
         me:replaceWord = replaceWord
+        RefreshFindIfEdited()
         if findIndices:GetSize() not= 0   
             integer replaceSize = replaceWord:GetSize()
             integer findSize = findWord:GetSize()

@@ -84,7 +84,8 @@ class Options is ProjectListener
     SharedLogger logger
 
     HashTable<text, Credentials> passwords
-    HashTable<text, text> projects 
+    // The open projects' files, in the order they were opened (Bugs 05 B).
+    Array<text> projects
     HashTable<text, text> treeState
     Array<File> filesOpenAtBoot
     QuorumStudio studio = undefined
@@ -403,7 +404,13 @@ action GetBlocksScopeWidthScaling returns number
     end
 
     action GetProjects returns Array<text>
-        return projects:CopyToValueArray()
+        Array<text> copy
+        integer projectIndex = 0
+        repeat while projectIndex < projects:GetSize()
+            copy:Add(projects:Get(projectIndex))
+            projectIndex = projectIndex + 1
+        end
+        return copy
     end
 
     action GetFilesOpenOnStartup returns Iterator<File>
@@ -456,14 +463,17 @@ action GetBlocksScopeWidthScaling returns number
     action OpenedProject(QuorumProject project)
         File file = project:GetPropertiesLocation()
         if file not= undefined
-            projects:Add(file:GetAbsolutePath(), file:GetAbsolutePath())
+            text path = file:GetAbsolutePath()
+            if not projects:Has(path)
+                projects:Add(path)
+            end
         end
     end
 
     action ClosedProject(QuorumProject project)
         File file = project:GetPropertiesLocation()
         if file not= undefined
-            projects:RemoveKey(file:GetAbsolutePath())
+            projects:Remove(file:GetAbsolutePath())
         end
     end
     
@@ -657,12 +667,12 @@ action GetBlocksScopeWidthScaling returns number
         
         notation:Add(OPEN_PROJECTS, array)
 
-        Iterator<text> openProjectIterator = projects:GetValueIterator()
-        repeat while openProjectIterator:HasNext()
-            text next = openProjectIterator:Next()
+        integer projectIndex = 0
+        repeat while projectIndex < projects:GetSize()
             JavaScriptObjectNotation item
-            item:SetText(next)
+            item:SetText(projects:Get(projectIndex))
             array:Add(item)
+            projectIndex = projectIndex + 1
         end
 
         notation:Add(PROJECTS_LOCATION, projectsLocation:GetAbsolutePath())
@@ -772,8 +782,8 @@ action GetBlocksScopeWidthScaling returns number
                     text project = value:GetText()
                     File file
                     file:SetAbsolutePath(project)
-                    if file:Exists()
-                        projects:Add(project, project)
+                    if file:Exists() and not projects:Has(project)
+                        projects:Add(project)
                     end
                 end
                 i = i + 1

@@ -14,6 +14,7 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.Behaviors.SetProgramStartBehavior
 use Libraries.Development.Environment.Studio.StudioFocusManager
 use Libraries.Development.Environment.Studio.Behaviors.OpenFindInProjectDialogBehavior
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Game.Graphics.ColorGroup
 use Libraries.Containers.Array
 
@@ -48,20 +49,15 @@ class ProjectTreeItem is TreeItem
     /*
     This action sets a file row's git mark (Tree L2): a thin bar at the
     tree's left edge in the given color, filled or outlined
-    (TreeItem:SetLeadingBar), and a quiet word right after the file's name
-    in the given color ("modified"). The same mark in words goes in the
-    row's description ("Modified"), which a screen reader reads after the
-    row's name when the row gets focus. With no bar color (the theme's Git
-    colors couldn't be read), the row has no bar; with no word color, the
-    word takes the tree's text color.
+    (TreeItem:SetLeadingBar). No word after the name: the bar and the Team
+    tab say it (the user, 2026-11-04). The mark in words goes in the row's
+    description ("Modified"), which a screen reader reads after the row's
+    name when the row gets focus. With no bar color (the theme's Git
+    colors couldn't be read), the row has no bar.
     */
-    action SetGitMark(ColorGroup barColor, boolean outlined, text word, ColorGroup wordColor, text words)
+    action SetGitMark(ColorGroup barColor, boolean outlined, text words)
         SetGitBar(barColor, outlined)
-        if wordColor = undefined
-            SetTrailingText(word)
-        else
-            SetTrailingText(word, wordColor)
-        end
+        SetTrailingText("")
         SetGitWords(words)
     end
 
@@ -170,8 +166,7 @@ class ProjectTreeItem is TreeItem
 
             MenuItem findInProjectMenuItem
             findInProjectMenuItem:SetName("Find")
-            OpenFindInProjectDialogBehavior findInProjectBehavior
-            findInProjectMenuItem:SetBehavior(findInProjectBehavior)
+            findInProjectMenuItem:SetBehavior(GetFindInProjectBehavior())
             exampleContextMenu:Add(findInProjectMenuItem)
 
             // Tree M2: only in a Git project.
@@ -199,8 +194,7 @@ class ProjectTreeItem is TreeItem
 
             MenuItem findInProjectMenuItem
             findInProjectMenuItem:SetName("Find")
-            OpenFindInProjectDialogBehavior findInProjectBehavior
-            findInProjectMenuItem:SetBehavior(findInProjectBehavior)
+            findInProjectMenuItem:SetBehavior(GetFindInProjectBehavior())
             exampleContextMenu:Add(findInProjectMenuItem)
 
             SetProgramStartBehavior startBehavior
@@ -217,6 +211,18 @@ class ProjectTreeItem is TreeItem
             gitMenu:AddItems(exampleContextMenu, me)
         end
         return exampleContextMenu
+    end
+
+    /*
+    The shared Find in Project behavior. It keeps one dialog for every file
+    and folder menu. A new behavior per menu made a new dialog on every
+    right-click, filled before its first layout (Bug A). It reads the tree
+    selection when it runs, so it still searches the clicked row.
+    */
+    private action GetFindInProjectBehavior returns OpenFindInProjectDialogBehavior
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        Behaviors behaviors = studio:GetBehaviors()
+        return behaviors:GetOpenFindInProjectDialogBehavior()
     end
 
     action GainedSelection

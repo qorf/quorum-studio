@@ -32,6 +32,8 @@ class ReplaceAllBehavior is QuorumStudioBehavior
             dialog:SetTextChangeListenerOn(true)
             dialog:UpdateTextBox()
         elseif editor not= undefined
+            // Stale positions would replace the wrong text (Bugs 04 C).
+            dialog:RefreshBlockFind(editor, true)
             editor:ReplaceAll(dialog:GetFindWord(), dialog:GetReplaceWord())
             dialog:SetTextChangeListenerOn(true)
             dialog:UpdateTextBox()

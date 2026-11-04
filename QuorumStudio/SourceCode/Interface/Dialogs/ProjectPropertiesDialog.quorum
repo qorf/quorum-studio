@@ -602,7 +602,10 @@ TextField spikeProgramSlot
         project:SetJarDependencies(ListToArray(jarList))
         project:SetQuorumDependencies(ListToArray(quorumSourcesList))
 
-        if not imageSheetsList:IsEmpty()
+        // GetSize, not IsEmpty: a List always has child controls (its scroll
+        // region and bars), so IsEmpty was never true and every OK turned
+        // image sheets on.
+        if imageSheetsList:GetSize() > 0
             enableImageSheets:SetToggleState(true)
             buildImageSheetsOnCompile:SetToggleState(true)
         end

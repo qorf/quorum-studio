@@ -1418,6 +1418,24 @@ detect error
     private action AddMultivalueTextProperty(JavaScriptObjectNotation object)
         text key = object:GetKey()
         Array<text> dependencies
+        // Older Studios saved these lists as one text joined with semi-colons
+        // ("a.jar;b.jar;"). Read that too, so a damaged project file loads
+        // and builds again; the next save writes a proper array.
+        if object:IsText()
+            text joined = object:GetText()
+            Array<text> pieces = joined:Split(";")
+            integer index = 0
+            repeat while index < pieces:GetSize()
+                text piece = pieces:Get(index)
+                text trimmed = piece:Trim()
+                if trimmed not= ""
+                    dependencies:Add(trimmed)
+                end
+                index = index + 1
+            end
+            AddPropertyAsArray(key, dependencies)
+            return now
+        end
         if not object:IsArrayObject()
             logger:Log("Could not load property " + key + ", as its value was not of type array.")
             return now

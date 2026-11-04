@@ -3,6 +3,7 @@ package Libraries.Development.Environment.Studio.Interface
 use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Controls.TextBox
 use Libraries.Containers.Array
+use Libraries.Concurrency.ConcurrentTextQueue
 use Libraries.Interface.Events.FocusEvent
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Interface.Layouts.LayoutProperties
@@ -26,8 +27,9 @@ use Libraries.Development.Environment.Studio.Mobile.SendProgress
 
 class OutputTab is Tab
     TextBox box = undefined
-    Array<text> lines
-    boolean empty = false
+    // Console text waiting for the next Update. Run and Debug add to it from
+    // their reader threads while Update takes from it on the main thread.
+    ConcurrentTextQueue lines
     Behaviors behaviors
 
     // How tall the input row is, before the interface scale.
@@ -70,7 +72,9 @@ class OutputTab is Tab
         end
     end
     action Empty
-        empty = true
+        // Through the queue, so text added before this is cleared and text
+        // added after it shows.
+        lines:AddClear()
         // A finished send's checklist goes with the old output. A send in
         // progress keeps it: sending clears the Console after it starts.
         if progressPanel:ClearIfFinished()
@@ -327,21 +331,15 @@ class OutputTab is Tab
             end
         end
 
-        if empty
-            box:Empty()
-            empty = false
-        end
-
-        if not lines:IsEmpty()
-            i = 0
-            text append = ""
-            repeat while i < lines:GetSize()
-                append = append + lines:Get(i)
-                i = i + 1
+        if box not= undefined
+            // Everything queued so far, in one step.
+            text append = lines:RemoveAll()
+            if lines:WasCleared()
+                box:Empty()
             end
-
-            box:SetText(box:GetText() + append)
-            lines:Empty()
+            if not append:IsEmpty()
+                box:SetText(box:GetText() + append)
+            end
         end
     end
 

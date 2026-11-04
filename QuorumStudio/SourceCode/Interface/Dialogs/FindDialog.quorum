@@ -80,6 +80,9 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
     PreviousBehavior previousBehavior
     Block selectedBlock = undefined
     integer selectedLine = -1
+    // Block mode: the block editor's text when its matches were last found.
+    // Its matches are positions in that text, so an edit makes them stale.
+    text blockFindText = ""
 
     on create
         File file
@@ -95,17 +98,27 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
         SetBehavior(nextBehavior)
     end
 
-    action OnShow()  
+    action OnShow()
         showing = true
+        // Edits in the code re-run Find while the dialog is open. OnHide turns
+        // this off; nothing turned it back on, so from the second open the
+        // matches went stale on the first edit (Bug C).
+        SetTextChangeListenerOn(true)
         findField:Focus()
-        
+
         if textBox not= undefined
             wholeWord:SetToggleState(textBox:GetIsWholeWord())
             matchCase:SetToggleState(textBox:GetIsMatchCase())
             if (textBox:HasSelection())
+                // Find makes the first match at or after the caret the current
+                // one, so the caret goes to the selection's start: the selected
+                // word is then the current match. (Going back by the word's
+                // length from the caret landed before the selection when the
+                // caret was at its start.)
+                integer selectionStart = textBox:GetSelection():GetStartIndex()
                 findField:SetText(textBox:GetFindSelection())
                 findField:SetCaretPosition(findField:GetSize())
-                textBox:SetCaretPosition(textBox:GetCaretPosition() - findField:GetSize())
+                textBox:SetCaretPosition(selectionStart)
             else
                 findField:SetText(textBox:GetFindWord())
                 findField:SetCaretPosition(findField:GetSize())
@@ -265,6 +278,8 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
     
     action SetCodeEditor(CodeEditor code)
         editor = code
+        // A block line chosen in another editor must not be used on close.
+        selectedLine = -1
         findBehavior:SetCodeEditor(editor)
         previous:SetBehavior(previousBehavior)
         next:SetBehavior(nextBehavior)   
@@ -273,8 +288,15 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
     end
 
     action SetTextBox(CodeTextBox code)
+        // Listen to one text box, once. This ran on every open and tab switch
+        // and never took the dialog off, so one key re-ran Find once per open.
+        if textBox not= undefined
+            textBox:RemoveTextChangeListener(me)
+        end
         textBox = code
         textBox:AddTextChangeListener(me)
+        // A block line chosen in a block editor must not be used on close.
+        selectedLine = -1
         //This is the original textbox state, need to use the textChangeListener to determine if there is a textChange which will 
         //invoke a new textBox state which when typing in the text box pauses will be used to "Find" the query again using the new caret position
         //where the edit takes place
@@ -323,6 +345,30 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
 
     action GetIsWholeWord returns boolean
         return wholeWord:GetToggleState()
+    end
+
+    /*
+    This action finds the matches in a block editor and remembers the text
+    they were found in, so a later edit can be noticed (block mode's Find
+    otherwise keeps stepping through positions from before the edit).
+    */
+    action FindInBlockEditor(CodeEditor blockEditor)
+        blockEditor:FindText(GetFindWord(), GetIsWholeWord(), GetIsMatchCase())
+        blockFindText = blockEditor:GetText()
+    end
+
+    /*
+    This action finds a block editor's matches again if its text changed
+    since they were found, and then starts from the caret, so the next step
+    lands near where the user is (CodeEditor:StartFindSelectionAtCaret).
+    Call it before Next (forward true), Previous and Replace (forward
+    false), and Replace All in block mode.
+    */
+    action RefreshBlockFind(CodeEditor blockEditor, boolean forward)
+        if blockEditor:GetText() not= blockFindText
+            FindInBlockEditor(blockEditor)
+            blockEditor:StartFindSelectionAtCaret(forward)
+        end
     end
 
     action SetTextChangeListenerOn(boolean state)
@@ -470,12 +516,18 @@ TabPaneSelection selection = tabPane:GetSelection()
             Tab tab = tabPane:Get(i)
             if tab is EditorTab
                 EditorTab t = cast(EditorTab, tab)
-                TextBox textBox = t:GetTextBox()
-                if textBox not= undefined
-                    CodeTextBox c = cast(CodeTextBox, textBox)
+                TextBox box = t:GetTextBox()
+                if box not= undefined
+                    CodeTextBox c = cast(CodeTextBox, box)
                     c:SetFindWord(findField:GetText())
                     c:SetIsDialogOpen(false)
-                    c:DialogClosed()
+                    // Every tab loses its highlights; only the searched one
+                    // may select its match (Bug B).
+                    boolean searchedHere = false
+                    if textBox not= undefined
+                        searchedHere = c:Equals(cast(Object, textBox))
+                    end
+                    c:DialogClosed(searchedHere)
                 end
                 //Note the CodeEditor changes its focus/selection before this point
                 //so putting this here for that case would do nothing.
@@ -496,10 +548,12 @@ TabPaneSelection selection = tabPane:GetSelection()
         CloseFindDialogs()
         SetTextChangeListenerOn(false)
 
-        if selectedLine not= -1
+        // Only a line chosen during this open, in the editor searched.
+        if selectedLine not= -1 and editor not= undefined
             editor:SelectBlockAtTextLine(selectedLine)
             editor:GoToLine(selectedLine)
         end
+        selectedLine = -1
         isHiding = false
     end
 end

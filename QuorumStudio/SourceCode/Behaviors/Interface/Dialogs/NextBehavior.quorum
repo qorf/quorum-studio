@@ -35,6 +35,10 @@ class NextBehavior is QuorumStudioBehavior
             textBox:NextSelection()
         elseif tab is CodeEditor
             CodeEditor editor = cast(CodeEditor, tab)
+            // The program may have changed since Find ran (Bugs 04 C, block mode).
+            if dialog not= undefined
+                dialog:RefreshBlockFind(editor, true)
+            end
             editor:NextFindSelection()
             if dialog not= undefined
                 dialog:UpdateMatches(editor:GetCurrentFindIndex(), editor:GetFindMatches())

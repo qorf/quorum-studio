@@ -89,14 +89,21 @@ class ReplaceDialog is FindDialog, TextChangeListener, SelectionListener
 
     action OnShow()
         showing = true
-        
+        // Edits in the code re-run Find while the dialog is open. OnHide turns
+        // this off; before, only Replace or Replace All turned it back on, so
+        // the matches went stale on the first edit (Bug C).
+        SetTextChangeListenerOn(true)
+
         if textBox not= undefined
             wholeWord:SetToggleState(textBox:GetIsWholeWord())
             matchCase:SetToggleState(textBox:GetIsMatchCase())
             if(textBox:HasSelection())
+                // The caret goes to the selection's start, so the selected
+                // word is the current match (see FindDialog:OnShow).
+                integer selectionStart = textBox:GetSelection():GetStartIndex()
                 findField:SetText(textBox:GetFindSelection())
                 findField:SetCaretPosition(findField:GetSize())
-                textBox:SetCaretPosition(textBox:GetCaretPosition() - findField:GetSize())
+                textBox:SetCaretPosition(selectionStart)
                 textBox:SetReplaceWord("")
             else    
                 findField:SetText(textBox:GetFindWord())
@@ -316,6 +323,10 @@ replaceField:SetHorizontalLayoutMode(properties:STANDARD)
     end
 
     action SetTextBox(CodeTextBox code)
+        // Listen to one text box, once (see FindDialog:SetTextBox).
+        if textBox not= undefined
+            textBox:RemoveTextChangeListener(me)
+        end
         textBox = code
         textBox:AddTextChangeListener(me)
         findBehavior:SetTextBox(textBox)

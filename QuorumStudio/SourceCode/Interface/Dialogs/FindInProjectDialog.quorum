@@ -56,7 +56,10 @@ class FindInProjectDialog is Dialog
     action OnShow()
         if tab not= undefined
             queryField:SetText(tab:GetQuery())
-            queryField:SetCaretPosition(queryField:GetText():GetSize())
+            // Select the old query so typing replaces it. Not
+            // SetCaretPosition(end): before the first layout the field is 0
+            // wide, and that scrolls every letter out of sight (Bug A).
+            queryField:Select(0, queryField:GetSize())
         end
         queryField:Focus()
     end

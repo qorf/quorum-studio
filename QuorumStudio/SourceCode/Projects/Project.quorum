@@ -235,23 +235,19 @@ class Project
     end
 
     /*
-        This action sets a multiple value property. These values have a default
-        separator of a semi-colon (;).
+        This action sets a multiple value property, such as a project's jar
+        dependencies. The values are kept as a list, so the project file
+        stores them as a JSON array, which is what loading reads back. (They
+        used to be joined into one text with semi-colons, which saved as a
+        string that the next load dropped.) No values removes the property.
     */
     action SetMultipleValueProperty(text key, Array<text> values)
-        text totalValues = ""
         if values = undefined
             RemoveProperty(key)
         elseif values:IsEmpty()
             RemoveProperty(key)
-        else 
-            i = 0
-            repeat while i < values:GetSize()
-                text dependency = values:Get(i) + MULTIPLE_VALUE_SPLITTER
-                totalValues = totalValues + dependency
-                i = i + 1
-            end
-            AddProperty(key, totalValues)
+        else
+            AddPropertyAsArray(key, values)
         end
     end
 
