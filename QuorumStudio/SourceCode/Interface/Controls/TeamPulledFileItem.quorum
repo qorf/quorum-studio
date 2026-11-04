@@ -1,0 +1,28 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Development.Versioning.TeamFileChange
+
+/*
+A file the last pull changed (Pull L9). It looks like a Team tab file row
+(step 2's TeamFileItem), and its spoken name says what the pull did:
+"Hero.quorum, modified by the pull. In Source."
+*/
+class TeamPulledFileItem is TeamFileItem
+    TeamFileChange kinds
+
+    action Setup(TeamFileChange value, TeamGroupItem groupRow, ColorGroup mutedColor)
+        parent:TeamFileItem:Setup(value, groupRow, mutedColor)
+        text what = "modified by the pull"
+        if value:GetKind() = kinds:NEW_FILE
+            what = "added by the pull"
+        elseif value:GetKind() = kinds:DELETED
+            what = "deleted by the pull"
+        end
+        text spoken = value:GetFileName() + ", " + what + "."
+        if value:GetFolder() not= ""
+            spoken = spoken + " In " + value:GetFolder() + "."
+        end
+        SetName(spoken)
+    end
+end

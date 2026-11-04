@@ -1,0 +1,56 @@
+package Libraries.Development.Versioning
+
+use Libraries.Interface.Behaviors.Behavior
+
+/*
+What a problem dialog shows (Push P5): a title such as "Push to
+origin/main", one plain sentence, JGit's own words for Show Details, and
+an optional main action with its button's name, such as "Pull, then
+Push".
+*/
+class GitProblem
+    text title = "Team"
+    text message = ""
+    text details = ""
+    text actionName = ""
+    // Not "action": that's a Quorum keyword.
+    Behavior mainAction = undefined
+
+    action GetTitle returns text
+        return title
+    end
+
+    action SetTitle(text value)
+        title = value
+    end
+
+    action GetMessage returns text
+        return message
+    end
+
+    action SetMessage(text value)
+        message = value
+    end
+
+    action GetDetails returns text
+        return details
+    end
+
+    action SetDetails(text value)
+        details = value
+    end
+
+    action GetActionName returns text
+        return actionName
+    end
+
+    action GetAction returns Behavior
+        return mainAction
+    end
+
+    // The main button: its name, and what it runs after the dialog closes.
+    action SetAction(text name, Behavior value)
+        actionName = name
+        mainAction = value
+    end
+end

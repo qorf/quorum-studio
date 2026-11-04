@@ -1,0 +1,256 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Development.Versioning.TeamFileChange
+
+/*
+A changed file's row in the Team tab, under its group: the mark (+ ~ - ?
+!), the file's name, and, muted, its folder and what happened to it. The
+mark is for scanning; the words say the same, and the spoken name says it
+first (A2): "Main.quorum, modified, staged. In Source."
+*/
+class TeamFileItem is ListItem
+    TeamFileChange change = undefined
+    TeamGroupItem group = undefined
+    Label mark
+    Label folderDetail
+    Label stateDetail
+    // A3: shown when the row is picked.
+    Label pickMark
+    // A1: "just staged", for a few seconds.
+    Label note
+    // A1: [+] or [-], on the selected or hovered row only.
+    Label stageButton
+    boolean picked = false
+    boolean selectedNow = false
+    boolean hoveredNow = false
+    // Only git's groups stage and unstage; a row the last pull changed
+    // (TeamPulledFileItem) doesn't. TeamTab sets it for git's groups.
+    boolean stageable = false
+    // The spoken name without "Selected."
+    text spokenName = ""
+    TeamFileChange constants
+    constant number BUTTON_SLACK = 4
+
+    on create
+        parent:ListItem:icon:Hide()
+
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        // The mark, indented under the group's row.
+        mark:SetAccessibilityCode(mark:parent:Item:NOT_ACCESSIBLE)
+        mark:SetAcceptsMouseInput(false)
+        mark:SetPositionOnBaseLine(false)
+        mark:SetLeftMargin(28)
+        Add(0, mark)
+
+        // Before the mark when the row is picked (A3).
+        pickMark:SetAccessibilityCode(pickMark:parent:Item:NOT_ACCESSIBLE)
+        pickMark:SetAcceptsMouseInput(false)
+        pickMark:SetPositionOnBaseLine(false)
+        pickMark:SetLeftMargin(12)
+        pickMark:SetText("▶")
+        pickMark:Hide()
+        Add(0, pickMark)
+
+        parent:ListItem:label:SetLeftMargin(10)
+
+        folderDetail:SetAccessibilityCode(folderDetail:parent:Item:NOT_ACCESSIBLE)
+        folderDetail:SetAcceptsMouseInput(false)
+        folderDetail:SetPositionOnBaseLine(false)
+        folderDetail:SetLeftMargin(16)
+        Add(folderDetail)
+
+        stateDetail:SetAccessibilityCode(stateDetail:parent:Item:NOT_ACCESSIBLE)
+        stateDetail:SetAcceptsMouseInput(false)
+        stateDetail:SetPositionOnBaseLine(false)
+        stateDetail:SetLeftMargin(16)
+        Add(stateDetail)
+
+        note:SetAccessibilityCode(note:parent:Item:NOT_ACCESSIBLE)
+        note:SetAcceptsMouseInput(false)
+        note:SetPositionOnBaseLine(false)
+        note:SetLeftMargin(16)
+        note:Hide()
+        Add(note)
+
+        // For the mouse; keyboard users have Space, so it's left out for
+        // screen readers.
+        stageButton:SetAccessibilityCode(stageButton:parent:Item:NOT_ACCESSIBLE)
+        stageButton:SetAcceptsMouseInput(false)
+        stageButton:SetPositionOnBaseLine(false)
+        stageButton:SetLeftMargin(16)
+        stageButton:Hide()
+        Add(stageButton)
+    end
+
+    action Setup(TeamFileChange value, TeamGroupItem groupRow, ColorGroup mutedColor)
+        change = value
+        group = groupRow
+        if mutedColor not= undefined
+            folderDetail:SetColor(mutedColor)
+            stateDetail:SetColor(mutedColor)
+            note:SetColor(mutedColor)
+        end
+        // The key is on the label, so keyboard users can see it too.
+        if value:GetGroup() = constants:STAGED
+            stageButton:SetText("[- Space]")
+        else
+            stageButton:SetText("[+ Space]")
+        end
+
+        mark:SetText(value:GetMark())
+        SetText(value:GetFileName())
+        folderDetail:SetText(value:GetFolder())
+        stateDetail:SetText(value:GetStateWords())
+
+        // The state comes before the folder, so arrowing through says what
+        // matters first.
+        text state = value:GetStateWords()
+        if value:IsChangedAgain()
+            state = "modified again since it was staged"
+        end
+        text spoken = value:GetFileName() + ", " + state + ", " + value:GetGroupWords() + "."
+        if value:GetFolder() not= ""
+            spoken = spoken + " In " + value:GetFolder() + "."
+        end
+        spokenName = spoken
+        SetName(spoken)
+        UpdateDescription()
+    end
+
+    /*
+    This action marks the row as picked (A3) or not. The name says it, so
+    a screen reader reads it with the row.
+    */
+    action SetPicked(boolean value)
+        picked = value
+        if picked
+            pickMark:Show()
+            SetName(spokenName + " Selected.")
+        else
+            pickMark:Hide()
+            SetName(spokenName)
+        end
+        RequestLayout()
+    end
+
+    action IsPicked returns boolean
+        return picked
+    end
+
+    // "just staged" (A1), or "" to hide it.
+    action SetNote(text value)
+        note:SetText(value)
+        if value = ""
+            note:Hide()
+        else
+            note:Show()
+        end
+        RequestLayout()
+    end
+
+    action SetStageable(boolean value)
+        stageable = value
+        UpdateStageButton()
+        UpdateDescription()
+    end
+
+    /*
+    The description says what Space does to this row, since [+] and [-]
+    are drawn for the mouse and aren't read. Rows that don't stage (the
+    last pull's files) have none.
+    */
+    private action UpdateDescription
+        if not stageable or change = undefined
+            SetDescription("")
+        elseif change:GetGroup() = constants:STAGED
+            SetDescription("Space unstages it. Your changes are kept.")
+        else
+            SetDescription("Space stages it.")
+        end
+    end
+
+    action IsStageable returns boolean
+        return stageable
+    end
+
+    // Whether a point, in the layer's coordinates, is on [+] or [-].
+    action IsOnStageButton(number x, number y) returns boolean
+        if not stageButton:IsShowing()
+            return false
+        end
+        number slack = BUTTON_SLACK * GetInterfaceScale()
+        return x >= stageButton:GetGlobalX() - slack and x <= stageButton:GetGlobalX() + stageButton:GetWidth() + slack
+    end
+
+    action GainedSelection
+        parent:ListItem:GainedSelection()
+        selectedNow = true
+        UpdateStageButton()
+    end
+
+    action LostSelection
+        parent:ListItem:LostSelection()
+        selectedNow = false
+        UpdateStageButton()
+    end
+
+    action BeginMouseOver
+        parent:Control:BeginMouseOver()
+        hoveredNow = true
+        UpdateStageButton()
+    end
+
+    action EndMouseOver
+        parent:Control:EndMouseOver()
+        hoveredNow = false
+        UpdateStageButton()
+    end
+
+    // [+] or [-] shows on the selected or hovered row only, so the list
+    // stays quiet.
+    private action UpdateStageButton
+        if stageable and (selectedNow or hoveredNow)
+            stageButton:Show()
+        else
+            stageButton:Hide()
+        end
+        RequestLayout()
+    end
+
+    action GetChange returns TeamFileChange
+        return change
+    end
+
+    action GetGroupRow returns TeamGroupItem
+        return group
+    end
+
+    // The group's key and the file's path: one row per file per group.
+    action GetKey returns text
+        if change = undefined
+            return ""
+        end
+        text groupKey = ""
+        if group not= undefined
+            groupKey = group:GetKey()
+        end
+        return groupKey + ":" + change:GetProjectPath()
+    end
+
+    // Screen readers count a row among the rows at its depth.
+    action GetAccessibilityLevel returns integer
+        return 1
+    end
+
+    action GetText returns text
+        return GetName()
+    end
+end

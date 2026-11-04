@@ -1,0 +1,39 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Studio.Interface.CommitDialog
+use Libraries.Development.Versioning.TeamFileChange
+
+/*
+Enter on a staged file in the Commit dialog (C1): closes the dialog (the
+message is kept) and opens the file, as the Team tab does.
+*/
+class CommitOpenFileBehavior is Behavior
+    CommitDialog dialog = undefined
+
+    action SetDialog(CommitDialog value)
+        dialog = value
+    end
+
+    action Run(BehaviorEvent event)
+        if dialog = undefined
+            return now
+        end
+        TeamFileChange change = dialog:GetSelectedChange()
+        if change = undefined
+            return now
+        end
+        dialog:Hide()
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+        TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+        teamTab:OpenChange(change)
+    end
+end

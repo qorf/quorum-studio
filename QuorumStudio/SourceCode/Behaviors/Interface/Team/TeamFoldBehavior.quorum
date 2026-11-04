@@ -1,0 +1,63 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Studio.Interface.TeamGroupItem
+use Libraries.Development.Environment.Studio.Interface.TeamFileItem
+
+/*
+Folds or unfolds a group in the Team tab. It works on the row it's run on,
+or the selected row. On a file's row, collapsing folds its group (Left on
+a file row goes to its group, A3).
+*/
+class TeamFoldBehavior is Behavior
+    public constant integer TOGGLE = 0
+    public constant integer COLLAPSE = 1
+    public constant integer EXPAND = 2
+
+    TeamTab teamTab = undefined
+    integer mode = TOGGLE
+
+    action SetTeamTab(TeamTab tab)
+        teamTab = tab
+    end
+
+    action SetMode(integer value)
+        mode = value
+    end
+
+    action Run(BehaviorEvent event)
+        if teamTab = undefined
+            return now
+        end
+
+        ListItem row = undefined
+        if event:GetItem() is ListItem
+            row = cast(ListItem, event:GetItem())
+        else
+            row = teamTab:GetSelectedRow()
+        end
+
+        TeamGroupItem group = undefined
+        if row is TeamGroupItem
+            group = cast(TeamGroupItem, row)
+        elseif row is TeamFileItem and mode = COLLAPSE
+            TeamFileItem fileRow = cast(TeamFileItem, row)
+            group = fileRow:GetGroupRow()
+        end
+
+        if group = undefined
+            return now
+        end
+
+        if mode = TOGGLE
+            teamTab:ToggleGroup(group)
+        elseif mode = COLLAPSE
+            teamTab:SetGroupExpanded(group, false)
+        else
+            teamTab:SetGroupExpanded(group, true)
+        end
+    end
+end

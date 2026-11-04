@@ -1,0 +1,144 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.ListItem
+use Libraries.Containers.Array
+use Libraries.Game.GameStateManager
+use Libraries.Development.Versioning.TeamFileChange
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Studio.StageGate
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Studio.Interface.TeamFileItem
+use Libraries.Development.Environment.Studio.Interface.TeamGroupItem
+
+/*
+Stages or unstages Team tab rows (Add A1 to A5), on the main thread: works
+out which rows and hands them to StageGate, which stages them now (saving
+open editors, moving focus to the next row, StageWorkBehavior on the git
+thread) or asks first (Add A5b: many files, media, Build and Run).
+- TOGGLE (Space, [+] and [-], a group's Stage all): stages a row that
+  isn't staged, unstages one that is. On a group's row, the whole group.
+- STAGE and UNSTAGE (the menu): only that way.
+The rows are the picked rows when the row is one of them (A3), else the
+row it's run on, else the selected row.
+*/
+class TeamStageBehavior is Behavior
+    public constant integer TOGGLE = 0
+    public constant integer STAGE = 1
+    public constant integer UNSTAGE = 2
+
+    TeamTab teamTab = undefined
+    integer mode = TOGGLE
+    TeamFileChange constants
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action SetTeamTab(TeamTab tab)
+        teamTab = tab
+    end
+
+    action SetMode(integer value)
+        mode = value
+    end
+
+    action Run(BehaviorEvent event)
+        if teamTab = undefined
+            return now
+        end
+
+        ListItem row = undefined
+        if event:GetItem() is ListItem
+            row = cast(ListItem, event:GetItem())
+        else
+            row = teamTab:GetSelectedRow()
+        end
+
+        if row is TeamGroupItem
+            TeamGroupItem group = cast(TeamGroupItem, row)
+            RunOnGroup(group)
+        elseif row is TeamFileItem
+            TeamFileItem fileRow = cast(TeamFileItem, row)
+            // Rows other steps add (the last pull's files) don't stage.
+            if not fileRow:IsStageable()
+                return now
+            end
+            Array<TeamFileItem> rows
+            Array<TeamFileItem> picked = teamTab:GetPickedRows()
+            if picked:Has(fileRow)
+                integer index = 0
+                repeat while index < picked:GetSize()
+                    rows:Add(picked:Get(index))
+                    index = index + 1
+                end
+            else
+                rows:Add(fileRow)
+            end
+            RunOnRows(rows)
+        end
+    end
+
+    // Stage all or Unstage all (A5). Sections such as To push aren't git's
+    // groups, and the Conflicts group is staged a file at a time.
+    private action RunOnGroup(TeamGroupItem group)
+        text key = group:GetKey()
+        boolean isGitGroup = (key = teamTab:GROUP_STAGED) or (key = teamTab:GROUP_NOT_STAGED) or (key = teamTab:GROUP_UNTRACKED)
+        if not isGitGroup
+            return now
+        end
+
+        Array<TeamFileItem> rows
+        Array<ListItem> groupRows = group:GetRows()
+        integer index = 0
+        repeat while index < groupRows:GetSize()
+            ListItem item = groupRows:Get(index)
+            if item is TeamFileItem
+                TeamFileItem fileRow = cast(TeamFileItem, item)
+                rows:Add(fileRow)
+            end
+            index = index + 1
+        end
+        RunOnRows(rows)
+    end
+
+    // Hands the rows to StageGate (Add A5b), which stages now or asks first.
+    private action RunOnRows(Array<TeamFileItem> rows)
+        if rows:IsEmpty()
+            return now
+        end
+        TeamFileItem first = rows:Get(0)
+        TeamFileChange firstChange = first:GetChange()
+        boolean unstage = firstChange:GetGroup() = constants:STAGED
+        if unstage and mode = STAGE
+            return now
+        end
+        if not unstage and mode = UNSTAGE
+            return now
+        end
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        StudioFocusManager focus = studio:GetStudioFocusManager()
+        Project project = focus:GetProjectFocus()
+        if not (project is QuorumProject)
+            return now
+        end
+        QuorumProject quorumProject = cast(QuorumProject, project)
+
+        StageGate gate
+        gate:SetProject(quorumProject)
+        gate:SetUnstage(unstage)
+        gate:SetTeamTab(teamTab)
+        integer index = 0
+        repeat while index < rows:GetSize()
+            gate:AddRow(rows:Get(index))
+            index = index + 1
+        end
+        gate:Begin()
+    end
+end

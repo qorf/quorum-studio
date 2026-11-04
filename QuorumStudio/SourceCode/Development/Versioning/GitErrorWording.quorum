@@ -1,0 +1,38 @@
+package Libraries.Development.Versioning
+
+/*
+The plain sentence for each kind of server problem (Push P5 and P6). The
+verb is "push" or "pull". JGit's own words go under Show Details, not
+here.
+*/
+class GitErrorWording
+    GitConstants constants
+
+    action GetSentence(integer kind, text verb, text serverMessage) returns text
+        if kind = constants:ERROR_NO_NETWORK
+            return "Couldn't reach the server. Check your internet connection and try again."
+        elseif kind = constants:ERROR_NOT_AUTHORIZED
+            return "The server didn't accept the username and password saved for this project."
+        elseif kind = constants:ERROR_NEEDS_CREDENTIALS
+            return "The server needs your username and password to " + verb + ". Save them in Project Properties, Teams, then " + verb + " again."
+        elseif kind = constants:ERROR_NO_REPOSITORY
+            return "The server doesn't have a repository at the address this project was cloned from."
+        elseif kind = constants:ERROR_NO_REMOTE
+            if verb = "pull"
+                return "This project has no server to pull from. Projects get one when they're cloned with Team > Clone."
+            end
+            return "This project has no server to push to. Projects get one when they're cloned with Team > Clone."
+        elseif kind = constants:ERROR_REFUSED
+            if serverMessage = ""
+                return "The server refused the " + verb + "."
+            end
+            return "The server refused the " + verb + ": " + serverMessage
+        end
+        return "Couldn't " + verb + ". Show Details has Git's reason."
+    end
+
+    // Whether the problem is fixed in Project Properties' Teams tab (Push P6).
+    action IsCredentialsProblem(integer kind) returns boolean
+        return kind = constants:ERROR_NOT_AUTHORIZED or kind = constants:ERROR_NEEDS_CREDENTIALS
+    end
+end

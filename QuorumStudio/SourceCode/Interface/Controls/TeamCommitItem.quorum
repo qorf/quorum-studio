@@ -1,0 +1,90 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Development.Versioning.CommitSummary
+
+/*
+A commit's row in the Team tab (Push P9): a check once it's sent, its
+message, and, muted, who made it and when. The spoken name says it all:
+"Make the hero jump higher, by Ada, 10:51, to push."
+*/
+class TeamCommitItem is ListItem
+    CommitSummary commit = undefined
+    text key = ""
+    Label mark
+    Label authorDetail
+    Label timeDetail
+
+    on create
+        parent:ListItem:icon:Hide()
+
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        // Indented under the group's row, as TeamFileItem's mark is.
+        mark:SetAccessibilityCode(mark:parent:Item:NOT_ACCESSIBLE)
+        mark:SetAcceptsMouseInput(false)
+        mark:SetPositionOnBaseLine(false)
+        mark:SetLeftMargin(28)
+        Add(0, mark)
+
+        parent:ListItem:label:SetLeftMargin(10)
+
+        authorDetail:SetAccessibilityCode(authorDetail:parent:Item:NOT_ACCESSIBLE)
+        authorDetail:SetAcceptsMouseInput(false)
+        authorDetail:SetPositionOnBaseLine(false)
+        authorDetail:SetLeftMargin(16)
+        Add(authorDetail)
+
+        timeDetail:SetAccessibilityCode(timeDetail:parent:Item:NOT_ACCESSIBLE)
+        timeDetail:SetAcceptsMouseInput(false)
+        timeDetail:SetPositionOnBaseLine(false)
+        timeDetail:SetLeftMargin(16)
+        Add(timeDetail)
+    end
+
+    /*
+    This action fills the row. The group key keeps it findable after a
+    refresh; the state is "to push" or "sent"; a sent commit gets a check.
+    */
+    action Setup(CommitSummary value, text groupKey, text state, boolean sent, ColorGroup mutedColor)
+        commit = value
+        key = groupKey + ":" + value:GetId()
+        if mutedColor not= undefined
+            authorDetail:SetColor(mutedColor)
+            timeDetail:SetColor(mutedColor)
+        end
+
+        if sent
+            mark:SetText("✓")
+        else
+            mark:SetText(" ")
+        end
+        SetText(value:GetMessage())
+        authorDetail:SetText(value:GetAuthor())
+        timeDetail:SetText(value:GetTime())
+        SetName(value:GetMessage() + ", by " + value:GetAuthor() + ", " + value:GetTime() + ", " + state + ".")
+    end
+
+    action GetCommit returns CommitSummary
+        return commit
+    end
+
+    action GetKey returns text
+        return key
+    end
+
+    // Screen readers count a row among the rows at its depth.
+    action GetAccessibilityLevel returns integer
+        return 1
+    end
+
+    action GetText returns text
+        return GetName()
+    end
+end

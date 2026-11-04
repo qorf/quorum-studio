@@ -9,6 +9,7 @@ use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Item2D
 use Libraries.Interface.Controls.TextBox
 use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
 
 class SaveAllBehavior is QuorumStudioBehavior
 
@@ -18,5 +19,9 @@ class SaveAllBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
         QuorumStudio studio = GetMainApplication()
         studio:Save()
+
+        // The Team tab, if open, updates a moment after a save (Status A1).
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+        outPane:RefreshTeamTabSoon()
     end
 end

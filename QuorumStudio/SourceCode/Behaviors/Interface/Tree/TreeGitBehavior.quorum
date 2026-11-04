@@ -1,0 +1,67 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Concurrency.ThreadRunner
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.TeamStatus
+
+/*
+The start of a Project Tree Git item that needs the project's status
+(Tree M1 to M4): Stage, Unstage and Reset to Last Commit. Run happens on
+the main thread. It makes the row's project the selected one (the Team tab
+shows that project, so the result shows there), then calls Continue with
+the tree's last status. When the tree has none yet, the status is read on
+the git thread first (TreeGitStatusReadBehavior), and Continue runs on the
+main thread when it's back. Subclasses do their work in Continue.
+*/
+class TreeGitBehavior is Behavior
+    ProjectTreeItem item = undefined
+
+    action SetItem(ProjectTreeItem value)
+        item = value
+    end
+
+    action GetItem returns ProjectTreeItem
+        return item
+    end
+
+    action Run(BehaviorEvent event)
+        if item = undefined or item:GetFile() = undefined
+            return now
+        end
+        QuorumProject project = item:GetProject()
+        if project = undefined or not project:HasGitSupport()
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        StudioFocusManager focusManager = studio:GetStudioFocusManager()
+        focusManager:SetProjectFocus(project)
+
+        ProjectTree tree = studio:GetProjectTree()
+        TeamStatus status = tree:GetGitStatus(project)
+        if status not= undefined and status:IsReady()
+            Continue(status)
+            return now
+        end
+
+        TreeGitStatusReadBehavior reader
+        reader:Setup(me, project)
+        Behaviors behaviors = studio:GetBehaviors()
+        ThreadRunner runner = behaviors:GetGitRunner()
+        runner:Add(reader)
+    end
+
+    /*
+    This action does the item's work with the project's status. Main
+    thread. The status may not be ready (git couldn't read it).
+    */
+    action Continue(TeamStatus status)
+    end
+end

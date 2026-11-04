@@ -3,13 +3,37 @@ use Libraries.Development.Environment.Projects.Credentials
 use Libraries.Containers.Array
 use Libraries.System.File
 
+/*
+What to stage: files (anywhere in the repository; a folder stages what's in
+it), and paths relative to the repository's folder, with / between folders,
+as TeamFileChange:GetRepositoryPath gives them. Git:Add skips files outside
+the repository.
+*/
 class AddRequest
     Array<File> filesToAdd
+    Array<text> paths
+
     action GetFilesToAdd returns Array<File>
         return filesToAdd
     end
 
     action SetFilesToAdd(Array<File> filesToAdd)
         me:filesToAdd = filesToAdd
+    end
+
+    action AddFile(File file)
+        filesToAdd:Add(file)
+    end
+
+    action AddPath(text path)
+        paths:Add(path)
+    end
+
+    action GetPaths returns Array<text>
+        return paths
+    end
+
+    action IsEmpty returns boolean
+        return filesToAdd:IsEmpty() and paths:IsEmpty()
     end
 end

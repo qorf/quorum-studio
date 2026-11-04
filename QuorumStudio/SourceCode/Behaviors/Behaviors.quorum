@@ -91,6 +91,7 @@ class Behaviors
     constant text FOCUS_BREAKPOINTS_WINDOW = "Focus Break Points Window"
     constant text FOCUS_CALL_STACK_WINDOW = "Focus Call Stack Window"
     constant text FOCUS_SEARCH_RESULTS_WINDOW = "Focus Search Results Window"
+    constant text FOCUS_TEAM_WINDOW = "Focus Team Window"
     constant text FOCUS_EDITOR_WINDOW = "Focus Editor Window"
     constant text FOCUS_ERRORS_WINDOW = "Focus Errors Window"
     constant text FOCUS_NEXT_WINDOW = "Focus Next Window Window"   
@@ -106,6 +107,7 @@ class Behaviors
     FocusBreakpointsBehavior focusBreakpointsBehavior
     FocusCallStackBehavior focusCallStackBehavior
     FocusSearchResultsBehavior focusSearchResultsBehavior
+    FocusTeamBehavior focusTeamBehavior
     FocusEditorBehavior focusEditorBehavior
     FocusErrorsBehavior focusErrorsBehavior
     FocusNextWindowBehavior focusNextWindowBehavior
@@ -187,31 +189,37 @@ class Behaviors
     //Team Menu
     ThreadRunner gitRunner
     constant text PULL_REQUEST_BEHAVIOR = "PULL_REQUEST_BEHAVIOR"
+    constant text TEAM_PULL_BEHAVIOR = "TEAM_PULL_BEHAVIOR"
     constant text PUSH_REQUEST_BEHAVIOR = "PUSH_REQUEST_BEHAVIOR"
+    constant text TEAM_PUSH_BEHAVIOR = "TEAM_PUSH_BEHAVIOR"
     constant text ADD_REQUEST_BEHAVIOR = "ADD_REQUEST_BEHAVIOR"
-    constant text ADD_PROJECT_REQUEST_BEHAVIOR = "ADD_PROJECT_REQUEST_BEHAVIOR"
     constant text STATUS_REQUEST_BEHAVIOR = "STATUS_REQUEST_BEHAVIOR"
+    constant text TEAM_STATUS_BEHAVIOR = "TEAM_STATUS_BEHAVIOR"
     constant text COMMIT_REQUEST_BEHAVIOR = "COMMIT_REQUEST_BEHAVIOR"
     constant text COMMIT_INTERFACE_BEHAVIOR = "COMMIT_INTERFACE_BEHAVIOR"
     constant text CLONE_INTERFACE_BEHAVIOR = "CLONE_INTERFACE_BEHAVIOR"
+    constant text SWITCH_BRANCH_BEHAVIOR = "SWITCH_BRANCH_BEHAVIOR"
+    constant text NEW_BRANCH_BEHAVIOR = "NEW_BRANCH_BEHAVIOR"
 
     PullRequestBehavior pullRequestBehavior
+    TeamPullBehavior teamPullBehavior
     PushRequestBehavior pushRequestBehavior
+    TeamPushBehavior teamPushBehavior
     AddRequestBehavior addRequestBehavior
-    AddProjectRequestBehavior addProjectRequestBehavior
     CommitRequestBehavior commitRequestBehavior
     CommitInterfaceBehavior commitInterfaceBehavior
     CloneInterfaceBehavior cloneInterfaceBehavior
     CloneRequestBehavior cloneRequestBehavior
     StatusRequestBehavior statusRequestBehavior
+    TeamStatusBehavior teamStatusBehavior
 
     ThreadedBehavior threadedPullRequestBehavior
     ThreadedBehavior threadedPushRequestBehavior
-    ThreadedBehavior threadedAddRequestBehavior
-    ThreadedBehavior threadedAddProjectRequestBehavior
     ThreadedBehavior threadedCommitRequestBehavior
     ThreadedBehavior threadedCloneRequestBehavior
     ThreadedBehavior threadedStatusRequestBehavior
+    SwitchBranchInterfaceBehavior switchBranchBehavior
+    SwitchBranchInterfaceBehavior newBranchBehavior
 
     //Code Completion
     CodeCompletionBehavior codeCompletionBehavior
@@ -332,22 +340,20 @@ class Behaviors
         behaviors:Add(PULL_REQUEST_BEHAVIOR, pullRequestBehavior)
         threadedPullRequestBehavior:SetNestedBehavior(pullRequestBehavior)
         threadedPullRequestBehavior:SetThreadRunner(gitRunner)
+        behaviors:Add(TEAM_PULL_BEHAVIOR, teamPullBehavior)
 
         behaviors:Add(PUSH_REQUEST_BEHAVIOR, pushRequestBehavior)
         threadedPushRequestBehavior:SetNestedBehavior(pushRequestBehavior)
         threadedPushRequestBehavior:SetThreadRunner(gitRunner)
+        behaviors:Add(TEAM_PUSH_BEHAVIOR, teamPushBehavior)
 
+        // Team > Stage runs on the main thread and queues its git work itself.
         behaviors:Add(ADD_REQUEST_BEHAVIOR, addRequestBehavior)
-        threadedAddRequestBehavior:SetNestedBehavior(addRequestBehavior)
-        threadedAddRequestBehavior:SetThreadRunner(gitRunner)
-
-        behaviors:Add(ADD_PROJECT_REQUEST_BEHAVIOR, addProjectRequestBehavior)
-        threadedAddProjectRequestBehavior:SetNestedBehavior(addProjectRequestBehavior)
-        threadedAddProjectRequestBehavior:SetThreadRunner(gitRunner)
 
         behaviors:Add(STATUS_REQUEST_BEHAVIOR, statusRequestBehavior)
         threadedStatusRequestBehavior:SetNestedBehavior(statusRequestBehavior)
         threadedStatusRequestBehavior:SetThreadRunner(gitRunner)
+        behaviors:Add(TEAM_STATUS_BEHAVIOR, teamStatusBehavior)
 
         behaviors:Add(COMMIT_REQUEST_BEHAVIOR, commitRequestBehavior)
         threadedCommitRequestBehavior:SetNestedBehavior(commitRequestBehavior)
@@ -363,6 +369,10 @@ class Behaviors
         cloneInterfaceBehavior:SetThreadedCloneRequestBehavior(threadedCloneRequestBehavior)
         threadedCloneRequestBehavior:SetNestedBehavior(cloneRequestBehavior)
         threadedCloneRequestBehavior:SetThreadRunner(gitRunner)
+
+        behaviors:Add(SWITCH_BRANCH_BEHAVIOR, switchBranchBehavior)
+        newBranchBehavior:SetOpensNewBranch(true)
+        behaviors:Add(NEW_BRANCH_BEHAVIOR, newBranchBehavior)
 
         //Build Actions
         buildProjectBehavior:SetBuildManager(builder)
@@ -451,6 +461,7 @@ class Behaviors
         behaviors:Add(FOCUS_BREAKPOINTS_WINDOW, focusBreakpointsBehavior)
         behaviors:Add(FOCUS_CALL_STACK_WINDOW, focusCallStackBehavior)
         behaviors:Add(FOCUS_SEARCH_RESULTS_WINDOW, focusSearchResultsBehavior)
+        behaviors:Add(FOCUS_TEAM_WINDOW, focusTeamBehavior)
         behaviors:Add(FOCUS_EDITOR_WINDOW, focusEditorBehavior)
         behaviors:Add(FOCUS_ERRORS_WINDOW, focusErrorsBehavior)
         behaviors:Add(FOCUS_NEXT_WINDOW, focusNextWindowBehavior)
@@ -759,6 +770,10 @@ class Behaviors
         return focusSearchResultsBehavior
     end
 
+    action GetFocusTeamBehavior returns FocusTeamBehavior
+        return focusTeamBehavior
+    end
+
     action GetFocusEditorBehavior returns FocusEditorBehavior
         return focusEditorBehavior
     end
@@ -864,6 +879,11 @@ class Behaviors
         return threadedPullRequestBehavior
     end
 
+    // Team > Pull, on the main thread (Pull L1, then the git thread).
+    action GetTeamPullBehavior returns TeamPullBehavior
+        return teamPullBehavior
+    end
+
     action GetPushRequestBehavior returns PushRequestBehavior
         return pushRequestBehavior
     end
@@ -872,21 +892,14 @@ class Behaviors
         return threadedPushRequestBehavior
     end
 
+    action GetTeamPushBehavior returns TeamPushBehavior
+        return teamPushBehavior
+    end
+
     action GetAddRequestBehavior returns AddRequestBehavior
         return addRequestBehavior
     end
 
-    action GetThreadedAddRequestBehavior returns ThreadedBehavior
-        return threadedAddRequestBehavior
-    end
-
-    action GetAddProjectRequestBehavior returns AddProjectRequestBehavior
-        return addProjectRequestBehavior
-    end
-
-    action GetThreadedAddProjectRequestBehavior returns ThreadedBehavior
-        return threadedAddProjectRequestBehavior
-    end
 
     action GetCommitInterfaceBehavior returns CommitInterfaceBehavior
         return commitInterfaceBehavior
@@ -904,6 +917,14 @@ class Behaviors
         return threadedCommitRequestBehavior
     end
 
+    action GetSwitchBranchBehavior returns SwitchBranchInterfaceBehavior
+        return switchBranchBehavior
+    end
+
+    action GetNewBranchBehavior returns SwitchBranchInterfaceBehavior
+        return newBranchBehavior
+    end
+
     action GetCloneRequestBehavior returns CloneRequestBehavior
         return cloneRequestBehavior
     end
@@ -918,6 +939,10 @@ class Behaviors
 
     action GetThreadedStatusRequestBehavior returns ThreadedBehavior
         return threadedStatusRequestBehavior
+    end
+
+    action GetTeamStatusBehavior returns TeamStatusBehavior
+        return teamStatusBehavior
     end
 
     //navigation

@@ -1,0 +1,41 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Game.Graphics.ColorGroup
+
+/*
+A branch in New Branch's "Another branch..." list (N1). Its name is the
+branch's name. While "Another branch..." isn't chosen the list is dimmed:
+the row's words take the muted color, and get their own color back when
+the list can be used.
+*/
+class StartBranchItem is ListItem
+    text branchName = ""
+
+    action Setup(text value)
+        branchName = value
+        SetText(value)
+        SetName(value)
+    end
+
+    action GetBranchName returns text
+        return branchName
+    end
+
+    /*
+    Dims the row's words, or brings back their color. The list deselects
+    before it dims, so a dimmed row is never also showing the selection.
+    */
+    action SetDimmed(boolean dimmed, ColorGroup dimColor)
+        if dimmed
+            if dimColor not= undefined
+                parent:ListItem:label:SetColor(dimColor)
+            end
+        else
+            ColorGroup resting = parent:ListItem:label:GetFontColor()
+            if resting not= undefined
+                parent:ListItem:label:SetColor(resting)
+            end
+        end
+    end
+end

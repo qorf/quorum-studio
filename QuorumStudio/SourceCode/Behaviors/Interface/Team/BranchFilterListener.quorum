@@ -1,0 +1,20 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.TextChangeListener
+use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Development.Environment.Studio.Interface.SwitchBranchDialog
+
+// B1's filter: narrows the branches as you type.
+class BranchFilterListener is TextChangeListener
+    SwitchBranchDialog dialog = undefined
+
+    action SetDialog(SwitchBranchDialog value)
+        dialog = value
+    end
+
+    action TextChanged(TextChangeEvent event)
+        if dialog not= undefined
+            dialog:FilterChanged()
+        end
+    end
+end

@@ -1,0 +1,578 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Selections.ListSelection
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Item
+use Libraries.Interface.Item2D
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Containers.Array
+use Libraries.Development.Versioning.GitBranch
+use Libraries.Development.Versioning.BranchListResult
+use Libraries.Development.Versioning.SwitchBranchRequest
+use Libraries.Development.Environment.Studio.BranchSwitcher
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SwitchBranchOkBehavior
+use Libraries.Development.Environment.Studio.Behaviors.NewBranchButtonBehavior
+use Libraries.Development.Environment.Studio.Behaviors.BranchFilterListener
+
+/*
+Switch Branch (B1, laid out as S1 with two lists, 2026-11-04), top to
+bottom and left-aligned, text at 16 points: "Filter" above a full-width
+field; "On your computer (16)" above a list of the local branches (6 rows,
+scrolls); "On the server only (4)" above a list of the branches only on
+the server (4 rows); the line about uncommitted changes (B3); then New
+Branch... at the left, Cancel and Switch at the right.
+
+Each row is the branch's name with its last commit's age muted after it
+("current" for the branch you're on; "server · 5 days" for a server
+branch, shown by its short name). The filter narrows both lists as you
+type, and the captions count what's shown ("On your computer (3 of
+16)"). A list with no branches to show holds one muted line ("No
+branches are only on the server.") and is left out of the Tab order.
+
+One branch is chosen at a time: selecting a row in one list clears the
+other's selection. Switch or Enter acts on it (not Space or a double
+click, so a stray key can't switch). Focus starts in the local list on
+the current branch. Tab: Filter, the local
+list, the server list, New Branch..., Cancel, Switch. Nothing is
+announced; the lists' and the Switch button's descriptions say what the
+captions and the line say.
+*/
+class SwitchBranchDialog is Dialog
+    // The rows' and lines' text size, the stage dialog's (StageConfirmDialog),
+    // instead of the Forms default 20.
+    constant integer TEXT_SIZE = 16
+    // The lists' heights in rows; more branches scroll.
+    constant number LOCAL_ROWS = 6
+    constant number SERVER_ROWS = 4
+    // The dialog's width, as a share of the window.
+    constant number WIDTH_SHARE = 0.5
+
+    BranchListResult branches = undefined
+    BranchSwitcher switcher = undefined
+    integer changeCount = 0
+
+    TextField filterField = undefined
+    Label localCaption = undefined
+    Label serverCaption = undefined
+    List localList = undefined
+    List serverList = undefined
+    Label changesLabel = undefined
+    Label problemLabel = undefined
+    Button newBranchButton = undefined
+    Button cancelButton = undefined
+    Button switchButton = undefined
+    ColorGroup mutedColor = undefined
+
+    // Every branch's row, made once; the filter adds and removes them.
+    Array<BranchListItem> localRows
+    Array<BranchListItem> serverRows
+    BranchListItem currentRow = undefined
+    // Each list's muted line, for when it has no branch to show.
+    BranchListItem localMessage
+    BranchListItem serverMessage
+    // How many branch rows each list shows now.
+    integer localShown = 0
+    integer serverShown = 0
+    // The lists' descriptions while no problem is shown.
+    text localDescription = ""
+    text serverDescription = ""
+
+    DialogCancelBehavior cancelBehavior
+    SwitchBranchOkBehavior switchBehavior
+    NewBranchButtonBehavior newBranchBehavior
+    BranchFilterListener filterListener
+
+    on create
+        SetModal(true)
+    end
+
+    action Setup(BranchListResult value, integer changes, BranchSwitcher switcherValue)
+        branches = value
+        changeCount = changes
+        switcher = switcherValue
+        SetName("Switch Branch")
+        SetPercentageWidth(WIDTH_SHARE)
+        cancelBehavior:SetDialog(me)
+        switchBehavior:SetDialog(me)
+        newBranchBehavior:SetSwitcher(switcher)
+        filterListener:SetDialog(me)
+        mutedColor = GetMutedColor()
+
+        Page page = InitializeDefaultPage()
+        // Tab goes only through the field, the lists and the buttons; the
+        // captions and lines are said by those controls' descriptions.
+        page:SetSkipLabelsInFocus(true)
+        // The captions and lines start at the lists' left edge.
+        page:LeftAlignContent()
+
+        // The field is in an untitled grouping of its own, so the page puts
+        // "Filter" above it as a caption and the field runs across the row
+        // (the layout's rule for a field with buttons beside it).
+        Label filterCaption = page:AddLabel("Filter")
+        Grouping filterRow = page:AddGrouping("Filter Row")
+        filterField = filterRow:AddTextField("Filter")
+        filterField:SetDescription(FilterDescription())
+        filterField:AddTextChangeListener(filterListener)
+
+        localCaption = page:AddLabel("Local Caption", "On your computer")
+        localCaption:SetFontSize(TEXT_SIZE)
+        localCaption:SetPositionOnBaseLine(false)
+        localList = page:AddList("Branches on your computer")
+        localList:SetFontSize(TEXT_SIZE)
+        localList:SetLayoutRows(LOCAL_ROWS)
+
+        serverCaption = page:AddLabel("Server Caption", "On the server only")
+        serverCaption:SetFontSize(TEXT_SIZE)
+        serverCaption:SetPositionOnBaseLine(false)
+        serverList = page:AddList("Branches only on the server")
+        serverList:SetFontSize(TEXT_SIZE)
+        serverList:SetLayoutRows(SERVER_ROWS)
+
+        changesLabel = page:AddLabel("Uncommitted Changes", "")
+        changesLabel:SetFontSize(TEXT_SIZE)
+        problemLabel = page:AddLabel("Switch Problem", "")
+        problemLabel:SetFontSize(TEXT_SIZE)
+
+        // The footer: New Branch... at the left; Cancel and Switch at the
+        // right, each as wide as its words.
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        buttonGroup:PositionFromBottom()
+        buttonGroup:SetLeadingButtonCount(1)
+        newBranchButton = buttonGroup:AddButton("New Branch...")
+        FitToWords(newBranchButton)
+        newBranchButton:SetBehavior(newBranchBehavior)
+        cancelButton = buttonGroup:AddButton("Cancel")
+        FitToWords(cancelButton)
+        cancelButton:SetBehavior(cancelBehavior)
+        switchButton = buttonGroup:AddButton("Switch")
+        FitToWords(switchButton)
+        switchButton:SetInterfaceOptionsKey("DialogAcceptButton")
+        switchButton:SetBehavior(switchBehavior)
+        SetBehavior(switchBehavior)
+
+        MakeRows(branches:GetLocalBranches(), localRows)
+        MakeRows(branches:GetServerBranches(), serverRows)
+        FillLists("")
+
+        // The page's own order first, so it isn't worked out again when
+        // the page loads; then UpdateFocusOrder replaces it.
+        page:CalculateDefaultFocusOrdering()
+        UpdateFocusOrder()
+
+        // The height from the rows: the filter, each caption and its list,
+        // the changes line, one line kept for a problem, then the footer.
+        PageHeightEstimate estimate
+        estimate:Start(page, WIDTH_SHARE)
+        estimate:AddLabel(filterCaption)
+        estimate:AddControl(filterField)
+        estimate:AddLabel(localCaption)
+        estimate:AddControl(localList)
+        estimate:AddLabel(serverCaption)
+        estimate:AddControl(serverList)
+        estimate:AddLabel(changesLabel)
+        Label problemRoom
+        problemRoom:SetFontSize(TEXT_SIZE)
+        problemRoom:SetText("You're already on " + branches:GetCurrentBranch() + ".")
+        estimate:AddLabel(problemRoom)
+        estimate:AddFooter(switchButton)
+        SetPixelHeight(estimate:GetHeight())
+    end
+
+    // Focus starts on the chosen branch; the first time, the current one.
+    action OnShow
+        ChooseRow(GetChosenRow())
+        BranchListItem chosen = GetChosenRow()
+        if chosen not= undefined
+            List holder = ListOf(chosen)
+            holder:Focus()
+        else
+            filterField:Focus()
+        end
+    end
+
+    /*
+    A footer button whose name has more than one word sizes itself to its
+    words (FIT_CONTENTS, the Button default that AddButton turns off), so
+    its words never break onto a second line inside it. A one-word name
+    can't break, so it keeps the footer's minimum width.
+    */
+    private action FitToWords(Button button)
+        button:SetAutomaticFontSizing(false)
+        text name = button:GetName()
+        if name:Contains(" ")
+            button:SetHorizontalLayoutMode(button:parent:Control:FIT_CONTENTS)
+        end
+    end
+
+    // The filter changed: both lists show only matching branches, and the
+    // chosen one stays chosen if it's still shown.
+    action FilterChanged
+        BranchListItem previous = GetChosenRow()
+        FillLists(filterField:GetText())
+        ChooseRow(previous)
+        UpdateFocusOrder()
+        RequestLayout()
+    end
+
+    // One row per branch, in the result's order.
+    private action MakeRows(Array<GitBranch> list, Array<BranchListItem> rows)
+        integer counter = 0
+        repeat while counter < list:GetSize()
+            GitBranch branch = list:Get(counter)
+            BranchListItem row
+            row:Setup(branch, me, mutedColor, TEXT_SIZE)
+            rows:Add(row)
+            if branch:IsCurrent()
+                currentRow = row
+            end
+            counter = counter + 1
+        end
+    end
+
+    // Both lists, the captions' counts and the lists' descriptions.
+    private action FillLists(text filterValue)
+        text trimmed = filterValue:Trim()
+        text lowered = trimmed:ToLowerCase()
+        localList:Deselect()
+        serverList:Deselect()
+        EmptyList(localList)
+        EmptyList(serverList)
+
+        localShown = AddMatching(localList, localRows, lowered)
+        serverShown = AddMatching(serverList, serverRows, lowered)
+
+        localCaption:SetText("On your computer (" + CountWords(localShown, localRows:GetSize(), lowered) + ")")
+        serverCaption:SetText("On the server only (" + CountWords(serverShown, serverRows:GetSize(), lowered) + ")")
+
+        if localShown = 0
+            text localNone = "No branches yet. A repository has branches once it has a commit."
+            if lowered not= "" and not localRows:IsEmpty()
+                localNone = "No branches on your computer match " + trimmed + "."
+            end
+            localMessage:SetupMessage(localNone, mutedColor, TEXT_SIZE)
+            Item2D localLine = localMessage
+            localList:Add(localLine)
+            localDescription = localNone
+        else
+            localDescription = ShownWords(localShown, localRows:GetSize(), lowered)
+        end
+        SetListUsable(localList, localShown > 0)
+
+        if serverShown = 0
+            text serverNone = "No branches are only on the server."
+            if lowered not= "" and not serverRows:IsEmpty()
+                serverNone = "No branches only on the server match " + trimmed + "."
+            end
+            serverMessage:SetupMessage(serverNone, mutedColor, TEXT_SIZE)
+            Item2D serverLine = serverMessage
+            serverList:Add(serverLine)
+            serverDescription = serverNone
+        else
+            serverDescription = ShownWords(serverShown, serverRows:GetSize(), lowered) + " Switching to one makes a branch of the same name on your computer that pulls from it and pushes to it."
+        end
+        SetListUsable(serverList, serverShown > 0)
+
+        RestoreDescriptions()
+        UpdateChangesLine()
+    end
+
+    // Takes every row out of a list.
+    private action EmptyList(List list)
+        repeat while list:GetSize() > 0
+            Item2D removed = list:Remove(list:GetSize() - 1)
+        end
+    end
+
+    /*
+    Adds the rows whose shown names ("level-two", or "scores" for the
+    server's "origin/scores") contain the filter; returns how many.
+    */
+    private action AddMatching(List list, Array<BranchListItem> rows, text lowered) returns integer
+        integer added = 0
+        integer counter = 0
+        repeat while counter < rows:GetSize()
+            BranchListItem row = rows:Get(counter)
+            text shownName = row:GetText()
+            text nameLowered = shownName:ToLowerCase()
+            if lowered = "" or nameLowered:Contains(lowered)
+                // Typed as an Item2D: List's Add also takes text.
+                Item2D shown = row
+                list:Add(shown)
+                added = added + 1
+            end
+            counter = counter + 1
+        end
+        return added
+    end
+
+    // "16", or "3 of 16" while filtering.
+    private action CountWords(integer shown, integer total, text lowered) returns text
+        if lowered = ""
+            return "" + total
+        end
+        return shown + " of " + total
+    end
+
+    // "16 branches.", "1 branch.", or "3 of 16 branches match the filter."
+    private action ShownWords(integer shown, integer total, text lowered) returns text
+        if lowered = ""
+            if total = 1
+                return "1 branch."
+            end
+            return total + " branches."
+        end
+        if total = 1
+            return "1 of 1 branch matches the filter."
+        end
+        if shown = 1
+            return "1 of " + total + " branches matches the filter."
+        end
+        return shown + " of " + total + " branches match the filter."
+    end
+
+    /*
+    A list with branches is a Tab stop and takes clicks; one that holds
+    only its muted line is neither.
+    */
+    private action SetListUsable(List list, boolean usable)
+        list:SetFocusable(usable)
+        list:SetAcceptsMouseInput(usable)
+    end
+
+    /*
+    Tab and Shift+Tab: Filter, the local list, the server list (each only
+    while it has branches), New Branch..., Cancel, Switch, then back to
+    Filter.
+    */
+    private action UpdateFocusOrder
+        Array<Item> order
+        order:Add(filterField)
+        if localShown > 0
+            order:Add(localList)
+        end
+        if serverShown > 0
+            order:Add(serverList)
+        end
+        order:Add(newBranchButton)
+        order:Add(cancelButton)
+        order:Add(switchButton)
+        integer counter = 0
+        repeat while counter < order:GetSize()
+            Item stop = order:Get(counter)
+            Item following = order:Get((counter + 1) mod order:GetSize())
+            stop:SetNextFocus(following)
+            following:SetPreviousFocus(stop)
+            counter = counter + 1
+        end
+    end
+
+    /*
+    Selects a row: the one given if it's shown, otherwise the current
+    branch if it's shown, otherwise the first local branch, otherwise the
+    first server branch. A row already selected is left alone, so a
+    problem message just shown stays.
+    */
+    private action ChooseRow(BranchListItem preferred)
+        BranchListItem pick = undefined
+        if preferred not= undefined and IsShown(preferred)
+            pick = preferred
+        elseif currentRow not= undefined and IsShown(currentRow)
+            pick = currentRow
+        elseif localShown > 0
+            pick = FirstRow(localList)
+        elseif serverShown > 0
+            pick = FirstRow(serverList)
+        end
+        if pick = undefined or pick = GetChosenRow()
+            return now
+        end
+        List holder = ListOf(pick)
+        ListItem item = pick
+        holder:Select(item)
+    end
+
+    private action FirstRow(List list) returns BranchListItem
+        ListItem item = list:GetListItem(0)
+        if item not= undefined and item is BranchListItem
+            BranchListItem row = cast(BranchListItem, item)
+            return row
+        end
+        return undefined
+    end
+
+    private action IsShown(BranchListItem row) returns boolean
+        return localList:GetIndexOf(row) >= 0 or serverList:GetIndexOf(row) >= 0
+    end
+
+    // The list a shown row is in.
+    private action ListOf(BranchListItem row) returns List
+        if serverList:GetIndexOf(row) >= 0
+            return serverList
+        end
+        return localList
+    end
+
+    // The selected branch row in either list, or undefined.
+    private action GetChosenRow returns BranchListItem
+        BranchListItem row = SelectedRow(localList)
+        if row = undefined
+            row = SelectedRow(serverList)
+        end
+        return row
+    end
+
+    private action SelectedRow(List list) returns BranchListItem
+        ListSelection selection = list:GetSelection()
+        ListItem item = selection:GetListItem()
+        if item not= undefined and item is BranchListItem
+            BranchListItem row = cast(BranchListItem, item)
+            if row:GetBranch() not= undefined
+                return row
+            end
+        end
+        return undefined
+    end
+
+    /*
+    The dialog's caption color (the "Filter" caption's), for the muted
+    words after the names. Undefined when the theme has none; the rows then
+    use the list's text color.
+    */
+    private action GetMutedColor returns ColorGroup
+        GameStateManager manager
+        InterfaceOptions options = manager:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetFontColor("FieldCaption")
+    end
+
+    // The chosen branch, or undefined.
+    action GetSelectedBranch returns GitBranch
+        BranchListItem row = GetChosenRow()
+        if row = undefined
+            return undefined
+        end
+        return row:GetBranch()
+    end
+
+    /*
+    A branch row gained selection (a click, the arrow keys, typed letters,
+    or ChooseRow): the other list lets go of its selection, the changes
+    line names the branch, and any old problem message goes away.
+    */
+    action SelectionChanged(BranchListItem row)
+        if localList = undefined or serverList = undefined
+            return now
+        end
+        if serverList:GetIndexOf(row) >= 0
+            localList:Deselect()
+        else
+            serverList:Deselect()
+        end
+        if problemLabel not= undefined
+            problemLabel:SetText("")
+        end
+        RestoreDescriptions()
+        UpdateChangesLine()
+    end
+
+    private action FilterDescription returns text
+        return "Shows only the branches whose names contain what you type."
+    end
+
+    // The field's and lists' own descriptions, with no problem in them.
+    private action RestoreDescriptions
+        filterField:SetDescription(FilterDescription())
+        localList:SetDescription(localDescription)
+        serverList:SetDescription(serverDescription)
+    end
+
+    /*
+    "You have 4 uncommitted changes. They'll come with you to level-two."
+    Also the Switch button's description, since labels aren't Tab stops.
+    */
+    private action UpdateChangesLine
+        if changesLabel = undefined
+            return now
+        end
+        if changeCount = 0
+            changesLabel:SetText("")
+            if switchButton not= undefined
+                switchButton:SetDescription("")
+            end
+            return now
+        end
+        text changes = "You have 1 uncommitted change. It'll"
+        if changeCount > 1
+            changes = "You have " + changeCount + " uncommitted changes. They'll"
+        end
+        GitBranch branch = GetSelectedBranch()
+        text changesLine = changes + " come with you to the branch you switch to."
+        if branch not= undefined and not branch:IsCurrent()
+            changesLine = changes + " come with you to " + branch:GetLocalName() + "."
+        end
+        changesLabel:SetText(changesLine)
+        if switchButton not= undefined
+            switchButton:SetDescription(changesLine)
+        end
+    end
+
+    // Switch, or Enter.
+    action SwitchToSelected
+        GitBranch branch = GetSelectedBranch()
+        if branch = undefined
+            ShowProblem("Choose a branch to switch to.")
+            return now
+        end
+        if branch:IsCurrent()
+            ShowProblem("You're already on " + branch:GetBranchName() + ".")
+            return now
+        end
+        SwitchBranchRequest request
+        request:SetBranchName(branch:GetLocalName())
+        if not branch:IsLocal()
+            // A server-only branch: make a local one that tracks it.
+            request:SetCreating(true)
+            request:SetStartPoint(branch:GetBranchName())
+            request:SetTracking(true)
+        end
+        switcher:Begin(request)
+    end
+
+    /*
+    This action shows a message in the dialog and moves focus to the list
+    holding the chosen branch (the local list when none is chosen), whose
+    description holds the same words, so focus reads it. With no branch in
+    either list, the Filter field gets the words and the focus. Nothing is
+    announced.
+    */
+    action ShowProblem(text message)
+        problemLabel:SetText(message)
+        BranchListItem chosen = GetChosenRow()
+        if chosen not= undefined
+            List holder = ListOf(chosen)
+            holder:SetDescription(message)
+            holder:Focus()
+        elseif localShown > 0
+            localList:SetDescription(message)
+            localList:Focus()
+        elseif serverShown > 0
+            serverList:SetDescription(message)
+            serverList:Focus()
+        else
+            filterField:SetDescription(message)
+            filterField:Focus()
+        end
+    end
+end

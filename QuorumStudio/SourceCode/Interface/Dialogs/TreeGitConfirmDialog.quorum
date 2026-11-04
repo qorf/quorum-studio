@@ -1,0 +1,73 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.GitProblemActionBehavior
+
+/*
+Reset to Last Commit's question (Tree M4): the question, any extra lines
+(the unsaved-changes line), then Cancel and the confirm button. Focus
+starts on Cancel, and Enter with no button focused cancels too, so Enter
+alone never throws work away. The question is the dialog's description.
+Made in the Forms style, as step 3's GitProblemDialog is; the confirm
+button reuses GitProblemActionBehavior (closes the dialog, then runs the
+action).
+*/
+class TreeGitConfirmDialog is Dialog
+    Button cancelButton = undefined
+    Button confirmButton = undefined
+    DialogCancelBehavior cancelBehavior
+    GitProblemActionBehavior confirmBehavior
+
+    on create
+        SetModal(true)
+    end
+
+    /*
+    This action builds the dialog. Call it once, before Show.
+
+    Attribute: Parameter title Such as "Reset Hero.quorum".
+    Attribute: Parameter question Such as "Throw away all your changes to Hero.quorum since the last commit? This can't be undone."
+    Attribute: Parameter lines Shown one per label under the question; may be empty.
+    Attribute: Parameter confirmName The confirm button's name, such as "Reset File".
+    Attribute: Parameter onConfirm Run after the dialog closes, when the confirm button is pressed.
+    */
+    action Setup(text title, text question, Array<text> lines, text confirmName, Behavior onConfirm)
+        SetName(title)
+        SetDescription(question)
+        SetPercentageWidth(0.5)
+        SetPixelHeight(200 + 24 * lines:GetSize())
+        cancelBehavior:SetDialog(me)
+
+        Page page = InitializeDefaultPage()
+        page:SetSkipLabelsInFocus(true)
+        page:AddLabel("Question", question)
+        integer index = 0
+        repeat while index < lines:GetSize()
+            page:AddLabel("Line " + (index + 1), lines:Get(index))
+            index = index + 1
+        end
+
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        buttonGroup:PositionFromBottom()
+        cancelButton = buttonGroup:AddButton("Cancel")
+        cancelButton:SetBehavior(cancelBehavior)
+        confirmButton = buttonGroup:AddButton(confirmName)
+        confirmButton:SetInterfaceOptionsKey("DialogAcceptButton")
+        confirmBehavior:SetDialog(me)
+        confirmBehavior:SetAction(onConfirm)
+        confirmButton:SetBehavior(confirmBehavior)
+
+        // The dialog's own default (Enter where no button has focus).
+        SetBehavior(cancelBehavior)
+    end
+
+    action OnShow
+        cancelButton:Focus()
+    end
+end

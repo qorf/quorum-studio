@@ -1,0 +1,195 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Containers.Array
+use Libraries.Game.GameStateManager
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.Repository
+use Libraries.Development.Versioning.AddRequest
+use Libraries.Development.Versioning.AddResult
+use Libraries.Development.Versioning.UnstageRequest
+use Libraries.Development.Versioning.UnstageResult
+use Libraries.Development.Versioning.TeamStatus
+use Libraries.Development.Versioning.TeamFileChange
+use Libraries.Development.Versioning.GitProblem
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.TeamReporter
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+
+/*
+Stages or unstages, on the git thread (queued with the git runner's Add).
+Then it reads the status again, posts it to the Team tab, and reports the
+result (step 3): "Hero.quorum staged. 3 files staged for the next commit."
+A failure opens the problem dialog instead.
+*/
+class StageWorkBehavior is Behavior
+    QuorumProject project = undefined
+    boolean unstage = false
+    Array<TeamFileChange> changes
+    // What the sentence calls it, when it isn't one file's name ("Assets").
+    text subject = ""
+    TeamFileChange constants
+
+    action SetProject(QuorumProject value)
+        project = value
+    end
+
+    action SetUnstage(boolean value)
+        unstage = value
+    end
+
+    action AddChange(TeamFileChange change)
+        changes:Add(change)
+    end
+
+    action SetSubject(text value)
+        subject = value
+    end
+
+    action Run(BehaviorEvent event)
+        if project = undefined or not project:HasGitSupport()
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+        TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+        StatusRequestBehavior reader
+        TeamReporter reporter
+        text name = GetSubject()
+
+        Git git
+        Repository repo = project:GetGitRepository()
+        boolean worked = false
+        text message = ""
+        if unstage
+            UnstageRequest unstageRequest
+            AddTo(unstageRequest)
+            UnstageResult unstageResult = git:Unstage(repo, unstageRequest)
+            worked = unstageResult:IsSuccessful()
+            message = unstageResult:GetMessage()
+        else
+            AddRequest addRequest
+            AddTo(addRequest)
+            AddResult addResult = git:Add(repo, addRequest)
+            worked = addResult:IsSuccessful()
+            message = addResult:GetMessage()
+        end
+
+        TeamStatus after = reader:GetStatus(project)
+        teamTab:PostStatus(after)
+
+        if not worked
+            GitProblem problem
+            if unstage
+                problem:SetTitle("Unstage")
+                problem:SetMessage("Couldn't unstage " + name + ".")
+            else
+                problem:SetTitle("Stage")
+                problem:SetMessage("Couldn't stage " + name + ".")
+            end
+            problem:SetDetails(message)
+            reporter:ReportProblem(problem)
+            return now
+        end
+        reporter:Report(GetSentence(after, name))
+    end
+
+    private action AddTo(AddRequest request)
+        integer index = 0
+        repeat while index < changes:GetSize()
+            TeamFileChange change = changes:Get(index)
+            request:AddPath(change:GetRepositoryPath())
+            index = index + 1
+        end
+    end
+
+    private action AddTo(UnstageRequest request)
+        integer index = 0
+        repeat while index < changes:GetSize()
+            TeamFileChange change = changes:Get(index)
+            request:AddPath(change:GetRepositoryPath())
+            index = index + 1
+        end
+    end
+
+    // "Hero.quorum", or "3 files", or the subject it was given.
+    private action GetSubject returns text
+        if subject not= ""
+            return subject
+        end
+        integer count = changes:GetSize()
+        if count = 1
+            TeamFileChange change = changes:Get(0)
+            return change:GetFileName()
+        end
+        return "" + count + " files"
+    end
+
+    /*
+    "Hero.quorum staged. 3 files staged for the next commit.", "OldLevel.quorum
+    deletion staged. ...", "3 files staged: Hero.quorum, Main.quorum and
+    Boss.quorum. ...", "Hero.quorum unstaged. 2 files staged for the next
+    commit."
+    */
+    private action GetSentence(TeamStatus after, text name) returns text
+        text first = ""
+        if changes:GetSize() > 1 and subject = ""
+            first = name + " " + GetVerb() + ": " + GetNames() + "."
+        elseif changes:GetSize() = 1 and not unstage and IsDeletion(changes:Get(0))
+            first = name + " deletion staged."
+        else
+            first = name + " " + GetVerb() + "."
+        end
+
+        if not after:IsReady()
+            return first
+        end
+        integer staged = after:GetStaged():GetSize()
+        if staged = 0
+            return first + " Nothing is staged now."
+        elseif staged = 1
+            return first + " 1 file staged for the next commit."
+        end
+        return first + " " + staged + " files staged for the next commit."
+    end
+
+    private action GetVerb returns text
+        if unstage
+            return "unstaged"
+        end
+        return "staged"
+    end
+
+    private action IsDeletion(TeamFileChange change) returns boolean
+        return change:GetKind() = constants:DELETED
+    end
+
+    // Up to three names, then "and 2 more".
+    private action GetNames returns text
+        integer shown = changes:GetSize()
+        if shown > 3
+            shown = 3
+        end
+        text names = ""
+        integer index = 0
+        repeat while index < shown
+            TeamFileChange change = changes:Get(index)
+            if index = 0
+                names = change:GetFileName()
+            elseif index = shown - 1 and changes:GetSize() <= 3
+                names = names + " and " + change:GetFileName()
+            else
+                names = names + ", " + change:GetFileName()
+            end
+            index = index + 1
+        end
+        if changes:GetSize() > 3
+            names = names + " and " + (changes:GetSize() - 3) + " more"
+        end
+        return names
+    end
+end

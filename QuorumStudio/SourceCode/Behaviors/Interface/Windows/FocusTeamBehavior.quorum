@@ -1,0 +1,23 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+
+/*
+Windows > Team: opens the Team tab if it's closed, selects it and moves
+focus to its list, as the other Windows items do for their tabs. A tab
+that has never shown a status asks for one, so it isn't empty.
+*/
+class FocusTeamBehavior is QuorumStudioBehavior
+    action Run(BehaviorEvent event)
+        QuorumStudio studio = GetMainApplication()
+        OutputEditorTabPane out = studio:GetOutputPane()
+        TeamTab tab = out:GetTeamTab()
+        tab:Activate()
+        if tab:GetStatus() = undefined
+            tab:RequestRefresh()
+        end
+    end
+end

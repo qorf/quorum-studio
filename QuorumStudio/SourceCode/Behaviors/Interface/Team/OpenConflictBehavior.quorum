@@ -1,0 +1,45 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Containers.Array
+use Libraries.Game.GameStateManager
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+
+// L7's Open: opens a file at its first conflict (the first <<<<<<< line).
+class OpenConflictBehavior is Behavior
+    File file = undefined
+
+    action SetFile(File value)
+        file = value
+    end
+
+    action Run(BehaviorEvent event)
+        if file = undefined or not file:Exists()
+            return now
+        end
+        integer line = 0
+        check
+            text contents = file:Read()
+            Array<text> lines = contents:SplitIntoLines()
+            integer index = 0
+            boolean found = false
+            repeat while index < lines:GetSize() and found = false
+                text value = lines:Get(index)
+                if value:StartsWith("<<<<<<<")
+                    line = index
+                    found = true
+                end
+                index = index + 1
+            end
+        detect e
+        end
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        CodeEditorTabPane editor = studio:GetTabPane()
+        editor:QueueTabOpen(file, line)
+    end
+end

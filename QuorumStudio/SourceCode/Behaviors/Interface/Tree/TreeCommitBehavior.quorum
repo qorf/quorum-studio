@@ -1,0 +1,33 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+
+/*
+Commit... on the project's row (Tree M3). Team > Commit commits the
+selected project, so this makes the row's project the selected one, then
+runs the same behavior (Behaviors:GetCommitInterfaceBehavior). Main thread.
+*/
+class TreeCommitBehavior is Behavior
+    QuorumProject project = undefined
+
+    action SetProject(QuorumProject value)
+        project = value
+    end
+
+    action Run(BehaviorEvent event)
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        if project not= undefined
+            StudioFocusManager focusManager = studio:GetStudioFocusManager()
+            focusManager:SetProjectFocus(project)
+        end
+        Behaviors behaviors = studio:GetBehaviors()
+        CommitInterfaceBehavior commitBehavior = behaviors:GetCommitInterfaceBehavior()
+        commitBehavior:Run(event)
+    end
+end

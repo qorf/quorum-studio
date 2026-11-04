@@ -1,0 +1,29 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.StageConfirmDialog
+
+/*
+A stage dialog's "Include 2 media files" box (Add A5b, D1): the list adds
+or drops the box's files and the main button counts again. A checkbox runs
+its behavior when checked and disposes it when unchecked, so both do the
+same.
+*/
+class StageIncludeBehavior is Behavior
+    StageConfirmDialog dialog = undefined
+
+    action SetDialog(StageConfirmDialog value)
+        dialog = value
+    end
+
+    action Run(BehaviorEvent event)
+        Dispose()
+    end
+
+    action Dispose
+        if dialog not= undefined
+            dialog:UpdateCount()
+        end
+    end
+end

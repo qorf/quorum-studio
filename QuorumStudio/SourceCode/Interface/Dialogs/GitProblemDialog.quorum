@@ -1,0 +1,93 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Game.Graphics.Label
+use Libraries.Development.Versioning.GitProblem
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.GitProblemActionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.GitProblemDetailsBehavior
+
+/*
+A git problem (Push P5): one plain sentence, Show Details for JGit's own
+words, Close, and an optional main action such as "Pull, then Push" or
+"Open Project Properties". Focus starts on the main action, or on Close.
+It's made in the Forms style, as ErrorDialog is.
+*/
+class GitProblemDialog is Dialog
+    Label messageLabel = undefined
+    Label detailsLabel = undefined
+    Button closeButton = undefined
+    Button detailsButton = undefined
+    Button mainButton = undefined
+    text details = ""
+
+    DialogCancelBehavior closeBehavior
+    GitProblemActionBehavior actionBehavior
+    GitProblemDetailsBehavior detailsBehavior
+
+    on create
+        SetModal(true)
+    end
+
+    // Builds the dialog for one problem. Call it once, before Show.
+    action Setup(GitProblem problem)
+        SetName(problem:GetTitle())
+        SetPercentageWidth(0.5)
+        SetPixelHeight(220)
+        closeBehavior:SetDialog(me)
+        details = problem:GetDetails()
+
+        Page page = InitializeDefaultPage()
+        messageLabel = page:AddLabel("Problem", problem:GetMessage())
+        if details not= ""
+            // Empty until Show Details; then JGit's words.
+            detailsLabel = page:AddLabel("Details", "")
+        end
+
+        // The footer, left to right: Show Details, Close, then the main
+        // action at the right.
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        buttonGroup:PositionFromBottom()
+        if details not= ""
+            detailsButton = buttonGroup:AddButton("Show Details")
+            detailsBehavior:SetDialog(me)
+            detailsButton:SetBehavior(detailsBehavior)
+        end
+        closeButton = buttonGroup:AddButton("Close")
+        closeButton:SetBehavior(closeBehavior)
+
+        if problem:GetActionName() not= "" and problem:GetAction() not= undefined
+            mainButton = buttonGroup:AddButton(problem:GetActionName())
+            // The main action: the accent button style.
+            mainButton:SetInterfaceOptionsKey("DialogAcceptButton")
+            actionBehavior:SetDialog(me)
+            actionBehavior:SetAction(problem:GetAction())
+            mainButton:SetBehavior(actionBehavior)
+            SetBehavior(actionBehavior)
+        else
+            closeButton:SetInterfaceOptionsKey("DialogAcceptButton")
+            SetBehavior(closeBehavior)
+        end
+    end
+
+    action OnShow
+        if mainButton not= undefined
+            mainButton:Focus()
+        else
+            closeButton:Focus()
+        end
+    end
+
+    // Show Details: JGit's own words, and focus on them.
+    action ShowDetails
+        if detailsLabel = undefined
+            return now
+        end
+        detailsLabel:SetText(details)
+        RequestLayout()
+        detailsLabel:Focus()
+    end
+end

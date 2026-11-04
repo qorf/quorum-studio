@@ -1,0 +1,46 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.BranchSwitcher
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.SwitchBranchRequest
+use Libraries.Development.Versioning.SwitchBranchResult
+use Libraries.Development.Versioning.TeamStatus
+
+// Git thread: switches or creates, reads the status, and finishes on the
+// main thread.
+class SwitchBranchRequestBehavior is QuorumStudioBehavior
+    QuorumProject project = undefined
+    SwitchBranchRequest request = undefined
+    BranchSwitcher switcher = undefined
+
+    action Setup(QuorumProject projectValue, SwitchBranchRequest requestValue, BranchSwitcher switcherValue)
+        project = projectValue
+        request = requestValue
+        switcher = switcherValue
+    end
+
+    action Run(BehaviorEvent event)
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+
+        Git git
+        SwitchBranchResult result = git:SwitchBranch(project:GetGitRepository(), request)
+        StatusRequestBehavior reader
+        TeamStatus status = reader:GetStatus(project)
+        TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+        if teamTab not= undefined
+            teamTab:PostStatus(status)
+        end
+
+        BranchSwitchedBehavior done
+        done:Setup(switcher, result)
+        outPane:AddBehavior(done)
+    end
+end

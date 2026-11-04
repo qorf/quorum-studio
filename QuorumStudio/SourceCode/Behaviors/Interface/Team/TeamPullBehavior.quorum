@@ -1,0 +1,128 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.Tab
+use Libraries.Containers.Array
+use Libraries.Containers.Iterator
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.TeamReporter
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.GitProblem
+
+/*
+Team > Pull, on the main thread. Open files in the project with unsaved
+changes are saved first, after asking (Pull L1). Then the Team tab opens,
+for the progress and the result, and the pull runs on the git thread
+(PullRequestBehavior).
+*/
+class TeamPullBehavior is QuorumStudioBehavior
+    // Push P4's "Pull, then Push": run on the git thread after a clean pull.
+    QuorumStudioBehavior afterCleanPull = undefined
+
+    /*
+    This action sets a behavior to run on the git thread right after a pull
+    that ended cleanly (up to date, fast-forwarded, or merged without
+    conflicts). After any other pull it isn't run.
+    */
+    action SetAfterCleanPull(QuorumStudioBehavior value)
+        afterCleanPull = value
+    end
+
+    action Run(BehaviorEvent event)
+        QuorumStudio studio = GetMainApplication()
+        StudioFocusManager manager = studio:GetStudioFocusManager()
+        Project project = manager:GetProjectFocus()
+        TeamReporter reporter
+        if not (project is QuorumProject)
+            reporter:Report("Select a project in the Project Tree to pull.")
+            return now
+        end
+        QuorumProject quorumProject = cast(QuorumProject, project)
+        if not quorumProject:HasGitSupport()
+            reporter:Report(quorumProject:GetName() + " isn't in a Git repository, so there's nothing to pull.")
+            return now
+        end
+
+        Array<EditorTab> unsaved = GetUnsavedTabs(quorumProject)
+        if unsaved:IsEmpty()
+            StartPull(quorumProject, event)
+            return now
+        end
+
+        // L1: ask first. Save and Pull saves them, then pulls.
+        SaveAndPullBehavior saveAndPull
+        saveAndPull:Setup(me, quorumProject, unsaved)
+        GitProblem problem
+        problem:SetTitle("Pull")
+        problem:SetMessage(UnsavedSentence(unsaved))
+        problem:SetAction("Save and Pull", saveAndPull)
+        reporter:ReportProblem(problem)
+    end
+
+    /*
+    This action opens the Team tab and queues the pull on the git thread.
+    Call it on the main thread, once unsaved files are dealt with.
+    */
+    action StartPull(QuorumProject project, BehaviorEvent event)
+        QuorumStudio studio = GetMainApplication()
+        Behaviors behaviors = studio:GetBehaviors()
+        PullRequestBehavior pullRequest = behaviors:GetPullRequestBehavior()
+        if pullRequest:IsPulling()
+            return now
+        end
+
+        // The progress (L2) and the result (L9) show in the Team tab.
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+        outPane:GetTeamTab()
+
+        pullRequest:Prepare(project, afterCleanPull)
+        ThreadedBehavior threaded = behaviors:GetThreadedPullRequestBehavior()
+        threaded:Run(event)
+    end
+
+    // The open tabs of files in the project that have unsaved changes.
+    private action GetUnsavedTabs(QuorumProject project) returns Array<EditorTab>
+        Array<EditorTab> unsaved
+        QuorumStudio studio = GetMainApplication()
+        CodeEditorTabPane editor = studio:GetTabPane()
+        File folder = project:GetLocation()
+        text folderPath = folder:GetAbsolutePath() + "/"
+
+        Iterator<Tab> tabs = editor:GetOpenTabIterator()
+        repeat while tabs:HasNext()
+            Tab tab = tabs:Next()
+            if tab is EditorTab
+                EditorTab editorTab = cast(EditorTab, tab)
+                File file = editorTab:GetFile()
+                if editorTab:IsDirty() and file not= undefined
+                    text path = file:GetAbsolutePath()
+                    if path:StartsWith(folderPath)
+                        unsaved:Add(editorTab)
+                    end
+                end
+            end
+        end
+        return unsaved
+    end
+
+    // "Hero.quorum has unsaved changes. Save it before pulling?"
+    private action UnsavedSentence(Array<EditorTab> unsaved) returns text
+        EditorTab first = unsaved:Get(0)
+        File firstFile = first:GetFile()
+        if unsaved:GetSize() = 1
+            return firstFile:GetFileName() + " has unsaved changes. Save it before pulling?"
+        end
+        if unsaved:GetSize() = 2
+            EditorTab second = unsaved:Get(1)
+            File secondFile = second:GetFile()
+            return firstFile:GetFileName() + " and " + secondFile:GetFileName() + " have unsaved changes. Save them before pulling?"
+        end
+        return "" + unsaved:GetSize() + " files have unsaved changes, starting with " + firstFile:GetFileName() + ". Save them before pulling?"
+    end
+end

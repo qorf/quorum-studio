@@ -1,0 +1,49 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+
+/*
+Team > Push, the Team tab's Push button and its menu item. On the main
+thread: brings the Team tab to the front (focus stays where it is), then
+queues the push on the git thread (PushRequestBehavior). Each push gets
+its own PushRequestBehavior, so P7's answer belongs to that push only.
+*/
+class TeamPushBehavior is QuorumStudioBehavior
+    boolean newBranchConfirmed = false
+
+    action SetNewBranchConfirmed(boolean value)
+        newBranchConfirmed = value
+    end
+
+    action Run(BehaviorEvent event)
+        QuorumStudio studio = GetMainApplication()
+        if studio = undefined
+            GameStateManager manager
+            studio = cast(QuorumStudio, manager:GetGame())
+        end
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+        TeamTab teamTab = outPane:GetTeamTab()
+        outPane:Select(teamTab, false)
+
+        // A push or pull is already running.
+        if teamTab:IsShowingProgress()
+            return now
+        end
+        Behaviors behaviors = teamTab:GetBehaviors()
+        if behaviors = undefined
+            return now
+        end
+
+        PushRequestBehavior push
+        push:SetMainApplication(studio)
+        push:SetNewBranchConfirmed(newBranchConfirmed)
+        ThreadedBehavior threaded
+        threaded:SetNestedBehavior(push)
+        threaded:SetThreadRunner(behaviors:GetGitRunner())
+        threaded:Run(event)
+    end
+end

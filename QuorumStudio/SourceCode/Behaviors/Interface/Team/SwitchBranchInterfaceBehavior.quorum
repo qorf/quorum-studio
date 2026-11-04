@@ -1,0 +1,56 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Studio.TeamReporter
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.GitProblem
+
+/*
+Team > Switch Branch... (B1), Team > New Branch... (B4) and the Team tab's
+Switch Branch... button. Main thread. Reads the branches on the git thread
+first (LoadBranchesBehavior), which then opens the dialog.
+*/
+class SwitchBranchInterfaceBehavior is QuorumStudioBehavior
+    boolean opensNewBranch = false
+
+    action SetOpensNewBranch(boolean value)
+        opensNewBranch = value
+    end
+
+    action Run(BehaviorEvent event)
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        StudioFocusManager focus = studio:GetStudioFocusManager()
+        Project project = focus:GetProjectFocus()
+
+        text title = "Switch Branch"
+        if opensNewBranch
+            title = "New Branch"
+        end
+        TeamReporter reporter
+        if not (project is QuorumProject)
+            GitProblem problem
+            problem:SetTitle(title)
+            problem:SetMessage("Select a project in the Project Tree first.")
+            reporter:ReportProblem(problem)
+            return now
+        end
+        QuorumProject quorumProject = cast(QuorumProject, project)
+        if not quorumProject:HasGitSupport()
+            GitProblem problem
+            problem:SetTitle(title)
+            problem:SetMessage(quorumProject:GetName() + " isn't in a Git repository, so it has no branches.")
+            reporter:ReportProblem(problem)
+            return now
+        end
+
+        LoadBranchesBehavior load
+        load:Setup(quorumProject, opensNewBranch)
+        load:SetMainApplication(studio)
+        studio:GetBehaviors():GetGitRunner():Add(load)
+    end
+end

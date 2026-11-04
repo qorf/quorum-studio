@@ -1,0 +1,28 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+
+/*
+The problem dialog's Open Project Properties button (Push P6): opens the
+project's Properties on the Teams tab. The dialog runs it on the main
+thread.
+*/
+class OpenTeamsTabBehavior is Behavior
+    QuorumProject project = undefined
+
+    action SetProject(QuorumProject value)
+        project = value
+    end
+
+    action Run(BehaviorEvent event)
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        Behaviors behaviors = studio:GetBehaviors()
+        OpenProjectPropertiesBehavior properties = behaviors:GetOpenProjectPropertiesBehavior()
+        properties:OpenOnTeamsTab(project)
+    end
+end

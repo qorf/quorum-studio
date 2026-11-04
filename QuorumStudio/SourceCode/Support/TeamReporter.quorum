@@ -1,0 +1,74 @@
+package Libraries.Development.Environment.Studio
+
+use Libraries.Game.GameStateManager
+use Libraries.Development.Versioning.GitProblem
+use Libraries.Development.Environment.Studio.Behaviors.ReportTeamResultBehavior
+use Libraries.Development.Environment.Studio.Behaviors.ShowGitProblemBehavior
+use Libraries.Development.Environment.Studio.Behaviors.OpenTeamsTabBehavior
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.GitErrorWording
+
+/*
+Reports what a git action did, from any thread. Nothing is announced to
+the screen reader (the user's rule): the Team tab shows results, and the
+dialog reports itself when it opens.
+*/
+class TeamReporter
+    /*
+    This action reports a result, such as "Hero.quorum staged. 3 files
+    staged for the next commit." When the Team tab isn't the one showing,
+    the sentence is added to the Console as one line; the Console isn't
+    cleared. The Team tab shows the result itself.
+    */
+    action Report(text sentence)
+        OutputEditorTabPane outPane = GetOutputPane()
+        if outPane = undefined
+            return now
+        end
+        ReportTeamResultBehavior behavior
+        behavior:SetSentence(sentence)
+        outPane:AddBehavior(behavior)
+    end
+
+    // This action shows a problem dialog (Push P5).
+    action ReportProblem(GitProblem problem)
+        OutputEditorTabPane outPane = GetOutputPane()
+        if outPane = undefined
+            return now
+        end
+        ShowGitProblemBehavior behavior
+        behavior:SetProblem(problem)
+        outPane:AddBehavior(behavior)
+    end
+
+    /*
+    This action shows Push P6: the server needs a username and password
+    (or turned down the saved ones), with Open Project Properties. It's
+    safe to call from any thread.
+    - project: the project whose Teams tab to open;
+    - kind: GitConstants' ERROR_NEEDS_CREDENTIALS or ERROR_NOT_AUTHORIZED;
+    - verb: "push" or "pull";
+    - title: such as "Push to origin/main";
+    - details: JGit's own words.
+    */
+    action ReportCredentialsProblem(QuorumProject project, integer kind, text verb, text title, text details)
+        GitErrorWording wording
+        GitProblem problem
+        problem:SetTitle(title)
+        problem:SetMessage(wording:GetSentence(kind, verb, ""))
+        problem:SetDetails(details)
+        OpenTeamsTabBehavior openBehavior
+        openBehavior:SetProject(project)
+        problem:SetAction("Open Project Properties", openBehavior)
+        ReportProblem(problem)
+    end
+
+    private action GetOutputPane returns OutputEditorTabPane
+        GameStateManager manager
+        if not (manager:GetGame() is QuorumStudio)
+            return undefined
+        end
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        return studio:GetOutputPane()
+    end
+end

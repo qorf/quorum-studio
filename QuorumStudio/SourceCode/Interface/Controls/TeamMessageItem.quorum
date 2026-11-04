@@ -1,0 +1,50 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+
+/*
+A muted line in the Team tab, such as "Nothing to commit. Every file
+matches the last commit." (A5) or "QuincyWorld isn't in a Git repository."
+(A6). The text is in its own label, so the row's selection colors don't
+change it, as in SearchSummaryItem.
+*/
+class TeamMessageItem is ListItem
+    Label detail
+    text message = ""
+
+    on create
+        parent:ListItem:icon:Hide()
+        parent:ListItem:label:Hide()
+
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        detail:SetAccessibilityCode(detail:parent:Item:NOT_ACCESSIBLE)
+        detail:SetAcceptsMouseInput(false)
+        detail:SetPositionOnBaseLine(false)
+        detail:SetLeftMargin(8)
+        Add(detail)
+    end
+
+    action Setup(text value, ColorGroup mutedColor)
+        message = value
+        if mutedColor not= undefined
+            detail:SetColor(mutedColor)
+        end
+        detail:SetText(value)
+        SetName(value)
+    end
+
+    action GetMessage returns text
+        return message
+    end
+
+    action GetText returns text
+        return GetName()
+    end
+end

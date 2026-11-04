@@ -1,0 +1,220 @@
+package Libraries.Development.Environment.Studio
+
+use Libraries.Containers.Array
+use Libraries.Containers.Iterator
+use Libraries.Containers.HashTable
+use Libraries.System.File
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Projects.ProjectView
+use Libraries.Development.Environment.Projects.QuorumProjectView
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+
+/*
+After git changed files on disk (a pull, a branch switch): reloads the
+project's open tabs, closes tabs whose file is gone, and rebuilds the
+project's item in the Project Tree. A tab with unsaved text is never
+reloaded or closed. Main thread only.
+
+A pull names the files it changed (AddChangedFile), so only their tabs are
+reloaded; a branch switch names none, so every open tab in the project is
+compared with its file. Either way, a tab whose file is gone is closed.
+*/
+class ProjectFilesRefresher
+    integer reloadedCount = 0
+    Array<text> closedNames
+    // Tabs left alone because they have unsaved text.
+    Array<text> keptNames
+    // The files git changed, with / between folders. Empty: every tab.
+    Array<text> changedPaths
+    // How a closed tab is explained, after the file's name (one) or the
+    // number of files (more than one).
+    text closedOne = "isn't on this branch, so its tab was closed."
+    text closedMany = "files aren't on this branch, so their tabs were closed."
+
+    /*
+    This action does all three and returns a sentence for the result, such
+    as " 2 open files were reloaded. Boss.quorum isn't on this branch, so
+    its tab was closed." It starts with a space, or is "".
+    */
+    action Refresh(QuorumProject project) returns text
+        ReloadOpenTabs(project)
+        RefreshProjectTree(project)
+        return Sentence()
+    end
+
+    /*
+    This action limits reloading to the files git changed (Pull). Call it
+    for each file before Refresh. Without any, every open tab in the
+    project is checked (a branch switch).
+    */
+    action AddChangedFile(File file)
+        if file = undefined
+            return now
+        end
+        changedPaths:Add(Normalize(file:GetAbsolutePath()))
+    end
+
+    /*
+    This action sets how a closed tab is explained: after the file's name
+    ("was deleted by the pull, so its tab was closed.") and after a number
+    of files ("files were deleted by the pull, so their tabs were
+    closed.").
+    */
+    action SetClosedWords(text one, text many)
+        closedOne = one
+        closedMany = many
+    end
+
+    action ReloadOpenTabs(QuorumProject project)
+        reloadedCount = 0
+        closedNames:Empty()
+        keptNames:Empty()
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        CodeEditorTabPane editor = studio:GetTabPane()
+        File folder = project:GetLocation()
+        text folderPath = Normalize(folder:GetAbsolutePath())
+
+        // Collected first: closing a tab while walking the tabs would
+        // change what's being walked.
+        Array<EditorTab> tabsInProject
+        Iterator<Tab> tabs = editor:GetOpenTabIterator()
+        repeat while tabs:HasNext()
+            Tab tab = tabs:Next()
+            if tab is EditorTab
+                EditorTab editorTab = cast(EditorTab, tab)
+                File file = editorTab:GetFile()
+                if file not= undefined
+                    text path = Normalize(file:GetAbsolutePath())
+                    if path:StartsWith(folderPath + "/")
+                        tabsInProject:Add(editorTab)
+                    end
+                end
+            end
+        end
+
+        integer counter = 0
+        repeat while counter < tabsInProject:GetSize()
+            EditorTab editorTab = tabsInProject:Get(counter)
+            File file = editorTab:GetFile()
+            boolean gone = not file:Exists()
+            boolean changed = gone or changedPaths:IsEmpty() or changedPaths:Has(Normalize(file:GetAbsolutePath()))
+            // A tab for a file git didn't touch is left as it is.
+            if changed
+                if editorTab:IsDirty()
+                    // Unsaved text stays, even if the file is gone.
+                    keptNames:Add(file:GetFileName())
+                elseif gone
+                    closedNames:Add(file:GetFileName())
+                    editor:CloseFile(file)
+                else
+                    CodeTextBox box = editorTab:GetTextBox()
+                    if box not= undefined
+                        check
+                            text newText = file:Read()
+                            if box:GetText() not= newText
+                                box:SetText(newText)
+                                editorTab:SetIsDirty(false)
+                                editorTab:SetIsParseDirty(true)
+                                reloadedCount = reloadedCount + 1
+                            end
+                        detect e
+                        end
+                    end
+                end
+            end
+            counter = counter + 1
+        end
+    end
+
+    // As NewFileDialog:AppendToProjectTree does: build the project's item
+    // again and put it where the old one was, keeping what was open.
+    action RefreshProjectTree(QuorumProject project)
+        ProjectView view = project:GetProjectView()
+        if not (view is QuorumProjectView)
+            return now
+        end
+        QuorumProjectView projectView = cast(QuorumProjectView, view)
+        TreeItem treeItem = projectView:GetLogicalTree()
+        if treeItem = undefined
+            return now
+        end
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        ProjectTree projectTree = studio:GetProjectTree()
+        Iterator<TreeItem> items = projectTree:GetTreeItems()
+        boolean found = false
+        TreeItem oldItem = undefined
+        integer counter = 0
+        repeat while items:HasNext() and found = false
+            TreeItem candidate = items:Next()
+            if candidate is ProjectTreeItem
+                ProjectTreeItem header = cast(ProjectTreeItem, candidate)
+                if header:GetProject() = project
+                    found = true
+                    oldItem = candidate
+                end
+            end
+            if found = false
+                counter = counter + 1
+            end
+        end
+
+        if found = false
+            return now
+        end
+
+        HashTable<text, text> expand = projectTree:GetExpandState()
+        projectTree:Remove(oldItem)
+        projectTree:Add(counter, treeItem)
+        projectTree:LoadExpandState(expand)
+    end
+
+    action GetReloadedCount returns integer
+        return reloadedCount
+    end
+
+    action GetClosedNames returns Array<text>
+        return closedNames
+    end
+
+    action GetKeptCount returns integer
+        return keptNames:GetSize()
+    end
+
+    action GetKeptNames returns Array<text>
+        return keptNames
+    end
+
+    // The same path on every system: / between folders.
+    private action Normalize(text path) returns text
+        return path:Replace("\", "/")
+    end
+
+    private action Sentence returns text
+        text result = ""
+        if reloadedCount = 1
+            result = " 1 open file was reloaded."
+        elseif reloadedCount > 1
+            result = " " + reloadedCount + " open files were reloaded."
+        end
+        if closedNames:GetSize() = 1
+            result = result + " " + closedNames:Get(0) + " " + closedOne
+        elseif closedNames:GetSize() > 1
+            result = result + " " + closedNames:GetSize() + " " + closedMany
+        end
+        if keptNames:GetSize() = 1
+            result = result + " " + keptNames:Get(0) + " has unsaved changes, so it was left as it is."
+        elseif keptNames:GetSize() > 1
+            result = result + " " + keptNames:GetSize() + " tabs with unsaved changes were left as they were."
+        end
+        return result
+    end
+end

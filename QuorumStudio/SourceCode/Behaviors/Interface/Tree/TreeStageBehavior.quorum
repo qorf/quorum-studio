@@ -1,0 +1,140 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Containers.Array
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.StageGate
+use Libraries.Development.Environment.Studio.TeamReporter
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.TeamStatus
+use Libraries.Development.Versioning.TeamFileChange
+
+/*
+Stage or Unstage from the Project Tree (Tree M1 to M3): one file, a folder
+and everything under it, or the whole project (its row). It hands the
+changes to StageGate, which saves open files, asks first when the rules
+say so (many files, media, Build and Run), and stages on the git thread.
+The result shows in the Team tab, plus one Console line when the Team tab
+isn't showing.
+*/
+class TreeStageBehavior is TreeGitBehavior
+    boolean unstage = false
+    TeamFileChange constants
+
+    action SetUnstage(boolean value)
+        unstage = value
+    end
+
+    action Continue(TeamStatus status)
+        ProjectTreeItem row = GetItem()
+        if row = undefined or status = undefined
+            return now
+        end
+        QuorumProject project = row:GetProject()
+        File target = row:GetFile()
+        if project = undefined or target = undefined
+            return now
+        end
+        TeamReporter reporter
+        if not status:IsReady()
+            reporter:Report("Couldn't read the changes in " + project:GetName() + ".")
+            return now
+        end
+
+        StageGate gate
+        gate:SetProject(project)
+        gate:SetUnstage(unstage)
+        if row:GetParentTreeItem() = undefined or target:IsDirectory()
+            // The project's row stands for its whole folder.
+            File folder = target
+            if row:GetParentTreeItem() = undefined
+                folder = project:GetLocation()
+            end
+            if CountUnder(status, folder, unstage) = 0
+                if unstage
+                    reporter:Report("Nothing is staged in " + folder:GetFileName() + ".")
+                else
+                    reporter:Report(folder:GetFileName() + " has no changes to stage.")
+                end
+                return now
+            end
+            gate:SetSubject(folder:GetFileName())
+            gate:AddFolder(status, folder)
+        else
+            Array<TeamFileChange> changes = GetFileChanges(status, target, unstage)
+            if changes:IsEmpty()
+                if unstage
+                    reporter:Report(target:GetFileName() + " isn't staged.")
+                else
+                    reporter:Report(target:GetFileName() + " has no changes to stage.")
+                end
+                return now
+            end
+            gate:AddChanges(changes)
+        end
+        gate:Begin()
+    end
+
+    /*
+    This action returns a file's rows that staging would change (Not
+    staged, Untracked and Conflicts), or, for an unstage, its Staged row.
+    The Project Tree's menu uses it too.
+    */
+    action GetFileChanges(TeamStatus status, File file, boolean stagedOnes) returns Array<TeamFileChange>
+        Array<TeamFileChange> found
+        Array<TeamFileChange> rows = status:GetChanges(file)
+        integer index = 0
+        repeat while index < rows:GetSize()
+            TeamFileChange change = rows:Get(index)
+            integer group = change:GetGroup()
+            if stagedOnes
+                if group = constants:STAGED
+                    found:Add(change)
+                end
+            elseif group = constants:NOT_STAGED or group = constants:UNTRACKED or group = constants:CONFLICT
+                found:Add(change)
+            end
+            index = index + 1
+        end
+        return found
+    end
+
+    /*
+    This action counts the rows in a folder and below that StageGate's
+    AddFolder would take: Not staged, Untracked and Conflicts, or Staged
+    for an unstage. The project's folder counts all of them.
+    */
+    action CountUnder(TeamStatus status, File folder, boolean stagedOnes) returns integer
+        if status = undefined or folder = undefined or not status:IsReady()
+            return 0
+        end
+        text prefix = Normalize(folder:GetAbsolutePath()) + "/"
+        if stagedOnes
+            return CountIn(status:GetStaged(), prefix)
+        end
+        return CountIn(status:GetNotStaged(), prefix) + CountIn(status:GetUntracked(), prefix) + CountIn(status:GetConflicts(), prefix)
+    end
+
+    private action CountIn(Array<TeamFileChange> list, text prefix) returns integer
+        integer count = 0
+        integer index = 0
+        repeat while index < list:GetSize()
+            TeamFileChange change = list:Get(index)
+            File changed = change:GetFile()
+            if changed not= undefined
+                text path = Normalize(changed:GetAbsolutePath())
+                if path:StartsWith(prefix)
+                    count = count + 1
+                end
+            end
+            index = index + 1
+        end
+        return count
+    end
+
+    private action Normalize(text path) returns text
+        text backslash = ""
+        backslash = backslash:GetUnicodeValue(92)
+        return path:Replace(backslash, "/")
+    end
+end

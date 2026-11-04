@@ -1,0 +1,84 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.Tab
+use Libraries.System.File
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.ProjectFilesRefresher
+use Libraries.Development.Environment.Studio.TeamReporter
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.ResetResult
+use Libraries.Development.Versioning.GitProblem
+
+/*
+Main thread, after Reset to Last Commit (Tree M4): reloads the file's open
+tab from disk, and reports "Hero.quorum reset to the last commit." (one
+Console line when the Team tab isn't showing), or opens the problem dialog
+when git couldn't reset it. The user already agreed to lose unsaved text,
+so the tab is reloaded even when it had some.
+*/
+class TreeResetDoneBehavior is Behavior
+    QuorumProject project = undefined
+    File file = undefined
+    ResetResult result = undefined
+    boolean finished = false
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action Setup(QuorumProject projectValue, File fileValue, ResetResult value)
+        project = projectValue
+        file = fileValue
+        result = value
+    end
+
+    action Run(BehaviorEvent event)
+        finished = true
+        if project = undefined or file = undefined
+            return now
+        end
+        text name = file:GetFileName()
+        TeamReporter reporter
+        if result = undefined or not result:IsSuccessful()
+            GitProblem problem
+            problem:SetTitle("Reset")
+            problem:SetMessage("Couldn't reset " + name + " to the last commit.")
+            if result not= undefined
+                problem:SetDetails(result:GetMessage())
+            end
+            reporter:ReportProblem(problem)
+            return now
+        end
+
+        // The refresher never reloads a tab with unsaved text; here that
+        // text was meant to go, so the tab is marked saved first.
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        CodeEditorTabPane editor = studio:GetTabPane()
+        if editor:IsOpen(file)
+            Tab tab = editor:GetOpenTab(file)
+            if tab is EditorTab
+                EditorTab editorTab = cast(EditorTab, tab)
+                editorTab:SetIsDirty(false)
+            end
+        end
+        ProjectFilesRefresher refresher
+        refresher:AddChangedFile(file)
+        refresher:ReloadOpenTabs(project)
+
+        if refresher:GetReloadedCount() > 0
+            reporter:Report(name + " reset to the last commit. Its open tab was reloaded.")
+        else
+            reporter:Report(name + " reset to the last commit.")
+        end
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+end

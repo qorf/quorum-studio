@@ -1,0 +1,97 @@
+package Libraries.Development.Versioning
+
+/*
+Progress for one fetch, pull or push. JGit calls Start, BeginTask, Update
+and EndTask on the git thread (through QuorumProgressMonitor.java); the
+Team tab reads the title, the percent and the words each frame on the main
+thread (Push P9). Cancel asks JGit to stop.
+*/
+class TeamProgressMonitor is VersionProgressMonitor
+    // What's happening, such as "Pushing 3 commits to origin/main".
+    text title = ""
+    text taskName = ""
+    integer totalWork = 0
+    integer doneWork = 0
+    boolean cancelled = false
+    boolean finished = false
+
+    action Start(integer i)
+    end
+
+    action BeginTask(text value, integer i)
+        taskName = value
+        totalWork = i
+        doneWork = 0
+    end
+
+    action Update(integer i)
+        doneWork = doneWork + i
+    end
+
+    action EndTask
+    end
+
+    action IsCancelled returns boolean
+        return cancelled
+    end
+
+    action Cancel
+        cancelled = true
+    end
+
+    // The git work is over: the Team tab hides the progress row.
+    action Finish
+        finished = true
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+
+    action GetTitle returns text
+        return title
+    end
+
+    action SetTitle(text value)
+        title = value
+    end
+
+    // The current task's percent, or -1 when JGit doesn't know its size.
+    action GetPercent returns integer
+        if totalWork <= 0
+            return -1
+        end
+        number fraction = (doneWork * 100.0) / totalWork
+        integer percent = cast(integer, fraction)
+        if percent > 100
+            return 100
+        end
+        return percent
+    end
+
+    /*
+    This action says the current task in plain words, with its percent when
+    it's known: "Getting ready", "Sending, 60%", "Receiving, 40%",
+    "Finishing". JGit's task names are matched by their first word; others
+    are shown as JGit says them.
+    */
+    action GetWords returns text
+        text words = taskName
+        if taskName:StartsWith("Counting") or taskName:StartsWith("Finding") or taskName:StartsWith("Compressing")
+            words = "Getting ready"
+        elseif taskName:StartsWith("Writing")
+            words = "Sending"
+        elseif taskName:StartsWith("Receiving") or taskName:StartsWith("Resolving")
+            words = "Receiving"
+        elseif taskName:StartsWith("Updating") or taskName:StartsWith("Checking out")
+            words = "Finishing"
+        elseif taskName = ""
+            words = "Connecting"
+        end
+        integer percent = GetPercent()
+        if percent >= 0
+            return words + ", " + percent + "%"
+        end
+        return words
+    end
+end

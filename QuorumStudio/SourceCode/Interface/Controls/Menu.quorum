@@ -408,30 +408,25 @@ class Menu is MenuBar, SelectionListener
         MenuItem pullMenuItem
         pullMenuItem:SetName("Pull")
         pullMenuItem:SetShortcut(keyMap:GetPullRequestKey())
-        pullMenuItem:SetBehavior(behaviors:GetThreadedPullRequestBehavior())
+        pullMenuItem:SetBehavior(behaviors:GetTeamPullBehavior())
         pullMenuItem:SetMnemonic("p")
         teamItems:Add(pullMenuItem)
 
         MenuItem StatusMenuItem
         StatusMenuItem:SetName("Status")
         StatusMenuItem:SetShortcut(keyMap:GetStatusRequestKey())
-        StatusMenuItem:SetBehavior(behaviors:GetThreadedStatusRequestBehavior())
+        StatusMenuItem:SetBehavior(behaviors:GetTeamStatusBehavior())
         StatusMenuItem:SetMnemonic("s")
         teamItems:Add(StatusMenuItem)
 
-        MenuItem AddMenuItem
-        AddMenuItem:SetName("Add")
-        AddMenuItem:SetShortcut(keyMap:GetAddRequestKey())
-        AddMenuItem:SetBehavior(behaviors:GetThreadedAddRequestBehavior())
-        AddMenuItem:SetMnemonic("a")
-        teamItems:Add(AddMenuItem)
-
-        MenuItem AddProjectMenuItem
-        AddProjectMenuItem:SetName("Add Project Files")
-        AddProjectMenuItem:SetShortcut(keyMap:GetAddProjectRequestKey())
-        AddProjectMenuItem:SetBehavior(behaviors:GetThreadedAddProjectRequestBehavior())
-        AddProjectMenuItem:SetMnemonic("f")
-        teamItems:Add(AddProjectMenuItem)
+        // Stages what's selected in the Project Tree (a file, a folder or a
+        // project), as the tree's own Stage items do.
+        MenuItem stageMenuItem
+        stageMenuItem:SetName("Stage")
+        stageMenuItem:SetShortcut(keyMap:GetAddRequestKey())
+        stageMenuItem:SetBehavior(behaviors:GetAddRequestBehavior())
+        stageMenuItem:SetMnemonic("a")
+        teamItems:Add(stageMenuItem)
 
         MenuItem commitMenuItem
         commitMenuItem:SetName("Commit")
@@ -443,9 +438,23 @@ class Menu is MenuBar, SelectionListener
         MenuItem pushMenuItem
         pushMenuItem:SetName("Push")
         pushMenuItem:SetShortcut(keyMap:GetPushRequestKey())
-        pushMenuItem:SetBehavior(behaviors:GetThreadedPushRequestBehavior())
+        pushMenuItem:SetBehavior(behaviors:GetTeamPushBehavior())
         pushMenuItem:SetMnemonic("u")
         teamItems:Add(pushMenuItem)
+
+        MenuItem switchBranchMenuItem
+        switchBranchMenuItem:SetName("Switch Branch...")
+        switchBranchMenuItem:SetShortcut(keyMap:GetSwitchBranchKey())
+        switchBranchMenuItem:SetBehavior(behaviors:GetSwitchBranchBehavior())
+        switchBranchMenuItem:SetMnemonic("b")
+        teamItems:Add(switchBranchMenuItem)
+
+        MenuItem newBranchMenuItem
+        newBranchMenuItem:SetName("New Branch...")
+        newBranchMenuItem:SetShortcut(keyMap:GetNewBranchKey())
+        newBranchMenuItem:SetBehavior(behaviors:GetNewBranchBehavior())
+        newBranchMenuItem:SetMnemonic("n")
+        teamItems:Add(newBranchMenuItem)
 
         teamMenu:SetName("Team")
         teamMenu:Add(teamItems)
@@ -647,6 +656,13 @@ class Menu is MenuBar, SelectionListener
         searchResults:SetShortcut(keyMap:GetFocusToSearchResultsKey())
         searchResults:SetMnemonic("s")
         windowsItems:Add(searchResults)
+
+        MenuItem team
+        team:SetName("Team")
+        team:SetBehavior(behaviors:GetFocusTeamBehavior())
+        team:SetShortcut(keyMap:GetFocusToTeamKey())
+        team:SetMnemonic("t")
+        windowsItems:Add(team)
 
         windowsMenu:SetName("Windows")
         windowsMenu:Add(windowsItems)

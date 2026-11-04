@@ -1,0 +1,33 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.BranchSwitcher
+use Libraries.Development.Versioning.SwitchBranchResult
+
+// Main thread: after a switch (B2), or git's refusal (B3).
+class BranchSwitchedBehavior is Behavior
+    BranchSwitcher switcher = undefined
+    SwitchBranchResult result = undefined
+    boolean finished = false
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action Setup(BranchSwitcher switcherValue, SwitchBranchResult value)
+        switcher = switcherValue
+        result = value
+    end
+
+    action Run(BehaviorEvent event)
+        finished = true
+        if switcher not= undefined and result not= undefined
+            switcher:Finished(result)
+        end
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+end

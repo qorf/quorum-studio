@@ -1,0 +1,34 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Versioning.GitProblem
+use Libraries.Development.Environment.Studio.Interface.GitProblemDialog
+
+// Shows a problem dialog on the main thread. A new dialog each time.
+class ShowGitProblemBehavior is Behavior
+    GitProblem problem = undefined
+    boolean finished = false
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action SetProblem(GitProblem value)
+        problem = value
+    end
+
+    action Run(BehaviorEvent event)
+        finished = true
+        if problem = undefined
+            return now
+        end
+        GitProblemDialog dialog
+        dialog:Setup(problem)
+        dialog:Show()
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+end

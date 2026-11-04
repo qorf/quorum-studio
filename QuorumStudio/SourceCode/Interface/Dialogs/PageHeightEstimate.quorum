@@ -1,0 +1,170 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Forms.Page
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.Glyph
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Game.GameDisplay
+use Libraries.Containers.Array
+
+/*
+Works out a dialog's height from what is on its page, by the rules
+FormRowLayout lays a page out with, so the dialog is as tall as its
+contents (StageConfirmDialog, CommitDialog's nothing-staged form).
+
+Sizes are in points, the unit of Dialog:SetPixelHeight. FormRowLayout
+leaves one line of its large font (32) above the first row, and 0.4 of
+that line after every row and around the footer. Those two are measured
+at size 32 without the interface scale, so they are pixels, and are
+divided by the scale here. A row's own height is one line of its font
+times its layout rows plus its padding (a label: its lines), as in
+FormRowLayout. The footer is its tallest button, with that gap above and
+below it and one more under it.
+
+Call Start, then one Add action per row in the page's order, then
+AddFooter, then GetHeight.
+*/
+class PageHeightEstimate
+    // The dialog's title bar (Dialog's BAR_HEIGHT).
+    constant number TITLE_BAR = 32
+    // FormRowLayout's large font size, and the share of its line between rows.
+    constant integer LARGE_SIZE = 32
+    constant number GAP_SHARE = 0.4
+    // FormRowLayout's rows are this share of the page's width.
+    constant number ROW_SHARE = 0.8
+    // Room for rounding, so the page never needs to scroll.
+    constant number SLACK = 6
+
+    Font measureFont = undefined
+    number scale = 1.0
+    number gap = 0
+    number total = 0
+    number rowWidth = 0
+
+    /*
+    This action starts the estimate.
+
+    Attribute: Parameter page The dialog's page (its default font is the layout's).
+    Attribute: Parameter widthShare The dialog's width as a share of the window, as given to SetPercentageWidth.
+    */
+    action Start(Page page, number widthShare)
+        GameStateManager manager
+        Game game = manager:GetGame()
+        if game not= undefined
+            scale = game:GetInterfaceScale()
+        end
+        if scale <= 0
+            scale = 1.0
+        end
+
+        number largeLine = 0
+        measureFont = page:GetDefaultFont()
+        if measureFont not= undefined
+            measureFont:SetSize(LARGE_SIZE)
+            largeLine = measureFont:GetLineHeight()
+        end
+        integer gapPixels = cast(integer, largeLine * GAP_SHARE)
+        gap = gapPixels / scale
+        total = TITLE_BAR + largeLine / scale
+
+        GameDisplay display = manager:GetGameDisplay()
+        if display not= undefined
+            rowWidth = display:GetWidth() / scale * widthShare * ROW_SHARE
+        end
+    end
+
+    // A label on its own row: its lines at its size, wrapped at the row's width.
+    action AddLabel(Label label)
+        Font font = SizedFont(label, label:GetFontSize())
+        if font = undefined
+            return now
+        end
+        integer lines = CountLines(font, label:GetText())
+        total = total + lines * font:GetLineHeight() + gap
+    end
+
+    // Any other control on its own row, such as a List, Checkbox or Tree.
+    action AddControl(Control control)
+        number height = LineHeight(control, control:GetFontSize())
+        if control:GetPixelHeight() not= 0
+            height = control:GetPixelHeight()
+        end
+        height = height * control:GetLayoutRows() + control:GetTopPadding() + control:GetBottomPadding()
+        total = total + height + gap
+    end
+
+    // The footer, by its tallest button (they share a size).
+    action AddFooter(Button button)
+        number height = LineHeight(button, button:GetFontSize()) + button:GetTopPadding() + button:GetBottomPadding()
+        total = total + height + gap * 3
+    end
+
+    // The dialog's height in points.
+    action GetHeight returns integer
+        return cast(integer, total + SLACK + 0.5)
+    end
+
+    private action LineHeight(Control control, integer size) returns number
+        Font font = SizedFont(control, size)
+        if font = undefined
+            return 0
+        end
+        return font:GetLineHeight()
+    end
+
+    // A copy of the control's font (the page's when it has none) at a size without the scale.
+    private action SizedFont(Control control, integer size) returns Font
+        Font font = control:GetFont()
+        if font = undefined
+            font = measureFont
+        end
+        if font = undefined
+            return undefined
+        end
+        Font sized = font:Copy()
+        sized:SetSize(size)
+        return sized
+    end
+
+    // How many lines a Label breaks the words into at the row's width.
+    private action CountLines(Font font, text value) returns integer
+        if rowWidth <= 0 or value = ""
+            return 1
+        end
+        Array<text> words = value:Split(" ")
+        number spaceWidth = TextWidth(font, " ")
+        integer lines = 1
+        number lineWidth = 0
+        integer index = 0
+        repeat while index < words:GetSize()
+            number wordWidth = TextWidth(font, words:Get(index))
+            if index = 0
+                lineWidth = wordWidth
+            elseif lineWidth + spaceWidth + wordWidth > rowWidth
+                lines = lines + 1
+                lineWidth = wordWidth
+            else
+                lineWidth = lineWidth + spaceWidth + wordWidth
+            end
+            index = index + 1
+        end
+        return lines
+    end
+
+    private action TextWidth(Font font, text value) returns number
+        number width = 0
+        integer index = 0
+        repeat while index < value:GetSize()
+            Glyph glyph = font:GetGlyph(value:GetCharacter(index))
+            if glyph not= undefined
+                width = width + glyph:horizontalAdvance
+            end
+            index = index + 1
+        end
+        return width
+    end
+end

@@ -1,0 +1,79 @@
+package Libraries.Development.Versioning
+
+use Libraries.Containers.Array
+
+/*
+The branches, from Git:ListBranches. Server branches that already have a
+branch of the same name on this computer are left out.
+*/
+class BranchListResult
+    Array<GitBranch> localBranches
+    Array<GitBranch> serverBranches
+    text currentBranch = ""
+    boolean detached = false
+    boolean successful = false
+    text message = ""
+
+    action GetLocalBranches returns Array<GitBranch>
+        return localBranches
+    end
+
+    action GetServerBranches returns Array<GitBranch>
+        return serverBranches
+    end
+
+    action GetCurrentBranch returns text
+        return currentBranch
+    end
+
+    action IsDetached returns boolean
+        return detached
+    end
+
+    action IsSuccessful returns boolean
+        return successful
+    end
+
+    action GetMessage returns text
+        return message
+    end
+
+    action GetCurrent returns GitBranch
+        integer counter = 0
+        repeat while counter < localBranches:GetSize()
+            GitBranch branch = localBranches:Get(counter)
+            if branch:IsCurrent()
+                return branch
+            end
+            counter = counter + 1
+        end
+        return undefined
+    end
+
+    // A branch on this computer called value, or undefined.
+    action FindLocal(text value) returns GitBranch
+        integer counter = 0
+        repeat while counter < localBranches:GetSize()
+            GitBranch branch = localBranches:Get(counter)
+            if branch:GetBranchName() = value
+                return branch
+            end
+            counter = counter + 1
+        end
+        return undefined
+    end
+
+    // A server-only branch called value ("scores") or written with its
+    // server ("origin/scores"), or undefined.
+    action FindServer(text value) returns GitBranch
+        integer counter = 0
+        repeat while counter < serverBranches:GetSize()
+            GitBranch branch = serverBranches:Get(counter)
+            if branch:GetLocalName() = value or branch:GetBranchName() = value
+                return branch
+            end
+            counter = counter + 1
+        end
+        return undefined
+    end
+end

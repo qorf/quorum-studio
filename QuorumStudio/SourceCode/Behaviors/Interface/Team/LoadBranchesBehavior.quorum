@@ -1,0 +1,42 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.BranchListResult
+use Libraries.Development.Versioning.TeamStatus
+
+// Git thread: reads the branches and the status, then opens the dialog on
+// the main thread.
+class LoadBranchesBehavior is QuorumStudioBehavior
+    QuorumProject project = undefined
+    boolean opensNewBranch = false
+
+    action Setup(QuorumProject value, boolean newBranch)
+        project = value
+        opensNewBranch = newBranch
+    end
+
+    action Run(BehaviorEvent event)
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+
+        Git git
+        BranchListResult branches = git:ListBranches(project:GetGitRepository())
+        StatusRequestBehavior reader
+        TeamStatus status = reader:GetStatus(project)
+        TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+        if teamTab not= undefined
+            teamTab:PostStatus(status)
+        end
+
+        OpenBranchDialogBehavior open
+        open:Setup(project, branches, status, opensNewBranch)
+        outPane:AddBehavior(open)
+    end
+end

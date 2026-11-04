@@ -1,0 +1,222 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.Glyph
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Development.Versioning.GitBranch
+
+/*
+One row in Switch Branch's two lists (S1, two lists): the branch's name,
+then, muted, how old its last commit is ("4 days", "3 weeks"), or
+"current" for the branch you're on. A server-only branch shows its short
+name ("scores") with "server · 5 days". The muted words are cut at the
+row's right edge and end in "..." when they don't fit, as the stage
+dialog's folders are (StageFileItem). The muted words aren't read by
+screen readers: the spoken name is the branch's name and the description
+says the rest ("Last commit 4 days ago: Add the second level").
+
+A row made with SetupMessage holds no branch: one muted line, such as
+"No branches are only on the server.", that ignores the mouse.
+*/
+class BranchListItem is ListItem
+    // The name label's left margin (ListItem's), the space before the
+    // muted words, and room kept at the row's right edge, in points.
+    constant number NAME_MARGIN = 4
+    constant number DETAIL_MARGIN = 12
+    constant number EDGE_ROOM = 8
+
+    GitBranch branch = undefined
+    SwitchBranchDialog dialog = undefined
+    Label detail
+    // The whole muted words, and the row width they were last fitted to.
+    text fullDetail = ""
+    number fittedWidth = -1
+
+    on create
+        parent:ListItem:icon:Hide()
+
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        detail:SetAccessibilityCode(detail:parent:Item:NOT_ACCESSIBLE)
+        detail:SetAcceptsMouseInput(false)
+        detail:SetPositionOnBaseLine(false)
+        detail:SetLeftMargin(DETAIL_MARGIN)
+        Add(detail)
+    end
+
+    /*
+    This action fills a branch row.
+
+    Attribute: Parameter value The branch.
+    Attribute: Parameter dialogValue The dialog, told when the row is selected.
+    Attribute: Parameter mutedColor The muted words' color, or undefined for the normal one.
+    Attribute: Parameter size The font size, the dialog's text size.
+    */
+    action Setup(GitBranch value, SwitchBranchDialog dialogValue, ColorGroup mutedColor, integer size)
+        branch = value
+        dialog = dialogValue
+        if mutedColor not= undefined
+            detail:SetColor(mutedColor)
+        end
+        text shown = value:GetBranchName()
+        text age = ShortAge()
+        if value:IsLocal()
+            fullDetail = age
+            if value:IsCurrent()
+                fullDetail = "current"
+            end
+        else
+            // "origin/scores" shows as "scores"; the list says it's the server's.
+            shown = value:GetLocalName()
+            fullDetail = "server"
+            if age not= ""
+                fullDetail = "server · " + age
+            end
+        end
+        fittedWidth = -1
+        SetText(shown)
+        detail:SetText(fullDetail)
+        SetName(shown)
+        SetDescription(CommitWords())
+        SetFontSize(size)
+    end
+
+    /*
+    This action fills a row that holds no branch: one muted line, which
+    the mouse can't select.
+
+    Attribute: Parameter message Such as "No branches are only on the server."
+    Attribute: Parameter mutedColor The line's color, or undefined for the normal one.
+    Attribute: Parameter size The font size, the dialog's text size.
+    */
+    action SetupMessage(text message, ColorGroup mutedColor, integer size)
+        branch = undefined
+        dialog = undefined
+        fullDetail = ""
+        fittedWidth = -1
+        SetText(message)
+        detail:SetText("")
+        SetName(message)
+        SetDescription("")
+        if mutedColor not= undefined
+            parent:ListItem:label:SetColor(mutedColor)
+        end
+        SetAcceptsMouseInput(false)
+        SetFontSize(size)
+    end
+
+    // The branch, or undefined for a message row.
+    action GetBranch returns GitBranch
+        return branch
+    end
+
+    // The muted words keep the name's size, and are fitted again.
+    action SetFontSize(integer size)
+        parent:ListItem:SetFontSize(size)
+        detail:SetFontSize(size)
+        fittedWidth = -1
+    end
+
+    /*
+    The list sets each shown row's width (ListRenderer:RefreshContents).
+    When it changes, the muted words are fitted to what's left of the row.
+    */
+    action SetWidth(number newWidth)
+        parent:ListItem:SetWidth(newWidth)
+        if newWidth not= fittedWidth
+            fittedWidth = newWidth
+            FitDetail(newWidth)
+        end
+    end
+
+    action GainedSelection
+        parent:ListItem:GainedSelection()
+        if dialog not= undefined
+            dialog:SelectionChanged(me)
+        end
+    end
+
+    // "4 days ago" from git becomes "4 days"; "today" and "yesterday" stay.
+    private action ShortAge returns text
+        text age = branch:GetLastAge()
+        if age:EndsWith(" ago")
+            return age:GetSubtext(0, age:GetSize() - 4)
+        end
+        return age
+    end
+
+    // "Current branch. Last commit: Make the hero jump higher" for the
+    // current branch, "Last commit 2 days ago: Add the second level" for
+    // the others.
+    private action CommitWords returns text
+        text words = ""
+        if branch:GetLastMessage() not= ""
+            if branch:IsCurrent() or branch:GetLastAge() = ""
+                words = "Last commit: " + branch:GetLastMessage()
+            else
+                words = "Last commit " + branch:GetLastAge() + ": " + branch:GetLastMessage()
+            end
+        end
+        if branch:IsCurrent()
+            if words = ""
+                return "Current branch."
+            end
+            return "Current branch. " + words
+        end
+        return words
+    end
+
+    // The whole muted words if they fit after the name; otherwise as much as fits, then "...".
+    private action FitDetail(number rowWidth)
+        if fullDetail = ""
+            return now
+        end
+        Font labelFont = detail:GetFont()
+        if labelFont = undefined
+            return now
+        end
+        number scale = GetInterfaceScale()
+        Font measureFont = labelFont:Copy()
+        measureFont:SetSize(cast(integer, GetFontSize() * scale))
+        number room = rowWidth - TextWidth(measureFont, GetText()) - (NAME_MARGIN + DETAIL_MARGIN + EDGE_ROOM) * scale
+
+        text shown = fullDetail
+        if TextWidth(measureFont, fullDetail) > room
+            text dots = "..."
+            shown = dots
+            boolean found = false
+            integer keep = fullDetail:GetSize() - 1
+            repeat while keep > 0 and not found
+                text candidate = fullDetail:GetSubtext(0, keep) + dots
+                if TextWidth(measureFont, candidate) <= room
+                    shown = candidate
+                    found = true
+                end
+                keep = keep - 1
+            end
+        end
+        if detail:GetText() not= shown
+            detail:SetText(shown)
+        end
+    end
+
+    // The width of a line of words in a font, as a Label lays it out.
+    private action TextWidth(Font font, text value) returns number
+        number width = 0
+        integer index = 0
+        repeat while index < value:GetSize()
+            Glyph glyph = font:GetGlyph(value:GetCharacter(index))
+            if glyph not= undefined
+                width = width + glyph:horizontalAdvance
+            end
+            index = index + 1
+        end
+        return width
+    end
+end

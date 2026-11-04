@@ -1,0 +1,295 @@
+package Libraries.Development.Environment.Studio
+
+use Libraries.Containers.Array
+use Libraries.Containers.Iterator
+use Libraries.System.File
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Controls.Tab
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Studio.Interface.SwitchBranchDialog
+use Libraries.Development.Environment.Studio.Interface.NewBranchDialog
+use Libraries.Development.Environment.Studio.Interface.SaveBeforeSwitchDialog
+use Libraries.Development.Environment.Studio.Behaviors.SwitchBranchRequestBehavior
+use Libraries.Development.Versioning.BranchListResult
+use Libraries.Development.Versioning.SwitchBranchRequest
+use Libraries.Development.Versioning.SwitchBranchResult
+use Libraries.Development.Versioning.GitProblem
+
+/*
+One Switch Branch or New Branch session: it opens the dialogs, checks for
+unsaved editor text before a switch (B3), queues the switch on the git
+thread, and finishes on the main thread (B2). Main thread only, except
+where it says.
+*/
+class BranchSwitcher
+    QuorumProject project = undefined
+    File projectFolder = undefined
+    BranchListResult branches = undefined
+    integer changeCount = 0
+
+    SwitchBranchDialog switchDialog = undefined
+    NewBranchDialog newBranchDialog = undefined
+    SaveBeforeSwitchDialog saveDialog = undefined
+    SwitchBranchRequest pending = undefined
+    Array<EditorTab> dirtyTabs
+
+    action Setup(QuorumProject projectValue, File folder, BranchListResult value, integer changes)
+        project = projectValue
+        projectFolder = folder
+        branches = value
+        changeCount = changes
+    end
+
+    action GetProject returns QuorumProject
+        return project
+    end
+
+    action GetBranches returns BranchListResult
+        return branches
+    end
+
+    action GetChangeCount returns integer
+        return changeCount
+    end
+
+    // B1.
+    action OpenSwitchDialog
+        if switchDialog = undefined
+            SwitchBranchDialog dialog
+            dialog:Setup(branches, changeCount, me)
+            switchDialog = dialog
+        end
+        switchDialog:Show()
+    end
+
+    // B4, from Team > New Branch... or from B1's New Branch... button.
+    action OpenNewBranchDialog
+        if switchDialog not= undefined and switchDialog:IsShowing()
+            switchDialog:Hide()
+        end
+        if newBranchDialog = undefined
+            NewBranchDialog dialog
+            dialog:Setup(branches, changeCount, me)
+            newBranchDialog = dialog
+        end
+        newBranchDialog:Show()
+    end
+
+    /*
+    This action starts a switch (or a new branch) from either dialog. With
+    unsaved editor text in the project, it asks first (B3).
+    */
+    action Begin(SwitchBranchRequest request)
+        pending = request
+        HideDialogs()
+        FindDirtyTabs()
+        if not dirtyTabs:IsEmpty()
+            if saveDialog = undefined
+                SaveBeforeSwitchDialog dialog
+                saveDialog = dialog
+            end
+            saveDialog:Setup(me, DirtyNames(), TargetName())
+            saveDialog:Show()
+            return now
+        end
+        Queue()
+    end
+
+    // B3's Save and Switch.
+    action SaveAndSwitch
+        integer counter = 0
+        repeat while counter < dirtyTabs:GetSize()
+            EditorTab tab = dirtyTabs:Get(counter)
+            tab:Save()
+            counter = counter + 1
+        end
+        Queue()
+    end
+
+    // B3's Don't Save: switch; the unsaved text stays in its tab.
+    action SwitchWithoutSaving
+        Queue()
+    end
+
+    // B3's Cancel: back to the dialog the request came from.
+    action CancelSwitch
+        pending = undefined
+        ShowOrigin()
+    end
+
+    private action Queue
+        if pending = undefined
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        SwitchBranchRequestBehavior behavior
+        behavior:Setup(project, pending, me)
+        behavior:SetMainApplication(studio)
+        studio:GetBehaviors():GetGitRunner():Add(behavior)
+    end
+
+    /*
+    This action finishes a switch, on the main thread (BranchSwitchedBehavior
+    calls it). The Team tab already has the new status.
+    */
+    action Finished(SwitchBranchResult result)
+        SwitchBranchRequest request = pending
+        pending = undefined
+        TeamReporter reporter
+
+        if result:IsSuccessful()
+            ProjectFilesRefresher refresher
+            text details = ""
+            if request = undefined or request:IsSwitching()
+                details = refresher:Refresh(project)
+            end
+            reporter:Report(SuccessSentence(request, result) + details)
+            return now
+        end
+
+        if not result:GetConflictingFiles():IsEmpty()
+            ShowOrigin()
+            text message = ConflictSentence(result)
+            if request not= undefined and request:IsFromNewBranch() and newBranchDialog not= undefined
+                newBranchDialog:ShowProblem(message)
+            elseif switchDialog not= undefined
+                switchDialog:ShowProblem(message)
+            end
+            return now
+        end
+
+        GitProblem problem
+        problem:SetTitle("Switch Branch")
+        problem:SetMessage("Couldn't switch to " + result:GetBranchName() + ".")
+        problem:SetDetails(result:GetMessage())
+        reporter:ReportProblem(problem)
+    end
+
+    // B2: "Switched to level-two." / "Created level-three and switched to it."
+    private action SuccessSentence(SwitchBranchRequest request, SwitchBranchResult result) returns text
+        text name = result:GetBranchName()
+        if request not= undefined and request:IsFromNewBranch()
+            if request:IsSwitching()
+                return "Created " + name + " and switched to it."
+            end
+            return "Created " + name + "."
+        end
+        return "Switched to " + name + "."
+    end
+
+    // B3: "Can't switch to level-two. These files have changes that the
+    // other branch would overwrite: Hero.quorum. Commit them first (Team >
+    // Commit), then switch."
+    private action ConflictSentence(SwitchBranchResult result) returns text
+        Array<text> files = result:GetConflictingFiles()
+        Array<text> names
+        integer counter = 0
+        repeat while counter < files:GetSize()
+            text path = files:Get(counter)
+            integer slash = LastSlash(path)
+            if slash >= 0
+                names:Add(path:GetSubtext(slash + 1))
+            else
+                names:Add(path)
+            end
+            counter = counter + 1
+        end
+        return "Can't switch to " + result:GetBranchName()
+            + ". These files have changes that the other branch would overwrite: "
+            + JoinNames(names) + ". Commit them first (Team > Commit), then switch."
+    end
+
+    private action LastSlash(text path) returns integer
+        integer found = -1
+        integer index = path:IndexOf("/")
+        repeat while index >= 0
+            found = index
+            index = path:IndexOf("/", index + 1)
+        end
+        return found
+    end
+
+    // "Hero.quorum", "Hero.quorum and Main.quorum", "A, B and C".
+    action JoinNames(Array<text> names) returns text
+        text result = ""
+        integer counter = 0
+        repeat while counter < names:GetSize()
+            if counter > 0
+                if counter = names:GetSize() - 1
+                    result = result + " and "
+                else
+                    result = result + ", "
+                end
+            end
+            result = result + names:Get(counter)
+            counter = counter + 1
+        end
+        return result
+    end
+
+    // Editor tabs in the project with unsaved text.
+    private action FindDirtyTabs
+        dirtyTabs:Empty()
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        CodeEditorTabPane editor = studio:GetTabPane()
+        // Compared with / between folders and a / after the project folder,
+        // as ProjectFilesRefresher does, so "Game" doesn't match "GameTwo".
+        text folderPath = projectFolder:GetAbsolutePath()
+        folderPath = folderPath:Replace("\", "/") + "/"
+        Iterator<Tab> tabs = editor:GetOpenTabIterator()
+        repeat while tabs:HasNext()
+            Tab tab = tabs:Next()
+            if tab is EditorTab
+                EditorTab editorTab = cast(EditorTab, tab)
+                File file = editorTab:GetFile()
+                if file not= undefined and editorTab:IsDirty()
+                    text path = file:GetAbsolutePath()
+                    path = path:Replace("\", "/")
+                    if path:StartsWith(folderPath)
+                        dirtyTabs:Add(editorTab)
+                    end
+                end
+            end
+        end
+    end
+
+    private action DirtyNames returns Array<text>
+        Array<text> names
+        integer counter = 0
+        repeat while counter < dirtyTabs:GetSize()
+            EditorTab tab = dirtyTabs:Get(counter)
+            names:Add(tab:GetFile():GetFileName())
+            counter = counter + 1
+        end
+        return names
+    end
+
+    private action TargetName returns text
+        if pending = undefined
+            return ""
+        end
+        return pending:GetBranchName()
+    end
+
+    private action HideDialogs
+        if switchDialog not= undefined and switchDialog:IsShowing()
+            switchDialog:Hide()
+        end
+        if newBranchDialog not= undefined and newBranchDialog:IsShowing()
+            newBranchDialog:Hide()
+        end
+    end
+
+    private action ShowOrigin
+        if pending not= undefined and pending:IsFromNewBranch() and newBranchDialog not= undefined
+            newBranchDialog:Show()
+        elseif newBranchDialog not= undefined and switchDialog = undefined
+            newBranchDialog:Show()
+        elseif switchDialog not= undefined
+            switchDialog:Show()
+        end
+    end
+end

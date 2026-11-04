@@ -1,0 +1,48 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Configuration.Options
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Projects.Credentials
+use Libraries.Development.Versioning.TeamStatus
+
+/*
+Before the Commit dialog opens, on the git thread: reads the project's
+status now (and gives it to the Team tab), and the saved name and email.
+Then the dialog opens on the main thread. A new one is made each time.
+*/
+class CommitPrepareBehavior is Behavior
+    QuorumProject project = undefined
+    CommitInterfaceBehavior owner = undefined
+
+    action Setup(QuorumProject projectValue, CommitInterfaceBehavior ownerValue)
+        project = projectValue
+        owner = ownerValue
+    end
+
+    action Run(BehaviorEvent event)
+        if project = undefined
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+
+        StatusRequestBehavior reader
+        TeamStatus status = reader:GetStatus(project)
+        TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+        teamTab:PostStatus(status)
+
+        Options options = studio:GetOptions()
+        Credentials credentials = options:GetPassword(project:GetLocation():GetAbsolutePath())
+
+        ShowCommitDialogBehavior show
+        show:Setup(project, owner, status, credentials, "", "")
+        outPane:AddBehavior(show)
+    end
+end

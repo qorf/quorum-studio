@@ -1,0 +1,32 @@
+package Libraries.Development.Versioning
+use Libraries.Containers.Array
+use Libraries.System.File
+
+/*
+What to unstage, as AddRequest: files (a folder unstages what's staged in
+it) and repository paths.
+*/
+class UnstageRequest
+    Array<File> files
+    Array<text> paths
+
+    action GetFiles returns Array<File>
+        return files
+    end
+
+    action AddFile(File file)
+        files:Add(file)
+    end
+
+    action AddPath(text path)
+        paths:Add(path)
+    end
+
+    action GetPaths returns Array<text>
+        return paths
+    end
+
+    action IsEmpty returns boolean
+        return files:IsEmpty() and paths:IsEmpty()
+    end
+end

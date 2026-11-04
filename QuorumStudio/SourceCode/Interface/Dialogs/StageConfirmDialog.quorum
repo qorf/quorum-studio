@@ -1,0 +1,352 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Selections.ListSelection
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Interface.Item2D
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Game.GameStateManager
+use Libraries.Containers.Array
+use Libraries.Development.Versioning.TeamFileChange
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.StageIncludeBehavior
+
+/*
+Asks before a mass or risky stage (Add A5b, design D1), for StageGate: the
+question in one sentence, then every file that will be staged in one
+scrolling list (the file's name, its folder muted after it), then one box
+per group left out unless checked ("Include 2 media files (boss.png,
+theme.ogg)"), then Cancel and the main button, which counts what will
+happen ("Stage 46 files"). Checking a box adds its files to the list and
+counts them; unchecking takes them out again, so the list always shows
+exactly what will be staged. Focus starts on the main button; Tab goes
+list, boxes, Cancel, main button. Nothing is announced: the question is
+the dialog's description, each box's explanation is its description, and
+what's left out is the main button's description.
+Made in the Forms style, as ErrorDialog and step 3's GitProblemDialog are.
+*/
+class StageConfirmDialog is Dialog
+    // The question, the list and the boxes share one size, the dialog's
+    // normal text, instead of the Forms default.
+    constant integer TEXT_SIZE = 16
+    // The list's height in rows; more files scroll.
+    constant integer LIST_ROWS = 6
+    // The dialog's width, as a share of the window.
+    constant number WIDTH_SHARE = 0.5
+
+    Page page = undefined
+    Label questionLabel = undefined
+    List fileList = undefined
+    Button cancelButton = undefined
+    Button mainButton = undefined
+    DialogCancelBehavior cancelBehavior
+    StageIncludeBehavior includeBehavior
+    ColorGroup mutedColor = undefined
+    // The boxes, how many files each adds when checked, and those files in
+    // words for the main button's description ("2 media files").
+    Array<Checkbox> boxes
+    Array<integer> boxCounts
+    Array<text> boxWords
+    // The rows staged whatever the boxes say, then each box's rows with the
+    // index of its box.
+    Array<StageFileItem> fileRows
+    Array<StageFileItem> optionalRows
+    Array<integer> optionalBoxes
+    // "Stage" or "Unstage" when the main button counts; "" when it's fixed.
+    text verb = ""
+    integer baseCount = 0
+
+    on create
+        SetModal(true)
+    end
+
+    /*
+    This action starts the dialog: its title and question. Call it once,
+    first, then AddFiles and AddOptionalFiles (if any), then SetCount (if
+    the main button counts), then AddButtons, then Show. The one-file
+    question has no list: Setup, AddButtons, Show.
+
+    Attribute: Parameter title Such as "Stage 48 files".
+    Attribute: Parameter question Such as "Stage 48 changed files? They'll be in your next commit."
+    */
+    action Setup(text title, text question)
+        SetName(title)
+        SetDescription(question)
+        SetPercentageWidth(WIDTH_SHARE)
+        cancelBehavior:SetDialog(me)
+        includeBehavior:SetDialog(me)
+        mutedColor = GetMutedColor()
+
+        page = InitializeDefaultPage()
+        page:SetSkipLabelsInFocus(true)
+        // The question starts at the list's left edge, not centered.
+        page:LeftAlignContent()
+        questionLabel = page:AddLabel("Question", question)
+        questionLabel:SetFontSize(TEXT_SIZE)
+        // The words sit inside the label's own height, so the page's row
+        // gap (about 8 points) shows between the question and the list;
+        // on the baseline, the letters' tails hung into it.
+        questionLabel:SetPositionOnBaseLine(false)
+    end
+
+    /*
+    This action adds files that will be staged, to the list.
+
+    Attribute: Parameter changes The files, in the order to list them.
+    */
+    action AddFiles(Array<TeamFileChange> changes)
+        PrepareList()
+        integer index = 0
+        repeat while index < changes:GetSize()
+            StageFileItem row = MakeRow(changes:Get(index))
+            fileRows:Add(row)
+            Item2D listed = row
+            fileList:Add(listed)
+            index = index + 1
+        end
+    end
+
+    /*
+    This action adds a group left out unless its box is checked: the box
+    (unchecked), under the list, and its files, which join the list while
+    the box is checked.
+
+    Attribute: Parameter boxName The box's name and text, such as "Include 2 media files (boss.png, theme.ogg)".
+    Attribute: Parameter leftOutWords The files in words while left out, such as "2 media files".
+    Attribute: Parameter explanation The box's description, such as why they're left out.
+    Attribute: Parameter changes The group's files.
+    Attribute: Returns The box's index, for IsIncluded.
+    */
+    action AddOptionalFiles(text boxName, text leftOutWords, text explanation, Array<TeamFileChange> changes) returns integer
+        // The list comes first, so it's first in the focus order.
+        PrepareList()
+        integer boxIndex = boxes:GetSize()
+        integer index = 0
+        repeat while index < changes:GetSize()
+            optionalRows:Add(MakeRow(changes:Get(index)))
+            optionalBoxes:Add(boxIndex)
+            index = index + 1
+        end
+
+        Checkbox box = page:AddCheckbox(boxName)
+        box:SetFontSize(TEXT_SIZE)
+        box:SetDescription(explanation)
+        box:SetBehavior(includeBehavior)
+        boxes:Add(box)
+        boxCounts:Add(changes:GetSize())
+        boxWords:Add(leftOutWords)
+        return boxIndex
+    end
+
+    /*
+    This action makes the main button count: "Stage 7 files", plus each
+    checked box's files.
+
+    Attribute: Parameter verbValue "Stage" or "Unstage".
+    Attribute: Parameter count The files staged with no box checked.
+    */
+    action SetCount(text verbValue, integer count)
+        verb = verbValue
+        baseCount = count
+    end
+
+    /*
+    This action adds Cancel and the main button, and sizes the dialog.
+
+    Attribute: Parameter fixedName The main button's text when SetCount wasn't called, such as "Stage boss.png".
+    Attribute: Parameter confirm Run by the main button and Enter; it closes the dialog.
+    */
+    action AddButtons(text fixedName, Behavior confirm)
+        // The footer sizes its buttons to their text.
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        buttonGroup:PositionFromBottom()
+        cancelButton = buttonGroup:AddButton("Cancel")
+        cancelButton:SetBehavior(cancelBehavior)
+        FitToWords(cancelButton)
+        text name = fixedName
+        if verb not= ""
+            name = GetCountName()
+        end
+        mainButton = buttonGroup:AddButton(name)
+        FitToWords(mainButton)
+        // The main action: the accent button style.
+        mainButton:SetInterfaceOptionsKey("DialogAcceptButton")
+        mainButton:SetDescription(GetLeftOutWords())
+        mainButton:SetBehavior(confirm)
+        SetBehavior(confirm)
+
+        // The height is worked out from the rows: the question, the list,
+        // one line per box, then the footer.
+        PageHeightEstimate estimate
+        estimate:Start(page, WIDTH_SHARE)
+        estimate:AddLabel(questionLabel)
+        if fileList not= undefined
+            integer rows = fileRows:GetSize() + optionalRows:GetSize()
+            if rows > LIST_ROWS
+                rows = LIST_ROWS
+            end
+            if rows < 1
+                rows = 1
+            end
+            fileList:SetLayoutRows(cast(number, rows))
+            if verb not= ""
+                text lowerVerb = verb:ToLowerCase()
+                fileList:SetName("Files to " + lowerVerb)
+            end
+            estimate:AddControl(fileList)
+        end
+        integer boxIndex = 0
+        repeat while boxIndex < boxes:GetSize()
+            estimate:AddControl(boxes:Get(boxIndex))
+            boxIndex = boxIndex + 1
+        end
+        estimate:AddFooter(mainButton)
+        SetPixelHeight(estimate:GetHeight())
+    end
+
+    /*
+    A footer button whose name has more than one word sizes itself to its
+    words (FIT_CONTENTS, the Button default that AddButton turns off), so
+    its words never break onto a second line inside it. A one-word name
+    can't break, so it keeps the footer's minimum width.
+    */
+    private action FitToWords(Button button)
+        button:SetAutomaticFontSizing(false)
+        text name = button:GetName()
+        if name:Contains(" ")
+            button:SetHorizontalLayoutMode(button:parent:Control:FIT_CONTENTS)
+        end
+    end
+
+    action OnShow
+        mainButton:Focus()
+    end
+
+    /*
+    This action says whether a box is checked.
+
+    Attribute: Parameter index From AddOptionalFiles, or -1 for none.
+    Attribute: Returns True when checked; false for -1.
+    */
+    action IsIncluded(integer index) returns boolean
+        if index < 0 or index >= boxes:GetSize()
+            return false
+        end
+        Checkbox box = boxes:Get(index)
+        return box:GetToggleState()
+    end
+
+    // A box was checked or unchecked: the list shows its files or not, and
+    // the main button counts again.
+    action UpdateCount
+        if mainButton = undefined or verb = ""
+            return now
+        end
+        UpdateOptionalRows()
+        mainButton:SetName(GetCountName())
+        mainButton:SetDescription(GetLeftOutWords())
+        RequestLayout()
+    end
+
+    // Takes every box's rows out of the list, then adds back those whose
+    // box is checked, after the files always staged, in the boxes' order.
+    private action UpdateOptionalRows
+        if fileList = undefined
+            return now
+        end
+        ListSelection selection = fileList:GetSelection()
+        ListItem selected = selection:GetListItem()
+        integer index = 0
+        repeat while index < optionalRows:GetSize()
+            StageFileItem row = optionalRows:Get(index)
+            if fileList:GetIndexOf(row) >= 0
+                ListItem rowItem = row
+                if selected = rowItem
+                    fileList:Deselect()
+                end
+                Item2D removed = row
+                boolean gone = fileList:Remove(removed)
+            end
+            index = index + 1
+        end
+
+        index = 0
+        repeat while index < optionalRows:GetSize()
+            if IsIncluded(optionalBoxes:Get(index))
+                Item2D added = optionalRows:Get(index)
+                fileList:Add(added)
+            end
+            index = index + 1
+        end
+    end
+
+    // "Stage 7 files", "Stage 1 file", "Stage 0 files".
+    private action GetCountName returns text
+        integer count = baseCount
+        integer index = 0
+        repeat while index < boxes:GetSize()
+            if IsIncluded(index)
+                count = count + boxCounts:Get(index)
+            end
+            index = index + 1
+        end
+        if count = 1
+            return verb + " 1 file"
+        end
+        return verb + " " + count + " files"
+    end
+
+    // "Not included: 2 media files, 64 Build and Run files.", or "" when
+    // nothing is left out.
+    private action GetLeftOutWords returns text
+        text words = ""
+        integer index = 0
+        repeat while index < boxes:GetSize()
+            if not IsIncluded(index)
+                if words = ""
+                    words = boxWords:Get(index)
+                else
+                    words = words + ", " + boxWords:Get(index)
+                end
+            end
+            index = index + 1
+        end
+        if words = ""
+            return ""
+        end
+        return "Not included: " + words + "."
+    end
+
+    // The list, under the question, made once.
+    private action PrepareList
+        if fileList not= undefined
+            return now
+        end
+        fileList = page:AddList("Files")
+        fileList:SetFontSize(TEXT_SIZE)
+    end
+
+    private action MakeRow(TeamFileChange change) returns StageFileItem
+        StageFileItem row
+        row:Setup(change, mutedColor, TEXT_SIZE)
+        return row
+    end
+
+    // The folders' color, as the Team tab's muted text.
+    private action GetMutedColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetTabFontColor()
+    end
+end

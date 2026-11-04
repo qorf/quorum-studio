@@ -1,0 +1,175 @@
+package Libraries.Development.Environment.Projects
+
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Containers.Array
+use Libraries.Containers.Iterator
+use Libraries.System.File
+use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Development.Versioning.TeamStatus
+use Libraries.Development.Versioning.TeamFileChange
+use Libraries.Development.Versioning.StatusResult
+
+/*
+Works out each Project Tree row's git mark from a project's status, and the
+same mark in words for its description, and sets them on the rows (Tree R2
+and L2): a file gets a thin bar at the tree's left edge
+(TreeItem:SetLeadingBar) and a quiet word after its name
+(TreeItem:SetTrailingText); a folder with changes inside and the project's
+row get only the bar. The project's description says its branch and count.
+*/
+class ProjectTreeGitMarks
+    TeamFileChange changeConstants
+    OptionsConstants optionsConstants
+    ColorGroup addedColor = undefined
+    ColorGroup modifiedColor = undefined
+    ColorGroup conflictColor = undefined
+    ColorGroup wordColor = undefined
+
+    // Marks a project's row and every row under it. Main thread.
+    action Apply(ProjectTreeItem projectRow, TeamStatus status)
+        if projectRow = undefined
+            return now
+        end
+        if status = undefined
+            Clear(projectRow)
+            return now
+        end
+        if not status:IsReady()
+            Clear(projectRow)
+            return now
+        end
+        LoadColors()
+
+        StatusResult result = status:GetResult()
+        integer count = status:GetChangeCount()
+        text words = "On branch " + result:GetBranch()
+        if result:IsDetached()
+            words = "Not on a branch (at " + result:GetBranch() + ")"
+        end
+        if count > 0
+            words = words + ", " + CountWords(count)
+            projectRow:SetGitMark(modifiedColor, words)
+        else
+            // No bar when clean; the description still says the branch.
+            projectRow:SetGitDescription(words)
+        end
+        MarkChildren(projectRow, status)
+    end
+
+    // Takes the marks off a row and every row under it.
+    action Clear(TreeItem item)
+        if item is ProjectTreeItem
+            ProjectTreeItem row = cast(ProjectTreeItem, item)
+            row:ClearGitMark()
+        end
+        Iterator<TreeItem> children = item:GetTreeItems()
+        repeat while children:HasNext()
+            Clear(children:Next())
+        end
+    end
+
+    private action MarkChildren(TreeItem item, TeamStatus status)
+        Iterator<TreeItem> children = item:GetTreeItems()
+        repeat while children:HasNext()
+            TreeItem child = children:Next()
+            if child is ProjectTreeItem
+                ProjectTreeItem row = cast(ProjectTreeItem, child)
+                MarkRow(row, status)
+            end
+            if child:GetSize() > 0
+                MarkChildren(child, status)
+            end
+        end
+    end
+
+    /*
+    A row with rows under it is a folder. An empty folder can't have
+    changes (git doesn't keep empty folders), so it's looked up like a file
+    and gets no mark. This keeps the disk out of it (no IsDirectory call per
+    row on each status).
+    */
+    private action MarkRow(ProjectTreeItem row, TeamStatus status)
+        File file = row:GetFile()
+        if file = undefined
+            row:ClearGitMark()
+            return now
+        end
+
+        if row:GetSize() > 0
+            if status:GetChangeCountInFolder(file) > 0
+                row:SetGitMark(modifiedColor, "Changes inside")
+            else
+                row:ClearGitMark()
+            end
+            return now
+        end
+
+        Array<TeamFileChange> changes = status:GetChanges(file)
+        boolean conflict = false
+        boolean untracked = false
+        boolean staged = false
+        boolean stagedNew = false
+        boolean notStaged = false
+        integer index = 0
+        repeat while index < changes:GetSize()
+            TeamFileChange change = changes:Get(index)
+            integer group = change:GetGroup()
+            if group = changeConstants:CONFLICT
+                conflict = true
+            elseif group = changeConstants:UNTRACKED
+                untracked = true
+            elseif group = changeConstants:STAGED
+                staged = true
+                if change:GetKind() = changeConstants:NEW_FILE
+                    stagedNew = true
+                end
+            elseif group = changeConstants:NOT_STAGED
+                notStaged = true
+            end
+            index = index + 1
+        end
+
+        if conflict
+            row:SetGitMark(conflictColor, false, "conflict", wordColor, "Conflict")
+        elseif untracked
+            row:SetGitMark(addedColor, true, "untracked", wordColor, "Untracked")
+        elseif staged and notStaged
+            // Staged, then changed again: the changes since aren't staged,
+            // so the bar is the modified color.
+            row:SetGitMark(modifiedColor, false, "staged, changed again", wordColor, "Staged, changed again")
+        elseif stagedNew
+            row:SetGitMark(addedColor, false, "added", wordColor, "Added")
+        elseif staged
+            row:SetGitMark(addedColor, false, "staged", wordColor, "Staged")
+        elseif notStaged
+            row:SetGitMark(modifiedColor, false, "modified", wordColor, "Modified")
+        else
+            row:ClearGitMark()
+        end
+    end
+
+    // Read on each status, so a theme change shows with the next one.
+    private action LoadColors
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return now
+        end
+        addedColor = options:GetColorProperty(optionsConstants:GIT_ADDED_COLOR)
+        modifiedColor = options:GetColorProperty(optionsConstants:GIT_MODIFIED_COLOR)
+        conflictColor = options:GetColorProperty(optionsConstants:GIT_DELETED_COLOR)
+        // The quiet word's color, at least 4.5 to 1 on the tree in each
+        // theme. Undefined in a theme without it: the tree's text color.
+        wordColor = options:GetColorProperty(optionsConstants:GIT_TREE_WORD_COLOR)
+    end
+
+    private action CountWords(integer count) returns text
+        if count = 1
+            return "1 change"
+        end
+        return "" + count + " changes"
+    end
+end

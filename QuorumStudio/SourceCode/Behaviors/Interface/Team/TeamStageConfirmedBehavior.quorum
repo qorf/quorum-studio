@@ -1,0 +1,27 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.StageGate
+use Libraries.Development.Environment.Studio.Interface.StageConfirmDialog
+
+// The stage dialog's main button ("Stage 7 files", Add A5b): closes the
+// dialog, then stages what its boxes say.
+class TeamStageConfirmedBehavior is Behavior
+    StageGate gate = undefined
+    StageConfirmDialog dialog = undefined
+
+    action Setup(StageGate gateValue, StageConfirmDialog dialogValue)
+        gate = gateValue
+        dialog = dialogValue
+    end
+
+    action Run(BehaviorEvent event)
+        if dialog not= undefined
+            dialog:Hide()
+        end
+        if gate not= undefined
+            gate:Confirm(dialog)
+        end
+    end
+end

@@ -1,115 +1,443 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Dialog
-use Libraries.Game.Graphics.Label
-use Libraries.Game.GameStateManager
-use Libraries.Game.Game
-use Libraries.Game.Graphics.Drawable
-use Libraries.Interface.Controls.Icon
-use Libraries.Interface.Views.LabelBoxView
-use Libraries.Game.Graphics.Color
-use Libraries.Interface.Layouts.FlowLayout
-use Libraries.Interface.Layouts.LayoutProperties
-use Libraries.Interface.Controls.TextField
 use Libraries.Interface.Controls.Button
-use Libraries.Development.Environment.Studio.Behaviors.GoToLineOkButtonBehavior
-use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
-use Libraries.Interface.Events.TextChangeListener
-use Libraries.Interface.Events.TextChangeEvent
-use Libraries.Game.InputSet
-use Libraries.Interface.Events.KeyboardEvent
-use Libraries.Game.InputTable
-use Libraries.Development.Environment.Studio.Behaviors.CommitRequestBehavior
-use Libraries.Concurrency.ThreadRunner
-use Libraries.Development.Environment.Studio.Behaviors.ThreadedBehavior
-use Libraries.Development.Environment.Studio.Behaviors.CommitDialogOkButtonBehavior
-use Libraries.Interface.Views.ControlShaderView
+use Libraries.Interface.Controls.TextBox
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Selections.ListSelection
+use Libraries.Interface.Item2D
 use Libraries.Interface.Forms.Page
 use Libraries.Interface.Forms.Grouping
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.System.File
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Projects.Credentials
+use Libraries.Development.Versioning.TeamStatus
+use Libraries.Development.Versioning.TeamFileChange
+use Libraries.Development.Versioning.StatusResult
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Development.Environment.Studio.Behaviors.CommitInterfaceBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CommitDialogOkButtonBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CommitOpenFileBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.GitProblemActionBehavior
+use Libraries.Development.Environment.Studio.Behaviors.OpenTeamsTabBehavior
 
+/*
+The Commit dialog (Commit C1 to C4). C1: the staged files (read-only), a
+line about changes that won't be included, one multi-line Message box,
+who's committing, and "Commit 3 files". C3 (laid out as C3b): nothing
+staged, so a bold first line, a count per group, a muted next step, and
+Cancel, Open Team Tab. C4: no name or email saved, so the main button
+opens Project Properties' Teams tab.
+What the dialog says is also its description, so it's read when it opens;
+nothing is announced.
+*/
 class CommitDialog is Dialog
-    ThreadRunner gitRunner = undefined
-    ThreadedBehavior threadedCommitRequestBehavior = undefined
-    CommitRequestBehavior commitRequestBehavior = undefined
-    boolean initialized = false
-    Button ok
-    Button cancel
-    TextField lineTextField
-    Label lineLabel
+    // C3b's text size, the stage dialog's (StageConfirmDialog), instead of
+    // the Forms default 20.
+    constant integer TEXT_SIZE = 16
+    // The dialog's width, as a share of the window.
+    constant number WIDTH_SHARE = 0.5
+
+    CommitInterfaceBehavior owner = undefined
+    QuorumProject project = undefined
+    Credentials credentials = undefined
+    integer stagedCount = 0
+    boolean keepDraft = true
+
+    List stagedList = undefined
+    TextBox messageBox = undefined
+    Label messageProblemLabel = undefined
+    Button mainButton = undefined
+    Button cancelButton = undefined
 
     CommitDialogOkButtonBehavior okBehavior
     DialogCancelBehavior cancelBehavior
+    CommitOpenFileBehavior openBehavior
+    GitProblemActionBehavior mainActionBehavior
+    GitProblemActionBehavior changeBehavior
+    OpenTeamsTabBehavior teamsBehavior
+
     on create
         SetModal(true)
-        
     end
 
-    action Setup
-        if initialized
-            return now
-        end
-        initialized = true
-        LayoutProperties properties
-
-        SetName("Commit Dialog")
-        SetPercentageWidth(0.50) 
-        SetPixelHeight(175)
-        
-        okBehavior:SetDialog(me)
+    /*
+    This action builds the dialog for one commit. Call it once, before
+    Show. The message is what to start the Message box with (a kept draft,
+    or the message from a failed commit). The problem is C6's sentence, or
+    "".
+    */
+    action Setup(CommitInterfaceBehavior ownerValue, QuorumProject projectValue, TeamStatus status,
+            Credentials credentialsValue, text message, text problem)
+        owner = ownerValue
+        project = projectValue
+        credentials = credentialsValue
         cancelBehavior:SetDialog(me)
-        SetBehavior(okBehavior)
+
+        Array<TeamFileChange> staged = status:GetStaged()
+        Array<TeamFileChange> notStaged = status:GetNotStaged()
+        Array<TeamFileChange> untracked = status:GetUntracked()
+        stagedCount = staged:GetSize()
+        integer otherCount = notStaged:GetSize() + untracked:GetSize()
+
+        StatusResult result = status:GetResult()
+        SetName("Commit to " + result:GetBranch())
+        SetPercentageWidth(WIDTH_SHARE)
 
         Page page = InitializeDefaultPage()
         page:SetSkipLabelsInFocus(true)
-        lineLabel = page:AddLabel("Message")
-        lineTextField = page:AddTextField("Commit Message")
+
+        if stagedCount = 0
+            SetupNothingStaged(page, notStaged:GetSize(), untracked:GetSize(), status:GetConflicts():GetSize(), problem)
+        else
+            SetupCommit(page, staged, otherCount, message, problem)
+        end
+    end
+
+    /*
+    C3: nothing staged, so the message form isn't shown. With changes
+    (C3b), left-aligned at the dialog's text size: "Nothing is staged yet."
+    in bold, then a small box (a List, as the Team tab and the stage dialog
+    show rows) with one row per group that has files, the count then its
+    group muted ("48 changed" then "not staged"), then the next step,
+    muted. With none: C3's one sentence and Close. The dialog is as tall as
+    what it shows, and its description says the same words, so they're
+    read when it opens.
+    */
+    private action SetupNothingStaged(Page page, integer notStagedCount, integer untrackedCount,
+            integer conflictCount, text problem)
+        integer otherCount = notStagedCount + untrackedCount + conflictCount
+        page:LeftAlignContent()
+        PageHeightEstimate estimate
+        estimate:Start(page, WIDTH_SHARE)
+        if problem not= ""
+            Label problemLabel = page:AddLabel("Commit Problem", problem)
+            problemLabel:SetFontSize(TEXT_SIZE)
+            estimate:AddLabel(problemLabel)
+        end
+
+        if otherCount = 0
+            text summary = "Nothing to commit. Every file matches the last commit."
+            Label summaryLabel = page:AddLabel("Summary", summary)
+            summaryLabel:SetFontSize(TEXT_SIZE)
+            estimate:AddLabel(summaryLabel)
+            if problem not= ""
+                summary = problem + " " + summary
+            end
+            SetDescription(summary)
+        else
+            text heading = "Nothing is staged yet."
+            Label headingLabel = page:AddLabel("Nothing Staged", heading)
+            headingLabel:SetFontSize(TEXT_SIZE)
+            UseBoldFont(headingLabel)
+            estimate:AddLabel(headingLabel)
+            text spoken = heading
+
+            // One row per group with files, in the Team tab's order.
+            List countList = page:AddList("Changes")
+            countList:SetFontSize(TEXT_SIZE)
+            ColorGroup groupColor = GetGroupColor()
+            integer rows = 0
+            if conflictCount > 0
+                text conflictWords = conflictCount + " " + Plural(conflictCount, "conflict", "conflicts")
+                AddCountRow(countList, conflictWords, "fix, then stage", groupColor)
+                spoken = spoken + " " + conflictWords + ", fix, then stage."
+                rows = rows + 1
+            end
+            if notStagedCount > 0
+                AddCountRow(countList, notStagedCount + " changed", "not staged", groupColor)
+                spoken = spoken + " " + notStagedCount + " changed, not staged."
+                rows = rows + 1
+            end
+            if untrackedCount > 0
+                AddCountRow(countList, untrackedCount + " new", "untracked", groupColor)
+                spoken = spoken + " " + untrackedCount + " new, untracked."
+                rows = rows + 1
+            end
+            countList:SetLayoutRows(cast(number, rows))
+            estimate:AddControl(countList)
+
+            text nextStep = "Stage the ones you want in the commit, then commit again."
+            Label nextLabel = page:AddLabel("Next Step", nextStep)
+            nextLabel:SetFontSize(TEXT_SIZE)
+            ColorGroup mutedColor = GetMutedColor()
+            if mutedColor not= undefined
+                nextLabel:SetFontColor(mutedColor)
+            end
+            estimate:AddLabel(nextLabel)
+            spoken = spoken + " " + nextStep
+            if problem not= ""
+                spoken = problem + " " + spoken
+            end
+            SetDescription(spoken)
+        end
+
+        // The footer; its buttons are as wide as their words.
+        Grouping buttonGroup = page:AddGrouping("Buttons")
+        buttonGroup:PositionFromBottom()
+        if otherCount = 0
+            mainButton = buttonGroup:AddButton("Close")
+            FitToWords(mainButton)
+            mainButton:SetInterfaceOptionsKey("DialogAcceptButton")
+            mainButton:SetBehavior(cancelBehavior)
+            SetBehavior(cancelBehavior)
+        else
+            cancelButton = buttonGroup:AddButton("Cancel")
+            FitToWords(cancelButton)
+            cancelButton:SetBehavior(cancelBehavior)
+
+            Behaviors behaviors = GetBehaviors()
+            mainActionBehavior:SetDialog(me)
+            mainActionBehavior:SetAction(behaviors:GetTeamStatusBehavior())
+            mainButton = buttonGroup:AddButton("Open Team Tab")
+            FitToWords(mainButton)
+            mainButton:SetInterfaceOptionsKey("DialogAcceptButton")
+            mainButton:SetBehavior(mainActionBehavior)
+            SetBehavior(mainActionBehavior)
+        end
+        estimate:AddFooter(mainButton)
+        SetPixelHeight(estimate:GetHeight())
+    end
+
+    // One group's row in the nothing-staged box.
+    private action AddCountRow(List countList, text countWords, text groupWords, ColorGroup groupColor)
+        CountListItem row
+        row:Setup(countWords, groupWords, groupColor, TEXT_SIZE)
+        Item2D listed = row
+        countList:Add(listed)
+    end
+
+    /*
+    A footer button whose name has more than one word sizes itself to its
+    words (FIT_CONTENTS, the Button default that AddButton turns off), so
+    its words never break onto a second line inside it. A one-word name
+    can't break, so it keeps the footer's minimum width.
+    */
+    private action FitToWords(Button button)
+        button:SetAutomaticFontSizing(false)
+        text name = button:GetName()
+        if name:Contains(" ")
+            button:SetHorizontalLayoutMode(button:parent:Control:FIT_CONTENTS)
+        end
+    end
+
+    // The box's group words, in the Team tab's muted color.
+    private action GetGroupColor returns ColorGroup
+        GameStateManager manager
+        InterfaceOptions options = manager:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetTabFontColor()
+    end
+
+    /*
+    Draws a label in Studio's bold sans font (FiraSans-Bold, beside the
+    regular one in Resources/Fonts) at the size it already has. Without the
+    file, the label stays as it is.
+    */
+    private action UseBoldFont(Label label)
+        File boldFile
+        boldFile:SetPath("Resources/Fonts/FiraSans-Bold.otf")
+        if not boldFile:Exists()
+            return now
+        end
+        integer size = label:GetFontSize()
+        Font boldFont
+        boldFont:LoadFont(boldFile)
+        boldFont:SetSize(size)
+        label:SetFont(boldFont)
+        label:SetFontSize(size)
+    end
+
+    // The dialog's caption color, for the muted line.
+    private action GetMutedColor returns ColorGroup
+        GameStateManager manager
+        InterfaceOptions options = manager:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetFontColor("FieldCaption")
+    end
+
+    private action Plural(integer count, text one, text many) returns text
+        if count = 1
+            return one
+        end
+        return many
+    end
+
+    // C1, with C4's line when no name or email is saved, and C6's problem.
+    private action SetupCommit(Page page, Array<TeamFileChange> staged, integer otherCount, text message, text problem)
+        SetPixelHeight(380)
+        // Left-aligned with the Message box. The staged files themselves
+        // are in the Team tab; the dialog only says how many (the user,
+        // 2026-11-04), and nothing about files that aren't staged.
+        page:LeftAlignContent()
+        text summary = Words(stagedCount, "staged file", "staged files") + " will be committed."
+        Label stagedLabel = page:AddLabel("Staged Heading", summary)
+        stagedLabel:SetFontSize(TEXT_SIZE)
+        // Off the baseline, so the line isn't cut off at the top.
+        stagedLabel:SetPositionOnBaseLine(false)
+
+        page:AddLabel("Message Label", "Message")
+        messageBox = page:AddTextBox("Message")
+        messageBox:SetText(message)
+        // C2's line; empty until Commit is pressed with no message.
+        messageProblemLabel = page:AddLabel("Message Problem", "")
+
+        if problem not= ""
+            page:AddLabel("Commit Problem", problem)
+            summary = summary + " " + problem
+        end
+
+        Grouping authorGroup = page:AddGrouping("Author")
+        boolean hasAuthor = HasAuthor()
+        teamsBehavior:SetProject(project)
+        if hasAuthor
+            authorGroup:AddLabel("Author", "Committing as " + credentials:GetName()
+                + " (" + credentials:GetEmail() + ")")
+            changeBehavior:SetDialog(me)
+            changeBehavior:SetAction(teamsBehavior)
+            Button changeButton = authorGroup:AddButton("Change...")
+            changeButton:SetDescription("Change the name and email in Project Properties, Teams.")
+            changeButton:SetBehavior(changeBehavior)
+        else
+            text noAuthor = "Git needs your name and email to sign this commit. Set them in Project Properties, Teams."
+            Label noAuthorLabel = authorGroup:AddLabel("Author", noAuthor)
+            noAuthorLabel:SetFontSize(TEXT_SIZE)
+            summary = summary + " " + noAuthor
+        end
+        SetDescription(summary)
 
         // The footer: Cancel, then the main action at the right.
         Grouping buttonGroup = page:AddGrouping("Buttons")
-        cancel = buttonGroup:AddButton("Cancel")
-        cancel:SetBehavior(cancelBehavior)
-
-        ok = buttonGroup:AddButton("Commit")
-        // The main action: the accent button style.
-        ok:SetInterfaceOptionsKey("DialogAcceptButton")
-        ok:SetBehavior(okBehavior)
         buttonGroup:PositionFromBottom()
-
-    end
-
-    action GetMessage returns text
-        return lineTextField:GetText()
+        cancelButton = buttonGroup:AddButton("Cancel")
+        FitToWords(cancelButton)
+        cancelButton:SetBehavior(cancelBehavior)
+        if hasAuthor
+            okBehavior:SetDialog(me)
+            mainButton = buttonGroup:AddButton("Commit " + Words(stagedCount, "file", "files"))
+            mainButton:SetBehavior(okBehavior)
+            SetBehavior(okBehavior)
+        else
+            mainActionBehavior:SetDialog(me)
+            mainActionBehavior:SetAction(teamsBehavior)
+            mainButton = buttonGroup:AddButton("Set Name and Email")
+            mainButton:SetBehavior(mainActionBehavior)
+            SetBehavior(mainActionBehavior)
+        end
+        FitToWords(mainButton)
+        // The main action: the accent button style.
+        mainButton:SetInterfaceOptionsKey("DialogAcceptButton")
     end
 
     action OnShow
-        lineTextField:Focus()
-        lineTextField:SetText("")
+        if messageBox not= undefined
+            messageBox:Focus()
+            text value = messageBox:GetText()
+            messageBox:SetCaretPosition(value:GetSize())
+        elseif mainButton not= undefined
+            mainButton:Focus()
+        end
     end
-    
+
+    // What was typed is kept unless the commit went ahead (C6).
     action OnHide
-    end
-    
-    action GetGitRunner returns ThreadRunner
-        return gitRunner
-    end
-
-    action SetGitRunner(ThreadRunner gitRunner)
-        me:gitRunner = gitRunner
+        if keepDraft and owner not= undefined and messageBox not= undefined
+            owner:KeepDraft(project, messageBox:GetText())
+        end
     end
 
-    action GetThreadedCommitRequestBehavior returns ThreadedBehavior
-        return threadedCommitRequestBehavior
+    // C2: no message. The line under the box, and the box's description.
+    action ShowMessageProblem
+        text problem = "Write a short summary of what changed."
+        messageProblemLabel:SetText(problem)
+        messageBox:SetDescription(problem)
+        RequestLayout()
+        messageBox:Focus()
     end
 
-    action SetThreadedCommitRequestBehavior(ThreadedBehavior threadedCommitRequestBehavior)
-        me:threadedCommitRequestBehavior = threadedCommitRequestBehavior
+    // The commit is going ahead, so the kept message is cleared.
+    action CommitStarted
+        keepDraft = false
+        if owner not= undefined
+            owner:KeepDraft(project, "")
+        end
     end
 
-    action GetCommitRequestBehavior returns CommitRequestBehavior
-        return commitRequestBehavior
+    action GetMessage returns text
+        if messageBox = undefined
+            return ""
+        end
+        return messageBox:GetText()
     end
 
-    action SetCommitRequestBehavior(CommitRequestBehavior commitRequestBehavior)
-        me:commitRequestBehavior = commitRequestBehavior
+    // The staged file selected in the list, or undefined.
+    action GetSelectedChange returns TeamFileChange
+        if stagedList = undefined
+            return undefined
+        end
+        ListSelection selection = stagedList:GetSelection()
+        ListItem item = selection:GetListItem()
+        if item is TeamFileItem
+            TeamFileItem fileItem = cast(TeamFileItem, item)
+            return fileItem:GetChange()
+        end
+        return undefined
+    end
+
+    action GetOwner returns CommitInterfaceBehavior
+        return owner
+    end
+
+    action GetProject returns QuorumProject
+        return project
+    end
+
+    action GetCredentials returns Credentials
+        return credentials
+    end
+
+    action GetStagedCount returns integer
+        return stagedCount
+    end
+
+    private action HasAuthor returns boolean
+        if credentials = undefined
+            return false
+        end
+        text name = credentials:GetName()
+        text email = credentials:GetEmail()
+        if name = undefined or email = undefined
+            return false
+        end
+        text trimmedName = name:Trim()
+        text trimmedEmail = email:Trim()
+        return trimmedName not= "" and trimmedEmail not= ""
+    end
+
+    private action GetBehaviors returns Behaviors
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        return studio:GetBehaviors()
+    end
+
+    // "1 staged file", "3 staged files".
+    private action Words(integer count, text one, text many) returns text
+        if count = 1
+            return "1 " + one
+        end
+        return count + " " + many
     end
 end

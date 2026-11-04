@@ -1,0 +1,87 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Containers.Iterator
+use Libraries.Game.GameStateManager
+use Libraries.System.File
+use Libraries.Development.Versioning.TeamFileChange
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+
+/*
+Show in Project Tree (A4): opens the folders down to the selected row's
+file, selects it, and moves focus to the tree.
+*/
+class TeamShowInTreeBehavior is Behavior
+    TeamTab teamTab = undefined
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action SetTeamTab(TeamTab tab)
+        teamTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if teamTab = undefined
+            return now
+        end
+        TeamFileChange change = teamTab:GetSelectedChange()
+        if change = undefined or change:GetFile() = undefined
+            return now
+        end
+        File file = change:GetFile()
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        ProjectTree tree = studio:GetProjectTree()
+        text target = Normalize(file:GetAbsolutePath())
+
+        Iterator<TreeItem> items = tree:GetTreeItems()
+        repeat while items:HasNext()
+            if Reveal(tree, items:Next(), target)
+                return now
+            end
+        end
+    end
+
+    // Looks for the file under an item, opening folders on the way.
+    private action Reveal(ProjectTree tree, TreeItem item, text target) returns boolean
+        if not (item is ProjectTreeItem)
+            return false
+        end
+        ProjectTreeItem projectItem = cast(ProjectTreeItem, item)
+        File itemFile = projectItem:GetFile()
+        if itemFile = undefined
+            return false
+        end
+        text path = Normalize(itemFile:GetAbsolutePath())
+        if path = target
+            tree:Select(item:GetTreePath())
+            tree:Focus()
+            return true
+        end
+        if item:GetSize() > 0 and target:StartsWith(path + "/")
+            if not item:IsOpen()
+                item:Open()
+            end
+            Iterator<TreeItem> children = item:GetTreeItems()
+            repeat while children:HasNext()
+                if Reveal(tree, children:Next(), target)
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
+    private action Normalize(text path) returns text
+        text backslash = ""
+        backslash = backslash:GetUnicodeValue(92)
+        return path:Replace(backslash, "/")
+    end
+end

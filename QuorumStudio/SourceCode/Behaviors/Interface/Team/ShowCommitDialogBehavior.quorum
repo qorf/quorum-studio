@@ -1,0 +1,48 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Projects.Credentials
+use Libraries.Development.Versioning.TeamStatus
+
+/*
+Opens the Commit dialog on the main thread. It's added to the output pane
+from the git thread (CommitPrepareBehavior, and CommitRequestBehavior after
+a failed commit), as TeamReporter does.
+*/
+class ShowCommitDialogBehavior is Behavior
+    QuorumProject project = undefined
+    CommitInterfaceBehavior owner = undefined
+    TeamStatus status = undefined
+    Credentials credentials = undefined
+    text problem = ""
+    text message = ""
+    boolean finished = false
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action Setup(QuorumProject projectValue, CommitInterfaceBehavior ownerValue, TeamStatus statusValue,
+            Credentials credentialsValue, text problemValue, text messageValue)
+        project = projectValue
+        owner = ownerValue
+        status = statusValue
+        credentials = credentialsValue
+        problem = problemValue
+        message = messageValue
+    end
+
+    action Run(BehaviorEvent event)
+        finished = true
+        if owner = undefined or status = undefined
+            return now
+        end
+        owner:ShowDialog(project, status, credentials, problem, message)
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+end

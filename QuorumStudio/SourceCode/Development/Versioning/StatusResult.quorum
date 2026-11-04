@@ -15,6 +15,34 @@ class StatusResult
     boolean hasUncommittedChanges = false
     boolean isClean = false
 
+    // Whether git could read the status, and its message when it couldn't.
+    boolean successful = false
+    text message = ""
+
+    // The repository's folder, with / between folders. JGit's paths above
+    // are relative to it.
+    text workTreePath = ""
+
+    // The branch, or a commit id when no branch is checked out.
+    text branch = ""
+    boolean detached = false
+    // Whether the repository has a server at all, and its name ("origin").
+    boolean hasRemote = false
+    text remoteName = ""
+    // The server branch this branch pulls from and pushes to ("origin/main").
+    boolean hasUpstream = false
+    text upstreamBranch = ""
+    // Commits here and not on the server, and the other way, as of the last
+    // fetch.
+    integer aheadCount = 0
+    integer behindCount = 0
+    // When the server was last fetched from, as text ("10:42"), or "".
+    text lastFetchTime = ""
+    // The commits a push would send, newest first (at most 100), and how
+    // many there are in all.
+    Array<CommitSummary> commitsToPush
+    integer commitsToPushCount = 0
+
     action GetAdded returns Array
         return added
     end
@@ -61,5 +89,61 @@ class StatusResult
 
     action IsClean returns boolean
         return isClean
+    end
+
+    action IsSuccessful returns boolean
+        return successful
+    end
+
+    action GetMessage returns text
+        return message
+    end
+
+    action GetWorkTreePath returns text
+        return workTreePath
+    end
+
+    action GetBranch returns text
+        return branch
+    end
+
+    action IsDetached returns boolean
+        return detached
+    end
+
+    action HasRemote returns boolean
+        return hasRemote
+    end
+
+    action GetRemoteName returns text
+        return remoteName
+    end
+
+    action HasUpstream returns boolean
+        return hasUpstream
+    end
+
+    action GetUpstreamBranch returns text
+        return upstreamBranch
+    end
+
+    action GetAheadCount returns integer
+        return aheadCount
+    end
+
+    action GetBehindCount returns integer
+        return behindCount
+    end
+
+    action GetLastFetchTime returns text
+        return lastFetchTime
+    end
+
+    action GetCommitsToPush returns Array<CommitSummary>
+        return commitsToPush
+    end
+
+    action GetCommitsToPushCount returns integer
+        return commitsToPushCount
     end
 end

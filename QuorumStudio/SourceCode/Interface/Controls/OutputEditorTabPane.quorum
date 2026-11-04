@@ -21,6 +21,7 @@ use Libraries.Development.Environment.Studio.Interface.OutputTab
 use Libraries.Development.Environment.Studio.Interface.VariablesTab
 use Libraries.Development.Environment.Studio.Interface.BreakpointsTab
 use Libraries.Development.Environment.Studio.Interface.CallStackTab
+use Libraries.Development.Environment.Studio.Interface.TeamTab
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Studio.Behaviors.InputBehavior
@@ -28,6 +29,10 @@ use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Events.FocusEvent
 use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Development.Environment.Studio.Interface.SearchResultsTab
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 
 class OutputEditorTabPane is TabPane
     OutputTab outputTab
@@ -36,6 +41,8 @@ class OutputEditorTabPane is TabPane
     BreakpointsTab breakpointsTab
     CallStackTab callStackTab
     SearchResultsTab searchResultsTab
+    // Open at startup, like the other tabs; Team > Status brings it forward.
+    TeamTab teamTab
     Array<Tab> openTabs
     
     Resources resources = undefined
@@ -69,6 +76,7 @@ class OutputEditorTabPane is TabPane
         errorTab:SetBehaviors(behaviors)
         callStackTab:SetBehaviors(behaviors)
         searchResultsTab:SetBehaviors(behaviors)
+        teamTab:SetBehaviors(behaviors)
     end
 
     on create
@@ -135,6 +143,75 @@ class OutputEditorTabPane is TabPane
         end
         return searchResultsTab  
     end
+
+    // The Team tab, opened if it's closed. Call it on the main thread.
+    action GetTeamTab returns TeamTab
+        if not openTabs:Has(teamTab)
+            Add(cast(Tab,teamTab))
+            openTabs:Add(teamTab)
+        end
+        return teamTab
+    end
+
+    // The Team tab, open or not, for other threads to post to.
+    action GetTeamTabWithoutOpening returns TeamTab
+        return teamTab
+    end
+
+    action IsTeamTabOpen returns boolean
+        return openTabs:Has(teamTab)
+    end
+
+    // Whether the Team tab is the one showing (step 3 reports results to the
+    // Console when it isn't).
+    action IsTeamTabSelected returns boolean
+        TabPaneSelection selection = GetSelection()
+        if selection = undefined or selection:GetTab() = undefined
+            return false
+        end
+        return selection:GetTab():Equals(teamTab)
+    end
+
+    // Asks the Team tab for a new status, if it's open; if it isn't, the
+    // Project Tree reads one for its marks. Main thread only.
+    action RefreshTeamTab
+        if IsTeamTabOpen()
+            teamTab:RequestRefresh()
+        else
+            RefreshTreeGitMarks()
+        end
+    end
+
+    // The same, a moment later, so several saves run one status. With the
+    // Team tab closed, the tree reads at once.
+    action RefreshTeamTabSoon
+        if IsTeamTabOpen()
+            teamTab:RequestRefreshSoon()
+        else
+            RefreshTreeGitMarks()
+        end
+    end
+
+    // The selected project's marks in the Project Tree (Tree T2).
+    private action RefreshTreeGitMarks
+        GameStateManager treeManager
+        if not (treeManager:GetGame() is QuorumStudio)
+            return now
+        end
+        QuorumStudio studio = cast(QuorumStudio, treeManager:GetGame())
+        StudioFocusManager focus = studio:GetStudioFocusManager()
+        if focus = undefined
+            return now
+        end
+        Project project = focus:GetProjectFocus()
+        if project is QuorumProject
+            QuorumProject quorumProject = cast(QuorumProject, project)
+            ProjectTree tree = studio:GetProjectTree()
+            if tree not= undefined
+                tree:RefreshGitMarks(quorumProject)
+            end
+        end
+    end
     
     action Setup
         LayoutProperties properties = GetDefaultLayoutProperties()
@@ -157,6 +234,9 @@ class OutputEditorTabPane is TabPane
         array:Add(breakpointsTab)
         array:Add(callStackTab)
         array:Add(searchResultsTab)
+        // Added at startup like the others: added later for the first time,
+        // its title came out smaller than the other tabs' titles.
+        array:Add(teamTab)
         openTabs = array
         Add(array)
 
@@ -175,5 +255,6 @@ class OutputEditorTabPane is TabPane
         breakpointsTab:Setup()
         variablesTab:Setup()
         searchResultsTab:Setup()
+        teamTab:Setup()
     end
 end

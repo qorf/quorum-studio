@@ -1,0 +1,54 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.System.File
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.ResetResult
+use Libraries.Development.Versioning.TeamStatus
+
+/*
+Git thread: Reset to Last Commit (Tree M4) for one file, after the user
+said yes. Then it reads the status again and posts it to the Team tab
+(which passes it on to the tree's marks), and hands the result to the main
+thread (TreeResetDoneBehavior), which reloads the open tab and reports.
+*/
+class TreeResetWorkBehavior is QuorumStudioBehavior
+    QuorumProject project = undefined
+    // Git's path for the file, relative to the repository's folder.
+    text path = ""
+    File file = undefined
+
+    action Setup(QuorumProject projectValue, text pathValue, File fileValue)
+        project = projectValue
+        path = pathValue
+        file = fileValue
+    end
+
+    action Run(BehaviorEvent event)
+        if project = undefined or not project:HasGitSupport()
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+
+        Git git
+        ResetResult result = git:Reset(project:GetGitRepository(), path)
+
+        StatusRequestBehavior reader
+        TeamStatus after = reader:GetStatus(project)
+        TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+        if teamTab not= undefined
+            teamTab:PostStatus(after)
+        end
+
+        TreeResetDoneBehavior done
+        done:Setup(project, file, result)
+        outPane:AddBehavior(done)
+    end
+end

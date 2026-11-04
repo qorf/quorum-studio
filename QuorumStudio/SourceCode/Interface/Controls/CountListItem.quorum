@@ -1,0 +1,55 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+
+/*
+One group's count in the Commit dialog's nothing-staged box (C3b): the
+count ("48 changed"), then its group muted after it ("not staged"), as the
+stage dialog's and the Team tab's rows show a file and its folder. The
+spoken name is "48 changed, not staged"; the List adds "1 of 2".
+*/
+class CountListItem is ListItem
+    Label groupDetail
+
+    on create
+        parent:ListItem:icon:Hide()
+
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        groupDetail:SetAccessibilityCode(groupDetail:parent:Item:NOT_ACCESSIBLE)
+        groupDetail:SetAcceptsMouseInput(false)
+        groupDetail:SetPositionOnBaseLine(false)
+        groupDetail:SetLeftMargin(12)
+        Add(groupDetail)
+    end
+
+    /*
+    This action fills the row.
+
+    Attribute: Parameter countWords Such as "48 changed".
+    Attribute: Parameter groupWords Such as "not staged".
+    Attribute: Parameter mutedColor The group words' color, or undefined for the normal one.
+    Attribute: Parameter size The font size, the dialog's text size.
+    */
+    action Setup(text countWords, text groupWords, ColorGroup mutedColor, integer size)
+        if mutedColor not= undefined
+            groupDetail:SetColor(mutedColor)
+        end
+        SetText(countWords)
+        groupDetail:SetText(groupWords)
+        SetName(countWords + ", " + groupWords)
+        SetFontSize(size)
+    end
+
+    // The group words keep the count's size.
+    action SetFontSize(integer size)
+        parent:ListItem:SetFontSize(size)
+        groupDetail:SetFontSize(size)
+    end
+end

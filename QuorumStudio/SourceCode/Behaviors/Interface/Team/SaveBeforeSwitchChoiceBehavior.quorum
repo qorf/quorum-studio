@@ -1,0 +1,39 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.Dialog
+use Libraries.Development.Environment.Studio.BranchSwitcher
+
+// B3's buttons: Cancel, Don't Save, Save and Switch.
+class SaveBeforeSwitchChoiceBehavior is Behavior
+    public constant integer CANCEL = 0
+    public constant integer DONT_SAVE = 1
+    public constant integer SAVE = 2
+
+    Dialog dialog = undefined
+    BranchSwitcher switcher = undefined
+    integer choice = 0
+
+    action Setup(Dialog dialogValue, BranchSwitcher switcherValue, integer value)
+        dialog = dialogValue
+        switcher = switcherValue
+        choice = value
+    end
+
+    action Run(BehaviorEvent event)
+        if dialog not= undefined
+            dialog:Hide()
+        end
+        if switcher = undefined
+            return now
+        end
+        if choice = SAVE
+            switcher:SaveAndSwitch()
+        elseif choice = DONT_SAVE
+            switcher:SwitchWithoutSaving()
+        else
+            switcher:CancelSwitch()
+        end
+    end
+end

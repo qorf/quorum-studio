@@ -1,0 +1,71 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Game.Graphics.Label
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Studio.BranchSwitcher
+use Libraries.Development.Environment.Studio.Behaviors.SaveBeforeSwitchChoiceBehavior
+
+/*
+B3: "Hero.quorum and Main.quorum have unsaved changes. Save them before
+switching to level-two?" Cancel, Don't Save, Save and Switch. Don't Save
+switches and leaves the unsaved text in its tab.
+*/
+class SaveBeforeSwitchDialog is Dialog
+    boolean initialized = false
+    Label messageLabel = undefined
+    Button cancelButton = undefined
+    Button dontSaveButton = undefined
+    Button saveButton = undefined
+
+    SaveBeforeSwitchChoiceBehavior cancelBehavior
+    SaveBeforeSwitchChoiceBehavior dontSaveBehavior
+    SaveBeforeSwitchChoiceBehavior saveBehavior
+
+    on create
+        SetModal(true)
+    end
+
+    action Setup(BranchSwitcher switcher, Array<text> names, text target)
+        cancelBehavior:Setup(me, switcher, cancelBehavior:CANCEL)
+        dontSaveBehavior:Setup(me, switcher, dontSaveBehavior:DONT_SAVE)
+        saveBehavior:Setup(me, switcher, saveBehavior:SAVE)
+
+        if not initialized
+            initialized = true
+            SetName("Switch Branch")
+            SetPercentageWidth(0.5)
+            SetPixelHeight(180)
+            Page page = InitializeDefaultPage()
+            messageLabel = page:AddLabel("Unsaved Changes", "")
+            Grouping buttonGroup = page:AddGrouping("Confirm")
+            buttonGroup:PositionFromBottom()
+            cancelButton = buttonGroup:AddButton("Cancel")
+            cancelButton:SetBehavior(cancelBehavior)
+            dontSaveButton = buttonGroup:AddButton("Don't Save")
+            dontSaveButton:SetBehavior(dontSaveBehavior)
+            saveButton = buttonGroup:AddButton("Save and Switch")
+            saveButton:SetInterfaceOptionsKey("DialogAcceptButton")
+            saveButton:SetBehavior(saveBehavior)
+            SetBehavior(saveBehavior)
+        end
+
+        // Worded as Pull's question (L1): one or two files are named; more
+        // are counted, starting with the first.
+        if names:GetSize() = 1
+            messageLabel:SetText(names:Get(0) + " has unsaved changes. Save it before switching to " + target + "?")
+        elseif names:GetSize() = 2
+            messageLabel:SetText(switcher:JoinNames(names) + " have unsaved changes. Save them before switching to " + target + "?")
+        else
+            messageLabel:SetText("" + names:GetSize() + " files have unsaved changes, starting with " + names:Get(0)
+                + ". Save them before switching to " + target + "?")
+        end
+    end
+
+    action OnShow
+        saveButton:Focus()
+    end
+end

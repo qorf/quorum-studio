@@ -23,12 +23,21 @@ use Libraries.Game.InputTable
 use Libraries.Interface.Events.KeyboardEvent
 use Libraries.Game.InputSet
 use Libraries.Interface.Accessibility
+use Libraries.System.File
+use Libraries.Development.Versioning.TeamStatus
+use Libraries.Development.Environment.Studio.Behaviors.TreeGitStatusBehavior
 
 class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListener
     ProjectManager manager = undefined
     Resources resources = undefined
     QuorumStudio studio = undefined
     HashTable<text, text> opened
+    // The last git status of each project, by its folder (Tree R2 and L2).
+    HashTable<text, TeamStatus> gitStatuses
+    ProjectTreeGitMarks gitMarks
+    // A status from another thread, applied on the next Update, as the
+    // Team tab takes its status (TeamTab:PostStatus).
+    TeamStatus pendingGitStatus = undefined
     on create
         SetName("Projects")
         AddTreeChangeListener(me)
@@ -157,6 +166,139 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
     action SelectionChanged(Selection selection)
     end
 
+    /*
+    A project's row is added when it loads and again each time it's rebuilt
+    (a new file, a pull, a branch switch). It gets its project's last marks
+    at once; a fresh status, if one is coming, replaces them.
+    */
+    action Add(TreeItem item)
+        parent:Tree:Add(item)
+        ShowKnownMarks(item)
+    end
+
+    action Add(integer location, TreeItem item)
+        parent:Tree:Add(location, item)
+        ShowKnownMarks(item)
+    end
+
+    /*
+    This action shows a project's git status as marks on its rows (Tree R2 and L2)
+    and keeps it for the project. Call it on the main thread; other threads
+    use PostGitStatus. A status with no project folder (no project, or a
+    project not in Git) is ignored, and so is one for a project that isn't
+    in Git.
+    */
+    action ApplyGitStatus(TeamStatus status)
+        if status = undefined
+            return now
+        end
+        File folder = status:GetProjectFolder()
+        if folder = undefined
+            return now
+        end
+        text key = PathKey(folder)
+        ProjectTreeItem row = GetProjectRow(key)
+        if row not= undefined
+            // GetProjectRow only returns rows that have a project.
+            QuorumProject rowProject = row:GetProject()
+            if not rowProject:HasGitSupport()
+                return now
+            end
+        end
+        gitStatuses:Add(key, status)
+        if row not= undefined
+            gitMarks:Apply(row, status)
+        end
+    end
+
+    // The same, from any thread: applied on the tree's next Update.
+    action PostGitStatus(TeamStatus status)
+        pendingGitStatus = status
+    end
+
+    action Update(number seconds)
+        if pendingGitStatus not= undefined
+            TeamStatus value = pendingGitStatus
+            pendingGitStatus = undefined
+            ApplyGitStatus(value)
+        end
+    end
+
+    /*
+    This action reads a project's git status on the git thread and shows it
+    as marks. Projects not in Git are skipped. Main thread.
+    */
+    action RefreshGitMarks(QuorumProject project)
+        if project = undefined or studio = undefined
+            return now
+        end
+        if not project:HasGitSupport()
+            return now
+        end
+        TreeGitStatusBehavior reader
+        reader:Setup(me, project)
+        ThreadRunner runner = studio:GetBehaviors():GetGitRunner()
+        runner:Add(reader)
+    end
+
+    // The last status read for a project, or undefined (step 13's menus).
+    action GetGitStatus(QuorumProject project) returns TeamStatus
+        if project = undefined
+            return undefined
+        end
+        text key = PathKey(project:GetLocation())
+        if gitStatuses:HasKey(key)
+            return gitStatuses:GetValue(key)
+        end
+        return undefined
+    end
+
+    // A project row's last marks, if its project is in Git and has a status.
+    private action ShowKnownMarks(TreeItem item)
+        if not (item is ProjectTreeItem)
+            return now
+        end
+        ProjectTreeItem row = cast(ProjectTreeItem, item)
+        QuorumProject rowProject = row:GetProject()
+        if rowProject = undefined
+            return now
+        end
+        if not rowProject:HasGitSupport()
+            return now
+        end
+        text key = PathKey(rowProject:GetLocation())
+        if gitStatuses:HasKey(key)
+            gitMarks:Apply(row, gitStatuses:GetValue(key))
+        end
+    end
+
+    // The row of the project whose folder has this key.
+    private action GetProjectRow(text key) returns ProjectTreeItem
+        Iterator<TreeItem> items = GetTreeItems()
+        repeat while items:HasNext()
+            TreeItem item = items:Next()
+            if item is ProjectTreeItem
+                ProjectTreeItem row = cast(ProjectTreeItem, item)
+                QuorumProject rowProject = row:GetProject()
+                if rowProject not= undefined
+                    if PathKey(rowProject:GetLocation()) = key
+                        return row
+                    end
+                end
+            end
+        end
+        return undefined
+    end
+
+    // A folder's path with / between folders, the same on every system.
+    private action PathKey(File folder) returns text
+        if folder = undefined
+            return ""
+        end
+        text path = folder:GetAbsolutePath()
+        return path:Replace("\", "/")
+    end
+
      action OpenedProject(QuorumProject project)
         ThreadRunner runner
         ThreadedBehavior threadBehavior
@@ -179,6 +321,8 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
                 Remove(item)
             end
         end
+        // Reopened later, the project gets a fresh status.
+        gitStatuses:RemoveKey(PathKey(project:GetLocation()))
         Resize()
     end
 end

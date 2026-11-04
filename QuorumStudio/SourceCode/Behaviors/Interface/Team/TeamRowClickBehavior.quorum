@@ -1,0 +1,73 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Item
+use Libraries.Interface.Controls.ListItem
+use Libraries.Game.Layer2D
+use Libraries.Compute.Vector3
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Studio.Interface.TeamFileItem
+use Libraries.Development.Environment.Studio.Interface.TeamGroupItem
+
+/*
+A left click on a Team tab row. The fold arrow folds (FoldClickBehavior, as
+before); [+] or [-] on a file's row stages or unstages it; Stage all or
+Unstage all on a group's row does the group, and Commit... on the Staged
+group's row opens the Commit dialog (Commit C7). Elsewhere, the row's
+usual click handling selects it.
+*/
+class TeamRowClickBehavior is Behavior
+    FoldClickBehavior foldClick
+    TeamStageBehavior stager = undefined
+    TeamTab teamTab = undefined
+
+    action SetStager(TeamStageBehavior value)
+        stager = value
+    end
+
+    action SetTeamTab(TeamTab tab)
+        teamTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        foldClick:Run(event)
+
+        MouseEvent mouse = event:GetMouseEvent()
+        if mouse = undefined or not mouse:IsLeftButtonEvent() or stager = undefined
+            return now
+        end
+        Item item = event:GetItem()
+        if not (item is ListItem)
+            return now
+        end
+        ListItem row = cast(ListItem, item)
+        Layer2D layer = row:GetLayer()
+        if layer = undefined or layer:GetCamera() = undefined
+            return now
+        end
+        Vector3 point = layer:GetCamera():ScreenToWorldCoordinates(mouse:GetX() - layer:GetViewportX(), mouse:GetY() - layer:GetViewportY())
+
+        if row is TeamFileItem
+            TeamFileItem fileRow = cast(TeamFileItem, row)
+            if fileRow:IsOnStageButton(point:GetX(), point:GetY())
+                stager:Run(event)
+            end
+        elseif row is TeamGroupItem
+            TeamGroupItem group = cast(TeamGroupItem, row)
+            if group:IsOnActionButton(point:GetX(), point:GetY())
+                stager:Run(event)
+            elseif teamTab not= undefined and group:IsOnCommitButton(point:GetX(), point:GetY())
+                Behavior commitBehavior = teamTab:GetCommitBehavior()
+                if commitBehavior not= undefined
+                    commitBehavior:Run(event)
+                end
+            end
+        end
+    end
+
+    action IsFinished returns boolean
+        return true
+    end
+end

@@ -1,12 +1,48 @@
 package Libraries.Development.Versioning
 
+/*
+What a commit did (Commit C5 and C6). Git.java sets the fields directly;
+failureKind is one of the constants below, and OTHER until Git.java says
+otherwise.
+*/
 class CommitResult
+    public constant integer COMMITTED = 0
+    public constant integer NOTHING_STAGED = 1
+    public constant integer NO_NAME = 2
+    public constant integer LOCKED = 3
+    public constant integer CONFLICTS = 4
+    public constant integer OTHER = 5
+
+    boolean successful = false
+    integer failureKind = 5
     text message = ""
+    text details = ""
+    text shortId = ""
+
+    action IsSuccessful returns boolean
+        return successful
+    end
+
+    action GetFailureKind returns integer
+        return failureKind
+    end
+
+    // JGit's message when the commit failed, or "".
     action GetMessage returns text
         return message
     end
 
     action SetMessage(text message)
         me:message = message
+    end
+
+    // JGit's messages, one cause per line, for a Details fold.
+    action GetDetails returns text
+        return details
+    end
+
+    // The new commit's short id, such as "3f2a1b9", or "".
+    action GetShortId returns text
+        return shortId
     end
 end

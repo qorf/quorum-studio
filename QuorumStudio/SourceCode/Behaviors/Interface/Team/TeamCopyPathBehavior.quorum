@@ -1,0 +1,30 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.System.File
+use Libraries.Development.Versioning.TeamFileChange
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+
+// Copies the selected file row's full path (Ctrl+C or Cmd+C, or Copy Path).
+class TeamCopyPathBehavior is Behavior
+    TeamTab teamTab = undefined
+
+    action SetTeamTab(TeamTab tab)
+        teamTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if teamTab = undefined
+            return now
+        end
+        TeamFileChange change = teamTab:GetSelectedChange()
+        if change = undefined or change:GetFile() = undefined
+            return now
+        end
+        File file = change:GetFile()
+        GameStateManager manager
+        manager:GetGame():SetClipboard(file:GetAbsolutePath())
+    end
+end

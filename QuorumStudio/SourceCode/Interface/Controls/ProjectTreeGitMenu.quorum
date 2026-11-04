@@ -1,0 +1,152 @@
+package Libraries.Development.Environment.Projects
+
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Containers.Array
+use Libraries.System.File
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.Behaviors.TreeStageBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TreeResetBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TreeCommitBehavior
+use Libraries.Development.Versioning.TeamStatus
+use Libraries.Development.Versioning.TeamFileChange
+
+/*
+The Project Tree's Git section (Tree M1 to M4), last in a row's menu, only
+for a project in Git, and only the items that fit the row's state; nothing
+is greyed out. It's built each time the menu opens, from the tree's last
+status. Before the tree has a status for the project, only Commit... on
+the project's row is offered, and a status is asked for, so the next time
+the menu opens it has the rest.
+*/
+class ProjectTreeGitMenu
+    /*
+    This action adds the Git items for a row to a menu, and returns them so
+    a kept menu (the project's row) can take them off next time. A row
+    whose project isn't in Git gets none.
+    */
+    action AddItems(PopupMenu menu, ProjectTreeItem row) returns Array<MenuItem>
+        Array<MenuItem> added
+        if row = undefined
+            return added
+        end
+        QuorumProject project = row:GetProject()
+        File file = row:GetFile()
+        if project = undefined or file = undefined or not project:HasGitSupport()
+            return added
+        end
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        ProjectTree tree = studio:GetProjectTree()
+        TeamStatus status = tree:GetGitStatus(project)
+        boolean known = status not= undefined
+        if known
+            known = status:IsReady()
+        end
+        if not known
+            tree:RefreshGitMarks(project)
+        end
+
+        boolean isProjectRow = (row:GetParentTreeItem() = undefined)
+        if isProjectRow
+            AddProjectItems(menu, added, row, status, known)
+        elseif file:IsDirectory()
+            if known
+                AddFolderItems(menu, added, row, status)
+            end
+        elseif known
+            AddFileItems(menu, added, row, status)
+        end
+        return added
+    end
+
+    // M1 and M4.
+    private action AddFileItems(PopupMenu menu, Array<MenuItem> added, ProjectTreeItem row, TeamStatus status)
+        File file = row:GetFile()
+        TreeStageBehavior counter
+        Array<TeamFileChange> unstagedRows = counter:GetFileChanges(status, file, false)
+        Array<TeamFileChange> stagedRows = counter:GetFileChanges(status, file, true)
+        boolean hasUnstaged = not unstagedRows:IsEmpty()
+        boolean hasStaged = not stagedRows:IsEmpty()
+
+        if hasUnstaged
+            TreeStageBehavior stage
+            stage:SetItem(row)
+            stage:SetUnstage(false)
+            if hasStaged
+                AddItem(menu, added, "Stage Changes Since", stage)
+            else
+                AddItem(menu, added, "Stage", stage)
+            end
+        end
+        if hasStaged
+            TreeStageBehavior unstage
+            unstage:SetItem(row)
+            unstage:SetUnstage(true)
+            AddItem(menu, added, "Unstage (keeps your changes)", unstage)
+        end
+
+        // M4: only a file in the last commit that has changes.
+        TreeResetBehavior reset
+        if reset:CanReset(status:GetChanges(file))
+            reset:SetItem(row)
+            AddItem(menu, added, "Reset to Last Commit...", reset)
+        end
+    end
+
+    // M2.
+    private action AddFolderItems(PopupMenu menu, Array<MenuItem> added, ProjectTreeItem row, TeamStatus status)
+        TreeStageBehavior counter
+        integer unstaged = counter:CountUnder(status, row:GetFile(), false)
+        integer staged = counter:CountUnder(status, row:GetFile(), true)
+        if unstaged > 0
+            TreeStageBehavior stage
+            stage:SetItem(row)
+            stage:SetUnstage(false)
+            AddItem(menu, added, "Stage Folder (" + CountWords(unstaged, "change", "changes") + ")", stage)
+        end
+        if staged > 0
+            TreeStageBehavior unstage
+            unstage:SetItem(row)
+            unstage:SetUnstage(true)
+            AddItem(menu, added, "Unstage Folder (" + staged + " staged)", unstage)
+        end
+    end
+
+    // M3. Commit... is there whether or not the status is known yet.
+    private action AddProjectItems(PopupMenu menu, Array<MenuItem> added, ProjectTreeItem row, TeamStatus status, boolean known)
+        QuorumProject project = row:GetProject()
+        if known
+            TreeStageBehavior counter
+            integer unstaged = counter:CountUnder(status, project:GetLocation(), false)
+            if unstaged > 0
+                TreeStageBehavior stage
+                stage:SetItem(row)
+                stage:SetUnstage(false)
+                AddItem(menu, added, "Stage All Changes (" + unstaged + ")", stage)
+            end
+        end
+        TreeCommitBehavior commitBehavior
+        commitBehavior:SetProject(project)
+        AddItem(menu, added, "Commit...", commitBehavior)
+    end
+
+    private action AddItem(PopupMenu menu, Array<MenuItem> added, text name, Behavior behavior)
+        MenuItem item
+        item:SetName(name)
+        item:SetBehavior(behavior)
+        menu:Add(item)
+        added:Add(item)
+    end
+
+    private action CountWords(integer count, text one, text many) returns text
+        if count = 1
+            return "1 " + one
+        end
+        return "" + count + " " + many
+    end
+end

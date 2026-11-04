@@ -1,0 +1,46 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.TeamStatus
+
+/*
+Git thread: reads a project's status for a Project Tree Git item that had
+none yet (TreeGitBehavior), posts it to the Team tab (which passes it on
+to the tree's marks), and then hands it back to the item on the main
+thread (TreeGitContinueBehavior).
+*/
+class TreeGitStatusReadBehavior is Behavior
+    TreeGitBehavior waiting = undefined
+    QuorumProject project = undefined
+
+    action Setup(TreeGitBehavior value, QuorumProject projectValue)
+        waiting = value
+        project = projectValue
+    end
+
+    action Run(BehaviorEvent event)
+        if waiting = undefined or project = undefined
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+
+        StatusRequestBehavior reader
+        TeamStatus status = reader:GetStatus(project)
+        TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+        if teamTab not= undefined
+            teamTab:PostStatus(status)
+        end
+
+        TreeGitContinueBehavior resume
+        resume:Setup(waiting, status)
+        outPane:AddBehavior(resume)
+    end
+end

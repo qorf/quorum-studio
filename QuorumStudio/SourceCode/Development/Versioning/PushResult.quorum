@@ -5,6 +5,25 @@ class PushResult
     text message = ""
     Array<RemoteReferenceUpdate> updates
 
+    // The server took the push (or already had every commit).
+    boolean successful = false
+    // GitConstants' ERROR_ kind when it didn't, and JGit's own words.
+    integer errorKind = 0
+    text details = ""
+    // The server's reason, when it refused (ERROR_REFUSED).
+    text serverMessage = ""
+    // The server has commits this branch doesn't (Push P4).
+    boolean rejectedByNewerCommits = false
+    // The server already had every commit.
+    boolean upToDate = false
+    // The branch wasn't on the server before; now it tracks it (Push P7).
+    boolean firstPush = false
+    // "origin" and "main".
+    text remoteName = ""
+    text remoteBranch = ""
+    // When it was pushed ("11:07").
+    text pushTime = ""
+
     action GetMessage returns text
         return message
     end
@@ -19,5 +38,45 @@ class PushResult
 
     action SetUpdates(Array<RemoteReferenceUpdate> updates)
         me:updates = updates
+    end
+
+    action IsSuccessful returns boolean
+        return successful
+    end
+
+    action GetErrorKind returns integer
+        return errorKind
+    end
+
+    action GetDetails returns text
+        return details
+    end
+
+    action GetServerMessage returns text
+        return serverMessage
+    end
+
+    action WasRejectedByNewerCommits returns boolean
+        return rejectedByNewerCommits
+    end
+
+    action IsUpToDate returns boolean
+        return upToDate
+    end
+
+    action IsFirstPush returns boolean
+        return firstPush
+    end
+
+    action GetRemoteName returns text
+        return remoteName
+    end
+
+    action GetRemoteBranch returns text
+        return remoteBranch
+    end
+
+    action GetPushTime returns text
+        return pushTime
     end
 end

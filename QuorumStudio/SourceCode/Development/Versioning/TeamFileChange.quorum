@@ -1,0 +1,141 @@
+package Libraries.Development.Versioning
+
+use Libraries.System.File
+
+/*
+One changed file, in one of git's groups, as the Team tab shows it. A file
+staged and then changed again is two of these, one in Staged and one in
+Not staged, as git shows it.
+*/
+class TeamFileChange
+    // The group: which part of git's status the file is in.
+    public constant integer STAGED = 0
+    public constant integer NOT_STAGED = 1
+    public constant integer UNTRACKED = 2
+    public constant integer CONFLICT = 3
+
+    // What happened to the file.
+    public constant integer NEW_FILE = 0
+    public constant integer MODIFIED = 1
+    public constant integer DELETED = 2
+    public constant integer CONFLICTING = 3
+
+    // The path as JGit gives it, relative to the repository's folder.
+    text repositoryPath = ""
+    // The path relative to the project's folder, with / between folders.
+    text projectPath = ""
+    text fileName = ""
+    // The project-relative folder it's in ("Source/Levels"), or "".
+    text folder = ""
+    integer group = 0
+    integer kind = 0
+    // On a Not staged row: the file is also staged, and changed since.
+    boolean changedAgain = false
+    File file = undefined
+
+    action Setup(text repoPath, text pathInProject, integer groupValue, integer kindValue, File fileValue)
+        repositoryPath = repoPath
+        projectPath = pathInProject
+        group = groupValue
+        kind = kindValue
+        file = fileValue
+
+        integer slash = LastSlash(pathInProject)
+        if slash < 0
+            fileName = pathInProject
+            folder = ""
+        else
+            fileName = pathInProject:GetSubtext(slash + 1)
+            folder = pathInProject:GetSubtext(0, slash)
+        end
+    end
+
+    action GetRepositoryPath returns text
+        return repositoryPath
+    end
+
+    action GetProjectPath returns text
+        return projectPath
+    end
+
+    action GetFileName returns text
+        return fileName
+    end
+
+    action GetFolder returns text
+        return folder
+    end
+
+    action GetGroup returns integer
+        return group
+    end
+
+    action GetKind returns integer
+        return kind
+    end
+
+    action GetFile returns File
+        return file
+    end
+
+    action IsChangedAgain returns boolean
+        return changedAgain
+    end
+
+    action SetChangedAgain(boolean value)
+        changedAgain = value
+    end
+
+    // The mark the Team tab shows: + new, ~ modified, - deleted, ? untracked,
+    // ! conflict.
+    action GetMark returns text
+        if group = UNTRACKED
+            return "?"
+        elseif group = CONFLICT
+            return "!"
+        elseif kind = NEW_FILE
+            return "+"
+        elseif kind = DELETED
+            return "-"
+        end
+        return "~"
+    end
+
+    // What happened, in words: "new file", "modified", "deleted",
+    // "modified again since staged", "conflict".
+    action GetStateWords returns text
+        if group = CONFLICT
+            return "conflict"
+        elseif kind = NEW_FILE
+            return "new file"
+        elseif kind = DELETED
+            return "deleted"
+        elseif changedAgain
+            return "modified again since staged"
+        end
+        return "modified"
+    end
+
+    // The group, in words: "staged", "not staged", "untracked", "conflict".
+    action GetGroupWords returns text
+        if group = STAGED
+            return "staged"
+        elseif group = NOT_STAGED
+            return "not staged"
+        elseif group = UNTRACKED
+            return "untracked"
+        end
+        return "conflict"
+    end
+
+    private action LastSlash(text value) returns integer
+        integer index = value:GetSize() - 1
+        repeat while index >= 0
+            if value:GetCharacter(index) = "/"
+                return index
+            end
+            index = index - 1
+        end
+        return -1
+    end
+end

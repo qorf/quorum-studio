@@ -1,0 +1,45 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Studio.Interface.TeamFileItem
+
+/*
+Picks several rows in one group (A3): Shift+Down and Shift+Up extend the
+picked rows from where picking began; Cmd+click picks or unpicks one row.
+*/
+class TeamPickBehavior is Behavior
+    public constant integer PICK_DOWN = 0
+    public constant integer PICK_UP = 1
+    public constant integer PICK_TOGGLE = 2
+
+    TeamTab teamTab = undefined
+    integer mode = PICK_DOWN
+
+    action SetTeamTab(TeamTab tab)
+        teamTab = tab
+    end
+
+    action SetMode(integer value)
+        mode = value
+    end
+
+    action Run(BehaviorEvent event)
+        if teamTab = undefined
+            return now
+        end
+        if mode = PICK_TOGGLE
+            if event:GetItem() is TeamFileItem
+                TeamFileItem row = cast(TeamFileItem, event:GetItem())
+                teamTab:TogglePicked(row)
+            end
+        else
+            teamTab:PickMove(mode = PICK_DOWN)
+        end
+    end
+
+    action IsFinished returns boolean
+        return true
+    end
+end

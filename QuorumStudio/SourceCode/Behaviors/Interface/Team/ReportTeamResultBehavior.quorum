@@ -1,0 +1,37 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+
+// Adds a result's sentence to the Console when the Team tab isn't showing.
+class ReportTeamResultBehavior is Behavior
+    text sentence = ""
+    boolean finished = false
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action SetSentence(text value)
+        sentence = value
+    end
+
+    action Run(BehaviorEvent event)
+        finished = true
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+        if not outPane:IsTeamTabSelected()
+            OutputTab out = outPane:GetOutputTab()
+            out:Append(sentence)
+        end
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+end

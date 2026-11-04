@@ -1,0 +1,299 @@
+package Libraries.Development.Versioning
+
+use Libraries.Containers.Array
+use Libraries.Containers.HashTable
+use Libraries.System.File
+
+/*
+A project's git status in git's own groups, with paths relative to the
+project's folder. It's made from a StatusResult (JGit's ten lists) and is
+what the Team tab, and later the Project Tree, read.
+
+JGit's lists map to the groups this way:
+- Staged: Added (new file), Changed (modified), Removed (deleted).
+- Not staged: Modified (modified), Missing (deleted).
+- Untracked: Untracked (files; UntrackedFolders isn't used).
+- Conflicts: Conflicting. A conflicting file isn't repeated in the other
+  groups.
+UncommittedChanges and IgnoredNotInIndex aren't shown.
+*/
+class TeamStatus
+    // What kind of answer this is.
+    public constant integer READY = 0
+    public constant integer NO_PROJECT = 1
+    public constant integer NO_GIT = 2
+    public constant integer FAILED = 3
+
+    // For TeamFileChange's group and kind constants.
+    TeamFileChange constants
+
+    integer state = NO_PROJECT
+    StatusResult result = undefined
+    File projectFolder = undefined
+    text projectName = ""
+    // The project folder's path inside the repository, with a / at the end,
+    // or "" when the project is the repository's folder.
+    text prefix = ""
+
+    Array<TeamFileChange> staged
+    Array<TeamFileChange> notStaged
+    Array<TeamFileChange> untracked
+    Array<TeamFileChange> conflicts
+    // Changes by project-relative path, for the Project Tree.
+    HashTable<text, Array<TeamFileChange>> byPath
+    // How many changed rows are in each project-relative folder and the
+    // folders under it. The project's own folder is "".
+    HashTable<text, integer> folderCounts
+    // Changed files elsewhere in the repository, left out.
+    integer outsideCount = 0
+
+    action SetNoProject
+        state = NO_PROJECT
+    end
+
+    action SetNoGit(text name)
+        state = NO_GIT
+        projectName = name
+    end
+
+    /*
+    This action fills the groups from a status result for a project folder
+    and name. A result that failed makes a FAILED status.
+    */
+    action Setup(StatusResult value, File folder, text name)
+        result = value
+        projectFolder = folder
+        projectName = name
+        if value = undefined or not value:IsSuccessful()
+            state = FAILED
+            return now
+        end
+        state = READY
+
+        text projectPath = Normalize(folder:GetAbsolutePath())
+        text workTree = value:GetWorkTreePath()
+        prefix = ""
+        if projectPath:StartsWith(workTree + "/")
+            prefix = projectPath:GetSubtext(workTree:GetSize() + 1) + "/"
+        end
+
+        // Conflicts first, so the other groups can leave those files out.
+        AddAll(value:GetConflicting(), constants:CONFLICT, constants:CONFLICTING)
+        AddAll(value:GetAdded(), constants:STAGED, constants:NEW_FILE)
+        AddAll(value:GetChanged(), constants:STAGED, constants:MODIFIED)
+        AddAll(value:GetRemoved(), constants:STAGED, constants:DELETED)
+        AddAll(value:GetModified(), constants:NOT_STAGED, constants:MODIFIED)
+        AddAll(value:GetMissing(), constants:NOT_STAGED, constants:DELETED)
+        AddAll(value:GetUntracked(), constants:UNTRACKED, constants:NEW_FILE)
+
+        // A Not staged row whose file is also staged was changed again.
+        integer index = 0
+        repeat while index < notStaged:GetSize()
+            TeamFileChange change = notStaged:Get(index)
+            if IsInGroup(change:GetProjectPath(), constants:STAGED)
+                change:SetChangedAgain(true)
+            end
+            index = index + 1
+        end
+    end
+
+    private action AddAll(Array<text> paths, integer group, integer kind)
+        integer index = 0
+        repeat while index < paths:GetSize()
+            text repositoryPath = paths:Get(index)
+            index = index + 1
+            if not repositoryPath:StartsWith(prefix)
+                outsideCount = outsideCount + 1
+            elseif group not= constants:CONFLICT and IsInGroup(repositoryPath:GetSubtext(prefix:GetSize()), constants:CONFLICT)
+                // Shown once, as a conflict.
+            else
+                text pathInProject = repositoryPath:GetSubtext(prefix:GetSize())
+                File file
+                file:SetAbsolutePath(result:GetWorkTreePath() + "/" + repositoryPath)
+                TeamFileChange change
+                change:Setup(repositoryPath, pathInProject, group, kind, file)
+                Add(change)
+            end
+        end
+    end
+
+    private action Add(TeamFileChange change)
+        integer group = change:GetGroup()
+        if group = constants:STAGED
+            staged:Add(change)
+        elseif group = constants:NOT_STAGED
+            notStaged:Add(change)
+        elseif group = constants:UNTRACKED
+            untracked:Add(change)
+        else
+            conflicts:Add(change)
+        end
+
+        text path = change:GetProjectPath()
+        Array<TeamFileChange> list = byPath:GetValue(path)
+        if list = undefined
+            Array<TeamFileChange> newList
+            list = newList
+            byPath:Add(path, list)
+        end
+        list:Add(change)
+
+        // Count the row in its folder and every folder above it.
+        text folder = change:GetFolder()
+        AddFolderCount(folder)
+        repeat while folder not= ""
+            folder = ParentFolder(folder)
+            AddFolderCount(folder)
+        end
+    end
+
+    private action AddFolderCount(text folder)
+        if folderCounts:HasKey(folder)
+            integer count = folderCounts:GetValue(folder)
+            folderCounts:Add(folder, count + 1)
+        else
+            folderCounts:Add(folder, 1)
+        end
+    end
+
+    private action ParentFolder(text folder) returns text
+        integer index = folder:GetSize() - 1
+        repeat while index >= 0
+            if folder:GetCharacter(index) = "/"
+                return folder:GetSubtext(0, index)
+            end
+            index = index - 1
+        end
+        return ""
+    end
+
+    private action IsInGroup(text pathInProject, integer group) returns boolean
+        Array<TeamFileChange> list = byPath:GetValue(pathInProject)
+        if list = undefined
+            return false
+        end
+        integer index = 0
+        repeat while index < list:GetSize()
+            if list:Get(index):GetGroup() = group
+                return true
+            end
+            index = index + 1
+        end
+        return false
+    end
+
+    // Backslashes (Windows) become /.
+    private action Normalize(text path) returns text
+        text backslash = ""
+        backslash = backslash:GetUnicodeValue(92)
+        return path:Replace(backslash, "/")
+    end
+
+    action GetState returns integer
+        return state
+    end
+
+    action IsReady returns boolean
+        return state = READY
+    end
+
+    action GetResult returns StatusResult
+        return result
+    end
+
+    action GetProjectFolder returns File
+        return projectFolder
+    end
+
+    action GetProjectName returns text
+        return projectName
+    end
+
+    action GetStaged returns Array<TeamFileChange>
+        return staged
+    end
+
+    action GetNotStaged returns Array<TeamFileChange>
+        return notStaged
+    end
+
+    action GetUntracked returns Array<TeamFileChange>
+        return untracked
+    end
+
+    action GetConflicts returns Array<TeamFileChange>
+        return conflicts
+    end
+
+    // Rows, not files: a file staged and changed again counts twice, as the
+    // Team tab lists it twice.
+    action GetChangeCount returns integer
+        return staged:GetSize() + notStaged:GetSize() + untracked:GetSize() + conflicts:GetSize()
+    end
+
+    action GetOutsideCount returns integer
+        return outsideCount
+    end
+
+    /*
+    This action returns a file's path relative to the project's folder, with
+    / between folders, or "" when the file isn't in the project.
+    */
+    action GetProjectPath(File file) returns text
+        if file = undefined or projectFolder = undefined
+            return ""
+        end
+        text folderPath = Normalize(projectFolder:GetAbsolutePath())
+        text filePath = Normalize(file:GetAbsolutePath())
+        if filePath:StartsWith(folderPath + "/")
+            return filePath:GetSubtext(folderPath:GetSize() + 1)
+        end
+        return ""
+    end
+
+    // A file's changes (one or two rows), or an empty array when it has none.
+    action GetChanges(File file) returns Array<TeamFileChange>
+        Array<TeamFileChange> list = byPath:GetValue(GetProjectPath(file))
+        if list = undefined
+            Array<TeamFileChange> none
+            return none
+        end
+        return list
+    end
+
+    action IsStaged(File file) returns boolean
+        return IsInGroup(GetProjectPath(file), constants:STAGED)
+    end
+
+    action IsNotStaged(File file) returns boolean
+        return IsInGroup(GetProjectPath(file), constants:NOT_STAGED)
+    end
+
+    action IsUntracked(File file) returns boolean
+        return IsInGroup(GetProjectPath(file), constants:UNTRACKED)
+    end
+
+    action IsConflicting(File file) returns boolean
+        return IsInGroup(GetProjectPath(file), constants:CONFLICT)
+    end
+
+    // Changed rows in a folder and the folders under it. The project's own
+    // folder counts every row.
+    action GetChangeCountInFolder(File folder) returns integer
+        text key = ""
+        if folder not= undefined and projectFolder not= undefined
+            text folderPath = Normalize(folder:GetAbsolutePath())
+            text projectPath = Normalize(projectFolder:GetAbsolutePath())
+            if folderPath not= projectPath
+                key = GetProjectPath(folder)
+                if key = ""
+                    return 0
+                end
+            end
+        end
+        if folderCounts:HasKey(key)
+            return folderCounts:GetValue(key)
+        end
+        return 0
+    end
+end

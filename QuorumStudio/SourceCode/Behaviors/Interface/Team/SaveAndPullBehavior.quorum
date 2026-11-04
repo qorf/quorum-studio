@@ -1,0 +1,35 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+
+// L1's Save and Pull: saves the files that have unsaved changes, then pulls.
+class SaveAndPullBehavior is Behavior
+    TeamPullBehavior pullBehavior = undefined
+    QuorumProject project = undefined
+    Array<EditorTab> tabs = undefined
+
+    action Setup(TeamPullBehavior pullValue, QuorumProject projectValue, Array<EditorTab> tabsValue)
+        pullBehavior = pullValue
+        project = projectValue
+        tabs = tabsValue
+    end
+
+    action Run(BehaviorEvent event)
+        if pullBehavior = undefined or tabs = undefined
+            return now
+        end
+        integer index = 0
+        repeat while index < tabs:GetSize()
+            EditorTab tab = tabs:Get(index)
+            if tab:IsDirty()
+                tab:Save()
+            end
+            index = index + 1
+        end
+        pullBehavior:StartPull(project, event)
+    end
+end

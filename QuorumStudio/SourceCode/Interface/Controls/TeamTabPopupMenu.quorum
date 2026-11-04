@@ -1,0 +1,143 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Containers.Array
+use Libraries.Development.Versioning.TeamFileChange
+
+/*
+The Team tab's menu (A4). It's made again each time it opens, for the
+selected row:
+- a file's row: Stage (or Unstage, keeps your changes), then Open, Show in
+  Project Tree, Copy Path and Refresh. With several rows picked, "Stage 2
+  files".
+- a group's row: Stage all (or Unstage all), and Refresh. The Staged
+  group's row also has Commit... (Commit C7).
+- a row the last pull changed: Open, Show in Project Tree, Copy Path and
+  Refresh, with no Stage. Other rows (commits, messages): Refresh.
+*/
+class TeamTabPopupMenu is PopupMenu
+    MenuItem stageItem
+    MenuItem unstageItem
+    MenuItem commitItem
+    MenuItem openItem
+    MenuItem showInTreeItem
+    MenuItem copyPathItem
+    MenuItem refreshItem
+    Behavior openBehavior = undefined
+    Behavior showInTreeBehavior = undefined
+    Behavior copyBehavior = undefined
+    Behavior refreshBehavior = undefined
+    Behavior stageBehavior = undefined
+    Behavior unstageBehavior = undefined
+    TeamTab teamTab = undefined
+    TeamFileChange constants
+    boolean built = false
+
+    action SetTeamTab(Behavior openValue, Behavior showValue, Behavior copyValue, Behavior refreshValue)
+        openBehavior = openValue
+        showInTreeBehavior = showValue
+        copyBehavior = copyValue
+        refreshBehavior = refreshValue
+    end
+
+    // Step 8: the tab, for its selected row, and the stage behaviors.
+    action SetStaging(TeamTab tab, Behavior stageValue, Behavior unstageValue)
+        teamTab = tab
+        stageBehavior = stageValue
+        unstageBehavior = unstageValue
+    end
+
+    private action Build
+        if not built
+            stageItem:SetShortcut("Space")
+            stageItem:SetBehavior(stageBehavior)
+            unstageItem:SetShortcut("Space")
+            unstageItem:SetBehavior(unstageBehavior)
+
+            openItem:SetName("Open")
+            openItem:SetShortcut("Return")
+            openItem:SetBehavior(openBehavior)
+
+            showInTreeItem:SetName("Show in Project Tree")
+            showInTreeItem:SetBehavior(showInTreeBehavior)
+
+            copyPathItem:SetName("Copy Path")
+            copyPathItem:SetBehavior(copyBehavior)
+
+            refreshItem:SetName("Refresh")
+            refreshItem:SetBehavior(refreshBehavior)
+
+            commitItem:SetName("Commit...")
+            built = true
+        end
+
+        Empty()
+        ListItem row = undefined
+        if teamTab not= undefined
+            row = teamTab:GetSelectedRow()
+        end
+
+        if row is TeamGroupItem
+            TeamGroupItem group = cast(TeamGroupItem, row)
+            text key = group:GetKey()
+            if key = teamTab:GROUP_STAGED
+                unstageItem:SetName("Unstage all (keeps your changes)")
+                Add(unstageItem)
+                Behavior commitBehavior = teamTab:GetCommitBehavior()
+                if commitBehavior not= undefined
+                    commitItem:SetBehavior(commitBehavior)
+                    Add(commitItem)
+                end
+            elseif key = teamTab:GROUP_NOT_STAGED or key = teamTab:GROUP_UNTRACKED
+                stageItem:SetName("Stage all")
+                Add(stageItem)
+            end
+            Add(refreshItem)
+            return now
+        end
+
+        if row is TeamFileItem
+            TeamFileItem fileRow = cast(TeamFileItem, row)
+            integer count = 1
+            Array<TeamFileItem> picked = teamTab:GetPickedRows()
+            if picked:Has(fileRow)
+                count = picked:GetSize()
+            end
+            TeamFileChange change = fileRow:GetChange()
+            // A row the last pull changed isn't stageable: no Stage.
+            boolean stageable = fileRow:IsStageable()
+            if stageable and change:GetGroup() = constants:STAGED
+                if count > 1
+                    unstageItem:SetName("Unstage " + count + " files (keeps your changes)")
+                else
+                    unstageItem:SetName("Unstage (keeps your changes)")
+                end
+                Add(unstageItem)
+            elseif stageable
+                if count > 1
+                    stageItem:SetName("Stage " + count + " files")
+                else
+                    stageItem:SetName("Stage")
+                end
+                Add(stageItem)
+            end
+            Add(openItem)
+            Add(showInTreeItem)
+            Add(copyPathItem)
+        end
+        Add(refreshItem)
+    end
+
+    action OpenAtCursor
+        Build()
+        parent:PopupMenu:OpenAtCursor()
+    end
+
+    action OpenAt(number x, number y)
+        Build()
+        parent:PopupMenu:OpenAt(x, y)
+    end
+end

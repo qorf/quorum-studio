@@ -1,0 +1,590 @@
+package Libraries.Development.Environment.Studio
+
+use Libraries.Containers.Array
+use Libraries.Compute.Math
+use Libraries.System.File
+use Libraries.Interface.Controls.Tab
+use Libraries.Concurrency.ThreadRunner
+use Libraries.Game.GameStateManager
+use Libraries.Development.Versioning.TeamFileChange
+use Libraries.Development.Versioning.TeamStatus
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.Behaviors.StageWorkBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TeamStageConfirmedBehavior
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Studio.Interface.TeamFileItem
+use Libraries.Development.Environment.Studio.Interface.StageConfirmDialog
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
+
+/*
+The one door for staging and unstaging (Add A5b). It takes the files asked
+for, applies the rules below, and then either stages them straight away
+(StageWorkBehavior, on the git thread) or opens StageConfirmDialog first:
+1. Staging or unstaging more than ASK_ABOVE files at once asks first.
+2. Staging a media file (by extension, the lists below) always asks, even
+   one. Media files are left out unless their box is checked.
+3. Files under the project's top-level Build and Run folders are left out
+   unless their box is checked, whatever .gitignore says.
+4. Ignored files never reach here: git's status leaves them out.
+Unstaging only uses rule 1; nothing is left out of an unstage.
+
+Main thread only. Use one StageGate per request:
+
+    StageGate gate
+    gate:SetProject(project)
+    gate:SetSubject("Assets")
+    gate:AddChanges(changes)
+    gate:Begin()
+*/
+class StageGate
+    // Rule 1: staging or unstaging more files than this at once asks first.
+    public constant integer ASK_ABOVE = 5
+
+    // Rule 2: media files, by extension (lower case, one space between).
+    // Change these lists to change what counts as media.
+    public constant text IMAGE_EXTENSIONS = "png jpg jpeg gif bmp tga psd webp tif tiff"
+    public constant text SOUND_EXTENSIONS = "wav mp3 ogg flac aiff m4a"
+    public constant text VIDEO_EXTENSIONS = "mp4 mov avi mkv webm"
+    public constant text MODEL_EXTENSIONS = "glb gltf fbx obj blend dae 3ds"
+    public constant text ARCHIVE_EXTENSIONS = "zip jar gz tar 7z rar"
+
+    // Rule 3: the folders Studio builds into, at the top of a Quorum project.
+    public constant text BUILD_FOLDER = "Build"
+    public constant text RUN_FOLDER = "Run"
+
+    // Files named in a box's text and description; the rest are "and N more".
+    constant integer NAMED = 3
+
+    QuorumProject project = undefined
+    boolean unstage = false
+    text subject = ""
+    TeamTab teamTab = undefined
+
+    // What was asked for: git's rows.
+    Array<TeamFileChange> changes
+    // Team tab rows the changes came from, so focus can move past them.
+    Array<TeamFileItem> rows
+
+    // Begin sorts what was asked for into these (rules 2 and 3).
+    Array<TeamFileChange> plainChanges
+    Array<TeamFileChange> mediaChanges
+    Array<TeamFileChange> buildChanges
+
+    // The dialog's boxes, or -1 when that group isn't shown.
+    integer mediaBox = -1
+    integer buildBox = -1
+    // The one-file question (rule 2 or 3 on a single file): yes means stage it.
+    boolean askedAboutOne = false
+    TeamFileChange constants
+
+    /*
+    This action sets the project the files are in. Required.
+
+    Attribute: Parameter value The Git project.
+    */
+    action SetProject(QuorumProject value)
+        project = value
+    end
+
+    /*
+    This action makes the request an unstage (true) or a stage (false, the
+    default). Set it before AddFolder.
+
+    Attribute: Parameter value True to unstage.
+    */
+    action SetUnstage(boolean value)
+        unstage = value
+    end
+
+    /*
+    This action names what's being staged, for the dialog's title and the
+    result ("Stage Assets", "Assets staged."). Without it, the title counts
+    files ("Stage 38 files") or names the one file.
+
+    Attribute: Parameter value Such as a folder's name, "Assets".
+    */
+    action SetSubject(text value)
+        subject = value
+    end
+
+    /*
+    This action gives the Team tab the rows came from (AddRow), so that
+    staging marks them "just staged" and moves focus past them (A1).
+
+    Attribute: Parameter tab The Team tab.
+    */
+    action SetTeamTab(TeamTab tab)
+        teamTab = tab
+    end
+
+    /*
+    This action adds one of git's rows to stage (or unstage).
+
+    Attribute: Parameter change A change from a TeamStatus.
+    */
+    action AddChange(TeamFileChange change)
+        if change not= undefined and not changes:Has(change)
+            changes:Add(change)
+        end
+    end
+
+    /*
+    This action adds several of git's rows.
+
+    Attribute: Parameter list Changes from a TeamStatus.
+    */
+    action AddChanges(Array<TeamFileChange> list)
+        integer index = 0
+        repeat while index < list:GetSize()
+            AddChange(list:Get(index))
+            index = index + 1
+        end
+    end
+
+    /*
+    This action adds a Team tab row (its change), and remembers the row for
+    SetTeamTab.
+
+    Attribute: Parameter row A row from one of git's groups.
+    */
+    action AddRow(TeamFileItem row)
+        if row = undefined
+            return now
+        end
+        rows:Add(row)
+        AddChange(row:GetChange())
+    end
+
+    /*
+    This action adds every change in a folder and the folders under it that
+    staging would change (Not staged, Untracked and Conflicts rows), or, for
+    an unstage, its Staged rows. The project's own folder adds all of them.
+    Call SetUnstage first.
+
+    Attribute: Parameter status The project's status, such as the Team tab's or the Project Tree's.
+    Attribute: Parameter folder The folder.
+    */
+    action AddFolder(TeamStatus status, File folder)
+        if status = undefined or folder = undefined or not status:IsReady()
+            return now
+        end
+        text prefix = Normalize(folder:GetAbsolutePath()) + "/"
+        if unstage
+            AddUnder(status:GetStaged(), prefix)
+        else
+            AddUnder(status:GetNotStaged(), prefix)
+            AddUnder(status:GetUntracked(), prefix)
+            AddUnder(status:GetConflicts(), prefix)
+        end
+    end
+
+    /*
+    This action applies the rules: with none of them met (ASK_ABOVE files or
+    fewer, no media, nothing in Build or Run), it stages now; otherwise it
+    opens the dialog, which stages what's checked when its main button is
+    pressed. Nothing happens when there's nothing to stage.
+    */
+    action Begin
+        if project = undefined or not project:HasGitSupport()
+            return now
+        end
+        Sort()
+        integer total = changes:GetSize()
+        if total = 0
+            return now
+        end
+        integer held = mediaChanges:GetSize() + buildChanges:GetSize()
+        if total <= ASK_ABOVE and held = 0
+            Perform(false, false)
+        elseif total = 1
+            AskAboutOne()
+        else
+            Ask()
+        end
+    end
+
+    /*
+    This action stages (or unstages) now, with no asking: everything not
+    left out, plus media files and Build and Run files when asked. The
+    dialog's main button calls it through Confirm. With nothing to stage,
+    it does nothing.
+
+    Attribute: Parameter includeMedia True to include media files (rule 2).
+    Attribute: Parameter includeBuild True to include Build and Run files (rule 3).
+    */
+    action Perform(boolean includeMedia, boolean includeBuild)
+        Array<TeamFileChange> chosen
+        AddAllChanges(chosen, plainChanges)
+        if includeMedia
+            AddAllChanges(chosen, mediaChanges)
+        end
+        if includeBuild
+            AddAllChanges(chosen, buildChanges)
+        end
+        if chosen:IsEmpty()
+            return now
+        end
+
+        StageWorkBehavior work
+        work:SetProject(project)
+        work:SetUnstage(unstage)
+        // "Assets staged." only when nothing was left out.
+        boolean everything = chosen:GetSize() = changes:GetSize()
+        if everything and subject not= ""
+            work:SetSubject(subject)
+        end
+
+        Array<text> paths
+        integer index = 0
+        repeat while index < chosen:GetSize()
+            TeamFileChange change = chosen:Get(index)
+            work:AddChange(change)
+            paths:Add(change:GetProjectPath())
+            if not unstage
+                SaveIfOpen(change:GetFile())
+            end
+            index = index + 1
+        end
+
+        // Focus goes on before git is done, so Space again acts on the
+        // next row (A1). Rows left out stay where they are.
+        if teamTab not= undefined
+            Array<TeamFileItem> moved
+            index = 0
+            repeat while index < rows:GetSize()
+                TeamFileItem row = rows:Get(index)
+                if chosen:Has(row:GetChange())
+                    moved:Add(row)
+                end
+                index = index + 1
+            end
+            teamTab:MarkRecent(paths, not unstage)
+            teamTab:MoveSelectionPast(moved)
+            teamTab:ClearPicked()
+        end
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        ThreadRunner runner = studio:GetBehaviors():GetGitRunner()
+        runner:Add(work)
+    end
+
+    /*
+    This action is the dialog's main button: stages what the dialog's boxes
+    say. The dialog is already closed.
+
+    Attribute: Parameter dialog The dialog Begin opened.
+    */
+    action Confirm(StageConfirmDialog dialog)
+        if askedAboutOne
+            Perform(true, true)
+        else
+            Perform(dialog:IsIncluded(mediaBox), dialog:IsIncluded(buildBox))
+        end
+    end
+
+    /*
+    This action says whether a file name is a media file (rule 2), by its
+    extension, whatever its case.
+
+    Attribute: Parameter name A file name, such as "boss.png".
+    Attribute: Returns True for a media file.
+    */
+    action IsMedia(text name) returns boolean
+        text extension = GetExtension(name)
+        if extension = ""
+            return false
+        end
+        text known = " " + IMAGE_EXTENSIONS + " " + SOUND_EXTENSIONS + " " + VIDEO_EXTENSIONS + " " + MODEL_EXTENSIONS + " " + ARCHIVE_EXTENSIONS + " "
+        return known:Contains(" " + extension + " ")
+    end
+
+    /*
+    This action says whether a project path is in the top-level Build or Run
+    folder (rule 3).
+
+    Attribute: Parameter path Relative to the project's folder, / between folders.
+    Attribute: Returns True for Studio's build output.
+    */
+    action IsBuildOutput(text path) returns boolean
+        return path:StartsWith(BUILD_FOLDER + "/") or path:StartsWith(RUN_FOLDER + "/")
+    end
+
+    /*
+    This action returns a file's size in words: "640 KB", "4.2 MB".
+
+    Attribute: Parameter file The file.
+    Attribute: Returns The size, or "" when there's no file.
+    */
+    action GetSizeWords(File file) returns text
+        if file = undefined or not file:Exists()
+            return ""
+        end
+        Math math
+        number bytes = file:GetFileSize()
+        if bytes < 1024 * 1024
+            integer kilobytes = cast(integer, math:Round(bytes / 1024))
+            if kilobytes < 1
+                kilobytes = 1
+            end
+            return "" + kilobytes + " KB"
+        end
+        number megabytes = math:Round(bytes / (1024 * 1024), 1)
+        return "" + megabytes + " MB"
+    end
+
+    /*
+    This action saves a file's editor tab if it's open with unsaved
+    changes, so what's staged is what the user sees. Main thread only.
+
+    Attribute: Parameter file The file.
+    */
+    action SaveIfOpen(File file)
+        if file = undefined
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        CodeEditorTabPane pane = studio:GetTabPane()
+        if not pane:IsOpen(file)
+            return now
+        end
+        Tab tab = pane:GetOpenTab(file)
+        if tab is EditorTab
+            EditorTab editorTab = cast(EditorTab, tab)
+            if editorTab:IsDirty()
+                editorTab:Save()
+            end
+        elseif tab is VisualEditorTab
+            VisualEditorTab visualTab = cast(VisualEditorTab, tab)
+            visualTab:Save()
+        end
+    end
+
+    // Rules 2 and 3: what's left out until a box is checked. Deleting a
+    // media file adds nothing large, so a deletion isn't held back as media.
+    private action Sort
+        plainChanges:Empty()
+        mediaChanges:Empty()
+        buildChanges:Empty()
+
+        integer index = 0
+        repeat while index < changes:GetSize()
+            TeamFileChange change = changes:Get(index)
+            if not unstage and IsBuildOutput(change:GetProjectPath())
+                buildChanges:Add(change)
+            elseif not unstage and change:GetKind() not= constants:DELETED and IsMedia(change:GetFileName())
+                mediaChanges:Add(change)
+            else
+                plainChanges:Add(change)
+            end
+            index = index + 1
+        end
+    end
+
+    // One media file, or one file in Build or Run: "boss.png is a media
+    // file (4.2 MB). Stage it anyway?"
+    private action AskAboutOne
+        askedAboutOne = true
+        TeamFileChange change = changes:Get(0)
+        text name = change:GetFileName()
+        text path = change:GetProjectPath()
+        File file = change:GetFile()
+
+        text question = ""
+        if IsBuildOutput(path)
+            text folder = BUILD_FOLDER
+            if path:StartsWith(RUN_FOLDER + "/")
+                folder = RUN_FOLDER
+            end
+            question = name + " is in the " + folder + " folder, which Studio makes when you build. It doesn't belong in git. Stage it anyway?"
+        else
+            text size = GetSizeWords(file)
+            if size = ""
+                question = name + " is a media file. Stage it anyway?"
+            else
+                question = name + " is a media file (" + size + "). Stage it anyway?"
+            end
+        end
+
+        StageConfirmDialog dialog
+        TeamStageConfirmedBehavior confirmed
+        confirmed:Setup(me, dialog)
+        dialog:Setup("Stage " + name, question)
+        dialog:AddButtons("Stage " + name, confirmed)
+        dialog:Show()
+    end
+
+    // The dialog for many files, or a few with media or build output (D1):
+    // every file that will be staged in the dialog's list, and a box for
+    // media files and one for Build and Run, unchecked.
+    private action Ask
+        askedAboutOne = false
+        text verb = "Stage"
+        if unstage
+            verb = "Unstage"
+        end
+
+        // New files, for the title and the question's words.
+        integer newCount = 0
+        integer index = 0
+        repeat while index < plainChanges:GetSize()
+            TeamFileChange change = plainChanges:Get(index)
+            if change:GetGroup() = constants:UNTRACKED or change:GetKind() = constants:NEW_FILE
+                newCount = newCount + 1
+            end
+            index = index + 1
+        end
+
+        StageConfirmDialog dialog
+        TeamStageConfirmedBehavior confirmed
+        confirmed:Setup(me, dialog)
+        dialog:Setup(GetTitle(verb, newCount), GetQuestion(verb, newCount))
+        dialog:AddFiles(plainChanges)
+
+        mediaBox = -1
+        integer mediaCount = mediaChanges:GetSize()
+        if mediaCount > 0
+            text mediaWords = CountWords(mediaCount, "media file", "media files")
+            mediaBox = dialog:AddOptionalFiles("Include " + mediaWords + " (" + GetNames(mediaChanges) + ")", mediaWords, "Large files make the project slow to push and pull for everyone. " + GetSizes(mediaChanges), mediaChanges)
+        end
+
+        buildBox = -1
+        integer buildCount = buildChanges:GetSize()
+        if buildCount > 0
+            buildBox = dialog:AddOptionalFiles("Include Build and Run (" + CountWords(buildCount, "file", "files") + ")", CountWords(buildCount, "Build and Run file", "Build and Run files"), "Studio makes these when you build. They don't belong in git.", buildChanges)
+        end
+
+        dialog:SetCount(verb, plainChanges:GetSize())
+        dialog:AddButtons("", confirmed)
+        dialog:Show()
+    end
+
+    // "Stage Assets", "Stage new files", "Stage 38 files", "Unstage 6 files".
+    private action GetTitle(text verb, integer newCount) returns text
+        if subject not= ""
+            return verb + " " + subject
+        end
+        integer total = changes:GetSize()
+        if not unstage and newCount = total
+            return "Stage new files"
+        end
+        return verb + " " + total + " files"
+    end
+
+    /*
+    "Stage 38 changed files? They'll be in your next commit.", "Stage 14 new
+    files in Assets? ...", "Unstage 6 files? Your changes are kept; they just
+    won't be in the next commit."
+    */
+    private action GetQuestion(text verb, integer newCount) returns text
+        integer total = changes:GetSize()
+        text inSubject = ""
+        if subject not= ""
+            inSubject = " in " + subject
+        end
+        if unstage
+            return "Unstage " + total + " files" + inSubject + "? Your changes are kept; they just won't be in the next commit."
+        end
+        text kind = "files"
+        if newCount = total
+            kind = "new files"
+        elseif newCount = 0
+            kind = "changed files"
+        end
+        return "Stage " + total + " " + kind + inSubject + "? They'll be in your next commit."
+    end
+
+    // "boss.png, theme.ogg", or "boss.png, theme.ogg, hero.png and 4 more".
+    private action GetNames(Array<TeamFileChange> list) returns text
+        text names = ""
+        integer index = 0
+        repeat while index < list:GetSize() and index < NAMED
+            TeamFileChange change = list:Get(index)
+            if index = 0
+                names = change:GetFileName()
+            else
+                names = names + ", " + change:GetFileName()
+            end
+            index = index + 1
+        end
+        if list:GetSize() > NAMED
+            names = names + " and " + (list:GetSize() - NAMED) + " more"
+        end
+        return names
+    end
+
+    // "boss.png, 4.2 MB; theme.ogg, 1.1 MB.", for a box's description.
+    private action GetSizes(Array<TeamFileChange> list) returns text
+        text sizes = ""
+        integer index = 0
+        repeat while index < list:GetSize() and index < NAMED
+            TeamFileChange change = list:Get(index)
+            text entry = change:GetFileName()
+            text size = GetSizeWords(change:GetFile())
+            if size not= ""
+                entry = entry + ", " + size
+            end
+            if index = 0
+                sizes = entry
+            else
+                sizes = sizes + "; " + entry
+            end
+            index = index + 1
+        end
+        if list:GetSize() > NAMED
+            sizes = sizes + "; and " + (list:GetSize() - NAMED) + " more"
+        end
+        return sizes + "."
+    end
+
+    private action CountWords(integer count, text one, text many) returns text
+        if count = 1
+            return "1 " + one
+        end
+        return "" + count + " " + many
+    end
+
+    private action AddUnder(Array<TeamFileChange> list, text prefix)
+        integer index = 0
+        repeat while index < list:GetSize()
+            TeamFileChange change = list:Get(index)
+            File changed = change:GetFile()
+            if changed not= undefined
+                text path = Normalize(changed:GetAbsolutePath())
+                if path:StartsWith(prefix)
+                    AddChange(change)
+                end
+            end
+            index = index + 1
+        end
+    end
+
+    private action AddAllChanges(Array<TeamFileChange> target, Array<TeamFileChange> list)
+        integer index = 0
+        repeat while index < list:GetSize()
+            target:Add(list:Get(index))
+            index = index + 1
+        end
+    end
+
+    // "boss.PNG" gives "png"; "Makefile" and ".gitignore" give "".
+    private action GetExtension(text name) returns text
+        integer index = name:GetSize() - 1
+        repeat while index > 0
+            if name:GetCharacter(index) = "."
+                text extension = name:GetSubtext(index + 1)
+                return extension:ToLowerCase()
+            end
+            index = index - 1
+        end
+        return ""
+    end
+
+    private action Normalize(text path) returns text
+        text backslash = ""
+        backslash = backslash:GetUnicodeValue(92)
+        return path:Replace(backslash, "/")
+    end
+end

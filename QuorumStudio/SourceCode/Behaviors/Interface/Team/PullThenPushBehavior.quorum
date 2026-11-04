@@ -1,0 +1,25 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+
+/*
+P4's Pull, then Push: Team > Pull, with all its checks, and a push right
+after on the git thread, only if the pull ended cleanly (step 6's
+TeamPullBehavior:SetAfterCleanPull). If the pull stops, its own message
+says why and nothing is pushed.
+*/
+class PullThenPushBehavior is Behavior
+    action Run(BehaviorEvent event)
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        PushRequestBehavior push
+        push:SetMainApplication(studio)
+        TeamPullBehavior pull
+        pull:SetMainApplication(studio)
+        pull:SetAfterCleanPull(push)
+        pull:Run(event)
+    end
+end

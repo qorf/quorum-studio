@@ -1,0 +1,28 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.Dialog
+
+// The problem dialog's main button: closes the dialog, then runs the action.
+class GitProblemActionBehavior is Behavior
+    Dialog dialog = undefined
+    Behavior mainAction = undefined
+
+    action SetDialog(Dialog value)
+        dialog = value
+    end
+
+    action SetAction(Behavior value)
+        mainAction = value
+    end
+
+    action Run(BehaviorEvent event)
+        if dialog not= undefined
+            dialog:Hide()
+        end
+        if mainAction not= undefined
+            mainAction:Run(event)
+        end
+    end
+end

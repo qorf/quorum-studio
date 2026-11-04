@@ -3,6 +3,7 @@ package Libraries.Development.Environment.Studio
 use Libraries.Game.FocusManager
 use Libraries.Interface.Item
 use Libraries.Development.Environment.Projects.Project
+use Libraries.Game.GameStateManager
 
 class StudioFocusManager is FocusManager
 
@@ -18,7 +19,19 @@ class StudioFocusManager is FocusManager
     project.
     */
     action SetProjectFocus(Project project)
+        boolean changed = projectFocus not= project
         projectFocus = project
+        // The Team tab, if open, shows the newly selected project's changes.
+        if changed
+            GameStateManager gameManager
+            if gameManager:GetGame() is QuorumStudio
+                QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+                OutputEditorTabPane outPane = studio:GetOutputPane()
+                if outPane not= undefined
+                    outPane:RefreshTeamTab()
+                end
+            end
+        end
     end
 
     /*

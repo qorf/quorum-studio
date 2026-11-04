@@ -1,0 +1,113 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Controls.Tab
+use Libraries.Containers.Array
+use Libraries.System.File
+use Libraries.Concurrency.ThreadRunner
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.TeamReporter
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Studio.Interface.TreeGitConfirmDialog
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.TeamStatus
+use Libraries.Development.Versioning.TeamFileChange
+
+/*
+Reset to Last Commit... (Tree M4): files only. It always asks first, with
+focus on Cancel, because it throws away the file's changes, staged or not,
+and can't be undone. Reset File queues the reset on the git thread
+(TreeResetWorkBehavior); afterwards the open tab is reloaded and the Team
+tab and the tree's marks get a fresh status.
+*/
+class TreeResetBehavior is TreeGitBehavior
+    TeamFileChange constants
+
+    action Continue(TeamStatus status)
+        ProjectTreeItem row = GetItem()
+        if row = undefined or status = undefined
+            return now
+        end
+        QuorumProject project = row:GetProject()
+        File file = row:GetFile()
+        if project = undefined or file = undefined or file:IsDirectory()
+            return now
+        end
+        text name = file:GetFileName()
+        TeamReporter reporter
+        if not status:IsReady()
+            reporter:Report("Couldn't read the changes in " + project:GetName() + ".")
+            return now
+        end
+        Array<TeamFileChange> changes = status:GetChanges(file)
+        if not CanReset(changes)
+            reporter:Report(name + " has no changes since the last commit to reset.")
+            return now
+        end
+        TeamFileChange first = changes:Get(0)
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        TreeResetWorkBehavior work
+        work:Setup(project, first:GetRepositoryPath(), file)
+        Behaviors behaviors = studio:GetBehaviors()
+        ThreadRunner runner = behaviors:GetGitRunner()
+        ThreadedBehavior threaded
+        threaded:SetNestedBehavior(work)
+        threaded:SetThreadRunner(runner)
+
+        Array<text> lines
+        if HasUnsavedChanges(studio, file)
+            lines:Add(name + " is open and has unsaved changes. Those will be thrown away too.")
+        end
+
+        TreeGitConfirmDialog dialog
+        dialog:Setup("Reset " + name, "Throw away all your changes to " + name + " since the last commit? This can't be undone.", lines, "Reset File", threaded)
+        dialog:Show()
+    end
+
+    /*
+    This action says whether Reset to Last Commit fits a file's rows (Tree
+    M4): the file is in the last commit and has changes, staged, not staged
+    or both. Not for an untracked file, a new file that's staged (it isn't
+    in the last commit), an unchanged file or a conflict.
+    */
+    action CanReset(Array<TeamFileChange> changes) returns boolean
+        boolean stagedChange = false
+        boolean notStaged = false
+        boolean stagedNew = false
+        integer index = 0
+        repeat while index < changes:GetSize()
+            TeamFileChange change = changes:Get(index)
+            integer group = change:GetGroup()
+            if group = constants:CONFLICT
+                return false
+            elseif group = constants:STAGED
+                if change:GetKind() = constants:NEW_FILE
+                    stagedNew = true
+                else
+                    stagedChange = true
+                end
+            elseif group = constants:NOT_STAGED
+                notStaged = true
+            end
+            index = index + 1
+        end
+        return stagedChange or (notStaged and not stagedNew)
+    end
+
+    private action HasUnsavedChanges(QuorumStudio studio, File file) returns boolean
+        CodeEditorTabPane editor = studio:GetTabPane()
+        if not editor:IsOpen(file)
+            return false
+        end
+        Tab tab = editor:GetOpenTab(file)
+        if tab is EditorTab
+            EditorTab editorTab = cast(EditorTab, tab)
+            return editorTab:IsDirty()
+        end
+        return false
+    end
+end

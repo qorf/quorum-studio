@@ -1,0 +1,321 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Containers.Array
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Development.Environment.Configuration.OptionsConstants
+
+/*
+A group's row in the Team tab, such as "Staged: in the next commit (2)":
+a fold arrow, the title and explanation, and the count. Its rows are the
+rows under it while it's expanded. Git's groups hold TeamFileItem rows;
+other steps' groups (To push, From the last pull) hold their own rows,
+which return 1 from GetAccessibilityLevel.
+*/
+class TeamGroupItem is ListItem, FoldClickRow
+    text key = ""
+    text title = ""
+    text explanation = ""
+    // "file" and "files", or "commit" and "commits".
+    text unitOne = "file"
+    text unitMany = "files"
+    // Sections are shown by order, lowest first (TeamTab:SetSection).
+    integer order = 0
+    Array<ListItem> rows
+    boolean expanded = true
+    Control arrow
+    ListChevronView chevron = undefined
+    Label detail
+    // A5: "Stage all" or "Unstage all", drawn as a link for the mouse; Space
+    // on the row does the same, and the row's description says so (T1).
+    Label actionButton
+    // "· Space" after the link, muted, so keyboard users see the key too.
+    Label actionHint
+    // "Stage all", "Unstage all" or "", for the description.
+    text actionWords = ""
+    // Commit C7: "Commit..." on the Staged group, a link for the mouse; the
+    // group's menu has Commit... too, and Team > Commit's key works anywhere.
+    Label commitButton
+    // A section with a message instead of items hides its "(N)".
+    boolean countShown = true
+    // A section's own menu for its row (Push P9's Push and Hide).
+    PopupMenu sectionMenu = undefined
+    constant number FOLD_SLACK = 4
+
+    on create
+        parent:ListItem:icon:Hide()
+
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        // Sized like the tree's arrow, as in SearchFileItem.
+        arrow:SetAccessibilityCode(arrow:parent:Item:NOT_ACCESSIBLE)
+        arrow:SetFocusable(false)
+        arrow:SetAcceptsMouseInput(false)
+        arrow:SetHorizontalLayoutMode(arrow:MAINTAIN_ASPECT_RATIO)
+        arrow:SetVerticalLayoutMode(arrow:STANDARD)
+        arrow:SetPercentageWidth(1.0)
+        arrow:SetPercentageHeight(1.0)
+        arrow:SetLeftMargin(4)
+        arrow:SetTopMargin(4)
+        arrow:SetBottomMargin(4)
+        Add(0, arrow)
+
+        detail:SetAccessibilityCode(detail:parent:Item:NOT_ACCESSIBLE)
+        detail:SetAcceptsMouseInput(false)
+        detail:SetPositionOnBaseLine(false)
+        detail:SetLeftMargin(12)
+        Add(detail)
+
+        actionButton:SetAccessibilityCode(actionButton:parent:Item:NOT_ACCESSIBLE)
+        actionButton:SetAcceptsMouseInput(false)
+        actionButton:SetPositionOnBaseLine(false)
+        actionButton:SetLeftMargin(24)
+        actionButton:Hide()
+        Add(actionButton)
+
+        actionHint:SetAccessibilityCode(actionHint:parent:Item:NOT_ACCESSIBLE)
+        actionHint:SetAcceptsMouseInput(false)
+        actionHint:SetPositionOnBaseLine(false)
+        actionHint:SetLeftMargin(6)
+        actionHint:SetText("· Space")
+        actionHint:Hide()
+        Add(actionHint)
+
+        commitButton:SetAccessibilityCode(commitButton:parent:Item:NOT_ACCESSIBLE)
+        commitButton:SetAcceptsMouseInput(false)
+        commitButton:SetPositionOnBaseLine(false)
+        commitButton:SetLeftMargin(12)
+        commitButton:SetText("Commit...")
+        commitButton:Hide()
+        Add(commitButton)
+
+        // Both are drawn as links, in the theme's link color (T1).
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options not= undefined
+            OptionsConstants optionsConstants
+            ColorGroup linkColor = options:GetColorProperty(optionsConstants:TEAM_LINK_COLOR)
+            if linkColor not= undefined
+                actionButton:SetColor(linkColor)
+                commitButton:SetColor(linkColor)
+            end
+            // The hint isn't a link: the muted word color, which keeps at
+            // least 4.5 to 1 on the list.
+            ColorGroup hintColor = options:GetColorProperty(optionsConstants:GIT_TREE_WORD_COLOR)
+            if hintColor not= undefined
+                actionHint:SetColor(hintColor)
+            end
+        end
+    end
+
+    // C7: shows or hides "Commit..." (the Staged group only).
+    action SetCommitShown(boolean value)
+        if value
+            commitButton:Show()
+        else
+            commitButton:Hide()
+        end
+        RequestLayout()
+    end
+
+    action IsCommitShown returns boolean
+        return commitButton:IsShowing()
+    end
+
+    action IsOnCommitButton(number x, number y) returns boolean
+        if not commitButton:IsShowing()
+            return false
+        end
+        number slack = FOLD_SLACK * GetInterfaceScale()
+        return x >= commitButton:GetGlobalX() - slack and x <= commitButton:GetGlobalX() + commitButton:GetWidth() + slack
+    end
+
+    // "Stage all", "Unstage all", or "" for none (sections, Conflicts).
+    action SetActionWords(text value)
+        actionWords = value
+        if value = ""
+            actionButton:Hide()
+            actionHint:Hide()
+        else
+            // A link, then the key; the row's description says Space does
+            // the same.
+            actionButton:SetText(value)
+            actionButton:Show()
+            actionHint:Show()
+        end
+        Refresh()
+        RequestLayout()
+    end
+
+    action IsOnActionButton(number x, number y) returns boolean
+        if not actionButton:IsShowing()
+            return false
+        end
+        number slack = FOLD_SLACK * GetInterfaceScale()
+        return x >= actionButton:GetGlobalX() - slack and x <= actionButton:GetGlobalX() + actionButton:GetWidth() + slack
+    end
+
+    /*
+    This action sets the group's key (for keeping folds and selection
+    across refreshes), its title and explanation, the words for one and
+    many rows, and the muted color. The chevron is made here, when the
+    graphics exist.
+    */
+    action Setup(text keyValue, text titleValue, text explanationValue, text one, text many, ColorGroup mutedColor)
+        key = keyValue
+        title = titleValue
+        explanation = explanationValue
+        unitOne = one
+        unitMany = many
+        if mutedColor not= undefined
+            detail:SetColor(mutedColor)
+        end
+
+        ListChevronView view
+        chevron = view
+        chevron:Initialize(16, 32)
+        arrow:SetView2D(chevron)
+        chevron:UseThemeColor()
+        Refresh()
+    end
+
+    action GetKey returns text
+        return key
+    end
+
+    action GetOrder returns integer
+        return order
+    end
+
+    action SetOrder(integer value)
+        order = value
+    end
+
+    action GetRows returns Array<ListItem>
+        return rows
+    end
+
+    action AddRow(ListItem row)
+        rows:Add(row)
+    end
+
+    // Takes every row out, for a section that's filled again.
+    action EmptyRows
+        rows:Empty()
+    end
+
+    // Shows or hides the "(N)" and the count in the spoken name.
+    action SetCountShown(boolean value)
+        countShown = value
+        Refresh()
+    end
+
+    /*
+    This action gives a section's row its own menu. TeamTab sets it on the
+    row each time it adds the group.
+    */
+    action SetSectionMenu(PopupMenu value)
+        sectionMenu = value
+    end
+
+    action GetSectionMenu returns PopupMenu
+        return sectionMenu
+    end
+
+    action IsExpanded returns boolean
+        return expanded
+    end
+
+    action IsAccessibilityExpandable returns boolean
+        return true
+    end
+
+    action IsAccessibilityExpanded returns boolean
+        return expanded
+    end
+
+    action SetExpanded(boolean value)
+        expanded = value
+        Refresh()
+    end
+
+    // The title can change (the To push group while pushing, Push P9).
+    action SetTitle(text titleValue, text explanationValue)
+        title = titleValue
+        explanation = explanationValue
+        Refresh()
+    end
+
+    /*
+    This action updates the text, the arrow and the spoken name, such as
+    "Staged, in the next commit, 2 files, expanded" (A2).
+    */
+    action Refresh
+        integer count = rows:GetSize()
+        text countWords = "" + count + " " + unitMany
+        if count = 1
+            countWords = "1 " + unitOne
+        end
+
+        if explanation = ""
+            SetText(title)
+        else
+            SetText(title + ": " + explanation)
+        end
+        if countShown
+            detail:SetText("(" + count + ")")
+        else
+            detail:SetText("")
+        end
+
+        if chevron not= undefined
+            chevron:SetToggleState(expanded)
+        end
+
+        text state = "expanded"
+        if not expanded
+            state = "collapsed"
+        end
+        text countPart = ""
+        if countShown
+            countPart = ", " + countWords
+        end
+        if explanation = ""
+            SetName(title + countPart + ", " + state)
+        else
+            SetName(title + ", " + explanation + countPart + ", " + state)
+        end
+
+        // What Space does to the group, since its Stage all label is drawn
+        // for the mouse and isn't read. Groups without one have none.
+        text fileWords = "all " + count + " " + unitMany
+        if count = 1
+            fileWords = "1 " + unitOne
+        end
+        if actionWords = "Stage all"
+            SetDescription("Space stages " + fileWords + ".")
+        elseif actionWords = "Unstage all"
+            SetDescription("Space unstages " + fileWords + ". Your changes are kept.")
+        else
+            SetDescription("")
+        end
+    end
+
+    action IsOnFoldControl(number x, number y) returns boolean
+        number slack = FOLD_SLACK * GetInterfaceScale()
+        return x >= arrow:GetGlobalX() - slack and x <= arrow:GetGlobalX() + arrow:GetWidth() + slack
+    end
+
+    action GetText returns text
+        return GetName()
+    end
+end

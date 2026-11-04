@@ -1,0 +1,459 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Containers.Array
+use Libraries.System.File
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.TeamReporter
+use Libraries.Development.Environment.Studio.ProjectFilesRefresher
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Studio.Interface.TeamGroupItem
+use Libraries.Development.Environment.Studio.Interface.TeamCommitItem
+use Libraries.Development.Environment.Studio.Interface.TeamPulledFileItem
+use Libraries.Development.Environment.Studio.Interface.TeamMessageItem
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Versioning.PullResult
+use Libraries.Development.Versioning.StatusResult
+use Libraries.Development.Versioning.TeamStatus
+use Libraries.Development.Versioning.TeamFileChange
+use Libraries.Development.Versioning.DiffEntry
+use Libraries.Development.Versioning.CommitSummary
+use Libraries.Development.Versioning.GitConstants
+use Libraries.Development.Versioning.GitErrorWording
+use Libraries.Development.Versioning.GitProblem
+
+/*
+What happens after a pull, on the main thread (PullRequestBehavior adds it
+to the output pane from the git thread). In order:
+- the Team tab gets the new status;
+- a problem opens step 3's dialog (L5, L8, P6), and nothing else changes;
+- open tabs reload, tabs for deleted files close, the Project Tree
+  refreshes (ProjectFilesRefresher);
+- the Team tab's "From the last pull" groups are filled (L9);
+- conflicts open the L7 dialog;
+- the result is reported (one Console line when the Team tab isn't
+  showing).
+Nothing is announced to the screen reader.
+*/
+class FinishPullBehavior is Behavior
+    QuorumProject project = undefined
+    PullResult result = undefined
+    TeamStatus beforeStatus = undefined
+    TeamStatus afterStatus = undefined
+    boolean finished = false
+
+    GitConstants constants
+    TeamFileChange changeConstants
+
+    // What the editor work did, for the sentence (ProjectFilesRefresher's).
+    text editorWords = ""
+
+    // L9's groups, above git's (step 10's To push uses lower numbers).
+    constant text PULL_COMMITS_KEY = "From the last pull"
+    constant text PULL_FILES_KEY = "Changed by the last pull"
+    constant integer PULL_COMMITS_ORDER = 20
+    constant integer PULL_FILES_ORDER = 21
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action Setup(QuorumProject projectValue, PullResult resultValue, TeamStatus beforeValue, TeamStatus afterValue)
+        project = projectValue
+        result = resultValue
+        beforeStatus = beforeValue
+        afterStatus = afterValue
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+
+    action Run(BehaviorEvent event)
+        finished = true
+        if project = undefined or result = undefined
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+        TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+        teamTab:SetStatus(afterStatus)
+        // SetStatus doesn't go through PostStatus, so the Project Tree's
+        // marks (Tree T2) get the status here, before the tree is rebuilt.
+        ProjectTree projectTree = studio:GetProjectTree()
+        if projectTree not= undefined
+            projectTree:ApplyGitStatus(afterStatus)
+        end
+
+        text upstream = result:GetUpstreamBranch()
+        text title = "Pull"
+        if upstream not= ""
+            title = "Pull from " + upstream
+        end
+        TeamReporter reporter
+
+        if result:IsCancelled()
+            SetCommitsSection(teamTab, "stopped, nothing was changed")
+            teamTab:RemoveSection(PULL_FILES_KEY)
+            reporter:Report("Pull stopped. Nothing was changed.")
+            return now
+        end
+
+        // L6: the branch isn't on the server.
+        if result:HasNoUpstream()
+            text branch = GetBranch()
+            SetCommitsSection(teamTab, branch + " isn't on the server yet")
+            teamTab:RemoveSection(PULL_FILES_KEY)
+            reporter:Report(branch + " isn't on the server yet, so there's nothing to pull. Push it to share it with your team.")
+            return now
+        end
+
+        // L8 and P6: the server problems, in step 3's dialog.
+        if result:GetErrorKind() not= constants:ERROR_NONE
+            ReportServerProblem(title)
+            return now
+        end
+
+        // L5: files changed here that the pull would also change.
+        if result:GetMergeStatus() = constants:PULL_MERGE_FAILED
+            ReportFilesInTheWay(title)
+            return now
+        end
+
+        text workTree = GetWorkTree()
+        UpdateEditors(workTree)
+
+        integer fileCount = SetFilesSection(teamTab, workTree)
+        integer status = result:GetMergeStatus()
+        if status = constants:PULL_MERGE_CONFLICTING
+            integer conflictFiles = result:GetConflicts():GetSize()
+            SetCommitsSection(teamTab, teamTab:CountWords(conflictFiles, "file has", "files have") + " conflicts")
+            ReportConflicts(title, workTree)
+            reporter:Report("Pulled from " + upstream + ", but " + teamTab:CountWords(conflictFiles, "file has", "files have") + " conflicts.")
+            return now
+        end
+
+        if status = constants:PULL_MERGE_ALREADY_UP_TO_DATE or result:GetCommitCount() = 0
+            SetCommitsSection(teamTab, "already up to date")
+            reporter:Report("Already up to date. Nobody has pushed anything new to " + upstream + ".")
+            return now
+        end
+
+        if status = constants:PULL_MERGE_MERGED
+            integer yours = GetAheadCount(beforeStatus)
+            SetCommitsSection(teamTab, "combined with your " + teamTab:CountWords(yours, "commit", "commits"))
+            text sentence = "Pulled " + teamTab:CountWords(result:GetCommitCount(), "commit", "commits") + " from " + upstream
+            sentence = sentence + " and combined them with your " + yours + ". Git made a commit to join them. "
+            sentence = sentence + teamTab:CountWords(GetAheadCount(afterStatus), "commit", "commits") + " to push."
+            reporter:Report(sentence + editorWords)
+            return now
+        end
+
+        // L3: a fast-forward.
+        SetCommitsSection(teamTab, "")
+        text pulled = "Pulled " + teamTab:CountWords(result:GetCommitCount(), "commit", "commits") + " from " + upstream + AuthorWords() + ". "
+        pulled = pulled + teamTab:CountWords(fileCount, "file", "files") + " changed."
+        reporter:Report(pulled + editorWords)
+    end
+
+    // The repository's folder, with / between folders.
+    private action GetWorkTree returns text
+        StatusResult value = afterStatus:GetResult()
+        if value = undefined or value:GetWorkTreePath() = ""
+            value = beforeStatus:GetResult()
+        end
+        if value not= undefined and value:GetWorkTreePath() not= ""
+            return value:GetWorkTreePath()
+        end
+        File folder = project:GetLocation()
+        File parentFolder = folder:GetParentDirectory()
+        return parentFolder:GetAbsolutePath()
+    end
+
+    private action GetBranch returns text
+        StatusResult value = afterStatus:GetResult()
+        if value = undefined
+            return "This branch"
+        end
+        return value:GetBranch()
+    end
+
+    private action GetAheadCount(TeamStatus value) returns integer
+        if value = undefined or value:GetResult() = undefined
+            return 0
+        end
+        StatusResult statusResult = value:GetResult()
+        return statusResult:GetAheadCount()
+    end
+
+    /*
+    This action reloads open tabs for the files the pull changed and the
+    files with conflicts, closes tabs for files it deleted, and refreshes
+    the Project Tree, through ProjectFilesRefresher (shared with Switch
+    Branch). A tab with unsaved changes is left alone, and the sentence
+    says so.
+    */
+    private action UpdateEditors(text workTree)
+        Array<DiffEntry> diffs = result:GetDiff()
+        Array<text> conflicts = result:GetConflicts()
+        if diffs:IsEmpty() and conflicts:IsEmpty()
+            return now
+        end
+
+        ProjectFilesRefresher refresher
+        refresher:SetClosedWords("was deleted by the pull, so its tab was closed.", "files were deleted by the pull, so their tabs were closed.")
+        integer index = 0
+        repeat while index < diffs:GetSize()
+            DiffEntry entry = diffs:Get(index)
+            File file
+            file:SetAbsolutePath(workTree + "/" + entry:GetLocation())
+            refresher:AddChangedFile(file)
+            index = index + 1
+        end
+
+        index = 0
+        repeat while index < conflicts:GetSize()
+            File conflictFile
+            conflictFile:SetAbsolutePath(workTree + "/" + conflicts:Get(index))
+            refresher:AddChangedFile(conflictFile)
+            index = index + 1
+        end
+        editorWords = refresher:Refresh(project)
+    end
+
+    /*
+    L9's commits group: "From the last pull, 10:58", what happened in
+    the explanation, and a row per commit that came in.
+    */
+    private action SetCommitsSection(TeamTab teamTab, text explanation)
+        ColorGroup mutedColor = GetMutedColor()
+        TeamGroupItem group
+        group:Setup(PULL_COMMITS_KEY, PullTitle(), explanation, "commit", "commits", mutedColor)
+        group:SetOrder(PULL_COMMITS_ORDER)
+
+        Array<CommitSummary> commits = result:GetCommits()
+        integer index = 0
+        repeat while index < commits:GetSize()
+            TeamCommitItem row
+            row:Setup(commits:Get(index), PULL_COMMITS_KEY, "from the last pull", false, mutedColor)
+            teamTab:PrepareRow(row)
+            group:AddRow(row)
+            index = index + 1
+        end
+        integer more = result:GetCommitCount() - commits:GetSize()
+        if more > 0
+            TeamMessageItem moreRow
+            moreRow:Setup("and " + more + " more", mutedColor)
+            teamTab:PrepareRow(moreRow)
+            group:AddRow(moreRow)
+        end
+        group:Refresh()
+        teamTab:SetSection(group)
+    end
+
+    /*
+    L9's files group: a row per file the pull changed in the project.
+    Enter opens the file. Returns how many there are; with none, the group
+    is taken away.
+    */
+    private action SetFilesSection(TeamTab teamTab, text workTree) returns integer
+        ColorGroup mutedColor = GetMutedColor()
+        TeamGroupItem group
+        group:Setup(PULL_FILES_KEY, "Changed by the last pull", "", "file", "files", mutedColor)
+        group:SetOrder(PULL_FILES_ORDER)
+        TeamOpenFileBehavior openBehavior
+        openBehavior:SetTeamTab(teamTab)
+
+        Array<DiffEntry> diffs = result:GetDiff()
+        integer index = 0
+        repeat while index < diffs:GetSize()
+            DiffEntry entry = diffs:Get(index)
+            File file
+            file:SetAbsolutePath(workTree + "/" + entry:GetLocation())
+            text projectPath = afterStatus:GetProjectPath(file)
+            if projectPath not= ""
+                TeamFileChange change
+                change:Setup(entry:GetLocation(), projectPath, changeConstants:NOT_STAGED, KindOf(entry), file)
+                TeamPulledFileItem row
+                row:Setup(change, group, mutedColor)
+                teamTab:PrepareRow(row)
+                row:SetActivationBehavior(openBehavior)
+                group:AddRow(row)
+            end
+            index = index + 1
+        end
+
+        integer count = group:GetRows():GetSize()
+        if count = 0
+            teamTab:RemoveSection(PULL_FILES_KEY)
+        else
+            group:Refresh()
+            teamTab:SetSection(group)
+        end
+        return count
+    end
+
+    // A pulled file's kind, in TeamFileChange's words.
+    private action KindOf(DiffEntry entry) returns integer
+        integer kind = entry:GetEntryType()
+        if kind = constants:DIFF_DELETE
+            return changeConstants:DELETED
+        elseif kind = constants:DIFF_ADD or kind = constants:DIFF_COPY
+            return changeConstants:NEW_FILE
+        end
+        return changeConstants:MODIFIED
+    end
+
+    // "From the last pull, 10:58" (the fetch's time, from step 1).
+    private action PullTitle returns text
+        StatusResult value = afterStatus:GetResult()
+        if value not= undefined and value:GetLastFetchTime() not= ""
+            return "From the last pull, " + value:GetLastFetchTime()
+        end
+        return "From the last pull"
+    end
+
+    // " (from Grace and Alan)", " (from Grace, Alan and 2 others)", or "".
+    private action AuthorWords returns text
+        Array<text> names
+        Array<CommitSummary> commits = result:GetCommits()
+        integer index = 0
+        repeat while index < commits:GetSize()
+            CommitSummary commit = commits:Get(index)
+            if not names:Has(commit:GetAuthor())
+                names:Add(commit:GetAuthor())
+            end
+            index = index + 1
+        end
+        integer count = names:GetSize()
+        if count = 0
+            return ""
+        elseif count = 1
+            return " (from " + names:Get(0) + ")"
+        elseif count = 2
+            return " (from " + names:Get(0) + " and " + names:Get(1) + ")"
+        elseif count = 3
+            return " (from " + names:Get(0) + ", " + names:Get(1) + " and " + names:Get(2) + ")"
+        end
+        return " (from " + names:Get(0) + ", " + names:Get(1) + " and " + (count - 2) + " others)"
+    end
+
+    // P5 and P6, through step 3's and step 4's TeamReporter.
+    private action ReportServerProblem(text title)
+        GitErrorWording wording
+        TeamReporter reporter
+        integer kind = result:GetErrorKind()
+        if wording:IsCredentialsProblem(kind)
+            reporter:ReportCredentialsProblem(project, kind, "pull", title, result:GetDetails())
+            return now
+        end
+        GitProblem problem
+        problem:SetTitle(title)
+        problem:SetMessage(wording:GetSentence(kind, "pull", ""))
+        problem:SetDetails(result:GetDetails())
+        reporter:ReportProblem(problem)
+    end
+
+    // L5: nothing was changed; commit first, then pull again.
+    private action ReportFilesInTheWay(text title)
+        text workTree = GetWorkTree()
+        Array<text> paths = result:GetFailingPaths()
+        text names = ""
+        integer index = 0
+        repeat while index < paths:GetSize()
+            File file
+            file:SetAbsolutePath(workTree + "/" + paths:Get(index))
+            if index > 0
+                names = names + ", "
+            end
+            names = names + file:GetFileName()
+            index = index + 1
+        end
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        Behaviors behaviors = studio:GetBehaviors()
+        GitProblem problem
+        problem:SetTitle(title)
+        problem:SetMessage("Couldn't pull. The server changed files that you've also changed but haven't committed: " + names + ". Commit your changes first, then pull again. Git will combine your work and theirs. Nothing was changed.")
+        problem:SetAction("Commit...", behaviors:GetCommitInterfaceBehavior())
+        TeamReporter reporter
+        reporter:ReportProblem(problem)
+    end
+
+    /*
+    L7: the pull went through, but some files have both versions in them.
+    The dialog says how to fix it, lists the files with their number of
+    conflicts under Show Details, and opens the first one at its first
+    conflict.
+    */
+    private action ReportConflicts(text title, text workTree)
+        Array<text> conflicts = result:GetConflicts()
+        Array<integer> counts = result:GetConflictCounts()
+        if conflicts:IsEmpty()
+            return now
+        end
+        text lineFeed = ""
+        lineFeed = lineFeed:GetLineFeed()
+
+        text list = ""
+        File firstFile = undefined
+        integer index = 0
+        repeat while index < conflicts:GetSize()
+            File file
+            file:SetAbsolutePath(workTree + "/" + conflicts:Get(index))
+            if firstFile = undefined
+                firstFile = file
+            end
+            integer count = 0
+            if index < counts:GetSize()
+                count = counts:Get(index)
+            end
+            if index > 0
+                list = list + lineFeed
+            end
+            list = list + file:GetFileName()
+            if count = 1
+                list = list + ", 1 conflict"
+            elseif count > 1
+                list = list + ", " + count + " conflicts"
+            end
+            index = index + 1
+        end
+
+        text howMany = "1 file has"
+        if conflicts:GetSize() > 1
+            howMany = "" + conflicts:GetSize() + " files have"
+        end
+        text message = "Pulled, but " + howMany + " conflicts. You and a teammate changed the same lines, and Git couldn't combine them. "
+        message = message + "Each file now has both versions, between Git's marker lines (<<<<<<<, ======= and >>>>>>>). "
+        message = message + "For each file: keep the lines you want, delete the rest and the marker lines, then stage it. When all are staged, commit."
+
+        OpenConflictBehavior openFirst
+        openFirst:SetFile(firstFile)
+        GitProblem problem
+        problem:SetTitle(title)
+        problem:SetMessage(message)
+        problem:SetDetails(list)
+        problem:SetAction("Open " + firstFile:GetFileName(), openFirst)
+        TeamReporter reporter
+        reporter:ReportProblem(problem)
+    end
+
+    // The muted text color, as the Team tab's own rows use.
+    private action GetMutedColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetTabFontColor()
+    end
+end

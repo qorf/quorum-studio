@@ -1,0 +1,1576 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Item
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Interface.Events.MouseEvent
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Interface.Behaviors.Controls.ListActivationBehavior
+use Libraries.Interface.Behaviors.Controls.OpenPopupMenuBehavior
+use Libraries.Game.InputTable
+use Libraries.Game.InputSet
+use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Containers.Array
+use Libraries.System.File
+use Libraries.Development.Versioning.TeamStatus
+use Libraries.Development.Versioning.TeamFileChange
+use Libraries.Development.Versioning.StatusResult
+use Libraries.Development.Versioning.TeamProgressMonitor
+use Libraries.Development.Versioning.CommitSummary
+use Libraries.Development.Environment.Studio.Behaviors.TeamPushBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TeamHideLastPushBehavior
+use Libraries.Interface.Controls.ProgressBar
+use Libraries.Development.Environment.Studio.Behaviors.TeamCancelProgressBehavior
+use Libraries.Development.Environment.Resources
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Studio.Behaviors.Behaviors
+use Libraries.Development.Environment.Studio.Behaviors.ThreadedBehavior
+use Libraries.Development.Environment.Studio.Behaviors.FoldClickBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TeamFoldBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TeamOpenFileBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TeamCopyPathBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TeamMenuBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TeamRefreshBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TeamShowInTreeBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SwitchBranchInterfaceBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TeamStageBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TeamRowClickBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TeamPickBehavior
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Interface.Views.ControlShaderView
+use Libraries.Game.Graphics.Color
+
+/*
+The Team tab (Status A1): the selected project's git status.
+- A header: the branch and the server, a Refresh button, and the counts.
+- Then a List, read as a tree: fold rows for git's groups, with a row per
+  changed file under each.
+- Other steps add their own groups above git's (SetSection), such as "To
+  push" and "From the last pull".
+The status is read on the git thread and handed over with PostStatus; the
+tab applies it in Update, on the main thread.
+*/
+class TeamTab is Tab
+    Behaviors behaviors = undefined
+
+    Control teamPanel
+    Control headerRow
+    Label branchLabel
+    Button refreshButton
+    // P9: "Push 3 commits", shown only when there's something to push.
+    Button pushButton
+    TeamPushBehavior pushBehavior
+    // B6: Switch Branch... (Switch Branch, or New Branch from its dialog).
+    Button switchBranchButton
+    SwitchBranchInterfaceBehavior switchBranchBehavior
+    Control countsRow
+    Label countsLabel
+    // After "109 changes", a part for each group with a colored mark before
+    // its words (P4): conflicts, staged, not staged, untracked, in that
+    // order. The words say it all; the marks are a second cue.
+    Array<Control> countMarks
+    Array<Label> countLabels
+    // P9's progress row, hidden between pushes and pulls.
+    Control progressRow
+    Label progressLabel
+    ProgressBar progressBar
+    Label progressWords
+    Button cancelButton
+    TeamCancelProgressBehavior cancelBehavior
+    TeamProgressMonitor progressMonitor = undefined
+    // One waiting to be shown (from the git thread).
+    TeamProgressMonitor pendingMonitor = undefined
+    List changesList
+    LayoutProperties listLayout = undefined
+
+    // The status shown, and one waiting to be shown (from the git thread).
+    TeamStatus status = undefined
+    TeamStatus pendingStatus = undefined
+    // A8: a status has been asked for and hasn't come back.
+    boolean checking = false
+    // A refresh is queued on the git thread already.
+    boolean refreshQueued = false
+    // A refresh is waiting out the short delay after a save.
+    boolean refreshSoon = false
+    number refreshWait = 0
+
+    // Groups other steps add above git's, in order.
+    Array<TeamGroupItem> sections
+
+    // P9: the last push's result, waiting to be shown (from the git thread).
+    boolean pushResultPending = false
+    text pendingPushTitle = ""
+    text pendingPushExplanation = ""
+    text pendingPushNote = ""
+    Array<CommitSummary> pendingPushCommits = undefined
+    TeamCommitsPopupMenu toPushMenu
+    TeamCommitsPopupMenu lastPushMenu
+    TeamHideLastPushBehavior hideLastPushBehavior
+    // The keys of folded groups, kept across refreshes.
+    Array<text> collapsedKeys
+
+    boolean rowInputReady = false
+    // A click on a row: the fold arrow, [+] and [-], Stage all (step 8).
+    TeamRowClickBehavior rowClickBehavior
+    TeamTabPopupMenu menu
+    TeamOpenFileBehavior openFileBehavior
+    TeamFoldBehavior toggleBehavior
+    TeamFoldBehavior collapseBehavior
+    TeamFoldBehavior expandBehavior
+    TeamCopyPathBehavior copyBehavior
+    TeamMenuBehavior menuBehavior
+    TeamRefreshBehavior refreshBehavior
+    TeamShowInTreeBehavior showInTreeBehavior
+    OpenPopupMenuBehavior openMenuBehavior
+
+    // For TeamStatus's and TeamFileChange's constants.
+    TeamStatus statusConstants
+    TeamFileChange changeConstants
+
+    // Staging (Add A1 to A5).
+    TeamStageBehavior stageToggleBehavior
+    TeamStageBehavior stageBehavior
+    TeamStageBehavior unstageBehavior
+    TeamPickBehavior pickDownBehavior
+    TeamPickBehavior pickUpBehavior
+    TeamPickBehavior pickToggleBehavior
+    // A3: picked rows, all in one group; where Shift picking began; and the
+    // row that was selected when they were picked (moving off it unpicks).
+    Array<TeamFileItem> picked
+    integer pickAnchor = -1
+    text pickSelectionKey = ""
+    // A1: rows just staged or unstaged, by project path, and how long
+    // "just staged" has shown.
+    Array<text> recentPaths
+    boolean recentStaged = true
+    number recentWait = 0
+    constant number RECENT_SECONDS = 4
+
+    constant text ROW_INPUT_GROUP = "TeamTabListItem"
+    public constant text GROUP_CONFLICTS = "Conflicts"
+    public constant text GROUP_STAGED = "Staged"
+    public constant text GROUP_NOT_STAGED = "Not staged"
+    public constant text GROUP_UNTRACKED = "Untracked"
+    // Push P9's groups, above git's and above the last pull's (20 and 21).
+    public constant text GROUP_TO_PUSH = "To push"
+    public constant text GROUP_LAST_PUSH = "Last push"
+    constant integer TO_PUSH_ORDER = 10
+    constant integer LAST_PUSH_ORDER = 15
+    // The header's two rows, before the interface scale.
+    constant integer HEADER_HEIGHT = 28
+    constant integer COUNTS_HEIGHT = 22
+    constant integer PROGRESS_HEIGHT = 26
+    // A count's mark, in pixels, and the space before a mark and its words.
+    constant integer MARK_SIZE = 10
+    constant integer MARK_SPACE = 16
+    constant integer MARK_WORDS_SPACE = 6
+    // How long after a save the tab waits before refreshing, in seconds,
+    // so saving several times in a row runs one status.
+    constant number REFRESH_DELAY = 0.75
+
+    on create
+        openFileBehavior:SetTeamTab(me)
+    end
+
+    action Setup
+        SetName("Team")
+        DisplayCloseButton(true)
+
+        LayoutProperties panelLayout = teamPanel:GetDefaultLayoutProperties()
+        panelLayout:SetPercentageX(0)
+        panelLayout:SetPercentageY(0)
+        panelLayout:SetPercentageWidth(1)
+        panelLayout:SetPercentageHeight(1)
+        FlowLayout flow
+        flow:SetIgnoreHidden(true)
+        teamPanel:SetLayout(flow)
+        // The header sits on the list's own background, so the tab reads as
+        // one dark (or light) area, not a gray bar above the list.
+        GameStateManager themeState
+        InterfaceOptions themeOptions = themeState:GetInterfaceOptions()
+        if themeOptions not= undefined
+            ColorGroup listBackground = themeOptions:GetBackgroundColor("List")
+            if listBackground not= undefined
+                ControlShaderView panelView
+                panelView:Initialize()
+                teamPanel:SetView2D(panelView)
+                teamPanel:SetBackgroundColor(listBackground)
+            end
+        end
+
+        // The header: the list's description says the same words, so
+        // screen readers hear them when the list gets focus, and the
+        // labels themselves are left out.
+        FlowLayout headerLayout
+        headerLayout:SetSingleLine(true)
+        headerLayout:SetVerticalCentering(true)
+        // The Push button is hidden when there's nothing to push.
+        headerLayout:SetIgnoreHidden(true)
+        headerRow:SetLayout(headerLayout)
+        headerRow:SetPercentageWidth(1)
+        headerRow:SetPercentageHeight(0)
+        headerRow:SetPixelHeight(HEADER_HEIGHT)
+        headerRow:SetLeftMargin(8)
+        branchLabel:SetPositionOnBaseLine(false)
+        branchLabel:SetAccessibilityCode(branchLabel:parent:Item:NOT_ACCESSIBLE)
+        branchLabel:SetRightMargin(12)
+        headerRow:Add(branchLabel)
+        refreshButton:SetName("Refresh")
+        refreshButton:SetDescription("Checks the project's changes again. The Status key does the same.")
+        refreshBehavior:SetTeamTab(me)
+        refreshButton:SetBehavior(refreshBehavior)
+        headerRow:Add(refreshButton)
+        pushButton:SetName("Push")
+        pushButton:SetDescription("Sends your commits to the server. Team > Push does the same.")
+        pushButton:SetLeftMargin(8)
+        pushButton:SetBehavior(pushBehavior)
+        pushButton:Hide()
+        headerRow:Add(pushButton)
+        switchBranchButton:SetName("Switch Branch...")
+        switchBranchButton:SetDescription("Switches to another branch, or makes a new one. Team > Switch Branch... does the same.")
+        switchBranchButton:SetLeftMargin(8)
+        switchBranchButton:SetBehavior(switchBranchBehavior)
+        headerRow:Add(switchBranchButton)
+        // The header's buttons are the size of the header's text (T1), not
+        // the larger default button size.
+        MakeCompact(refreshButton)
+        MakeCompact(pushButton)
+        MakeCompact(switchBranchButton)
+        teamPanel:Add(headerRow)
+
+        hideLastPushBehavior:SetTeamTab(me)
+        toPushMenu:SetItems("Push", pushBehavior, refreshBehavior)
+        lastPushMenu:SetItems("Hide", hideLastPushBehavior, refreshBehavior)
+
+        FlowLayout countsLayout
+        countsLayout:SetSingleLine(true)
+        countsLayout:SetVerticalCentering(true)
+        // A group with nothing in it hides its part.
+        countsLayout:SetIgnoreHidden(true)
+        countsRow:SetLayout(countsLayout)
+        countsRow:SetPercentageWidth(1)
+        countsRow:SetPercentageHeight(0)
+        countsRow:SetPixelHeight(COUNTS_HEIGHT)
+        countsRow:SetLeftMargin(8)
+        countsLabel:SetPositionOnBaseLine(false)
+        countsLabel:SetAccessibilityCode(countsLabel:parent:Item:NOT_ACCESSIBLE)
+        // The header's lines keep the normal text color: the muted color is
+        // made for the dark list below and is too faint on the header.
+        countsRow:Add(countsLabel)
+        // The marks use the theme's Git colors, as the editor's change marks
+        // do. Untracked files get a ring: git isn't saving them yet.
+        OptionsConstants optionsConstants
+        ColorGroup conflictColor = undefined
+        ColorGroup stagedColor = undefined
+        ColorGroup notStagedColor = undefined
+        ColorGroup ringColor = undefined
+        if themeOptions not= undefined
+            conflictColor = themeOptions:GetColorProperty(optionsConstants:GIT_DELETED_COLOR)
+            stagedColor = themeOptions:GetColorProperty(optionsConstants:GIT_ADDED_COLOR)
+            notStagedColor = themeOptions:GetColorProperty(optionsConstants:GIT_MODIFIED_COLOR)
+            ringColor = themeOptions:GetFontColor()
+        end
+        AddCountPart(conflictColor, undefined)
+        AddCountPart(stagedColor, undefined)
+        AddCountPart(notStagedColor, undefined)
+        AddCountPart(undefined, ringColor)
+        teamPanel:Add(countsRow)
+
+        FlowLayout progressLayout
+        progressLayout:SetSingleLine(true)
+        progressLayout:SetVerticalCentering(true)
+        progressLayout:SetIgnoreHidden(true)
+        progressRow:SetLayout(progressLayout)
+        progressRow:SetPercentageWidth(1)
+        progressRow:SetPercentageHeight(0)
+        progressRow:SetPixelHeight(PROGRESS_HEIGHT)
+        progressRow:SetLeftMargin(8)
+        progressLabel:SetPositionOnBaseLine(false)
+        progressLabel:SetAccessibilityCode(progressLabel:parent:Item:NOT_ACCESSIBLE)
+        progressLabel:SetRightMargin(12)
+        progressRow:Add(progressLabel)
+        progressBar:SetName("Progress")
+        progressBar:SetMinimum(0)
+        progressBar:SetMaximum(100)
+        // Sized as the Console's send checklist sizes its bar.
+        progressBar:SetHorizontalLayoutMode(progressBar:parent:Control:STANDARD)
+        progressBar:SetVerticalLayoutMode(progressBar:parent:Control:STANDARD)
+        progressBar:SetPercentageWidth(0)
+        progressBar:SetPixelWidth(200)
+        progressBar:SetPercentageHeight(0)
+        progressBar:SetPixelHeight(8)
+        progressBar:SetBorderThickness(0)
+        progressRow:Add(progressBar)
+        progressWords:SetPositionOnBaseLine(false)
+        progressWords:SetAccessibilityCode(progressWords:parent:Item:NOT_ACCESSIBLE)
+        progressWords:SetLeftMargin(12)
+        progressWords:SetRightMargin(12)
+        progressRow:Add(progressWords)
+        cancelButton:SetName("Cancel")
+        cancelBehavior:SetTeamTab(me)
+        cancelButton:SetBehavior(cancelBehavior)
+        MakeCompact(cancelButton)
+        progressRow:Add(cancelButton)
+        progressRow:Hide()
+        teamPanel:Add(progressRow)
+
+        changesList:SetName("Team")
+        // Its rows are drawn as a tree, so screen readers get one (levels, "2 of 5").
+        changesList:SetTreeAccessibility(true)
+        listLayout = changesList:GetDefaultLayoutProperties()
+        listLayout:SetPercentageWidth(1)
+        listLayout:SetPercentageHeight(1)
+        listLayout:SetPixelHeight(-HEADER_HEIGHT - COUNTS_HEIGHT)
+        teamPanel:Add(changesList)
+
+        // Tab moves through the list, Refresh, Push and Cancel, the last
+        // two only while they show.
+        UpdateFocusOrder()
+
+        toggleBehavior:SetTeamTab(me)
+        toggleBehavior:SetMode(toggleBehavior:TOGGLE)
+        collapseBehavior:SetTeamTab(me)
+        collapseBehavior:SetMode(collapseBehavior:COLLAPSE)
+        expandBehavior:SetTeamTab(me)
+        expandBehavior:SetMode(expandBehavior:EXPAND)
+        copyBehavior:SetTeamTab(me)
+        menuBehavior:SetTeamTab(me)
+        showInTreeBehavior:SetTeamTab(me)
+        menu:SetTeamTab(openFileBehavior, showInTreeBehavior, copyBehavior, refreshBehavior)
+
+        stageToggleBehavior:SetTeamTab(me)
+        stageToggleBehavior:SetMode(stageToggleBehavior:TOGGLE)
+        stageBehavior:SetTeamTab(me)
+        stageBehavior:SetMode(stageBehavior:STAGE)
+        unstageBehavior:SetTeamTab(me)
+        unstageBehavior:SetMode(unstageBehavior:UNSTAGE)
+        rowClickBehavior:SetStager(stageToggleBehavior)
+        rowClickBehavior:SetTeamTab(me)
+        pickDownBehavior:SetTeamTab(me)
+        pickDownBehavior:SetMode(pickDownBehavior:PICK_DOWN)
+        pickUpBehavior:SetTeamTab(me)
+        pickUpBehavior:SetMode(pickUpBehavior:PICK_UP)
+        pickToggleBehavior:SetTeamTab(me)
+        pickToggleBehavior:SetMode(pickToggleBehavior:PICK_TOGGLE)
+        menu:SetStaging(me, stageBehavior, unstageBehavior)
+
+        SetRelatedItem(teamPanel)
+        SetFocusTarget(changesList)
+
+        // The list's keys, as in the Search Results tab: copy, the menu,
+        // Return to open, and the arrows to fold a group.
+        KeyboardEvent keys
+        InputTable listTable = changesList:CopyAndActivateInputTable("TeamTabList")
+
+        InputSet metaC
+        metaC:SetKeyboardInput(keys:C)
+        metaC:AddModifier(metaC:META)
+        listTable:Add(metaC, copyBehavior)
+
+        InputSet controlC
+        controlC:SetKeyboardInput(keys:C)
+        controlC:AddModifier(controlC:CONTROL)
+        listTable:Add(controlC, copyBehavior)
+
+        InputSet shiftF10
+        shiftF10:SetKeyboardInput(keys:F10)
+        shiftF10:AddModifier(shiftF10:SHIFT)
+        listTable:Add(shiftF10, menuBehavior)
+
+        InputSet enterSet
+        enterSet:SetKeyboardInput(keys:ENTER)
+        ListActivationBehavior activate
+        listTable:Add(enterSet, activate)
+
+        InputSet leftSet
+        leftSet:SetKeyboardInput(keys:LEFT)
+        listTable:Add(leftSet, collapseBehavior)
+
+        // Space stages or unstages (A1, A2); in a List it would activate
+        // the row, which Return still does.
+        InputSet spaceSet
+        spaceSet:SetKeyboardInput(keys:SPACE)
+        listTable:Add(spaceSet, stageToggleBehavior)
+
+        InputSet shiftDown
+        shiftDown:SetKeyboardInput(keys:DOWN)
+        shiftDown:AddModifier(shiftDown:SHIFT)
+        listTable:Add(shiftDown, pickDownBehavior)
+
+        InputSet shiftUp
+        shiftUp:SetKeyboardInput(keys:UP)
+        shiftUp:AddModifier(shiftUp:SHIFT)
+        listTable:Add(shiftUp, pickUpBehavior)
+
+        InputSet rightSet
+        rightSet:SetKeyboardInput(keys:RIGHT)
+        listTable:Add(rightSet, expandBehavior)
+
+        InputSet escapeSet
+        escapeSet:SetKeyboardInput(keys:ESCAPE)
+        listTable:Add(escapeSet, cancelBehavior)
+
+        Rebuild()
+    end
+
+    action SetBehaviors(Behaviors behaviors)
+        me:behaviors = behaviors
+    end
+
+    action GetBehaviors returns Behaviors
+        return behaviors
+    end
+
+    action SetResources(Resources resources)
+    end
+
+    // The status shown, or undefined before the first one.
+    action GetStatus returns TeamStatus
+        return status
+    end
+
+    /*
+    This action hands the tab a new status. It's safe to call from any
+    thread: the tab shows it on its next Update.
+    */
+    action PostStatus(TeamStatus value)
+        pendingStatus = value
+        // The Project Tree's marks follow every status (Tree T2), even when
+        // this tab is closed. The tree only keeps it in a field, so this is
+        // still safe from any thread.
+        GameStateManager treeManager
+        if treeManager:GetGame() is QuorumStudio
+            QuorumStudio treeStudio = cast(QuorumStudio, treeManager:GetGame())
+            ProjectTree projectTree = treeStudio:GetProjectTree()
+            if projectTree not= undefined
+                projectTree:PostGitStatus(value)
+            end
+        end
+    end
+
+    /*
+    This action shows a status now. Call it on the main thread only;
+    other threads use PostStatus.
+    */
+    action SetStatus(TeamStatus value)
+        status = value
+        checking = false
+        refreshQueued = false
+        UpdateToPushSection()
+        UpdatePushButton()
+        Rebuild()
+    end
+
+    /*
+    This action shows what a push did, in a group above git's (Push P9):
+    "Sent in the last push, 11:07" with the commits sent, or "Nothing to
+    push" with a line saying why. It stays until the next push or Hide.
+    It's safe to call from any thread: the tab shows it on its next
+    Update.
+    - title: the group's title;
+    - explanation: after the title, such as "2 changes aren't committed,
+      so they weren't sent", or "";
+    - commits: the commits sent, or undefined;
+    - note: a line under it, or "".
+    */
+    action PostPushResult(text title, text explanation, Array<CommitSummary> commits, text note)
+        pendingPushTitle = title
+        pendingPushExplanation = explanation
+        pendingPushCommits = commits
+        pendingPushNote = note
+        pushResultPending = true
+    end
+
+    // Hide, on the last push group.
+    action HideLastPush
+        RemoveSection(GROUP_LAST_PUSH)
+    end
+
+    // The last push's group, from what PostPushResult was given.
+    private action ShowPushResult
+        ColorGroup mutedColor = GetMutedColor()
+        TeamGroupItem group
+        group:Setup(GROUP_LAST_PUSH, pendingPushTitle, pendingPushExplanation, "commit", "commits", mutedColor)
+        group:SetOrder(LAST_PUSH_ORDER)
+        group:SetSectionMenu(lastPushMenu)
+        boolean hasCommits = false
+        if pendingPushCommits not= undefined
+            integer index = 0
+            repeat while index < pendingPushCommits:GetSize()
+                TeamCommitItem row
+                row:Setup(pendingPushCommits:Get(index), GROUP_LAST_PUSH, "sent", true, mutedColor)
+                PrepareRow(row)
+                row:SetPopupMenu(lastPushMenu)
+                group:AddRow(row)
+                hasCommits = true
+                index = index + 1
+            end
+        end
+        if pendingPushNote not= ""
+            TeamMessageItem noteRow
+            noteRow:Setup(pendingPushNote, mutedColor)
+            PrepareRow(noteRow)
+            noteRow:SetPopupMenu(lastPushMenu)
+            group:AddRow(noteRow)
+        end
+        group:SetCountShown(hasCommits)
+        group:Refresh()
+        // A new result shows unfolded, even if the last one was folded.
+        collapsedKeys:Remove(GROUP_LAST_PUSH)
+        PlaceSection(group)
+        Rebuild()
+    end
+
+    /*
+    The To push group (Push P9): the commits not on the server yet, from
+    the status. Left out when there are none, when there's no server, and
+    when no branch is checked out. Doesn't rebuild; SetStatus does.
+    */
+    private action UpdateToPushSection
+        boolean removed = RemoveSectionOnly(GROUP_TO_PUSH)
+        if status = undefined or not status:IsReady()
+            return now
+        end
+        StatusResult result = status:GetResult()
+        integer count = result:GetCommitsToPushCount()
+        if not result:HasRemote() or result:IsDetached() or count = 0
+            return now
+        end
+
+        ColorGroup mutedColor = GetMutedColor()
+        text explanation = "committed, not on the server yet"
+        if not result:HasUpstream()
+            explanation = "pushing makes " + result:GetBranch() + " on " + result:GetRemoteName() + "; your team will see it"
+        end
+        TeamGroupItem group
+        group:Setup(GROUP_TO_PUSH, "To push", explanation, "commit", "commits", mutedColor)
+        group:SetOrder(TO_PUSH_ORDER)
+        group:SetSectionMenu(toPushMenu)
+        Array<CommitSummary> commits = result:GetCommitsToPush()
+        integer index = 0
+        repeat while index < commits:GetSize()
+            TeamCommitItem row
+            row:Setup(commits:Get(index), GROUP_TO_PUSH, "to push", false, mutedColor)
+            PrepareRow(row)
+            row:SetPopupMenu(toPushMenu)
+            group:AddRow(row)
+            index = index + 1
+        end
+        if count > commits:GetSize()
+            TeamMessageItem more
+            more:Setup("and " + (count - commits:GetSize()) + " more", mutedColor)
+            PrepareRow(more)
+            more:SetPopupMenu(toPushMenu)
+            group:AddRow(more)
+        end
+        group:Refresh()
+        PlaceSection(group)
+    end
+
+    /*
+    The header's Push button: "Push 3 commits", or "Push level-three" for a
+    branch that isn't on the server yet. Hidden when there's nothing to
+    push, while a push or pull runs, and before the first status.
+    */
+    private action UpdatePushButton
+        boolean shown = false
+        text name = "Push"
+        if status not= undefined and status:IsReady() and progressMonitor = undefined and pendingMonitor = undefined
+            StatusResult result = status:GetResult()
+            if result:HasRemote() and not result:IsDetached()
+                integer count = result:GetCommitsToPushCount()
+                if not result:HasUpstream()
+                    shown = true
+                    name = "Push " + result:GetBranch()
+                elseif count > 0
+                    shown = true
+                    name = "Push " + CountWords(count, "commit", "commits")
+                end
+            end
+        end
+        pushButton:SetName(name)
+        if shown
+            pushButton:Show()
+        else
+            if pushButton:IsFocused()
+                changesList:Focus()
+            end
+            pushButton:Hide()
+        end
+        UpdateFocusOrder()
+        headerRow:RequestLayout()
+    end
+
+    /*
+    This action sets the Tab order: the list, then the header's buttons in
+    the order they sit in the header, then Cancel while a push or pull
+    runs. A header button that's hidden is skipped, so call this again
+    after showing or hiding one. A new header button is one more
+    AddIfShowing line, in its place in the header.
+    */
+    private action UpdateFocusOrder
+        Array<Item> order
+        order:Add(changesList)
+        // The header, left to right.
+        AddIfShowing(order, refreshButton)
+        AddIfShowing(order, pushButton)
+        AddIfShowing(order, switchBranchButton)
+        // The progress row's Cancel.
+        if progressMonitor not= undefined
+            order:Add(cancelButton)
+        end
+        integer index = 0
+        repeat while index < order:GetSize()
+            Item current = order:Get(index)
+            Item next = order:Get((index + 1) mod order:GetSize())
+            current:SetNextFocus(next)
+            next:SetPreviousFocus(current)
+            index = index + 1
+        end
+    end
+
+    // Adds a control to the Tab order when it isn't hidden.
+    private action AddIfShowing(Array<Item> order, Item candidate)
+        if candidate:IsShowing()
+            order:Add(candidate)
+        end
+    end
+
+    // Adds or replaces a section by its key and order, without a rebuild.
+    private action PlaceSection(TeamGroupItem group)
+        boolean removed = RemoveSectionOnly(group:GetKey())
+        integer index = 0
+        repeat while index < sections:GetSize() and sections:Get(index):GetOrder() <= group:GetOrder()
+            index = index + 1
+        end
+        sections:Add(index, group)
+    end
+
+    /*
+    This action asks for a new status on the git thread. The tab says
+    "Checking for changes..." until it comes back (A8). Call it on the main
+    thread.
+    */
+    action RequestRefresh
+        refreshSoon = false
+        if behaviors = undefined or refreshQueued
+            return now
+        end
+        refreshQueued = true
+        checking = true
+        UpdateHeader()
+        ThreadedBehavior statusBehavior = behaviors:GetThreadedStatusRequestBehavior()
+        BehaviorEvent event
+        statusBehavior:Run(event)
+    end
+
+    // A refresh after a short delay, restarted by each call (after a save).
+    action RequestRefreshSoon
+        refreshSoon = true
+        refreshWait = 0
+    end
+
+    /*
+    This action shows a push's or pull's progress under the header (Push
+    P9) until the monitor finishes. It's safe to call from any thread.
+    */
+    action ShowProgress(TeamProgressMonitor monitor)
+        pendingMonitor = monitor
+    end
+
+    // Cancel and Escape: asks JGit to stop.
+    action CancelProgress
+        if progressMonitor not= undefined
+            progressMonitor:Cancel()
+        end
+    end
+
+    action IsShowingProgress returns boolean
+        return progressMonitor not= undefined
+    end
+
+    // Shows or hides the progress row, and gives the list the room left.
+    private action SetProgressShown(boolean shown)
+        if shown
+            progressRow:Show()
+            listLayout:SetPixelHeight(-HEADER_HEIGHT - COUNTS_HEIGHT - PROGRESS_HEIGHT)
+        else
+            // Cancel is about to go: focus moves to the list first.
+            if cancelButton:IsFocused()
+                changesList:Focus()
+            end
+            progressRow:Hide()
+            listLayout:SetPixelHeight(-HEADER_HEIGHT - COUNTS_HEIGHT)
+        end
+        // The Push button hides while a push or pull runs. This also sets
+        // the Tab order, with Cancel in it only while it shows.
+        UpdatePushButton()
+        teamPanel:RequestLayout()
+    end
+
+    // Each frame while it shows: the title, the bar and the words.
+    private action UpdateProgress
+        if progressMonitor = undefined
+            return now
+        end
+        if progressMonitor:IsFinished()
+            progressMonitor = undefined
+            SetProgressShown(false)
+            UpdateHeader()
+            return now
+        end
+        if progressLabel:GetText() not= progressMonitor:GetTitle()
+            progressLabel:SetText(progressMonitor:GetTitle())
+            UpdateHeader()
+        end
+        integer percent = progressMonitor:GetPercent()
+        if percent < 0
+            percent = 0
+        end
+        progressBar:SetValue(percent)
+        text words = progressMonitor:GetWords()
+        if progressWords:GetText() not= words
+            progressWords:SetText(words)
+        end
+    end
+
+    action Update(number seconds)
+        if pendingStatus not= undefined
+            TeamStatus value = pendingStatus
+            pendingStatus = undefined
+            SetStatus(value)
+        end
+        if pendingMonitor not= undefined
+            progressMonitor = pendingMonitor
+            pendingMonitor = undefined
+            SetProgressShown(true)
+            progressLabel:SetText(progressMonitor:GetTitle())
+            UpdateHeader()
+        end
+        UpdateProgress()
+        if pushResultPending
+            pushResultPending = false
+            ShowPushResult()
+        end
+        if refreshSoon
+            refreshWait = refreshWait + seconds
+            if refreshWait >= REFRESH_DELAY
+                RequestRefresh()
+            end
+        end
+        if not recentPaths:IsEmpty()
+            recentWait = recentWait + seconds
+            if recentWait >= RECENT_SECONDS
+                recentPaths:Empty()
+                ClearNotes()
+            end
+        end
+        if not picked:IsEmpty() and GetRowKey(GetSelectedRow()) not= pickSelectionKey
+            ClearPicked()
+        end
+    end
+
+    /*
+    This action adds or replaces a group above git's groups, such as "To
+    push" (Push P9) or "From the last pull" (Pull L9). The group's rows must
+    have been through PrepareRow. Groups are shown by their order, lowest
+    first. Call it on the main thread.
+    */
+    action SetSection(TeamGroupItem group)
+        RemoveSectionOnly(group:GetKey())
+        integer index = 0
+        repeat while index < sections:GetSize() and sections:Get(index):GetOrder() <= group:GetOrder()
+            index = index + 1
+        end
+        sections:Add(index, group)
+        Rebuild()
+    end
+
+    action RemoveSection(text key)
+        if RemoveSectionOnly(key)
+            Rebuild()
+        end
+    end
+
+    action GetSection(text key) returns TeamGroupItem
+        integer index = 0
+        repeat while index < sections:GetSize()
+            if sections:Get(index):GetKey() = key
+                return sections:Get(index)
+            end
+            index = index + 1
+        end
+        return undefined
+    end
+
+    private action RemoveSectionOnly(text key) returns boolean
+        integer index = 0
+        repeat while index < sections:GetSize()
+            if sections:Get(index):GetKey() = key
+                sections:RemoveAt(index)
+                return true
+            end
+            index = index + 1
+        end
+        return false
+    end
+
+    /*
+    This action gives a row the tab's input group (right click opens the
+    menu, a click on a chevron folds) and its menu. Rows other steps add to
+    a section go through it too.
+    */
+    action PrepareRow(ListItem row)
+        if not rowInputReady
+            InputTable rowTable = row:CopyAndActivateInputTable(ROW_INPUT_GROUP)
+            MouseEvent mouse
+            InputSet rightClick
+            rightClick:SetMouseInput(mouse:RIGHT)
+            rowTable:Add(rightClick, openMenuBehavior)
+            InputSet controlClick
+            controlClick:SetMouseInput(mouse:LEFT)
+            controlClick:AddModifier(controlClick:CONTROL)
+            rowTable:Add(controlClick, openMenuBehavior)
+            InputSet leftClick
+            leftClick:SetMouseInput(mouse:LEFT)
+            rowTable:Add(leftClick, rowClickBehavior)
+            // A3: Cmd+click picks a row (Ctrl+click opens the menu, above).
+            InputSet metaClick
+            metaClick:SetMouseInput(mouse:LEFT)
+            metaClick:AddModifier(metaClick:META)
+            rowTable:Add(metaClick, pickToggleBehavior)
+            rowInputReady = true
+        else
+            row:SetInputGroup(ROW_INPUT_GROUP)
+        end
+        row:SetPopupMenu(menu)
+    end
+
+    /*
+    This action adds one count's part to the counts row, hidden until it has
+    a count: a mark, filled with fill or drawn as a ring in ring, then its
+    words. Neither is read by screen readers; the list's description has the
+    same words.
+    */
+    private action AddCountPart(ColorGroup fill, ColorGroup ring)
+        Control mark
+        ControlShaderView markView
+        markView:Initialize()
+        mark:SetView2D(markView)
+        mark:SetHorizontalLayoutMode(mark:STANDARD)
+        mark:SetVerticalLayoutMode(mark:STANDARD)
+        mark:SetPercentageWidth(0)
+        mark:SetPixelWidth(MARK_SIZE)
+        mark:SetPercentageHeight(0)
+        mark:SetPixelHeight(MARK_SIZE)
+        mark:SetLeftMargin(MARK_SPACE)
+        number corner = MARK_SIZE / 2.0
+        mark:SetCornerPixelRounding(corner, corner, corner, corner)
+        if fill not= undefined
+            mark:SetBackgroundColor(fill)
+            mark:SetBorderThickness(0)
+        else
+            Color clear
+            mark:SetBackgroundColor(clear:Clear())
+            if ring not= undefined
+                mark:SetBorderColor(ring)
+            end
+            mark:SetBorderThickness(2)
+        end
+        mark:SetAccessibilityCode(mark:parent:Item:NOT_ACCESSIBLE)
+        mark:Hide()
+        countsRow:Add(mark)
+        countMarks:Add(mark)
+
+        Label words
+        words:SetPositionOnBaseLine(false)
+        words:SetAccessibilityCode(words:parent:Item:NOT_ACCESSIBLE)
+        words:SetLeftMargin(MARK_WORDS_SPACE)
+        words:Hide()
+        countsRow:Add(words)
+        countLabels:Add(words)
+    end
+
+    /*
+    This action fills the counts row: "109 changes", then a part for each
+    group that has files. When the row says something else ("Checking for
+    changes...", "2 selected · Space to stage", "No changes"), the parts
+    are hidden.
+    */
+    private action UpdateCountParts
+        boolean showParts = false
+        if picked:GetSize() <= 1 and not checking and status not= undefined
+            if status:IsReady() and status:GetChangeCount() > 0
+                showParts = true
+            end
+        end
+        if showParts
+            countsLabel:SetText(CountWords(status:GetChangeCount(), "change", "changes"))
+            ShowCountPart(0, status:GetConflicts():GetSize(), "conflict", "conflicts")
+            ShowCountPart(1, status:GetStaged():GetSize(), "staged", "staged")
+            ShowCountPart(2, status:GetNotStaged():GetSize(), "not staged", "not staged")
+            ShowCountPart(3, status:GetUntracked():GetSize(), "untracked", "untracked")
+        else
+            countsLabel:SetText(CountsText())
+            integer index = 0
+            repeat while index < countMarks:GetSize()
+                ShowCountPart(index, 0, "", "")
+                index = index + 1
+            end
+        end
+        countsRow:RequestLayout()
+    end
+
+    // Shows a count's mark and words ("38 not staged"), or hides them at 0.
+    private action ShowCountPart(integer index, integer count, text one, text many)
+        if index >= countMarks:GetSize()
+            return now
+        end
+        Control mark = countMarks:Get(index)
+        Label words = countLabels:Get(index)
+        if count = 0
+            mark:Hide()
+            words:Hide()
+        else
+            words:SetText(CountWords(count, one, many))
+            mark:Show()
+            words:Show()
+        end
+    end
+
+    // The header's two lines, and the list's description with the same
+    // words (A2).
+    private action UpdateHeader
+        text branchLine = BranchText()
+        text countsLine = CountsText()
+        branchLabel:SetText(branchLine)
+        UpdateCountParts()
+        text description = branchLine
+        if countsLine not= ""
+            if description = ""
+                description = countsLine
+            else
+                description = description + ". " + countsLine
+            end
+        end
+        if progressMonitor not= undefined
+            description = description + ". " + progressMonitor:GetTitle()
+        end
+        if description not= ""
+            description = description + "."
+        end
+        changesList:SetDescription(description)
+    end
+
+    // "On branch main · 2 commits to push · up to date with origin (as of 10:42)".
+    private action BranchText returns text
+        if status = undefined or not status:IsReady()
+            return ""
+        end
+        StatusResult result = status:GetResult()
+        text line = "On branch " + result:GetBranch()
+        if result:IsDetached()
+            line = "Not on a branch (at " + result:GetBranch() + ")"
+        end
+        if not result:HasRemote()
+            return line
+        end
+        if not result:HasUpstream()
+            return line + " · not on the server yet"
+        end
+
+        integer ahead = result:GetAheadCount()
+        integer behind = result:GetBehindCount()
+        if ahead > 0
+            line = line + " · " + CountWords(ahead, "commit", "commits") + " to push"
+        end
+        if behind > 0
+            line = line + " · " + CountWords(behind, "commit", "commits") + " to pull"
+        end
+        if ahead = 0 and behind = 0
+            line = line + " · up to date with " + result:GetRemoteName()
+        end
+        if result:GetLastFetchTime() not= ""
+            line = line + " (as of " + result:GetLastFetchTime() + ")"
+        end
+        return line
+    end
+
+    // "7 changes: 2 staged, 3 not staged, 2 untracked".
+    private action CountsText returns text
+        if picked:GetSize() > 1
+            TeamFileItem firstPicked = picked:Get(0)
+            TeamFileChange pickedChange = firstPicked:GetChange()
+            if pickedChange:GetGroup() = changeConstants:STAGED
+                return "" + picked:GetSize() + " selected · Space to unstage"
+            end
+            return "" + picked:GetSize() + " selected · Space to stage"
+        end
+        if checking
+            return "Checking for changes..."
+        end
+        if status = undefined or not status:IsReady()
+            return ""
+        end
+        integer total = status:GetChangeCount()
+        if total = 0
+            return "No changes"
+        end
+        text line = CountWords(total, "change", "changes") + ":"
+        text separator = " "
+        if not status:GetConflicts():IsEmpty()
+            line = line + separator + CountWords(status:GetConflicts():GetSize(), "conflict", "conflicts")
+            separator = ", "
+        end
+        if not status:GetStaged():IsEmpty()
+            line = line + separator + status:GetStaged():GetSize() + " staged"
+            separator = ", "
+        end
+        if not status:GetNotStaged():IsEmpty()
+            line = line + separator + status:GetNotStaged():GetSize() + " not staged"
+            separator = ", "
+        end
+        if not status:GetUntracked():IsEmpty()
+            line = line + separator + status:GetUntracked():GetSize() + " untracked"
+        end
+        return line
+    end
+
+    // "1 commit", "3 commits".
+    action CountWords(integer count, text one, text many) returns text
+        if count = 1
+            return "1 " + one
+        end
+        return "" + count + " " + many
+    end
+
+    // Builds every row again from the status and the sections, keeping
+    // the selected row and the folded groups.
+    private action Rebuild
+        text selectedKey = GetRowKey(GetSelectedRow())
+        // The rows are made again, so the old picked rows go.
+        picked:Empty()
+        pickAnchor = -1
+        pickSelectionKey = ""
+        ClearRows()
+        UpdateHeader()
+        ColorGroup mutedColor = GetMutedColor()
+
+        if status = undefined
+            AddMessage("Select a project in the Project Tree to see its changes.", mutedColor)
+        elseif status:GetState() = statusConstants:NO_PROJECT
+            AddMessage("Select a project in the Project Tree to see its changes.", mutedColor)
+        elseif status:GetState() = statusConstants:NO_GIT
+            AddMessage(status:GetProjectName() + " isn't in a Git repository.", mutedColor)
+            AddMessage("To work with a team, clone the project with Team > Clone.", mutedColor)
+        elseif status:GetState() = statusConstants:FAILED
+            StatusResult failed = status:GetResult()
+            text reason = ""
+            if failed not= undefined
+                reason = failed:GetMessage()
+            end
+            AddMessage("Couldn't read the project's changes. " + reason, mutedColor)
+        else
+            integer index = 0
+            repeat while index < sections:GetSize()
+                AddGroup(sections:Get(index))
+                index = index + 1
+            end
+
+            if status:GetChangeCount() = 0
+                AddNothingToCommit(mutedColor)
+            else
+                AddChangeGroup(GROUP_CONFLICTS, "Conflicts", "fix, then stage", status:GetConflicts(), mutedColor)
+                AddChangeGroup(GROUP_STAGED, "Staged", "in the next commit", status:GetStaged(), mutedColor)
+                AddChangeGroup(GROUP_NOT_STAGED, "Not staged", "changed, not in the next commit", status:GetNotStaged(), mutedColor)
+                AddChangeGroup(GROUP_UNTRACKED, "Untracked", "new, git isn't saving these", status:GetUntracked(), mutedColor)
+            end
+        end
+
+        // One layout for all the rows, as the Search Results tab does.
+        changesList:Resize()
+        changesList:SetScrollPercentageY(0)
+        if selectedKey not= ""
+            ListItem row = FindRow(selectedKey)
+            if row not= undefined
+                changesList:Select(row)
+            end
+        end
+    end
+
+    // A5: nothing to commit, and what that means for pushing.
+    private action AddNothingToCommit(ColorGroup mutedColor)
+        StatusResult result = status:GetResult()
+        integer ahead = result:GetAheadCount()
+        if ahead > 0
+            AddMessage("Nothing to commit. Every file matches the last commit.", mutedColor)
+            text commitWords = "1 commit that isn't"
+            if ahead not= 1
+                commitWords = "" + ahead + " commits that aren't"
+            end
+            AddMessage("You have " + commitWords + " on the server yet. Use Team > Push to send them.", mutedColor)
+        elseif result:HasUpstream()
+            AddMessage("Nothing to commit, and nothing to push. You're up to date with the server as of your last pull.", mutedColor)
+        else
+            AddMessage("Nothing to commit. Every file matches the last commit.", mutedColor)
+        end
+    end
+
+    private action AddMessage(text value, ColorGroup mutedColor)
+        TeamMessageItem row
+        row:Setup(value, mutedColor)
+        PrepareRow(row)
+        changesList:Add(row)
+    end
+
+    // One of git's groups, left out when it's empty.
+    private action AddChangeGroup(text key, text title, text explanation, Array<TeamFileChange> changes, ColorGroup mutedColor)
+        if changes:IsEmpty()
+            return now
+        end
+        TeamGroupItem group
+        group:Setup(key, title, explanation, "file", "files", mutedColor)
+        if key = GROUP_STAGED
+            group:SetActionWords("Unstage all")
+            // Commit C7: the Staged group's Commit...
+            group:SetCommitShown(true)
+        elseif key = GROUP_NOT_STAGED or key = GROUP_UNTRACKED
+            group:SetActionWords("Stage all")
+        end
+        // A row that just arrived here gets "just staged" or "just
+        // unstaged" (A1) until the timer in Update runs out.
+        boolean arrivedHere = (recentStaged and key = GROUP_STAGED) or (not recentStaged and key not= GROUP_STAGED)
+        text noteWords = "just staged"
+        if not recentStaged
+            noteWords = "just unstaged"
+        end
+        integer index = 0
+        repeat while index < changes:GetSize()
+            TeamFileItem row
+            TeamFileChange change = changes:Get(index)
+            row:Setup(change, group, mutedColor)
+            row:SetStageable(true)
+            PrepareRow(row)
+            row:SetActivationBehavior(openFileBehavior)
+            if arrivedHere and recentPaths:Has(change:GetProjectPath())
+                row:SetNote(noteWords)
+            end
+            group:AddRow(row)
+            index = index + 1
+        end
+        group:Refresh()
+        AddGroup(group)
+    end
+
+    // A group's row, then its rows unless it's folded.
+    private action AddGroup(TeamGroupItem group)
+        PrepareRow(group)
+        if group:GetSectionMenu() not= undefined
+            group:SetPopupMenu(group:GetSectionMenu())
+        end
+        group:SetActivationBehavior(toggleBehavior)
+        boolean expanded = not collapsedKeys:Has(group:GetKey())
+        group:SetExpanded(expanded)
+        changesList:Add(group)
+        if expanded
+            Array<ListItem> rows = group:GetRows()
+            integer index = 0
+            repeat while index < rows:GetSize()
+                // Shown first: a hidden row isn't added for screen readers.
+                rows:Get(index):Show()
+                changesList:Add(rows:Get(index))
+                index = index + 1
+            end
+        end
+    end
+
+    // Removes every row, from the end, which is quick for a List.
+    private action ClearRows
+        changesList:Deselect()
+        repeat while changesList:GetSize() > 0
+            changesList:Remove(changesList:GetSize() - 1)
+        end
+    end
+
+    action ToggleGroup(TeamGroupItem group)
+        SetGroupExpanded(group, not group:IsExpanded())
+    end
+
+    /*
+    This action folds or unfolds a group. Folding takes its rows out of the
+    list, as the Search Results tab does, and the tab remembers it across
+    refreshes.
+    */
+    action SetGroupExpanded(TeamGroupItem group, boolean expanded)
+        if group:IsExpanded() = expanded
+            return now
+        end
+
+        integer groupIndex = changesList:GetIndexOf(group)
+        Array<ListItem> rows = group:GetRows()
+        integer count = rows:GetSize()
+        if expanded
+            integer index = 0
+            repeat while index < count
+                rows:Get(index):Show()
+                changesList:Add(groupIndex + 1 + index, rows:Get(index))
+                index = index + 1
+            end
+            collapsedKeys:Remove(group:GetKey())
+        else
+            repeat count times
+                changesList:Remove(groupIndex + 1)
+            end
+            if not collapsedKeys:Has(group:GetKey())
+                collapsedKeys:Add(group:GetKey())
+            end
+        end
+        group:SetExpanded(expanded)
+        changesList:Resize()
+        changesList:SetScrollPercentageY(changesList:GetScrollPercentageY())
+        changesList:Select(group)
+    end
+
+    // The row that's selected, or undefined.
+    action GetSelectedRow returns ListItem
+        return changesList:GetSelection():GetListItem()
+    end
+
+    // The selected row's change, or undefined when it isn't a file's row.
+    action GetSelectedChange returns TeamFileChange
+        ListItem row = GetSelectedRow()
+        if row is TeamFileItem
+            TeamFileItem fileRow = cast(TeamFileItem, row)
+            return fileRow:GetChange()
+        end
+        return undefined
+    end
+
+    action GetList returns List
+        return changesList
+    end
+
+    // A3: the picked rows (in one group), or none.
+    action GetPickedRows returns Array<TeamFileItem>
+        return picked
+    end
+
+    action ClearPicked
+        integer index = 0
+        repeat while index < picked:GetSize()
+            TeamFileItem row = picked:Get(index)
+            row:SetPicked(false)
+            index = index + 1
+        end
+        picked:Empty()
+        pickAnchor = -1
+        pickSelectionKey = ""
+        UpdateHeader()
+    end
+
+    /*
+    Shift+Down or Shift+Up (A3): moves the selection one row, within the
+    group, and picks every row from where Shift picking began to here.
+    */
+    action PickMove(boolean down)
+        ListItem row = GetSelectedRow()
+        if not (row is TeamFileItem)
+            return now
+        end
+        TeamFileItem current = cast(TeamFileItem, row)
+        if not current:IsStageable()
+            return now
+        end
+        integer index = changesList:GetIndexOf(current)
+        if picked:IsEmpty() or pickAnchor < 0
+            pickAnchor = index
+        end
+        integer target = index + 1
+        if not down
+            target = index - 1
+        end
+        if target < 0 or target >= changesList:GetSize()
+            return now
+        end
+        ListItem next = changesList:GetListItem(target)
+        if not (next is TeamFileItem)
+            return now
+        end
+        TeamFileItem nextRow = cast(TeamFileItem, next)
+        if not nextRow:IsStageable()
+            return now
+        end
+        TeamGroupItem currentGroup = current:GetGroupRow()
+        if not currentGroup:Equals(nextRow:GetGroupRow())
+            return now
+        end
+        changesList:Select(nextRow)
+        SetPickedRange(pickAnchor, target)
+    end
+
+    // Picks the rows from one list index to another, both included.
+    private action SetPickedRange(integer from, integer to)
+        integer index = 0
+        repeat while index < picked:GetSize()
+            TeamFileItem old = picked:Get(index)
+            old:SetPicked(false)
+            index = index + 1
+        end
+        picked:Empty()
+
+        integer low = from
+        integer high = to
+        if low > high
+            low = to
+            high = from
+        end
+        index = low
+        repeat while index <= high
+            ListItem item = changesList:GetListItem(index)
+            if item is TeamFileItem
+                TeamFileItem fileRow = cast(TeamFileItem, item)
+                fileRow:SetPicked(true)
+                picked:Add(fileRow)
+            end
+            index = index + 1
+        end
+        pickSelectionKey = GetRowKey(GetSelectedRow())
+        UpdateHeader()
+    end
+
+    /*
+    Cmd+click (A3): picks or unpicks one row. A row in another group starts
+    the picked rows over.
+    */
+    action TogglePicked(TeamFileItem row)
+        // Rows other steps add (the last pull's files) aren't picked.
+        if not row:IsStageable()
+            return now
+        end
+        if not picked:IsEmpty()
+            TeamFileItem firstPicked = picked:Get(0)
+            TeamGroupItem pickedGroup = firstPicked:GetGroupRow()
+            if not pickedGroup:Equals(row:GetGroupRow())
+                ClearPicked()
+            end
+        end
+        if picked:Has(row)
+            row:SetPicked(false)
+            picked:Remove(row)
+        else
+            row:SetPicked(true)
+            picked:Add(row)
+        end
+        changesList:Select(row)
+        pickAnchor = changesList:GetIndexOf(row)
+        pickSelectionKey = GetRowKey(row)
+        UpdateHeader()
+    end
+
+    /*
+    Moves the selection off rows about to be staged or unstaged (A1): to
+    the next row in the same group that isn't one of them, else the one
+    before, else the row after the group. Focus stays in the group, so
+    Space again stages the next file.
+    */
+    action MoveSelectionPast(Array<TeamFileItem> rows)
+        if rows:IsEmpty()
+            return now
+        end
+        TeamFileItem firstRow = rows:Get(0)
+        TeamGroupItem group = firstRow:GetGroupRow()
+        integer first = changesList:GetSize()
+        integer last = -1
+        integer index = 0
+        repeat while index < rows:GetSize()
+            integer position = changesList:GetIndexOf(rows:Get(index))
+            if position >= 0 and position < first
+                first = position
+            end
+            if position > last
+                last = position
+            end
+            index = index + 1
+        end
+        if last < 0
+            return now
+        end
+
+        ListItem found = undefined
+        boolean searching = true
+        index = last + 1
+        repeat while searching and index < changesList:GetSize()
+            ListItem item = changesList:GetListItem(index)
+            if item is TeamFileItem
+                TeamFileItem fileRow = cast(TeamFileItem, item)
+                if not group:Equals(fileRow:GetGroupRow())
+                    searching = false
+                elseif not rows:Has(fileRow)
+                    found = fileRow
+                    searching = false
+                end
+            else
+                searching = false
+            end
+            index = index + 1
+        end
+
+        searching = (found = undefined)
+        index = first - 1
+        repeat while searching and index >= 0
+            ListItem item = changesList:GetListItem(index)
+            if item is TeamFileItem
+                TeamFileItem fileRow = cast(TeamFileItem, item)
+                if not rows:Has(fileRow)
+                    found = fileRow
+                end
+                searching = (found = undefined)
+            else
+                searching = false
+            end
+            index = index - 1
+        end
+
+        if found = undefined
+            // The group empties: the row after it, or the group's row.
+            if last + 1 < changesList:GetSize()
+                found = changesList:GetListItem(last + 1)
+            else
+                found = group
+            end
+        end
+        changesList:Select(found)
+    end
+
+    /*
+    Rows just staged (or unstaged), by project path: when they show in
+    their new group, they say "just staged" for a few seconds (A1).
+    */
+    action MarkRecent(Array<text> paths, boolean staged)
+        recentPaths:Empty()
+        integer index = 0
+        repeat while index < paths:GetSize()
+            recentPaths:Add(paths:Get(index))
+            index = index + 1
+        end
+        recentStaged = staged
+        recentWait = 0
+    end
+
+    private action ClearNotes
+        integer index = 0
+        repeat while index < changesList:GetSize()
+            ListItem item = changesList:GetListItem(index)
+            if item is TeamFileItem
+                TeamFileItem fileRow = cast(TeamFileItem, item)
+                fileRow:SetNote("")
+            end
+            index = index + 1
+        end
+    end
+
+    // A row's key, for finding it again (public for step 8's behaviors).
+    action GetRowKey(ListItem row) returns text
+        if row is TeamGroupItem
+            TeamGroupItem group = cast(TeamGroupItem, row)
+            return group:GetKey()
+        elseif row is TeamFileItem
+            TeamFileItem fileRow = cast(TeamFileItem, row)
+            return fileRow:GetKey()
+        elseif row is TeamCommitItem
+            TeamCommitItem commitRow = cast(TeamCommitItem, row)
+            return commitRow:GetKey()
+        end
+        return ""
+    end
+
+    private action FindRow(text key) returns ListItem
+        integer index = 0
+        repeat while index < changesList:GetSize()
+            ListItem row = changesList:GetListItem(index)
+            if GetRowKey(row) = key
+                return row
+            end
+            index = index + 1
+        end
+        return undefined
+    end
+
+    /*
+    This action opens a change's file in the editor. A deleted file has
+    nothing to open; its row's name already says it was deleted.
+    */
+    action OpenChange(TeamFileChange change)
+        if change = undefined or change:GetKind() = changeConstants:DELETED
+            return now
+        end
+        File file = change:GetFile()
+        if file = undefined or not file:Exists()
+            return now
+        end
+
+        GameStateManager gameManager
+        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+        CodeEditorTabPane tabPane = studio:GetTabPane()
+        Tab opened = tabPane:OpenNewTab(file)
+        if opened not= undefined
+            tabPane:Select(opened)
+        end
+    end
+
+    /*
+    Commit C7: the Commit dialog's behavior (Behaviors:GetCommitInterfaceBehavior),
+    for the Staged group's Commit... button and menu item. Main thread.
+    */
+    action GetCommitBehavior returns Behavior
+        Behaviors studioBehaviors = behaviors
+        if studioBehaviors = undefined
+            GameStateManager gameManager
+            QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+            studioBehaviors = studio:GetBehaviors()
+        end
+        if studioBehaviors = undefined
+            return undefined
+        end
+        return studioBehaviors:GetCommitInterfaceBehavior()
+    end
+
+    private action GetMutedColor returns ColorGroup
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetTabFontColor()
+    end
+
+    /*
+    Closing a tab normally disposes it (TabBar:Remove), which empties it and
+    clears its parts. Output tabs are added back when they're needed
+    (OutputEditorTabPane), so closing one keeps it whole.
+    */
+    action Dispose
+    end
+
+    // A header button at the header's text size, with tight padding (T1).
+    private action MakeCompact(Button button)
+        button:SetFontSize(branchLabel:GetSize())
+        button:SetTopPadding(2)
+        button:SetBottomPadding(3)
+        button:SetLeftPadding(6)
+        button:SetRightPadding(6)
+    end
+end

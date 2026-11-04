@@ -14,11 +14,19 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.Behaviors.SetProgramStartBehavior
 use Libraries.Development.Environment.Studio.StudioFocusManager
 use Libraries.Development.Environment.Studio.Behaviors.OpenFindInProjectDialogBehavior
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Containers.Array
 
 class ProjectTreeItem is TreeItem
     QuorumProject project = undefined
     File file = undefined
     GameStateManager manager
+    // The Git items last added to the project row's kept menu (Tree M3).
+    Array<MenuItem> gitMenuItems
+    // An item kept at the bottom of the project row's menu, after the Git
+    // items (Properties; QuorumProjectView sets it).
+    MenuItem lastMenuItem = undefined
+    ProjectTreeGitMenu gitMenu
     
     action GetProject returns QuorumProject
         return project
@@ -37,9 +45,96 @@ class ProjectTreeItem is TreeItem
         SetName(file:GetFileName())
     end
 
+    /*
+    This action sets a file row's git mark (Tree L2): a thin bar at the
+    tree's left edge in the given color, filled or outlined
+    (TreeItem:SetLeadingBar), and a quiet word right after the file's name
+    in the given color ("modified"). The same mark in words goes in the
+    row's description ("Modified"), which a screen reader reads after the
+    row's name when the row gets focus. With no bar color (the theme's Git
+    colors couldn't be read), the row has no bar; with no word color, the
+    word takes the tree's text color.
+    */
+    action SetGitMark(ColorGroup barColor, boolean outlined, text word, ColorGroup wordColor, text words)
+        SetGitBar(barColor, outlined)
+        if wordColor = undefined
+            SetTrailingText(word)
+        else
+            SetTrailingText(word, wordColor)
+        end
+        SetGitWords(words)
+    end
+
+    /*
+    This action sets a folder's or the project's row git mark (Tree R2): a
+    filled bar at the tree's left edge, no word, and the mark in words as
+    the row's description ("Changes inside", "On branch main, 6 changes").
+    */
+    action SetGitMark(ColorGroup barColor, text words)
+        SetGitBar(barColor, false)
+        SetTrailingText("")
+        SetGitWords(words)
+    end
+
+    /*
+    This action takes the row's bar and word away and sets only its
+    description (the project's row with no changes: "On branch main").
+    */
+    action SetGitDescription(text words)
+        RemoveLeadingBar()
+        SetTrailingText("")
+        SetGitWords(words)
+    end
+
+    // Takes the row's git mark away: no bar, no word, no description.
+    action ClearGitMark
+        SetGitDescription("")
+    end
+
+    // The word after the row's name ("modified"), or "".
+    action GetGitMark returns text
+        return GetTrailingText()
+    end
+
+    private action SetGitBar(ColorGroup color, boolean outlined)
+        if color = undefined
+            RemoveLeadingBar()
+        else
+            SetLeadingBar(color, outlined)
+        end
+    end
+
+    private action SetGitWords(text words)
+        if GetDescription() not= words
+            SetDescription(words)
+        end
+    end
+
+    // Sets an item to keep last in the project row's menu (Properties).
+    action SetLastMenuItem(MenuItem item)
+        lastMenuItem = item
+    end
+
     action GetPopupMenu returns PopupMenu
-        if parent:Control:contextMenu not= undefined
-            return parent:Control:contextMenu
+        // The project's row keeps one menu (QuorumProjectView); its Git items
+        // are taken off and added again each time, from the current state.
+        PopupMenu kept = parent:Control:GetPopupMenu()
+        if kept not= undefined
+            integer index = 0
+            repeat while index < gitMenuItems:GetSize()
+                kept:Remove(gitMenuItems:Get(index))
+                index = index + 1
+            end
+            // Properties stays last: taken off, then put back after the Git
+            // items.
+            if lastMenuItem not= undefined
+                kept:Remove(lastMenuItem)
+            end
+            gitMenuItems = gitMenu:AddItems(kept, me)
+            if lastMenuItem not= undefined
+                kept:Add(lastMenuItem)
+            end
+            return kept
         end
 
         PopupMenu exampleContextMenu
@@ -78,8 +173,9 @@ class ProjectTreeItem is TreeItem
             OpenFindInProjectDialogBehavior findInProjectBehavior
             findInProjectMenuItem:SetBehavior(findInProjectBehavior)
             exampleContextMenu:Add(findInProjectMenuItem)
-            
 
+            // Tree M2: only in a Git project.
+            gitMenu:AddItems(exampleContextMenu, me)
         else
             OpenTabBehavior openTabBehavior
 
@@ -116,6 +212,9 @@ class ProjectTreeItem is TreeItem
             QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
             openTabBehavior:SetMainApplication(studio)
             //openTabBehavior:SetFile(file)
+
+            // Tree M1 and M4: only in a Git project.
+            gitMenu:AddItems(exampleContextMenu, me)
         end
         return exampleContextMenu
     end

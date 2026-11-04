@@ -1,0 +1,412 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.RadioButton
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Controls.List
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Selections.ListSelection
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Forms.FormConstants
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Interface.Item
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Game.GameStateManager
+use Libraries.Containers.Array
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.GitBranch
+use Libraries.Development.Versioning.BranchListResult
+use Libraries.Development.Versioning.SwitchBranchRequest
+use Libraries.Development.Environment.Studio.BranchSwitcher
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.CreateBranchOkBehavior
+use Libraries.Development.Environment.Studio.Behaviors.BranchNameFixBehavior
+use Libraries.Development.Environment.Studio.Behaviors.BranchNameListener
+use Libraries.Development.Environment.Studio.Behaviors.StartFromChoiceBehavior
+
+/*
+New Branch (B4, laid out as N1): "Name" above its field (checked as you
+type, B5), "Start from" with two choices (where you are now, or another
+branch picked from a short list that is dimmed until that choice is
+made), "Switch to it now", two muted lines, and Cancel, Create Branch.
+Tab goes Name, the choices, the list (only while it can be used), the
+checkbox, Cancel, Create Branch.
+*/
+class NewBranchDialog is Dialog
+    BranchListResult branches = undefined
+    BranchSwitcher switcher = undefined
+    integer changeCount = 0
+
+    TextField nameField = undefined
+    Label nameMessage = undefined
+    Button fixButton = undefined
+    Grouping startChoices = undefined
+    RadioButton hereButton = undefined
+    RadioButton otherButton = undefined
+    List otherList = undefined
+    Checkbox switchBox = undefined
+    Button cancelButton = undefined
+    Button createButton = undefined
+    // Where you are now: the current branch, or "" when HEAD is detached.
+    text hereName = ""
+    boolean otherListEnabled = false
+    ColorGroup mutedColor = undefined
+
+    // B5's fix: none, use the suggested name, or switch to the server's branch.
+    constant integer FIX_NONE = 0
+    constant integer FIX_RENAME = 1
+    constant integer FIX_SWITCH = 2
+    integer fixMode = 0
+    text fixValue = ""
+    GitBranch fixBranch = undefined
+
+    DialogCancelBehavior cancelBehavior
+    CreateBranchOkBehavior createBehavior
+    BranchNameFixBehavior fixBehavior
+    BranchNameListener nameListener
+    StartFromChoiceBehavior choiceBehavior
+
+    on create
+        SetModal(true)
+    end
+
+    action Setup(BranchListResult value, integer changes, BranchSwitcher switcherValue)
+        branches = value
+        changeCount = changes
+        switcher = switcherValue
+        SetName("New Branch")
+        SetPercentageWidth(0.5)
+        SetPixelHeight(600)
+        cancelBehavior:SetDialog(me)
+        createBehavior:SetDialog(me)
+        fixBehavior:SetDialog(me)
+        nameListener:SetDialog(me)
+        choiceBehavior:SetDialog(me)
+        mutedColor = GetMutedColor()
+
+        Page page = InitializeDefaultPage()
+        page:SetSkipLabelsInFocus(true)
+
+        // The field is in an untitled grouping of its own, so the page puts
+        // "Name" above it as a caption and the field runs across the row.
+        page:AddLabel("Name")
+        Grouping nameRow = page:AddGrouping("Name Row")
+        nameField = nameRow:AddTextField("Name")
+        nameField:AddTextChangeListener(nameListener)
+        nameMessage = page:AddLabel("Name Check", "")
+        fixButton = page:AddButton("Use Suggestion")
+        fixButton:SetBehavior(fixBehavior)
+        fixButton:Hide()
+
+        // "Start from" looks like the "Name" caption: a label before
+        // choices isn't made a caption by the page, so it's styled here.
+        Label startLabel = page:AddLabel("Start from")
+        FormConstants formConstants
+        startLabel:SetFontSize(formConstants:SMALL_FONT_SIZE)
+        if mutedColor not= undefined
+            startLabel:SetFontColor(mutedColor)
+        end
+
+        // Exactly two choices, one per row (one column).
+        startChoices = page:AddGrouping("Start From")
+        startChoices:SetColumns(1)
+        text current = branches:GetCurrentBranch()
+        if not branches:IsDetached() and current not= ""
+            hereName = current
+            hereButton = startChoices:AddRadioButton(current + ", where you are now")
+        else
+            hereName = ""
+            hereButton = startChoices:AddRadioButton("Where you are now (not on a branch)")
+        end
+        hereButton:SetToggleState(true)
+        hereButton:SetBehavior(choiceBehavior)
+
+        // The other local branches, for "Another branch...". With none,
+        // there's nothing else to start from, so neither is shown.
+        Array<GitBranch> locals = branches:GetLocalBranches()
+        Array<text> others
+        integer counter = 0
+        repeat while counter < locals:GetSize()
+            GitBranch branch = locals:Get(counter)
+            if not branch:IsCurrent()
+                others:Add(branch:GetBranchName())
+            end
+            counter = counter + 1
+        end
+        if not others:IsEmpty()
+            otherButton = startChoices:AddRadioButton("Another branch...")
+            otherButton:SetDescription("Start from another branch on your computer. Pick it in the list after this choice.")
+            otherButton:SetBehavior(choiceBehavior)
+
+            otherList = page:AddList("Other Branches")
+            integer rows = others:GetSize()
+            if rows > 3
+                rows = 3
+            end
+            otherList:SetLayoutRows(cast(number, rows))
+            counter = 0
+            repeat while counter < others:GetSize()
+                StartBranchItem row
+                row:Setup(others:Get(counter))
+                otherList:Add(row)
+                counter = counter + 1
+            end
+            // The dialog's text size, as its labels.
+            otherList:SetFontSize(nameMessage:GetFontSize())
+        end
+
+        switchBox = page:AddCheckbox("Switch to it now")
+        switchBox:SetToggleState(true)
+
+        // Labels aren't focus stops here, so the two lines are also the
+        // dialog's description, read when it opens.
+        text pushWords = "The branch is only on your computer until you push it."
+        text notes = pushWords
+        if changeCount > 0
+            Label changesNote = page:AddLabel("Changes Note", ChangesWords())
+            if mutedColor not= undefined
+                changesNote:SetFontColor(mutedColor)
+            end
+            notes = ChangesWords() + " " + pushWords
+        end
+        Label pushNote = page:AddLabel("Push Note", pushWords)
+        if mutedColor not= undefined
+            pushNote:SetFontColor(mutedColor)
+        end
+        SetDescription(notes)
+
+        // The footer: Cancel, Create Branch, each as wide as its words.
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        buttonGroup:PositionFromBottom()
+        cancelButton = buttonGroup:AddButton("Cancel")
+        cancelButton:SetBehavior(cancelBehavior)
+        createButton = buttonGroup:AddButton("Create Branch")
+        createButton:SetInterfaceOptionsKey("DialogAcceptButton")
+        createButton:SetBehavior(createBehavior)
+        SetBehavior(createBehavior)
+
+        // The page's own order first, so it isn't worked out again when the
+        // page loads; then the order above replaces it for these controls.
+        page:CalculateDefaultFocusOrdering()
+        SetOtherListEnabled(false)
+    end
+
+    action OnShow
+        nameField:Focus()
+        // A second layout once the buttons have their fonts, so each footer
+        // button is measured in the font its words are drawn in.
+        RequestLayout()
+    end
+
+    // "Your 4 uncommitted changes come with you."
+    private action ChangesWords returns text
+        if changeCount = 1
+            return "Your 1 uncommitted change comes with you."
+        end
+        return "Your " + changeCount + " uncommitted changes come with you."
+    end
+
+    /*
+    A choice under "Start from" was made (a click, Space, or the arrow
+    keys). The list can be used only with "Another branch...".
+    */
+    action StartChoiceChanged
+        if otherButton = undefined
+            return now
+        end
+        SetOtherListEnabled(otherButton:GetToggleState())
+    end
+
+    /*
+    The list of other branches: usable, or dimmed, out of the Tab order and
+    ignoring the mouse. Its description says which.
+    */
+    private action SetOtherListEnabled(boolean enabled)
+        otherListEnabled = enabled
+        if otherList = undefined
+            UpdateFocusOrder()
+            return now
+        end
+        if not enabled
+            otherList:Deselect()
+        end
+        otherList:SetFocusable(enabled)
+        otherList:SetAcceptsMouseInput(enabled)
+        Array<ListItem> rows = otherList:GetListItems()
+        integer counter = 0
+        repeat while counter < rows:GetSize()
+            ListItem row = rows:Get(counter)
+            row:SetAcceptsMouseInput(enabled)
+            if row is StartBranchItem
+                StartBranchItem branchRow = cast(StartBranchItem, row)
+                branchRow:SetDimmed(not enabled, mutedColor)
+            end
+            counter = counter + 1
+        end
+        if enabled
+            otherList:SetDescription("The branch to start from.")
+            ListSelection selection = otherList:GetSelection()
+            if selection:GetListItem() = undefined and not rows:IsEmpty()
+                otherList:Select(0)
+            end
+        else
+            otherList:SetDescription("Choose Another branch... to pick one of these.")
+        end
+        UpdateFocusOrder()
+    end
+
+    /*
+    Tab and Shift+Tab: Name, Use Suggestion (while shown), the choices, the
+    list (while it can be used), Switch to it now, Cancel, Create Branch,
+    then back to Name.
+    */
+    private action UpdateFocusOrder
+        Array<Item> order
+        order:Add(nameField)
+        if fixButton:IsShowing()
+            order:Add(fixButton)
+        end
+        order:Add(startChoices)
+        if otherList not= undefined and otherListEnabled
+            order:Add(otherList)
+        end
+        order:Add(switchBox)
+        order:Add(cancelButton)
+        order:Add(createButton)
+        integer counter = 0
+        repeat while counter < order:GetSize()
+            Item stop = order:Get(counter)
+            Item following = order:Get((counter + 1) mod order:GetSize())
+            stop:SetNextFocus(following)
+            following:SetPreviousFocus(stop)
+            counter = counter + 1
+        end
+    end
+
+    // The dialog's caption color, for the muted lines and the dimmed list.
+    private action GetMutedColor returns ColorGroup
+        GameStateManager manager
+        InterfaceOptions options = manager:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetFontColor("FieldCaption")
+    end
+
+    // As you type (B5): the message under the field, which is also the
+    // field's description, and the fix button when there is one.
+    action NameChanged
+        text message = CheckName()
+        nameMessage:SetText(message)
+        nameField:SetDescription(message)
+        if fixMode = FIX_RENAME
+            fixButton:SetName("Use " + fixValue)
+            fixButton:Show()
+        elseif fixMode = FIX_SWITCH
+            fixButton:SetName("Switch to " + fixValue)
+            fixButton:Show()
+        else
+            fixButton:Hide()
+        end
+        UpdateFocusOrder()
+    end
+
+    // B5's checks. Returns "" when the name is fine.
+    private action CheckName returns text
+        text typed = nameField:GetText():Trim()
+        fixMode = FIX_NONE
+        fixValue = ""
+        fixBranch = undefined
+        if typed = ""
+            return "Give the branch a name."
+        end
+        if typed:Contains(" ")
+            fixValue = typed:Replace(" ", "-")
+            fixMode = FIX_RENAME
+            return "Branch names can't have spaces. Use " + fixValue + "?"
+        end
+        if branches:FindLocal(typed) not= undefined
+            return "There's already a branch called " + typed + "."
+        end
+        GitBranch server = branches:FindServer(typed)
+        if server not= undefined
+            fixBranch = server
+            fixValue = server:GetLocalName()
+            fixMode = FIX_SWITCH
+            return "The server already has a branch called " + fixValue + ". Switch to it instead?"
+        end
+        Git git
+        if not git:IsValidBranchName(typed)
+            return "Branch names can't contain ~ ^ : ? * [ or a backslash, two dots in a row, or end in .lock."
+        end
+        return ""
+    end
+
+    // The fix button.
+    action ApplyFix
+        if fixMode = FIX_RENAME
+            nameField:SetText(fixValue)
+            NameChanged()
+            nameField:Focus()
+        elseif fixMode = FIX_SWITCH and fixBranch not= undefined
+            SwitchBranchRequest request
+            request:SetBranchName(fixBranch:GetLocalName())
+            request:SetCreating(true)
+            request:SetStartPoint(fixBranch:GetBranchName())
+            request:SetTracking(true)
+            request:SetFromNewBranch(true)
+            switcher:Begin(request)
+        end
+    end
+
+    // Create Branch, or Enter. Create Branch stays enabled; a problem goes
+    // in the field's description and focus goes back to the field.
+    action Create
+        text message = CheckName()
+        if message not= ""
+            ShowProblem(message)
+            return now
+        end
+        SwitchBranchRequest request
+        request:SetBranchName(nameField:GetText():Trim())
+        request:SetCreating(true)
+        // With no branch to start from (HEAD detached, no branches here),
+        // start where you are: "HEAD", not "refs/heads/HEAD".
+        text start = SelectedStart()
+        if start = ""
+            request:SetStartPoint("HEAD")
+        else
+            request:SetStartPoint("refs/heads/" + start)
+        end
+        request:SetSwitching(switchBox:GetToggleState())
+        request:SetFromNewBranch(true)
+        switcher:Begin(request)
+    end
+
+    /*
+    The branch to start from: the one picked in the list with "Another
+    branch...", otherwise where you are now ("" when HEAD is detached).
+    */
+    private action SelectedStart returns text
+        if otherButton not= undefined and otherList not= undefined and otherButton:GetToggleState()
+            ListSelection selection = otherList:GetSelection()
+            ListItem item = selection:GetListItem()
+            if item not= undefined and item is StartBranchItem
+                StartBranchItem branchRow = cast(StartBranchItem, item)
+                return branchRow:GetBranchName()
+            end
+        end
+        return hereName
+    end
+
+    // A message in the dialog, read when focus returns to the Name field.
+    action ShowProblem(text message)
+        nameMessage:SetText(message)
+        nameField:SetDescription(message)
+        nameField:Focus()
+    end
+end

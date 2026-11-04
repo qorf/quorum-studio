@@ -1,119 +1,260 @@
 package Libraries.Development.Environment.Studio.Behaviors
 
 use Libraries.Interface.Events.BehaviorEvent
-use Libraries.Development.Environment.Studio.QuorumStudio
-use Libraries.Development.Environment.Projects.ProjectManager
-use Libraries.Development.Environment.Projects.Project
-use Libraries.Interface.Behaviors.Behavior
-use Libraries.Interface.Controls.TextBox
-use Libraries.Development.Environment.Studio.OutputEditorTabPane
-use Libraries.Development.Environment.Projects.Quorum.QuorumProject
-use Libraries.Development.Environment.Studio.Interface.OutputTab
-use Libraries.Development.Environment.Studio.Build.BuildManager
-use Libraries.Development.Environment.Projects.ProjectTree
-use Libraries.Interface.Selections.TreeSelection
 use Libraries.Containers.Array
-use Libraries.Interface.Controls.TreeItem
-use Libraries.Development.Environment.Projects.ProjectTreeItem
-use Libraries.Development.Environment.Studio.Build.BuildInformation
-use Libraries.Development.Environment.Studio.Interface.ErrorTab
-use Libraries.Interface.Item
-use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Development.Environment.Studio.StudioFocusManager
-use Libraries.Development.Versioning.Git
-use Libraries.Development.Versioning.Repository
-use Libraries.Development.Versioning.PullRequest
-use Libraries.Development.Versioning.PullResult
-use Libraries.Development.Versioning.ReferenceUpdate
-use Libraries.Development.Environment.Configuration.Options
+use Libraries.Development.Environment.Studio.TeamReporter
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environment.Projects.Credentials
-use Libraries.Development.Versioning.DiffEntry
-use Libraries.Development.Versioning.GitConstants
-use Libraries.Development.Environment.Studio.CodeEditorTabPane
-use Libraries.System.File
-use Libraries.Interface.Controls.Tab
-use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Configuration.Options
+use Libraries.Development.Versioning.Git
 use Libraries.Development.Versioning.PushRequest
 use Libraries.Development.Versioning.PushResult
-use Libraries.Development.Versioning.RemoteReferenceUpdate
+use Libraries.Development.Versioning.StatusResult
+use Libraries.Development.Versioning.TeamStatus
+use Libraries.Development.Versioning.TeamProgressMonitor
+use Libraries.Development.Versioning.CommitSummary
+use Libraries.Development.Versioning.GitConstants
+use Libraries.Development.Versioning.GitErrorWording
+use Libraries.Development.Versioning.GitProblem
 
-class PushRequestBehavior  is QuorumStudioBehavior
+/*
+Pushes the selected project's branch, on the git thread (Push P1 to P7,
+P9). TeamPushBehavior queues it after bringing the Team tab to the front.
+The Team tab shows what happened; problems open a dialog. Nothing is
+announced to the screen reader, and the Console isn't cleared.
+*/
+class PushRequestBehavior is QuorumStudioBehavior
     GitConstants constants
+    // P7 was answered: this push may make the branch on the server.
+    boolean newBranchConfirmed = false
+
+    action SetNewBranchConfirmed(boolean value)
+        newBranchConfirmed = value
+    end
+
     action Run(BehaviorEvent event)
         QuorumStudio studio = GetMainApplication()
         StudioFocusManager manager = studio:GetStudioFocusManager()
-        Project project = manager:GetProjectFocus()
-        Options options = studio:GetOptions()
-        
+        boolean pushed = PushProject(manager:GetProjectFocus())
+    end
 
-        // If the project is undefined, it fails this check.
-        if project is QuorumProject
-            QuorumProject quorumProject = cast(QuorumProject, project)
-            File projectLocation = quorumProject:GetLocation()
-            if quorumProject:HasGitSupport()
-                OutputEditorTabPane outPane = studio:GetOutputPane()
-                CodeEditorTabPane editor = studio:GetTabPane()
-
-                OutputTab out = outPane:GetOutputTab()
-                out:Empty()
-                out:Append("Contacting Server ...")
-                Git git
-                Repository repo = quorumProject:GetGitRepository()
-                
-
-                PushRequest request
-                Credentials credentials = options:GetPassword(quorumProject:GetLocation():GetAbsolutePath())
-                if credentials not= undefined
-                    request:SetCredentials(credentials)
-                else 
-                    out:Append("Username and password not set, please use the Team tab in the project properties dialog.")
-                end
-
-                PushResult result = git:Push(repo, request)
-                if result not= undefined
-                    Array<RemoteReferenceUpdate> updates = result:GetUpdates()
-                    i = 0
-                    repeat while i < updates:GetSize()
-                        RemoteReferenceUpdate update = updates:Get(i)
-                        text message = "    Reference: "
-                        text name = update:GetName()
-                        text refMessage = update:GetMessage()
-                        message = message + name
-                        if refMessage not= undefined
-                            message = message + ", " + refMessage
-                        end
-
-                        text statusMessage = ""
-                        integer status = update:GetStatus()
-                        if status = constants:PUSH_AWAITING_REPORT
-                            statusMessage = "Failed: awaiting report from server."
-                        elseif status = constants:PUSH_NON_EXISTING
-                            statusMessage = "Failed: Tried to push to a repository that did not exist."
-                        elseif status = constants:PUSH_NOT_ATTEMPTED
-                            statusMessage = "Failed: Git chose not to attempt the push, for reasons that the system could not detect."
-                        elseif status = constants:PUSH_OK
-                            statusMessage = "Push Successful!"
-                        elseif status = constants:PUSH_REJECTED_NODELETE
-                            statusMessage = "Failed: Git rejected the push because of a deletion error."
-                        elseif status = constants:PUSH_REJECTED_NONFASTFORWARD
-                            statusMessage = "Failed: Git rejected the push because the repository was not up to date. Please do a pull and then try again."
-                        elseif status = constants:PUSH_REJECTED_OTHER_REASON
-                            statusMessage = "Failed: Git failed to push, but did not specify why."
-                        elseif status = constants:PUSH_REJECTED_REMOTE_CHANGED
-                            statusMessage = "Failed: The reference to the server has been changed and as such, Git rejected the push request."
-                        elseif status = constants:PUSH_UP_TO_DATE
-                            statusMessage = "The repository is up to date and you do not need to push."
-                        end
-                        out:Append(message)
-                        out:Append(statusMessage)
-
-                        i = i + 1
-                    end
-                    out:Append("Push request complete.")
-                else
-                    out:Append("Server did not respond.")
-                end
-            end  
+    /*
+    This action pushes a project's branch and reports what happened. Run
+    it on the git thread. It returns true when the server has the commits
+    afterward.
+    */
+    action PushProject(Project project) returns boolean
+        TeamReporter reporter
+        if not (project is QuorumProject)
+            reporter:Report("Select a project in the Project Tree to push it.")
+            return false
         end
+        QuorumProject quorumProject = cast(QuorumProject, project)
+        if not quorumProject:HasGitSupport()
+            reporter:Report(quorumProject:GetName() + " isn't in a Git repository, so there's nothing to push.")
+            return false
+        end
+
+        QuorumStudio studio = GetMainApplication()
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+        TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+
+        // A fresh status first: the Team tab's may be old.
+        StatusRequestBehavior reader
+        TeamStatus before = reader:GetStatus(project)
+        teamTab:PostStatus(before)
+        if not before:IsReady()
+            reporter:Report("Couldn't read " + quorumProject:GetName() + "'s changes, so nothing was pushed.")
+            return false
+        end
+
+        StatusResult status = before:GetResult()
+        if not status:HasRemote()
+            ReportKind(constants:ERROR_NO_REMOTE, "Push", "")
+            return false
+        end
+        if status:IsDetached()
+            reporter:Report("You're not on a branch, so there's nothing to push. Switch to a branch first.")
+            return false
+        end
+
+        text branch = status:GetBranch()
+        text remote = status:GetRemoteName()
+        integer count = status:GetCommitsToPushCount()
+        integer changes = before:GetChangeCount()
+
+        // P7: a branch's first push asks first.
+        if not status:HasUpstream() and not newBranchConfirmed
+            AskAboutNewBranch(teamTab, branch, remote, count)
+            return false
+        end
+
+        // P3: nothing to send.
+        if status:HasUpstream() and count = 0
+            ReportNothingToPush(teamTab, status:GetUpstreamBranch(), changes)
+            return false
+        end
+
+        text target = status:GetUpstreamBranch()
+        text title = "Pushing " + teamTab:CountWords(count, "commit", "commits") + " to " + target
+        if not status:HasUpstream()
+            target = remote + "/" + branch
+            title = "Pushing " + branch + " to " + remote
+        end
+
+        // P1 and P9: progress in the Team tab.
+        TeamProgressMonitor monitor
+        monitor:SetTitle(title)
+        teamTab:ShowProgress(monitor)
+
+        PushRequest request
+        Options options = studio:GetOptions()
+        Credentials credentials = options:GetPassword(quorumProject:GetLocation():GetAbsolutePath())
+        if credentials not= undefined
+            request:SetCredentials(credentials)
+        end
+        request:SetProgressMonitor(monitor)
+
+        Git git
+        PushResult result = git:Push(quorumProject:GetGitRepository(), request)
+        monitor:Finish()
+
+        boolean pushed = false
+        if result = undefined
+            ReportKind(constants:ERROR_OTHER, "Push to " + target, "")
+        elseif result:IsSuccessful()
+            pushed = true
+            ReportPushed(teamTab, result, status:GetCommitsToPush(), count, changes, branch)
+        elseif monitor:IsCancelled()
+            teamTab:PostPushResult("Push cancelled", "", undefined, "Nothing was sent. Your commits are still on your computer.")
+            reporter:Report("Push cancelled. Nothing was sent.")
+        elseif result:WasRejectedByNewerCommits()
+            ReportServerHasNewer(teamTab, target, count, result:GetDetails())
+        else
+            ReportFailure(quorumProject, result, target)
+        end
+
+        TeamStatus after = reader:GetStatus(project)
+        teamTab:PostStatus(after)
+        return pushed
+    end
+
+    // P2: "Sent in the last push, 11:07", with the commits.
+    private action ReportPushed(TeamTab teamTab, PushResult result, Array<CommitSummary> commits, integer count, integer changes, text branch)
+        TeamReporter reporter
+        text notSent = UncommittedWords(changes)
+        text sentence = ""
+        if result:IsFirstPush()
+            sentence = "Pushed " + branch + " to " + result:GetRemoteName() + ". It's on the server now."
+            if count = 0
+                teamTab:PostPushResult("Pushed " + branch + ", " + result:GetPushTime(), notSent, undefined, "It's on the server now, with no new commits.")
+            else
+                text made = "made " + branch + " on " + result:GetRemoteName()
+                if notSent not= ""
+                    made = made + "; " + notSent
+                end
+                teamTab:PostPushResult("Sent in the last push, " + result:GetPushTime(), made, commits, "")
+            end
+        else
+            sentence = "Pushed " + teamTab:CountWords(count, "commit", "commits") + " to " + result:GetRemoteName() + "/" + result:GetRemoteBranch() + "."
+            teamTab:PostPushResult("Sent in the last push, " + result:GetPushTime(), notSent, commits, "")
+        end
+        if notSent not= ""
+            sentence = sentence + " " + notSent + "."
+        end
+        reporter:Report(sentence)
+    end
+
+    // P3, in the Team tab's last push group.
+    private action ReportNothingToPush(TeamTab teamTab, text upstream, integer changes)
+        TeamReporter reporter
+        text sentence = "Nothing to push. " + upstream + " already has all your commits."
+        if changes = 1
+            sentence = "Nothing to push yet. You have 1 change that isn't committed. Push sends commits, so commit it first."
+        elseif changes > 1
+            sentence = "Nothing to push yet. You have " + changes + " changes that aren't committed. Push sends commits, so commit them first."
+        end
+        teamTab:PostPushResult("Nothing to push", "", undefined, sentence)
+        reporter:Report(sentence)
+    end
+
+    // P7: the branch isn't on the server yet. Asks before making it there.
+    private action AskAboutNewBranch(TeamTab teamTab, text branch, text remote, integer count)
+        text commitWords = "with no new commits"
+        if count > 0
+            commitWords = "with your " + teamTab:CountWords(count, "commit", "commits")
+        end
+        GitProblem problem
+        problem:SetTitle("Push " + branch)
+        problem:SetMessage(branch + " isn't on the server yet. Pushing makes a branch called " + branch
+            + " on " + remote + ", " + commitWords + ". Your team will see it. After this, Push and Pull on this branch use "
+            + remote + "/" + branch + ".")
+        ConfirmFirstPushBehavior confirm
+        problem:SetAction("Push to the Server", confirm)
+        TeamReporter reporter
+        reporter:ReportProblem(problem)
+    end
+
+    // P4: a teammate pushed first. Nothing was sent.
+    private action ReportServerHasNewer(TeamTab teamTab, text target, integer count, text details)
+        text notSent = "Your " + teamTab:CountWords(count, "commit", "commits") + " weren't sent."
+        if count = 1
+            notSent = "Your commit wasn't sent."
+        end
+        GitProblem problem
+        problem:SetTitle("Push to " + target)
+        problem:SetMessage(notSent + " The server has commits that you don't have yet, probably pushed by a teammate. "
+            + "Pull them first, so their work and yours are combined on your computer. Then push again. "
+            + "Nothing was lost. Your commits are still on your computer.")
+        problem:SetDetails(details)
+        PullThenPushBehavior pullThenPush
+        problem:SetAction("Pull, then Push", pullThenPush)
+        TeamReporter reporter
+        reporter:ReportProblem(problem)
+    end
+
+    // P5 and P6.
+    private action ReportFailure(QuorumProject project, PushResult result, text target)
+        integer kind = result:GetErrorKind()
+        if kind = constants:ERROR_NONE
+            kind = constants:ERROR_OTHER
+        end
+        GitErrorWording wording
+        TeamReporter reporter
+        if wording:IsCredentialsProblem(kind)
+            reporter:ReportCredentialsProblem(project, kind, "push", "Push to " + target, result:GetDetails())
+            return now
+        end
+        GitProblem problem
+        problem:SetTitle("Push to " + target)
+        problem:SetMessage(wording:GetSentence(kind, "push", result:GetServerMessage()))
+        problem:SetDetails(result:GetDetails())
+        reporter:ReportProblem(problem)
+    end
+
+    // A problem with no server reason and no details, such as no server.
+    private action ReportKind(integer kind, text title, text details)
+        GitErrorWording wording
+        GitProblem problem
+        problem:SetTitle(title)
+        problem:SetMessage(wording:GetSentence(kind, "push", ""))
+        problem:SetDetails(details)
+        TeamReporter reporter
+        reporter:ReportProblem(problem)
+    end
+
+    // "4 changes aren't committed, so they weren't sent", or "".
+    private action UncommittedWords(integer changes) returns text
+        if changes = 0
+            return ""
+        elseif changes = 1
+            return "1 change isn't committed, so it wasn't sent"
+        end
+        return "" + changes + " changes aren't committed, so they weren't sent"
     end
 end

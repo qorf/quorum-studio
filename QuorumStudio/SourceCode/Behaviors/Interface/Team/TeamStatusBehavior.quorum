@@ -1,0 +1,21 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+
+/*
+Team > Status: opens the Team tab, moves focus to it, and asks for a new
+status (Status A1). It runs on the main thread; the status itself is read
+on the git thread (StatusRequestBehavior).
+*/
+class TeamStatusBehavior is QuorumStudioBehavior
+    action Run(BehaviorEvent event)
+        QuorumStudio studio = GetMainApplication()
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+        TeamTab teamTab = outPane:GetTeamTab()
+        teamTab:Activate()
+        teamTab:RequestRefresh()
+    end
+end

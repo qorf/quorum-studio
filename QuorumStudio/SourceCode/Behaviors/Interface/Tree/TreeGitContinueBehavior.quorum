@@ -1,0 +1,32 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Versioning.TeamStatus
+
+// Main thread: gives a Project Tree Git item the status read for it.
+class TreeGitContinueBehavior is Behavior
+    TreeGitBehavior waiting = undefined
+    TeamStatus status = undefined
+    boolean finished = false
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action Setup(TreeGitBehavior value, TeamStatus statusValue)
+        waiting = value
+        status = statusValue
+    end
+
+    action Run(BehaviorEvent event)
+        finished = true
+        if waiting not= undefined and status not= undefined
+            waiting:Continue(status)
+        end
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+end

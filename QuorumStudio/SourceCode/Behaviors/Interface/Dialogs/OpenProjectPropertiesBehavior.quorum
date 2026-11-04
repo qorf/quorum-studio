@@ -24,15 +24,32 @@ class OpenProjectPropertiesBehavior is QuorumStudioBehavior
             Array<TreeItem> items = selection:GetPath()
             ProjectTreeItem value = cast(ProjectTreeItem, items:Get(0))
             QuorumProject project = value:GetProject()
-
-            if dialog = undefined
-                ProjectPropertiesDialog properties
-                dialog = properties
-                dialog:Initialize()
-            end
-
-            dialog:SetProperties(project)
-            dialog:Show()
+            Open(project, false)
         end
+    end
+
+    /*
+    This action opens Project Properties for a project, on its Teams tab,
+    for a pull or push that needs a username and password (Push P6).
+    */
+    action OpenOnTeamsTab(QuorumProject project)
+        Open(project, true)
+    end
+
+    private action Open(QuorumProject project, boolean teams)
+        if project = undefined
+            return now
+        end
+        if dialog = undefined
+            ProjectPropertiesDialog properties
+            dialog = properties
+            dialog:Initialize()
+        end
+
+        dialog:SetProperties(project)
+        if teams
+            dialog:SelectTeamsTab()
+        end
+        dialog:Show()
     end
 end

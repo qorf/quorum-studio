@@ -1,0 +1,49 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Behaviors.Behavior
+
+/*
+The menu on the Team tab's push groups (Push P9): one action (Push on the
+To push group, Hide on the last push group), then Refresh. The group
+rows can't hold buttons, so P9's [ Push ] and [ Hide ] are here.
+*/
+class TeamCommitsPopupMenu is PopupMenu
+    MenuItem firstItem
+    MenuItem refreshItem
+    text firstName = ""
+    Behavior firstBehavior = undefined
+    Behavior refreshBehavior = undefined
+    boolean built = false
+
+    action SetItems(text name, Behavior first, Behavior refresh)
+        firstName = name
+        firstBehavior = first
+        refreshBehavior = refresh
+    end
+
+    // The items are made when the menu first opens, as TeamTabPopupMenu does.
+    private action Build
+        if built
+            return now
+        end
+        firstItem:SetName(firstName)
+        firstItem:SetBehavior(firstBehavior)
+        refreshItem:SetName("Refresh")
+        refreshItem:SetBehavior(refreshBehavior)
+        Add(firstItem)
+        Add(refreshItem)
+        built = true
+    end
+
+    action OpenAtCursor
+        Build()
+        parent:PopupMenu:OpenAtCursor()
+    end
+
+    action OpenAt(number x, number y)
+        Build()
+        parent:PopupMenu:OpenAt(x, y)
+    end
+end

@@ -138,6 +138,7 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     List availableDevicesList
 
     //variables for the Teams tab
+    Tab teamsTab = undefined
     TextField usernameTeams
     TextField passwordTeams
     TextField nameTeams
@@ -210,7 +211,8 @@ TextField spikeProgramSlot
         tabPane:Add(CreateAndroidTab())
         tabPane:Add(CreateiOSTab())
         tabPane:Add(CreateSpikeTab())
-        tabPane:Add(CreateTeamsTab())
+        teamsTab = CreateTeamsTab()
+        tabPane:Add(teamsTab)
         tabPane:Add(CreatePluginsTab())
         Add(tabPane)
     end
@@ -441,6 +443,27 @@ TextField spikeProgramSlot
                 me:nameTeams:SetText(credentials:GetName())
                 me:emailTeams:SetText(credentials:GetEmail())
             end
+        end
+
+        // The Teams tab starts in Password when Username is filled in, for
+        // a password the server turned down (Push P6).
+        if teamsTab not= undefined
+            if usernameTeams:GetText() = ""
+                teamsTab:SetFocusTarget(usernameTeams)
+            else
+                teamsTab:SetFocusTarget(passwordTeams)
+            end
+        end
+    end
+
+    /*
+    This action makes the Teams tab the one shown, for opening Project
+    Properties from a git problem (Push P6). Call it before Show; OnShow
+    activates the selected tab, which focuses its field.
+    */
+    action SelectTeamsTab
+        if teamsTab not= undefined
+            tabPane:Select(teamsTab, false)
         end
     end
     

@@ -1,0 +1,141 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.ListItem
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.Glyph
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Development.Versioning.TeamFileChange
+
+/*
+One file in the stage dialog's list (Add A5b, D1): the file's name, then,
+muted, its folder (relative to the project), as the Team tab's rows show
+them. A folder too long for the row is cut at the row's right edge and
+ends in "...", so it never runs past the list. The spoken name is
+"Hero.quorum, in Source/Levels" (the whole folder); the List adds "1 of
+48".
+*/
+class StageFileItem is ListItem
+    // The name label's left margin (ListItem's), the space before the
+    // folder, and room kept at the row's right edge, in points.
+    constant number NAME_MARGIN = 4
+    constant number FOLDER_MARGIN = 12
+    constant number EDGE_ROOM = 8
+
+    TeamFileChange change = undefined
+    Label folderDetail
+    // The whole folder, and the row width it was last fitted to.
+    text fullFolder = ""
+    number fittedWidth = -1
+
+    on create
+        parent:ListItem:icon:Hide()
+
+        if GetLayout() is FlowLayout
+            FlowLayout rowLayout = cast(FlowLayout, GetLayout())
+            rowLayout:SetVerticalCentering(true)
+        end
+
+        folderDetail:SetAccessibilityCode(folderDetail:parent:Item:NOT_ACCESSIBLE)
+        folderDetail:SetAcceptsMouseInput(false)
+        folderDetail:SetPositionOnBaseLine(false)
+        folderDetail:SetLeftMargin(FOLDER_MARGIN)
+        Add(folderDetail)
+    end
+
+    /*
+    This action fills the row.
+
+    Attribute: Parameter value The file's change.
+    Attribute: Parameter mutedColor The folder's color, or undefined for the normal one.
+    Attribute: Parameter size The font size, the dialog's text size.
+    */
+    action Setup(TeamFileChange value, ColorGroup mutedColor, integer size)
+        change = value
+        if mutedColor not= undefined
+            folderDetail:SetColor(mutedColor)
+        end
+        fullFolder = value:GetFolder()
+        fittedWidth = -1
+        SetText(value:GetFileName())
+        folderDetail:SetText(fullFolder)
+        if fullFolder = ""
+            SetName(value:GetFileName())
+        else
+            SetName(value:GetFileName() + ", in " + fullFolder)
+        end
+        SetFontSize(size)
+    end
+
+    // The folder keeps the name's size, and is fitted again.
+    action SetFontSize(integer size)
+        parent:ListItem:SetFontSize(size)
+        folderDetail:SetFontSize(size)
+        fittedWidth = -1
+    end
+
+    /*
+    The list sets each shown row's width (ListRenderer:RefreshContents).
+    When it changes, the folder is fitted to what's left of the row.
+    */
+    action SetWidth(number newWidth)
+        parent:ListItem:SetWidth(newWidth)
+        if newWidth not= fittedWidth
+            fittedWidth = newWidth
+            FitFolder(newWidth)
+        end
+    end
+
+    action GetChange returns TeamFileChange
+        return change
+    end
+
+    // The whole folder if it fits after the name; otherwise as much as fits, then "...".
+    private action FitFolder(number rowWidth)
+        if fullFolder = ""
+            return now
+        end
+        Font labelFont = folderDetail:GetFont()
+        if labelFont = undefined
+            return now
+        end
+        number scale = GetInterfaceScale()
+        Font measureFont = labelFont:Copy()
+        measureFont:SetSize(cast(integer, GetFontSize() * scale))
+        number room = rowWidth - TextWidth(measureFont, GetText()) - (NAME_MARGIN + FOLDER_MARGIN + EDGE_ROOM) * scale
+
+        text shown = fullFolder
+        if TextWidth(measureFont, fullFolder) > room
+            text dots = "..."
+            shown = dots
+            boolean found = false
+            integer keep = fullFolder:GetSize() - 1
+            repeat while keep > 0 and not found
+                text candidate = fullFolder:GetSubtext(0, keep) + dots
+                if TextWidth(measureFont, candidate) <= room
+                    shown = candidate
+                    found = true
+                end
+                keep = keep - 1
+            end
+        end
+        if folderDetail:GetText() not= shown
+            folderDetail:SetText(shown)
+        end
+    end
+
+    // The width of a line of words in a font, as a Label lays it out.
+    private action TextWidth(Font font, text value) returns number
+        number width = 0
+        integer index = 0
+        repeat while index < value:GetSize()
+            Glyph glyph = font:GetGlyph(value:GetCharacter(index))
+            if glyph not= undefined
+                width = width + glyph:horizontalAdvance
+            end
+            index = index + 1
+        end
+        return width
+    end
+end

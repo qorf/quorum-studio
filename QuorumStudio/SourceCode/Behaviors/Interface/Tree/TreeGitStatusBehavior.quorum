@@ -1,0 +1,36 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.TeamStatus
+
+/*
+Reads one project's git status for the Project Tree's marks (Tree R2 and L2) and
+hands it to the tree. ProjectTree:RefreshGitMarks adds it to the git
+thread, so Run happens there; the tree applies the status on its next
+Update, on the main thread.
+*/
+class TreeGitStatusBehavior is Behavior
+    ProjectTree tree = undefined
+    QuorumProject project = undefined
+
+    action Setup(ProjectTree treeValue, QuorumProject projectValue)
+        tree = treeValue
+        project = projectValue
+    end
+
+    action Run(BehaviorEvent event)
+        if tree = undefined or project = undefined
+            return now
+        end
+        // Only projects in Git are read.
+        if not project:HasGitSupport()
+            return now
+        end
+        StatusRequestBehavior reader
+        TeamStatus status = reader:GetStatus(project)
+        tree:PostGitStatus(status)
+    end
+end

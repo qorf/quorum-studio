@@ -1,0 +1,61 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.BranchSwitcher
+use Libraries.Development.Environment.Studio.TeamReporter
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.BranchListResult
+use Libraries.Development.Versioning.TeamStatus
+use Libraries.Development.Versioning.GitProblem
+
+// Main thread: opens Switch Branch or New Branch with what was read.
+class OpenBranchDialogBehavior is Behavior
+    QuorumProject project = undefined
+    BranchListResult branches = undefined
+    TeamStatus status = undefined
+    boolean opensNewBranch = false
+    boolean finished = false
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action Setup(QuorumProject projectValue, BranchListResult value, TeamStatus statusValue, boolean newBranch)
+        project = projectValue
+        branches = value
+        status = statusValue
+        opensNewBranch = newBranch
+    end
+
+    action Run(BehaviorEvent event)
+        finished = true
+        if branches = undefined or not branches:IsSuccessful()
+            GitProblem problem
+            problem:SetTitle("Switch Branch")
+            problem:SetMessage("Couldn't read the branches.")
+            if branches not= undefined
+                problem:SetDetails(branches:GetMessage())
+            end
+            TeamReporter reporter
+            reporter:ReportProblem(problem)
+            return now
+        end
+
+        integer changes = 0
+        if status not= undefined and status:IsReady()
+            changes = status:GetChangeCount()
+        end
+        BranchSwitcher switcher
+        switcher:Setup(project, project:GetLocation(), branches, changes)
+        if opensNewBranch
+            switcher:OpenNewBranchDialog()
+        else
+            switcher:OpenSwitchDialog()
+        end
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+end

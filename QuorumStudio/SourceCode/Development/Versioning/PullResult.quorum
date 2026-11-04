@@ -2,6 +2,11 @@ package Libraries.Development.Versioning
 use Libraries.Containers.Array
 use Libraries.Containers.HashTable
 
+/*
+What a pull did. The first fields are as before. The rest (step 5) say
+what the merge did, what came in, and what went wrong, in a form Studio
+can put in plain words (Pull L3 to L9).
+*/
 class PullResult
     boolean success = false
     boolean hasMergeConflicts = false
@@ -11,6 +16,27 @@ class PullResult
     Array<ReferenceUpdate> updates
     Array<DiffEntry> diff
     Array<text> conflicts
+
+    // GitConstants' ERROR_ kind, and JGit's own words for Show Details.
+    integer errorKind = 0
+    text details = ""
+    // Cancel was pressed; nothing was changed.
+    boolean cancelled = false
+    // L6: the branch has no server branch, so there was nothing to pull.
+    boolean noUpstream = false
+    // "origin/main"
+    text upstreamBranch = ""
+    // GitConstants' PULL_MERGE_ values.
+    integer mergeStatus = -1
+    // L5: files changed here that the pull would also change.
+    Array<text> failingPaths
+    // L7: the number of conflicts in each file of conflicts, in order.
+    Array<integer> conflictCounts
+    // L9: the commits that came in (at most 50), newest first.
+    Array<CommitSummary> commits
+    // How many came in, which can be more than are listed.
+    integer commitCount = 0
+
     action GetSuccess returns boolean
         return success
     end
@@ -57,5 +83,45 @@ class PullResult
 
     action HasMergeConflicts returns boolean
         return hasMergeConflicts
+    end
+
+    action GetErrorKind returns integer
+        return errorKind
+    end
+
+    action GetDetails returns text
+        return details
+    end
+
+    action IsCancelled returns boolean
+        return cancelled
+    end
+
+    action HasNoUpstream returns boolean
+        return noUpstream
+    end
+
+    action GetUpstreamBranch returns text
+        return upstreamBranch
+    end
+
+    action GetMergeStatus returns integer
+        return mergeStatus
+    end
+
+    action GetFailingPaths returns Array<text>
+        return failingPaths
+    end
+
+    action GetConflictCounts returns Array<integer>
+        return conflictCounts
+    end
+
+    action GetCommits returns Array<CommitSummary>
+        return commits
+    end
+
+    action GetCommitCount returns integer
+        return commitCount
     end
 end
