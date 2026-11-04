@@ -22,22 +22,37 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Calendar;
+import java.util.Date;
+import java.text.DateFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.eclipse.jgit.api.AddCommand;
+import org.eclipse.jgit.api.CheckoutCommand;
 import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.CommitCommand;
+import org.eclipse.jgit.api.CreateBranchCommand;
+import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.api.PullCommand;
 import org.eclipse.jgit.api.PushCommand;
+import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.RmCommand;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.StatusCommand;
+import org.eclipse.jgit.api.errors.CanceledException;
+import org.eclipse.jgit.api.errors.CheckoutConflictException;
+import org.eclipse.jgit.api.errors.ConcurrentRefUpdateException;
+import org.eclipse.jgit.api.errors.EmptyCommitException;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.JGitInternalException;
+import org.eclipse.jgit.api.errors.UnmergedPathsException;
+import org.eclipse.jgit.errors.LockFailedException;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.Edit;
@@ -46,12 +61,17 @@ import org.eclipse.jgit.dircache.DirCache;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.NoWorkTreeException;
 import org.eclipse.jgit.errors.RevisionSyntaxException;
+import org.eclipse.jgit.lib.BranchConfig;
+import org.eclipse.jgit.lib.BranchTrackingStatus;
+import org.eclipse.jgit.lib.ConfigConstants;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.lib.TextProgressMonitor;
 import org.eclipse.jgit.patch.FileHeader;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -61,6 +81,7 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.ReceiveCommand;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.TrackingRefUpdate;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
@@ -101,6 +122,17 @@ import quorum.Libraries.Development.Versioning.StatusResult_;
 import quorum.Libraries.Development.Versioning.RemoteReferenceUpdate_;
 import quorum.Libraries.Development.Versioning.RemoteReferenceUpdate;
 import quorum.Libraries.Development.Versioning.VersionProgressMonitor_;
+import quorum.Libraries.Development.Versioning.BranchListResult;
+import quorum.Libraries.Development.Versioning.BranchListResult_;
+import quorum.Libraries.Development.Versioning.GitBranch;
+import quorum.Libraries.Development.Versioning.SwitchBranchRequest_;
+import quorum.Libraries.Development.Versioning.SwitchBranchResult;
+import quorum.Libraries.Development.Versioning.SwitchBranchResult_;
+import quorum.Libraries.Development.Versioning.UnstageRequest_;
+import quorum.Libraries.Development.Versioning.UnstageResult;
+import quorum.Libraries.Development.Versioning.UnstageResult_;
+import quorum.Libraries.Development.Versioning.ResetResult;
+import quorum.Libraries.Development.Versioning.ResetResult_;
 import quorum.Libraries.Language.Object_;
 import quorum.Libraries.System.File_;
 /**
@@ -220,112 +252,386 @@ public class Git {
         return result;
     }
     
+    /*
+     * Stages files: new, changed and deleted ones (git add, then git add -u
+     * for the deletions). A folder stages everything in it; ignored files
+     * are skipped, as git does.
+     */
     public AddResult_ Add(Repository_ quorumRepository,  AddRequest_ request) {
-        AddResult_ result = new AddResult();
+        AddResult result = new AddResult();
         try {
-            
             quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
             org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
             org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+
+            List<String> paths = GetRequestPaths(request.GetFilesToAdd(), request.GetPaths(), repository);
+            if(paths.isEmpty()) {
+                result.message = "None of the files are in this project's repository.";
+                return result;
+            }
+
+            // New and changed files.
             AddCommand add = git.add();
-            
-            Array_ quorumFiles = request.GetFilesToAdd();
-            String[] paths = ConvertQuorumFilesToPath(quorumFiles, repository);
-            for(int i = 0; i < paths.length; i++) {
-                add.addFilepattern(HandleFilePathOS(paths[i]));
+            for(String path : paths) {
+                add.addFilepattern(path);
             }
-            
-            DirCache call = add.call(); //do we need this information?
-            return result;
-        } catch (GitAPIException ex) {
-            Logger.getLogger(Git.class.getName()).log(Level.SEVERE, null, ex);
+            add.call();
+
+            // Changed and deleted files git already has: without setUpdate,
+            // AddCommand leaves a deleted file out.
+            AddCommand update = git.add();
+            update.setUpdate(true);
+            for(String path : paths) {
+                update.addFilepattern(path);
+            }
+            update.call();
+
+            result.successful = true;
+        } catch (GitAPIException | NoWorkTreeException ex) {
+            result.message = ex.getMessage();
         }
         return result;
     }
+
+    /*
+     * Unstages files (git reset -- <paths>): the staged copy goes back to
+     * the last commit's, and the file on disk keeps its changes. With no
+     * commit yet there's nothing to go back to, so the files come out of
+     * the index instead (git rm --cached), and stay on disk.
+     */
+    public UnstageResult_ Unstage(Repository_ quorumRepository, UnstageRequest_ request) {
+        UnstageResult result = new UnstageResult();
+        DirCache cache = null;
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+
+            List<String> paths = GetRequestPaths(request.GetFiles(), request.GetPaths(), repository);
+            if(paths.isEmpty()) {
+                result.message = "None of the files are in this project's repository.";
+                return result;
+            }
+            boolean everything = paths.contains(".");
+
+            ObjectId head = repository.resolve(Constants.HEAD);
+            if(head == null) {
+                if(everything) {
+                    cache = repository.lockDirCache();
+                    cache.clear();
+                    cache.write();
+                    cache.commit();
+                    cache = null;
+                } else {
+                    RmCommand rm = git.rm();
+                    rm.setCached(true);
+                    for(String path : paths) {
+                        rm.addFilepattern(path);
+                    }
+                    rm.call();
+                }
+            } else {
+                // With no paths, reset puts the whole index back (a mixed
+                // reset to HEAD), which is unstaging everything.
+                ResetCommand reset = git.reset();
+                if(!everything) {
+                    for(String path : paths) {
+                        reset.addPath(path);
+                    }
+                }
+                reset.call();
+            }
+            result.successful = true;
+        } catch (GitAPIException | IOException | NoWorkTreeException ex) {
+            result.message = ex.getMessage();
+        } finally {
+            if(cache != null) {
+                cache.unlock();
+            }
+        }
+        return result;
+    }
+
+    /*
+     * Puts one file back as it was at the last commit (git checkout HEAD --
+     * <path>): the staged copy and the file on disk both. The changes are
+     * gone; Studio asks first (Tree M4).
+     */
+    public ResetResult_ Reset(Repository_ quorumRepository, String path) {
+        ResetResult result = new ResetResult();
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+
+            if(path == null || path.length() == 0 || path.equals(".")) {
+                result.message = "Only one file can be reset at a time.";
+                return result;
+            }
+            if(repository.resolve(Constants.HEAD) == null) {
+                result.message = "There's no commit to reset to yet.";
+                return result;
+            }
+
+            CheckoutCommand checkout = git.checkout();
+            checkout.setStartPoint(Constants.HEAD);
+            checkout.addPath(path.replace('\\', '/'));
+            checkout.call();
+            result.successful = true;
+        } catch (GitAPIException | IOException | NoWorkTreeException ex) {
+            result.message = ex.getMessage();
+        }
+        return result;
+    }
+
+    /*
+     * The paths a request names, relative to the repository's folder with /
+     * between folders, as JGit wants them. Files outside the repository
+     * are left out. The repository's own folder becomes ".", everything.
+     */
+    private List<String> GetRequestPaths(Array_ files, Array_ paths, org.eclipse.jgit.lib.Repository repository) {
+        List<String> values = new ArrayList<>();
+        String workTree = repository.getWorkTree().getAbsolutePath().replace('\\', '/');
+        if(files != null) {
+            for(int i = 0; i < files.GetSize(); i++) {
+                File_ file = (File_) files.Get(i);
+                String filePath = file.GetAbsolutePath().replace('\\', '/');
+                if(filePath.equals(workTree)) {
+                    values.add(".");
+                } else if(filePath.startsWith(workTree + "/")) {
+                    values.add(filePath.substring(workTree.length() + 1));
+                }
+            }
+        }
+        if(paths != null) {
+            for(int i = 0; i < paths.GetSize(); i++) {
+                Object value = paths.Get(i);
+                String path = null;
+                if(value instanceof quorum.Libraries.Language.Types.Text_) {
+                    path = ((quorum.Libraries.Language.Types.Text_) value).GetValue();
+                } else if(value instanceof String) {
+                    path = (String) value;
+                }
+                if(path != null && path.length() > 0) {
+                    values.add(path.replace('\\', '/'));
+                }
+            }
+        }
+        return values;
+    }
     
+    /*
+     * Commits what's staged. A commit needs a name and email, not a password
+     * (Commit C4). The failure kinds are CommitResult's constants:
+     * COMMITTED 0, NOTHING_STAGED 1, NO_NAME 2, LOCKED 3, CONFLICTS 4,
+     * OTHER 5.
+     */
     public CommitResult_ Commit(Repository_ quorumRepository,  CommitRequest_ request) {
-        CommitResult_ result = new CommitResult();
+        CommitResult result = new CommitResult();
         try {
             quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
             org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
             org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
-            
+
+            String name = "";
+            String email = "";
             if(request.HasCredentials()) {
-                CredentialsProvider provider = new UsernamePasswordCredentialsProvider(request.GetUsername(), request.GetPassword());
-                CommitCommand commit = git.commit();
-                commit.setCredentialsProvider(provider);
-                commit.setCommitter(request.GetName(), request.GetEmail());
-                commit.setMessage(request.GetMessage());
-                RevCommit call = commit.call();
-                String message = call.getFullMessage();
-                result.SetMessage(message);
+                name = request.GetName();
+                email = request.GetEmail();
             }
-        } catch (GitAPIException ex) {
-            result.SetMessage(ex.getMessage());
+            if(name == null || name.trim().isEmpty() || email == null || email.trim().isEmpty()) {
+                result.failureKind = 2;
+                return result;
+            }
+
+            CommitCommand commit = git.commit();
+            commit.setAuthor(name, email);
+            commit.setCommitter(name, email);
+            commit.setMessage(request.GetMessage());
+            commit.setAllowEmpty(false);
+            RevCommit call = commit.call();
+            result.successful = true;
+            result.failureKind = 0;
+            result.shortId = call.getId().abbreviate(7).name();
+        } catch (EmptyCommitException ex) {
+            SetCommitFailure(result, 1, ex);
+        } catch (UnmergedPathsException ex) {
+            SetCommitFailure(result, 4, ex);
+        } catch (ConcurrentRefUpdateException ex) {
+            SetCommitFailure(result, 3, ex);
+        } catch (GitAPIException | JGitInternalException ex) {
+            if(IsLockProblem(ex)) {
+                SetCommitFailure(result, 3, ex);
+            } else {
+                SetCommitFailure(result, 5, ex);
+            }
         }
         return result;
     }
+
+    private void SetCommitFailure(CommitResult result, int kind, Throwable error) {
+        result.successful = false;
+        result.failureKind = kind;
+        String message = error.getMessage();
+        result.message = message == null ? "" : message;
+        result.details = GitErrors.Details(error);
+    }
+
+    /*
+     * Whether the repository was locked, such as by another git program
+     * (Commit C6). JGit says so with a LockFailedException somewhere in the
+     * causes, or only in the message.
+     */
+    private boolean IsLockProblem(Throwable error) {
+        Throwable next = error;
+        while(next != null) {
+            if(next instanceof LockFailedException) {
+                return true;
+            }
+            String message = next.getMessage();
+            if(message != null && message.toLowerCase().contains("lock")) {
+                return true;
+            }
+            next = next.getCause();
+        }
+        return false;
+    }
     
+    /*
+     * Pushes the current branch to its server branch, or, the first time,
+     * to a server branch of the same name, which it then tracks (git's
+     * push -u). The ref spec is given here, so git's push.default setting
+     * doesn't matter. It tries without a username and password when none
+     * are saved; GitErrors says when the server wanted them. Never forced.
+     */
     public PushResult_ Push(Repository_ quorumRepository,  PushRequest_ request) {
-        PushResult_ result = new PushResult();
+        PushResult result = new PushResult();
         try {
             quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
             org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
             org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
-            
+
+            String branch = repository.getBranch();
+            Ref head = repository.exactRef(Constants.HEAD);
+            if(branch == null || head == null || !head.isSymbolic()) {
+                result.errorKind = GitErrors.ERROR_OTHER;
+                result.details = "Not on a branch.";
+                return result;
+            }
+
+            StoredConfig config = repository.getConfig();
+            BranchConfig branchConfig = new BranchConfig(config, branch);
+            String remote = branchConfig.getRemote();
+            Set<String> remotes = repository.getRemoteNames();
+            if(remote == null && remotes.contains(Constants.DEFAULT_REMOTE_NAME)) {
+                remote = Constants.DEFAULT_REMOTE_NAME;
+            } else if(remote == null && !remotes.isEmpty()) {
+                remote = remotes.iterator().next();
+            }
+            if(remote == null) {
+                result.errorKind = GitErrors.ERROR_NO_REMOTE;
+                return result;
+            }
+
+            String merge = branchConfig.getMerge();
+            boolean firstPush = merge == null;
+            String destination = merge;
+            if(firstPush) {
+                destination = Constants.R_HEADS + branch;
+            }
+            result.remoteName = remote;
+            result.remoteBranch = Repository.shortenRefName(destination);
+            result.firstPush = firstPush;
+
+            PushCommand push = git.push();
+            push.setRemote(remote);
+            push.setRefSpecs(new RefSpec(Constants.R_HEADS + branch + ":" + destination));
             if(request.HasCredentials()) {
                 CredentialsProvider provider = new UsernamePasswordCredentialsProvider(request.GetUsername(), request.GetPassword());
-                PushCommand push = git.push();
                 push.setCredentialsProvider(provider);
-                Array_ updates = result.GetUpdates();
-                Iterator<org.eclipse.jgit.transport.PushResult> iterator = push.call().iterator();
-                while(iterator.hasNext()) {
-                    org.eclipse.jgit.transport.PushResult gitPushResult = iterator.next();
-                    Collection<RemoteRefUpdate> remoteUpdates = gitPushResult.getRemoteUpdates();
-                    Iterator<RemoteRefUpdate> remoteIterator = remoteUpdates.iterator();
-                    while(remoteIterator.hasNext()) {
-                        RemoteRefUpdate next = remoteIterator.next();
-                        RemoteReferenceUpdate_ quorumUpdate = new RemoteReferenceUpdate();
-                        updates.Add(quorumUpdate);
-                        quorumUpdate.SetName(next.getRemoteName());
-                        quorumUpdate.SetMessage(next.getMessage());
-                        RemoteRefUpdate.Status status = next.getStatus();
-                        if(null != status) switch (status) {
-                            case AWAITING_REPORT:
-                                quorumUpdate.SetStatus(0);
-                                break;
-                            case NON_EXISTING:
-                                 quorumUpdate.SetStatus(1);
-                                break;
-                            case NOT_ATTEMPTED:
-                                 quorumUpdate.SetStatus(2);
-                                break;
-                            case OK:
-                                 quorumUpdate.SetStatus(3);
-                                break;
-                            case REJECTED_NODELETE:
-                                 quorumUpdate.SetStatus(4);
-                                break;
-                            case REJECTED_NONFASTFORWARD:
-                                 quorumUpdate.SetStatus(5);
-                                break;
-                            case REJECTED_OTHER_REASON:
-                                 quorumUpdate.SetStatus(6);
-                                break;
-                            case REJECTED_REMOTE_CHANGED:
-                                 quorumUpdate.SetStatus(7);
-                                break;
-                            case UP_TO_DATE:
-                                 quorumUpdate.SetStatus(8);
-                                break;
-                            default:
-                                break;
-                        }
+            }
+            VersionProgressMonitor_ monitor = request.GetProgressMonitor();
+            if(monitor != null) {
+                QuorumProgressMonitor qpm = new QuorumProgressMonitor();
+                qpm.setMonitor(monitor);
+                push.setProgressMonitor(qpm);
+            }
+
+            boolean accepted = false;
+            Array_ updates = result.GetUpdates();
+            Iterator<org.eclipse.jgit.transport.PushResult> iterator = push.call().iterator();
+            while(iterator.hasNext()) {
+                org.eclipse.jgit.transport.PushResult gitPushResult = iterator.next();
+                Collection<RemoteRefUpdate> remoteUpdates = gitPushResult.getRemoteUpdates();
+                Iterator<RemoteRefUpdate> remoteIterator = remoteUpdates.iterator();
+                while(remoteIterator.hasNext()) {
+                    RemoteRefUpdate next = remoteIterator.next();
+                    RemoteReferenceUpdate_ quorumUpdate = new RemoteReferenceUpdate();
+                    updates.Add(quorumUpdate);
+                    quorumUpdate.SetName(next.getRemoteName());
+                    quorumUpdate.SetMessage(next.getMessage());
+                    RemoteRefUpdate.Status status = next.getStatus();
+                    if(null != status) switch (status) {
+                        case AWAITING_REPORT:
+                            quorumUpdate.SetStatus(0);
+                            break;
+                        case NON_EXISTING:
+                            quorumUpdate.SetStatus(1);
+                            result.errorKind = GitErrors.ERROR_REFUSED;
+                            break;
+                        case NOT_ATTEMPTED:
+                            quorumUpdate.SetStatus(2);
+                            break;
+                        case OK:
+                            quorumUpdate.SetStatus(3);
+                            accepted = true;
+                            break;
+                        case REJECTED_NODELETE:
+                            quorumUpdate.SetStatus(4);
+                            result.errorKind = GitErrors.ERROR_REFUSED;
+                            break;
+                        case REJECTED_NONFASTFORWARD:
+                            quorumUpdate.SetStatus(5);
+                            result.rejectedByNewerCommits = true;
+                            break;
+                        case REJECTED_OTHER_REASON:
+                            quorumUpdate.SetStatus(6);
+                            result.errorKind = GitErrors.ERROR_REFUSED;
+                            if(next.getMessage() != null) {
+                                result.serverMessage = next.getMessage();
+                            }
+                            break;
+                        case REJECTED_REMOTE_CHANGED:
+                            quorumUpdate.SetStatus(7);
+                            result.rejectedByNewerCommits = true;
+                            break;
+                        case UP_TO_DATE:
+                            quorumUpdate.SetStatus(8);
+                            accepted = true;
+                            result.upToDate = true;
+                            break;
+                        default:
+                            break;
                     }
                 }
             }
+
+            result.successful = accepted && !result.rejectedByNewerCommits
+                && result.errorKind == GitErrors.ERROR_NONE;
+            if(result.successful && firstPush) {
+                config.setString(ConfigConstants.CONFIG_BRANCH_SECTION, branch, ConfigConstants.CONFIG_KEY_REMOTE, remote);
+                config.setString(ConfigConstants.CONFIG_BRANCH_SECTION, branch, ConfigConstants.CONFIG_KEY_MERGE, destination);
+                config.save();
+            }
+            result.pushTime = FormatFetchTime(System.currentTimeMillis());
         } catch (GitAPIException ex) {
             result.SetMessage(ex.getMessage());
+            result.errorKind = GitErrors.Classify(ex, request.HasCredentials());
+            result.details = GitErrors.Details(ex);
+        } catch (IOException ex) {
+            result.SetMessage(ex.getMessage());
+            result.errorKind = GitErrors.ERROR_OTHER;
+            result.details = GitErrors.Details(ex);
         }
         return result;
     }
@@ -340,133 +646,288 @@ public class Git {
         }
     }
     
+    /* At most this many incoming commits are listed (PullResult.commits). */
+    private static final int MAX_LISTED_COMMITS = 50;
+
     public PullResult_ Pull(Repository_ quorumRepository, PullRequest_ request) {
-        PullResult_ result = new PullResult();
+        PullResult result = new PullResult();
         Array_ referenceUpdates = result.Get_Libraries_Development_Versioning_PullResult__updates_();
         try {
             quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
             org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
             org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
 
-            ObjectId oldHead = repository.resolve(HEAD);
+            // No server at all, or a branch that isn't on the server (L6):
+            // known without contacting the server.
+            if(repository.getRemoteNames().isEmpty()) {
+                result.errorKind = GitErrors.ERROR_NO_REMOTE;
+                return result;
+            }
+            String branch = repository.getBranch();
+            BranchConfig branchConfig = new BranchConfig(repository.getConfig(), branch);
+            String tracking = branchConfig.getRemoteTrackingBranch();
+            if(tracking == null) {
+                result.noUpstream = true;
+                return result;
+            }
+            result.upstreamBranch = Repository.shortenRefName(tracking);
+
+            ObjectId oldHeadTree = repository.resolve(HEAD);
+            ObjectId oldHeadCommit = repository.resolve(Constants.HEAD);
+
+            PullCommand pull = git.pull();
+            // Merge, as git does by default (Pull question 3).
+            pull.setRebase(false);
+            // A public repository needs no username and password to pull.
             if(request.HasCredentials()) {
                 CredentialsProvider provider = new UsernamePasswordCredentialsProvider(request.GetUsername(), request.GetPassword());
-                PullCommand pull = git.pull();
                 pull.setCredentialsProvider(provider);
+            }
+            VersionProgressMonitor_ monitor = request.GetProgressMonitor();
+            if(monitor != null) {
+                QuorumProgressMonitor qpm = new QuorumProgressMonitor();
+                qpm.setMonitor(monitor);
+                pull.setProgressMonitor(qpm);
+            }
 
-                org.eclipse.jgit.api.PullResult call = pull.call();
-                FetchResult fetchResult = call.getFetchResult();
-                String messages = fetchResult.getMessages();
-                boolean successful = call.isSuccessful();
-                
-                if(successful) {
-                    ObjectId head = repository.resolve(HEAD);
-                    List<DiffEntry> diffs = GetDifferenceBetweenIDs(git, repository, oldHead, head);
-                    if(diffs != null) {
-                        Iterator<DiffEntry> iterator = diffs.iterator();
-                        while(iterator.hasNext()) {
-                            DiffEntry next = iterator.next();
-                            DiffEntry.ChangeType type = next.getChangeType();
-                            String newPath = next.getNewPath();
-                            
-                            quorum.Libraries.Development.Versioning.DiffEntry entry = new quorum.Libraries.Development.Versioning.DiffEntry();
-                            entry.Set_Libraries_Development_Versioning_DiffEntry__location_(newPath);
-                            result.Get_Libraries_Development_Versioning_PullResult__diff_().Add(entry);
-                            if(null != type) switch (type) {
-                                case ADD:
-                                    entry.entryType = 0;
-                                    break;
-                                case COPY:
-                                    entry.entryType = 2;
-                                    break;
-                                case DELETE:
-                                    entry.entryType = 3;
-                                    break;
-                                case MODIFY:
-                                    entry.entryType = 1;
-                                    break;
-                                case RENAME:
-                                    entry.entryType = 4;
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                    }
+            org.eclipse.jgit.api.PullResult call = pull.call();
+            FetchResult fetchResult = call.getFetchResult();
+            if(fetchResult != null) {
+                result.SetMessage(fetchResult.getMessages());
+                AddReferenceUpdates(fetchResult, referenceUpdates);
+            }
+            result.SetFetchedFrom(call.getFetchedFrom());
+            result.SetSuccess(call.isSuccessful());
+
+            MergeResult mergeResult = call.getMergeResult();
+            result.mergeStatus = ConvertMergeStatus(mergeResult);
+            if(mergeResult != null) {
+                // L5: files changed here that the merge would overwrite.
+                if(mergeResult.getFailingPaths() != null) {
+                    ConvertSetToQuorumArray(mergeResult.getFailingPaths().keySet(), result.failingPaths);
                 }
-                
-                result.SetSuccess(successful);
-                MergeResult mergeResult = call.getMergeResult();
+                if(mergeResult.getCheckoutConflicts() != null) {
+                    ConvertSetToQuorumArray(new java.util.HashSet<String>(mergeResult.getCheckoutConflicts()), result.failingPaths);
+                }
+                // L7: each file of conflicts, and how many it has.
                 Map<String, int[][]> conflicts = mergeResult.getConflicts();
-                if(conflicts != null && !conflicts.isEmpty()) { //this is technically successful
-                    result.Set_Libraries_Development_Versioning_PullResult__hasMergeConflicts_(true);
-                    TransferConflictsToTextArray(result.GetConflicts(), conflicts);
-                }
-                
-                Collection<TrackingRefUpdate> updates = fetchResult.getTrackingRefUpdates();
-                Iterator<TrackingRefUpdate> iterator = updates.iterator();
-                while(iterator != null && iterator.hasNext()) {
-                    TrackingRefUpdate next = iterator.next();
-                    String local = next.getLocalName();
-                    String remote = next.getRemoteName();
-                    ReferenceUpdate_ update = new ReferenceUpdate();
-                    referenceUpdates.Add(update);
-                    update.SetLocalName(local);
-                    update.SetRemoteName(remote);
-                    
-                    ReceiveCommand receive = next.asReceiveCommand();
-                    if(null != next.getResult()) switch (next.getResult()) {
-                        case FAST_FORWARD:
-                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(0);
-                            break;
-                        case FORCED:
-                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(1);
-                            break;
-                        case IO_FAILURE:
-                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(2);
-                            break;
-                        case LOCK_FAILURE:
-                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(3);
-                            break;
-                        case NEW:
-                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(4);
-                            break;
-                        case NOT_ATTEMPTED:
-                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(5);
-                            break;
-                        case NO_CHANGE:
-                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(6);
-                            break;
-                        case REJECTED:
-                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(7);
-                            break;
-                        case REJECTED_CURRENT_BRANCH:
-                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(8);
-                            break;
-                        case REJECTED_MISSING_OBJECT:
-                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(9);
-                            break;
-                        case RENAMED:
-                            update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(10);
-                            break;
-                        default:
-                            break;
+                if(conflicts != null && !conflicts.isEmpty()) {
+                    result.hasMergeConflicts = true;
+                    Iterator<String> paths = conflicts.keySet().iterator();
+                    while(paths.hasNext()) {
+                        String path = paths.next();
+                        quorum.Libraries.Language.Types.Text text = new quorum.Libraries.Language.Types.Text();
+                        text.SetValue(path);
+                        result.conflicts.Add(text);
+                        quorum.Libraries.Language.Types.Integer count = new quorum.Libraries.Language.Types.Integer();
+                        int[][] regions = conflicts.get(path);
+                        count.SetValue(regions == null ? 0 : regions.length);
+                        result.conflictCounts.Add(count);
                     }
                 }
-                String fetchedFrom = call.getFetchedFrom();
-                result.SetFetchedFrom(fetchedFrom);
-                result.SetMessage(messages);
+            }
+
+            // The files the pull changed, for reloading tabs and for L9.
+            ObjectId newHeadTree = repository.resolve(HEAD);
+            if(oldHeadTree != null && newHeadTree != null && !oldHeadTree.equals(newHeadTree)) {
+                AddChangedFiles(git, repository, oldHeadTree, newHeadTree, result);
+            }
+
+            // The commits that came in: on the server branch, not in the
+            // old head.
+            AddIncomingCommits(repository, tracking, oldHeadCommit, result);
+        } catch (CanceledException ex) {
+            result.cancelled = true;
+        } catch (CheckoutConflictException ex) {
+            // L5, when JGit says it with an exception rather than a result.
+            result.mergeStatus = 4;
+            if(ex.getConflictingPaths() != null) {
+                ConvertSetToQuorumArray(new java.util.HashSet<String>(ex.getConflictingPaths()), result.failingPaths);
             }
         } catch (GitAPIException ex) {
-            result.SetMessage(ex.getMessage());
-        } catch (IncorrectObjectTypeException ex) {
-            result.SetMessage(ex.getMessage());
-        } catch (RevisionSyntaxException ex) {
-            result.SetMessage(ex.getMessage());
-        } catch (IOException ex) {
-            result.SetMessage(ex.getMessage());
+            result.errorKind = GitErrors.Classify(ex, request.HasCredentials());
+            result.details = GitErrors.Details(ex);
+            if(ex.getMessage() != null) {
+                result.SetMessage(ex.getMessage());
+            }
+        } catch (IOException | RevisionSyntaxException ex) {
+            result.errorKind = GitErrors.ERROR_OTHER;
+            result.details = GitErrors.Details(ex);
+            if(ex.getMessage() != null) {
+                result.SetMessage(ex.getMessage());
+            }
         }
         return result;
+    }
+
+    /*
+     * The merge's outcome as one of GitConstants' PULL_MERGE_ numbers.
+     */
+    private int ConvertMergeStatus(MergeResult mergeResult) {
+        if(mergeResult == null || mergeResult.getMergeStatus() == null) {
+            return -1;
+        }
+        switch(mergeResult.getMergeStatus()) {
+            case ALREADY_UP_TO_DATE:
+                return 0;
+            case FAST_FORWARD:
+            case FAST_FORWARD_SQUASHED:
+                return 1;
+            case MERGED:
+            case MERGED_SQUASHED:
+                return 2;
+            case CONFLICTING:
+                return 3;
+            case FAILED:
+            case CHECKOUT_CONFLICT:
+                return 4;
+            default:
+                return 5;
+        }
+    }
+
+    /*
+     * The fetch's updates to the server branches, as before.
+     */
+    private void AddReferenceUpdates(FetchResult fetchResult, Array_ referenceUpdates) {
+        Collection<TrackingRefUpdate> updates = fetchResult.getTrackingRefUpdates();
+        if(updates == null) {
+            return;
+        }
+        Iterator<TrackingRefUpdate> iterator = updates.iterator();
+        while(iterator.hasNext()) {
+            TrackingRefUpdate next = iterator.next();
+            ReferenceUpdate_ update = new ReferenceUpdate();
+            referenceUpdates.Add(update);
+            update.SetLocalName(next.getLocalName());
+            update.SetRemoteName(next.getRemoteName());
+
+            if(null != next.getResult()) switch (next.getResult()) {
+                case FAST_FORWARD:
+                    update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(0);
+                    break;
+                case FORCED:
+                    update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(1);
+                    break;
+                case IO_FAILURE:
+                    update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(2);
+                    break;
+                case LOCK_FAILURE:
+                    update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(3);
+                    break;
+                case NEW:
+                    update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(4);
+                    break;
+                case NOT_ATTEMPTED:
+                    update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(5);
+                    break;
+                case NO_CHANGE:
+                    update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(6);
+                    break;
+                case REJECTED:
+                    update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(7);
+                    break;
+                case REJECTED_CURRENT_BRANCH:
+                    update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(8);
+                    break;
+                case REJECTED_MISSING_OBJECT:
+                    update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(9);
+                    break;
+                case RENAMED:
+                    update.Set_Libraries_Development_Versioning_ReferenceUpdate__result_(10);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    /*
+     * The files that differ between the old head and the new one. A
+     * deleted file is reported by its old path: JGit's new path for a
+     * deletion is /dev/null.
+     */
+    private void AddChangedFiles(org.eclipse.jgit.api.Git git, org.eclipse.jgit.lib.Repository repository,
+        ObjectId oldTree, ObjectId newTree, PullResult result) throws IOException, GitAPIException {
+        List<DiffEntry> diffs = GetDifferenceBetweenIDs(git, repository, oldTree, newTree);
+        if(diffs == null) {
+            return;
+        }
+        Iterator<DiffEntry> iterator = diffs.iterator();
+        while(iterator.hasNext()) {
+            DiffEntry next = iterator.next();
+            DiffEntry.ChangeType type = next.getChangeType();
+            String path = next.getNewPath();
+            if(type == DiffEntry.ChangeType.DELETE) {
+                path = next.getOldPath();
+            }
+
+            quorum.Libraries.Development.Versioning.DiffEntry entry = new quorum.Libraries.Development.Versioning.DiffEntry();
+            entry.Set_Libraries_Development_Versioning_DiffEntry__location_(path);
+            result.Get_Libraries_Development_Versioning_PullResult__diff_().Add(entry);
+            if(null != type) switch (type) {
+                case ADD:
+                    entry.entryType = 0;
+                    break;
+                case COPY:
+                    entry.entryType = 2;
+                    break;
+                case DELETE:
+                    entry.entryType = 3;
+                    break;
+                case MODIFY:
+                    entry.entryType = 1;
+                    break;
+                case RENAME:
+                    entry.entryType = 4;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    /*
+     * The commits on the server branch that the old head didn't have,
+     * newest first. At most MAX_LISTED_COMMITS are listed; commitCount has
+     * them all.
+     */
+    private void AddIncomingCommits(org.eclipse.jgit.lib.Repository repository, String tracking,
+        ObjectId oldHead, PullResult result) throws IOException {
+        ObjectId upstream = repository.resolve(tracking);
+        if(upstream == null) {
+            return;
+        }
+        try (RevWalk walk = new RevWalk(repository)) {
+            walk.markStart(walk.parseCommit(upstream));
+            if(oldHead != null) {
+                walk.markUninteresting(walk.parseCommit(oldHead));
+            }
+            int count = 0;
+            for(RevCommit commit : walk) {
+                count = count + 1;
+                if(count <= MAX_LISTED_COMMITS) {
+                    result.commits.Add(MakeCommitSummary(commit));
+                }
+            }
+            result.commitCount = count;
+        }
+    }
+
+    /*
+     * One commit for the Team tab: its id, the first line of its message,
+     * its author's name and when it was made ("10:51" today, else a date).
+     * The same helper step 10 describes; made here, since Pull is built
+     * first.
+     */
+    private quorum.Libraries.Development.Versioning.CommitSummary MakeCommitSummary(RevCommit commit) {
+        quorum.Libraries.Development.Versioning.CommitSummary summary = new quorum.Libraries.Development.Versioning.CommitSummary();
+        summary.id = commit.getName();
+        summary.shortId = commit.getName().substring(0, 7);
+        summary.message = commit.getShortMessage();
+        summary.author = commit.getAuthorIdent().getName();
+        summary.time = FormatFetchTime(commit.getCommitTime() * 1000L);
+        return summary;
     }
     
     /* This assumes the directory is valid. */
@@ -718,12 +1179,311 @@ public class Git {
             ConvertSetToQuorumArray(call.getUntracked(), result.untracked);
             ConvertSetToQuorumArray(call.getUntrackedFolders(), result.untrackedFolders);
             result.isClean = call.isClean();
-            result.hasUncommittedChanges = call.hasUncommittedChanges();            
-        } catch(GitAPIException | NoWorkTreeException ex) {
+            result.hasUncommittedChanges = call.hasUncommittedChanges();
+            FillBranchInformation(repository, result);
+            result.successful = true;
+        } catch(GitAPIException | NoWorkTreeException | IOException ex) {
+            result.successful = false;
+            if(ex.getMessage() != null) {
+                result.message = ex.getMessage();
+            }
         }
         return result;
     }
+
+    /*
+     * Fills in the branch, the server branch it tracks, how far ahead and
+     * behind it is, the work tree's folder and when the server was last
+     * fetched from. Ahead and behind compare with the last fetch; this
+     * never contacts the server.
+     */
+    private void FillBranchInformation(Repository repository, StatusResult result) throws IOException {
+        File workTree = repository.getWorkTree();
+        result.workTreePath = workTree.getAbsolutePath().replace('\\', '/');
+
+        String branch = repository.getBranch();
+        if(branch == null) {
+            return;
+        }
+        result.branch = branch;
+
+        Ref head = repository.exactRef(Constants.HEAD);
+        result.detached = head != null && !head.isSymbolic();
+
+        Set<String> remotes = repository.getRemoteNames();
+        result.hasRemote = !remotes.isEmpty();
+        String remote = repository.getConfig().getString(
+            ConfigConstants.CONFIG_BRANCH_SECTION, branch, ConfigConstants.CONFIG_KEY_REMOTE);
+        if(remote == null && remotes.contains(Constants.DEFAULT_REMOTE_NAME)) {
+            remote = Constants.DEFAULT_REMOTE_NAME;
+        } else if(remote == null && result.hasRemote) {
+            remote = remotes.iterator().next();
+        }
+        if(remote != null) {
+            result.remoteName = remote;
+        }
+
+        BranchTrackingStatus tracking = BranchTrackingStatus.of(repository, branch);
+        if(tracking != null) {
+            result.hasUpstream = true;
+            result.upstreamBranch = Repository.shortenRefName(tracking.getRemoteTrackingBranch());
+            result.aheadCount = tracking.getAheadCount();
+            result.behindCount = tracking.getBehindCount();
+        }
+
+        FillCommitsToPush(repository, result, tracking, remote);
+
+        File fetchHead = new File(repository.getDirectory(), "FETCH_HEAD");
+        if(fetchHead.exists()) {
+            result.lastFetchTime = FormatFetchTime(fetchHead.lastModified());
+        }
+    }
+
+    /*
+     * "10:42" (in the computer's own time format) for today, or the date
+     * for an older fetch.
+     */
+    private String FormatFetchTime(long milliseconds) {
+        Date when = new Date(milliseconds);
+        Calendar then = Calendar.getInstance();
+        then.setTime(when);
+        Calendar now = Calendar.getInstance();
+        boolean today = then.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+            && then.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR);
+        if(today) {
+            return DateFormat.getTimeInstance(DateFormat.SHORT).format(when);
+        }
+        return DateFormat.getDateInstance(DateFormat.MEDIUM).format(when);
+    }
+
+    // The most commits listed in the Team tab's push groups.
+    private static final int MAXIMUM_COMMITS_LISTED = 100;
+
+    /*
+     * Lists the commits a push would send, newest first. With a server
+     * branch, they're the commits not on it (the same as the ahead count).
+     * Without one (a new branch), they're the commits not on any of the
+     * server's branches. As of the last fetch; this never contacts the
+     * server.
+     */
+    private void FillCommitsToPush(Repository repository, StatusResult result,
+            BranchTrackingStatus tracking, String remote) throws IOException {
+        ObjectId head = repository.resolve(Constants.HEAD);
+        if(head == null || remote == null) {
+            return;
+        }
+        try (RevWalk walk = new RevWalk(repository)) {
+            walk.markStart(walk.parseCommit(head));
+            if(tracking != null) {
+                ObjectId upstream = repository.resolve(tracking.getRemoteTrackingBranch());
+                if(upstream != null) {
+                    walk.markUninteresting(walk.parseCommit(upstream));
+                }
+            } else {
+                List<Ref> serverBranches = repository.getRefDatabase().getRefsByPrefix(Constants.R_REMOTES + remote + "/");
+                for(Ref ref : serverBranches) {
+                    ObjectId id = ref.getObjectId();
+                    if(id != null) {
+                        walk.markUninteresting(walk.parseCommit(id));
+                    }
+                }
+            }
+            int count = 0;
+            for(RevCommit commit : walk) {
+                if(count < MAXIMUM_COMMITS_LISTED) {
+                    result.commitsToPush.Add(MakeCommitSummary(commit));
+                }
+                count++;
+            }
+            result.commitsToPushCount = count;
+        }
+    }
     
+    /*
+     * Lists the branches on this computer and the server's branches that
+     * have no branch of the same name here (Switch Branch, B1). Each gets
+     * its last commit's first line and how long ago it was made.
+     */
+    public BranchListResult_ ListBranches(Repository_ quorumRepository) {
+        BranchListResult result = new BranchListResult();
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            Repository repository = repo.plugin_.getRepository();
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+
+            String fullBranch = repository.getFullBranch();
+            String current = repository.getBranch();
+            result.currentBranch = current == null ? "" : current;
+            result.detached = fullBranch == null || !fullBranch.startsWith(Constants.R_HEADS);
+
+            List<Ref> refs = git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
+            Set<String> localNames = new HashSet<>();
+            for (Ref ref : refs) {
+                if (ref.getName().startsWith(Constants.R_HEADS)) {
+                    localNames.add(Repository.shortenRefName(ref.getName()));
+                }
+            }
+
+            long now = System.currentTimeMillis();
+            try (RevWalk walk = new RevWalk(repository)) {
+                for (Ref ref : refs) {
+                    String refName = ref.getName();
+                    boolean isLocal = refName.startsWith(Constants.R_HEADS);
+                    boolean isServer = refName.startsWith(Constants.R_REMOTES);
+                    // Only branches; and not the server's HEAD pointer.
+                    if ((!isLocal && !isServer) || refName.endsWith("/" + Constants.HEAD)) {
+                        continue;
+                    }
+                    // "main", or "origin/main" for a server branch.
+                    String shortName = Repository.shortenRefName(refName);
+                    String localName = shortName;
+                    if (isServer) {
+                        int slash = shortName.indexOf('/');
+                        localName = slash >= 0 ? shortName.substring(slash + 1) : shortName;
+                        // Already here as a local branch: not repeated.
+                        if (localNames.contains(localName)) {
+                            continue;
+                        }
+                    }
+
+                    GitBranch branch = new GitBranch();
+                    branch.branchName = shortName;
+                    branch.localName = localName;
+                    branch.fullName = refName;
+                    branch.isLocal = isLocal;
+                    branch.isCurrent = isLocal && refName.equals(fullBranch);
+                    if (isLocal) {
+                        String tracking = new BranchConfig(repository.getConfig(), shortName).getTrackingBranch();
+                        if (tracking != null) {
+                            branch.upstream = Repository.shortenRefName(tracking);
+                        }
+                    }
+                    ObjectId id = ref.getObjectId();
+                    if (id != null) {
+                        RevCommit commit = walk.parseCommit(id);
+                        branch.lastMessage = commit.getShortMessage();
+                        branch.lastAge = AgeWords(now, commit.getCommitTime() * 1000L);
+                    }
+
+                    if (isLocal) {
+                        result.localBranches.Add(branch);
+                    } else {
+                        result.serverBranches.Add(branch);
+                    }
+                }
+            }
+            result.successful = true;
+        } catch (GitAPIException | IOException ex) {
+            result.successful = false;
+            result.message = ex.getMessage() == null ? "" : ex.getMessage();
+        }
+        return result;
+    }
+
+    /*
+     * "today", "yesterday", "3 days ago", "1 week ago", "2 months ago".
+     */
+    private static String AgeWords(long now, long then) {
+        long days = (now - then) / 86400000L;
+        if (days <= 0) {
+            return "today";
+        }
+        if (days == 1) {
+            return "yesterday";
+        }
+        if (days < 7) {
+            return days + " days ago";
+        }
+        if (days < 30) {
+            long weeks = days / 7;
+            return weeks == 1 ? "1 week ago" : weeks + " weeks ago";
+        }
+        if (days < 365) {
+            long months = days / 30;
+            return months == 1 ? "1 month ago" : months + " months ago";
+        }
+        long years = days / 365;
+        return years == 1 ? "1 year ago" : years + " years ago";
+    }
+
+    /*
+     * Switches to a branch, or creates one (and switches to it, unless the
+     * request says not to). Uncommitted changes come along, as in git.
+     * When git refuses because a change would be overwritten, the files
+     * are listed and nothing changes (B3).
+     */
+    public SwitchBranchResult_ SwitchBranch(Repository_ quorumRepository, SwitchBranchRequest_ request) {
+        SwitchBranchResult result = new SwitchBranchResult();
+        String branchName = request.GetBranchName();
+        result.branchName = branchName;
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            Repository repository = repo.plugin_.getRepository();
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+
+            if (request.IsCreating() && !request.IsSwitching()) {
+                // git branch <name> <start>
+                CreateBranchCommand create = git.branchCreate();
+                create.setName(branchName);
+                create.setStartPoint(request.GetStartPoint());
+                if (request.IsTracking()) {
+                    create.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK);
+                }
+                create.call();
+            } else {
+                // git switch <name>, or git switch -c <name> <start>
+                CheckoutCommand checkout = git.checkout();
+                checkout.setName(branchName);
+                if (request.IsCreating()) {
+                    checkout.setCreateBranch(true);
+                    checkout.setStartPoint(request.GetStartPoint());
+                    if (request.IsTracking()) {
+                        checkout.setUpstreamMode(CreateBranchCommand.SetupUpstreamMode.TRACK);
+                    }
+                }
+                checkout.call();
+                org.eclipse.jgit.api.CheckoutResult checkoutResult = checkout.getResult();
+                if (checkoutResult != null
+                        && checkoutResult.getStatus() == org.eclipse.jgit.api.CheckoutResult.Status.CONFLICTS) {
+                    AddTextToQuorumArray(checkoutResult.getConflictList(), result.conflictingFiles);
+                    result.successful = false;
+                    return result;
+                }
+            }
+            result.successful = true;
+        } catch (CheckoutConflictException ex) {
+            AddTextToQuorumArray(ex.getConflictingPaths(), result.conflictingFiles);
+            result.successful = false;
+            result.message = ex.getMessage() == null ? "" : ex.getMessage();
+        } catch (GitAPIException ex) {
+            result.successful = false;
+            result.message = ex.getMessage() == null ? "" : ex.getMessage();
+        }
+        return result;
+    }
+
+    private void AddTextToQuorumArray(List<String> items, Array_ array) {
+        if (items == null || array == null) {
+            return;
+        }
+        for (String next : items) {
+            quorum.Libraries.Language.Types.Text text = new quorum.Libraries.Language.Types.Text();
+            text.SetValue(next);
+            array.Add(text);
+        }
+    }
+
+    /*
+     * Whether git accepts a branch name (B5). The friendlier messages are
+     * worked out in Studio; this is the last word.
+     */
+    public boolean IsValidBranchName(String value) {
+        if (value == null || value.isEmpty()) {
+            return false;
+        }
+        return Repository.isValidRefName(Constants.R_HEADS + value);
+    }
+
     public FileHeader GetFileHeader(DiffFormatter formatter, DiffEntry entry) {
         try {
             FileHeader fileHeader = formatter.toFileHeader(entry);

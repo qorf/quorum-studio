@@ -27,15 +27,17 @@ import quorum.Libraries.Language.Debug.VariablesModel_;
  */
 public class Debugger implements ProcessCoordinator{
     public java.lang.Object me_ = null;
-    private JDIDebugger debugger;
+    private volatile JDIDebugger debugger;
     String location = "";
     String workingDirectory = "";
     ArrayList<DebuggerListenerWrapper> listeners = new ArrayList<>();
     HashMap<String, BreakpointWrapper> breakpoints = new HashMap<>();
     quorum.Libraries.Language.Debug.VariablesModel model = new quorum.Libraries.Language.Debug.VariablesModel();
     quorum.Libraries.Language.Debug.CallStackModel callStackModel = new quorum.Libraries.Language.Debug.CallStackModel();
-    ProcessWatcher watch = null;
-    
+    volatile ProcessWatcher watch = null;
+    // How long Stop waits for the streams to end after it stops the program.
+    private static final long STOP_WAIT = 1000;
+
     public void RunToCursor(String className, int line) {
         if(debugger != null) {
             debugger.runForwardToLine("quorum." + className, line);
@@ -167,40 +169,59 @@ public class Debugger implements ProcessCoordinator{
     }
     
     public void Start() {
-        if(debugger != null) {
-            debugger.stop();
-            debugger = null;
-        }
-        
-        debugger = new JDIDebugger();
+        // A program still being debugged is stopped, and its readers with it.
+        Stop();
+
+        // Locals, since Stop can clear the fields from another thread.
+        JDIDebugger launching = new JDIDebugger();
+        debugger = launching;
         for(int i = 0; i < listeners.size(); i++) {
             DebuggerListenerWrapper item = listeners.get(i);
-            debugger.add(item);
+            launching.add(item);
         }
         Iterator<BreakpointWrapper> iterator = breakpoints.values().iterator();
         while(iterator.hasNext()) {
             BreakpointWrapper next = iterator.next();
-            debugger.add(next);
+            launching.add(next);
         }
         
-        debugger.setExecutable(location);
-        debugger.setWorkingDirectory(workingDirectory);
-        debugger.launch();
+        launching.setExecutable(location);
+        launching.setWorkingDirectory(workingDirectory);
+        launching.launch();
         
-        watch = new ProcessWatcher(debugger.getInputStream(), debugger.getErrorStream());
-        OutputStream outputStream = debugger.getOutputStream();
-        watch.setStream(outputStream);
-        watch.SetProcessCoordinator(this);
-        watch.start();
+        ProcessWatcher watcher = new ProcessWatcher(launching.getInputStream(), launching.getErrorStream());
+        OutputStream outputStream = launching.getOutputStream();
+        watcher.setStream(outputStream);
+        watcher.SetProcessCoordinator(this);
+        watch = watcher;
+        watcher.start();
     }
     
+    /*
+     * Stop runs on the debugger's event thread when the program ends, and on
+     * the main thread when Stop is pressed. StopAll calls it twice.
+     */
     public void Stop() {
-        if(debugger != null) {
-            debugger.stop();
+        JDIDebugger stopping;
+        ProcessWatcher watcher;
+        synchronized(this) {
+            stopping = debugger;
+            watcher = watch;
             debugger = null;
+            watch = null;
         }
-        if(watch != null) {
-            watch.SetCancelled(true);
+        // The program ended by itself: its last output is still in the pipes.
+        // Read it all before the virtual machine is let go.
+        if(watcher != null && stopping != null && stopping.isProgramEnded()) {
+            watcher.flush();
+        }
+        if(stopping != null) {
+            stopping.stop();
+        }
+        // Stopped by the user: the program is gone now, so its streams end
+        // soon. A reader still waiting after that is cut off.
+        if(watcher != null && !watcher.WaitForEnd(STOP_WAIT)) {
+            watcher.SetCancelled(true);
         }
     }
     
@@ -245,13 +266,19 @@ public class Debugger implements ProcessCoordinator{
     }
 
     DebuggerOutputEvent event = new DebuggerOutputEvent();
+    // Its own lock, not this: Stop waits for the readers, and the readers
+    // call SendOutput.
+    private final Object outputLock = new Object();
     @Override
     public void SendOutput(String value) {
-        event.SetOutput(value);
-        for(int i = 0; i < listeners.size(); i++) {
-            DebuggerListenerWrapper item = listeners.get(i);
-            DebuggerListener_ listener = item.getListener();
-            listener.Run(event);
+        // The output and error readers each call this, from their own threads.
+        synchronized(outputLock) {
+            event.SetOutput(value);
+            for(int i = 0; i < listeners.size(); i++) {
+                DebuggerListenerWrapper item = listeners.get(i);
+                DebuggerListener_ listener = item.getListener();
+                listener.Run(event);
+            }
         }
     }
 

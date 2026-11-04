@@ -671,6 +671,21 @@ public class JDIDebugger implements Debugger {
         return virtualMachine;
     }
 
+    /**
+     * Whether the program ended or disconnected by itself. Set on the event
+     * thread before the stop event goes to listeners, so Stop can read the
+     * program's last output before it lets the virtual machine go.
+     */
+    private volatile boolean programEnded = false;
+
+    public boolean isProgramEnded() {
+        return programEnded;
+    }
+
+    public void setProgramEnded(boolean ended) {
+        programEnded = ended;
+    }
+
     @Override
     public void add(DebuggerListener listener) {
         listeners.put(listener.getName(), listener);

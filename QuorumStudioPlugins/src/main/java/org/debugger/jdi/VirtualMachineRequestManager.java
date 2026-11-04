@@ -99,6 +99,7 @@ public class VirtualMachineRequestManager extends Thread {
             } catch (InterruptedException ex) {
             } catch (VMDisconnectedException ex) {
                 connected = false;
+                debugger.setProgramEnded(true);
                 JDIDebuggerEvent exit = new JDIDebuggerEvent();
                 exit.setValue("VMDisconnectedException");
                 fireEvent(exit);
@@ -135,6 +136,8 @@ public class VirtualMachineRequestManager extends Thread {
         } else if(event instanceof VMStartEvent) {
         } else if(event instanceof VMDeathEvent) {
             VMDeathEvent eve = (VMDeathEvent) event;
+            // Before the stop event goes out, so Stop knows to drain the output.
+            debugger.setProgramEnded(true);
             debug = new JDIDebuggerStopEvent();
         } else if(event instanceof StepEvent) {
             StepEvent eve = (StepEvent) event;
