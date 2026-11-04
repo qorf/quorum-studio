@@ -273,6 +273,12 @@ class VariableItem is ListItem, FoldClickRow
         return depth
     end
 
+    // Screen readers count a row among the rows at its depth, so "1 of 3"
+    // is its place among its parent's rows.
+    action GetAccessibilityLevel returns integer
+        return depth
+    end
+
     action GetRows returns Array<VariableItem>
         return rows
     end
@@ -314,6 +320,15 @@ class VariableItem is ListItem, FoldClickRow
     end
 
     action IsExpanded returns boolean
+        return expanded
+    end
+
+    // For screen readers (List:SetTreeAccessibility): a row with children opens and closes.
+    action IsAccessibilityExpandable returns boolean
+        return not leaf
+    end
+
+    action IsAccessibilityExpanded returns boolean
         return expanded
     end
 

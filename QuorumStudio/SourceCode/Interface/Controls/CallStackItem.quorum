@@ -121,6 +121,15 @@ class CallStackItem is ListItem
         return stoppedHere
     end
 
+    // Screen readers count a row among the rows at its depth: shown
+    // library frames sit one level under their fold row, as drawn.
+    action GetAccessibilityLevel returns integer
+        if libraryFrame and not stoppedHere
+            return 1
+        end
+        return 0
+    end
+
     // The action's name, with Java's name for "on create" put back.
     action GetActionName returns text
         text name = frame:GetName()

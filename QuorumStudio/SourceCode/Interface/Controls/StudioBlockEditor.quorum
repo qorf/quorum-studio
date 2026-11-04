@@ -13,6 +13,12 @@ use Libraries.Language.Compile.Symbol.Class
 use Libraries.Language.Debug.BreakpointManager
 use Libraries.Game.Graphics.Drawable
 use Libraries.System.File
+use Libraries.Containers.Array
+use Libraries.Development.Versioning.DiffResult
+use Libraries.Development.Versioning.DiffEdit
+use Libraries.Development.Versioning.GitConstants
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Accessibility
 
 /*
 Studio's block editor. A click in its line number gutter toggles the
@@ -29,6 +35,7 @@ class StudioBlockEditor is CodeEditor
     BuildManager manager = undefined
     StudioLineGutter studioGutter
     StatusLineGutter statusGutter
+    GitConstants gitConstants
     // The faint band across the code on the stopped row, made when first
     // shown. It's the renderer's, drawn under the blocks.
     Drawable debuggerBand = undefined
@@ -169,12 +176,55 @@ class StudioBlockEditor is CodeEditor
         if not (gutter is LineNumberGutter)
             return now
         end
-        integer line = GetBreakpointLine(GetBlockAtNavigationIndex(event:GetLine()))
+        Block block = GetBlockAtNavigationIndex(event:GetLine())
+        integer line = GetBreakpointLine(block)
         File file = GetBreakpointFile()
         if line < 0 or file = undefined
             return now
         end
         manager:ToggleBreakpoint(file, line)
+        RefreshAccessibility(block)
+    end
+
+    /*
+    This action tells screen readers that a block's details changed, such
+    as its breakpoint, so they read the new ones (Block's description).
+    */
+    action RefreshAccessibility(Block block)
+        if block = undefined
+            return now
+        end
+        GameStateManager gameState
+        Accessibility access = gameState:GetAccessibility()
+        if access not= undefined
+            access:DescriptionChanged(block)
+        end
+    end
+
+    /*
+    This action returns what git sees on a text line, for screen readers,
+    as the git lane shows it (StatusLineGutter): "Added.", "Changed.",
+    "Lines deleted below." or "".
+    */
+    action GetLineStatus(integer line) returns text
+        DiffResult diff = statusGutter:GetDiffResult()
+        if diff = undefined or line < 0
+            return ""
+        end
+        Array<DiffEdit> edits = diff:GetEdits()
+        if edits = undefined or line >= edits:GetSize()
+            return ""
+        end
+        DiffEdit edit = edits:Get(line)
+        integer editType = edit:GetEditType()
+        if editType = gitConstants:EDIT_INSERT
+            return "Added."
+        elseif editType = gitConstants:EDIT_CHANGE
+            return "Changed."
+        elseif editType = gitConstants:EDIT_EQUAL and edit:HasDeletion()
+            return "Lines deleted below."
+        end
+        return ""
     end
 
     /*
