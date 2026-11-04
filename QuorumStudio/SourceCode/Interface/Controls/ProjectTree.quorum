@@ -355,6 +355,10 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
         behave:SetMainApplication(studio)
         behave:SetThread(runner)
         AddBehavior(behave)
+        // Files changed outside Studio are noticed (01c).
+        if studio not= undefined
+            studio:WatchProjectFolder(project:GetLocation())
+        end
     end
 
     action ClosedProject(QuorumProject project)
@@ -371,6 +375,9 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
         gitStatuses:RemoveKey(PathKey(project:GetLocation()))
         // and goes at the end.
         projectOrder:Remove(PathKey(project:GetLocation()))
+        if studio not= undefined
+            studio:UnwatchProjectFolder(project:GetLocation())
+        end
         Resize()
     end
 end

@@ -1,0 +1,620 @@
+package Libraries.Development.Environment.Studio
+
+use Libraries.Containers.Array
+use Libraries.Containers.Iterator
+use Libraries.Containers.HashTable
+use Libraries.System.File
+use Libraries.System.DateTime
+use Libraries.System.FileChangeEvent
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Events.WindowFocusListener
+use Libraries.Interface.Events.WindowFocusEvent
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
+use Libraries.Development.Environment.Studio.Interface.FileChangedDialog
+
+/*
+Notices open files changed on disk by something other than Studio (01 and
+01c): another editor, a script, git on the command line, an AI tool.
+
+For each open file it remembers the last-modified time and size from when
+the tab opened and from each Studio save (Remember). A check compares
+those first and reads the file only when they differ, then compares the
+text, so a file touched with no real change does nothing. Then:
+
+- a tab with no unsaved edits reloads silently, the caret kept on its line
+  where it can be;
+- a tab with unsaved edits waits for the dialog: Keep Mine or Reload;
+- a tab whose file was deleted waits for the dialog: Close Tab or Keep
+  Tab, or, with unsaved edits, only Keep Tab (Save writes the file back).
+
+One dialog at a time. Changes found while it is open wait for it. The
+tabs waiting for the same question share one dialog, which lists them.
+
+Checks come from the project watcher (CheckPaths, CheckEverything, through
+QuorumStudio:Update), from the window regaining focus (a flag, checked on
+the next Update, never inside the callback), and from Save (CanSave: if
+the file is newer on disk, the dialog asks Overwrite, Reload or Cancel
+instead of writing over it).
+
+Scene and spreadsheet tabs are left out of the reload checks in this first
+version: their editors have no unsaved flag and can't take new text. A
+scene tab still gets the check before Save (Overwrite or Cancel).
+
+Main thread only.
+*/
+class DiskChangeChecker is WindowFocusListener
+    // What a waiting tab is asked about.
+    public constant integer CHANGED = 0
+    public constant integer DELETED = 1
+    public constant integer DELETED_EDITED = 2
+    public constant integer SAVE_CONFLICT = 3
+
+    // The dialog's answers. KEEP is Keep Mine, Keep Tab and Cancel: the
+    // safe choice, the focused button and the Escape action.
+    public constant integer KEEP = 0
+    public constant integer RELOAD = 1
+    public constant integer CLOSE_TAB = 2
+    public constant integer OVERWRITE = 3
+
+    // By path, with / between folders: the file's last-modified time in
+    // milliseconds and its size, or -1 for both when it was missing.
+    HashTable<text, number> knownTimes
+    HashTable<text, number> knownSizes
+
+    // Tabs waiting for the dialog, and what each is asked about.
+    Array<Tab> waitingTabs
+    Array<integer> waitingKinds
+    // The open dialog (undefined when none), its tabs and their question.
+    FileChangedDialog dialog = undefined
+    Array<Tab> shownTabs
+    integer shownKind = 0
+    // The dialog's answer, applied on the next Update, not while it hides.
+    boolean choiceWaiting = false
+    integer chosen = 0
+
+    // The window got focus back: check every open tab on the next Update.
+    boolean checkOpenTabsSoon = false
+    // At exit Save writes without asking (nothing could answer a dialog).
+    boolean savingWithoutAsking = false
+
+    ProjectFilesRefresher refresher
+
+    /*
+    This action remembers a file's last-modified time and size as Studio
+    knows it: when its tab opens, after Studio saves it, and after a
+    reload. A missing file is remembered as missing.
+
+    Attribute: Parameter file The file.
+    */
+    action Remember(File file)
+        if file = undefined
+            return now
+        end
+        text key = Key(file)
+        number time = -1
+        number size = -1
+        check
+            if file:Exists()
+                time = GetTime(file)
+                size = file:GetFileSize()
+            end
+        detect e
+        end
+        knownTimes:Set(key, time)
+        knownSizes:Set(key, size)
+    end
+
+    /*
+    This action forgets a file, when its tab closes.
+
+    Attribute: Parameter file The file.
+    */
+    action Forget(File file)
+        if file = undefined
+            return now
+        end
+        text key = Key(file)
+        if knownTimes:HasKey(key)
+            number time = knownTimes:RemoveKey(key)
+        end
+        if knownSizes:HasKey(key)
+            number size = knownSizes:RemoveKey(key)
+        end
+    end
+
+    /*
+    This action is the check before Save (01's option D). It says whether
+    a tab may write its file now: yes when the file on disk is still what
+    Studio last read or wrote, when it's missing (Save writes it back), or
+    when its text is the tab's text. Otherwise the tab waits for the
+    dialog (Overwrite, Reload, Cancel) and the answer is no.
+
+    Attribute: Parameter tab An EditorTab or a VisualEditorTab.
+    Attribute: Returns True to write now; false when the dialog will ask.
+    */
+    action CanSave(Tab tab) returns boolean
+        if savingWithoutAsking or tab = undefined
+            return true
+        end
+        File file = GetTabFile(tab)
+        if file = undefined
+            return true
+        end
+        if IsWaitingOrShown(tab)
+            return false
+        end
+        boolean exists = false
+        check
+            exists = file:Exists()
+        detect e
+        end
+        if not exists
+            return true
+        end
+        text key = Key(file)
+        if not knownTimes:HasKey(key)
+            return true
+        end
+        if not ChangedSinceKnown(file, key)
+            return true
+        end
+        if tab is EditorTab
+            EditorTab editorTab = cast(EditorTab, tab)
+            if refresher:HasTabText(editorTab)
+                check
+                    text diskText = file:Read()
+                    if SameText(diskText, refresher:GetTabText(editorTab))
+                        Remember(file)
+                        return true
+                    end
+                detect e
+                end
+            end
+        end
+        Wait(tab, SAVE_CONFLICT)
+        return false
+    end
+
+    /*
+    This action saves without the check, at exit: the user already chose
+    to save, and no dialog could be answered.
+
+    Attribute: Parameter value True to save without asking.
+    */
+    action SetSavingWithoutAsking(boolean value)
+        savingWithoutAsking = value
+    end
+
+    /*
+    This action checks the open tabs whose files the watcher reported, and
+    builds again the Project Tree item of each project where a file or
+    folder was made or deleted (once per project). The Team tab refreshes
+    when a Git project was touched.
+
+    Attribute: Parameter changes Each path (with / between folders) and what happened to it, from ProjectFileWatchListener:TakePaths.
+    */
+    action CheckPaths(HashTable<text, integer> changes)
+        if changes = undefined or changes:IsEmpty()
+            return now
+        end
+        FileChangeEvent kinds
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+
+        Array<QuorumProject> projects = GetOpenProjects(studio)
+        Array<QuorumProject> treeProjects
+        boolean gitTouched = false
+        Iterator<text> paths = changes:GetKeyIterator()
+        repeat while paths:HasNext()
+            text path = paths:Next()
+            integer kind = changes:GetValue(path)
+            integer index = 0
+            repeat while index < projects:GetSize()
+                QuorumProject project = projects:Get(index)
+                text folderPath = Key(project:GetLocation())
+                if path:StartsWith(folderPath + "/")
+                    if project:HasGitSupport()
+                        gitTouched = true
+                    end
+                    boolean structural = (kind = kinds:CREATED) or (kind = kinds:DELETED)
+                    if structural and IsShownInTree(path, folderPath) and not treeProjects:Has(project)
+                        treeProjects:Add(project)
+                    end
+                end
+                index = index + 1
+            end
+        end
+
+        integer treeIndex = 0
+        repeat while treeIndex < treeProjects:GetSize()
+            refresher:RefreshProjectTree(treeProjects:Get(treeIndex))
+            treeIndex = treeIndex + 1
+        end
+
+        if gitTouched
+            OutputEditorTabPane outputPane = studio:GetOutputPane()
+            if outputPane not= undefined
+                outputPane:RefreshTeamTabSoon()
+            end
+        end
+
+        Array<EditorTab> tabs = GetOpenEditorTabs(studio)
+        integer tabIndex = 0
+        repeat while tabIndex < tabs:GetSize()
+            EditorTab tab = tabs:Get(tabIndex)
+            File file = tab:GetFile()
+            if file not= undefined and changes:HasKey(Key(file))
+                CheckTab(tab)
+            end
+            tabIndex = tabIndex + 1
+        end
+    end
+
+    /*
+    This action checks every open tab and builds every open project's
+    Project Tree item again: after the watcher lost changes (OVERFLOW).
+    */
+    action CheckEverything
+        refresher:RefreshProjectTree(undefined)
+        CheckOpenTabs()
+    end
+
+    /*
+    This action checks every open tab against its file (the focus check,
+    01's option A). The Project Tree is left as it is.
+    */
+    action CheckOpenTabs
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        Array<EditorTab> tabs = GetOpenEditorTabs(studio)
+        integer index = 0
+        repeat while index < tabs:GetSize()
+            CheckTab(tabs:Get(index))
+            index = index + 1
+        end
+    end
+
+    /*
+    This action is called by QuorumStudio:Update each frame: the focus
+    check, the dialog's answer, then the next dialog if tabs are waiting.
+    */
+    action Update
+        if checkOpenTabsSoon
+            checkOpenTabsSoon = false
+            CheckOpenTabs()
+        end
+        if choiceWaiting
+            choiceWaiting = false
+            ApplyChoice()
+        end
+        if dialog = undefined and not waitingTabs:IsEmpty()
+            ShowNext()
+        end
+    end
+
+    // Called inside event polling: only a flag, the check runs on Update.
+    action WindowGainedFocus(WindowFocusEvent event)
+        checkOpenTabsSoon = true
+    end
+
+    /*
+    This action takes the dialog's answer when it hides (a button, Escape
+    or its close button, which mean KEEP). It's applied on the next Update.
+
+    Attribute: Parameter choice KEEP, RELOAD, CLOSE_TAB or OVERWRITE.
+    */
+    action DialogClosed(integer choice)
+        chosen = choice
+        choiceWaiting = true
+    end
+
+    // One tab: nothing, a silent reload, or a wait for the dialog.
+    private action CheckTab(EditorTab tab)
+        if tab = undefined
+            return now
+        end
+        File file = tab:GetFile()
+        if file = undefined or IsWaitingOrShown(tab)
+            return now
+        end
+        if not refresher:HasTabText(tab)
+            return now
+        end
+        text key = Key(file)
+        boolean known = knownTimes:HasKey(key)
+        boolean exists = false
+        check
+            exists = file:Exists()
+        detect e
+            return now
+        end
+
+        if not exists
+            if known
+                number time = knownTimes:GetValue(key)
+                // Already known to be missing (Keep Tab was chosen).
+                if time < 0
+                    return now
+                end
+            end
+            if tab:IsDirty()
+                Wait(tab, DELETED_EDITED)
+            else
+                Wait(tab, DELETED)
+            end
+            return now
+        end
+
+        if known and not ChangedSinceKnown(file, key)
+            return now
+        end
+
+        text diskText = ""
+        check
+            diskText = file:Read()
+        detect e
+            return now
+        end
+        if SameText(diskText, refresher:GetTabText(tab))
+            Remember(file)
+            return now
+        end
+        if tab:IsDirty()
+            Wait(tab, CHANGED)
+        else
+            refresher:ReloadTab(tab, diskText)
+            Remember(file)
+        end
+    end
+
+    // Adds a tab to the waiting list, once.
+    private action Wait(Tab tab, integer kind)
+        if IsWaitingOrShown(tab)
+            return now
+        end
+        waitingTabs:Add(tab)
+        waitingKinds:Add(kind)
+    end
+
+    private action IsWaitingOrShown(Tab tab) returns boolean
+        return waitingTabs:Has(tab) or shownTabs:Has(tab)
+    end
+
+    // Shows the dialog for the first waiting tab and every other tab
+    // waiting for the same question.
+    private action ShowNext
+        shownTabs:Empty()
+        shownKind = waitingKinds:Get(0)
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        CodeEditorTabPane pane = studio:GetTabPane()
+
+        Array<Tab> stillWaiting
+        Array<integer> stillKinds
+        integer index = 0
+        repeat while index < waitingTabs:GetSize()
+            Tab tab = waitingTabs:Get(index)
+            integer kind = waitingKinds:Get(index)
+            if kind = shownKind
+                // A tab closed meanwhile (by a pull, or by the user) is dropped.
+                if IsStillOpen(pane, tab)
+                    shownTabs:Add(tab)
+                end
+            else
+                stillWaiting:Add(tab)
+                stillKinds:Add(kind)
+            end
+            index = index + 1
+        end
+        waitingTabs = stillWaiting
+        waitingKinds = stillKinds
+
+        if shownTabs:IsEmpty()
+            return now
+        end
+
+        Array<text> names
+        boolean canReload = true
+        index = 0
+        repeat while index < shownTabs:GetSize()
+            Tab tab = shownTabs:Get(index)
+            File file = GetTabFile(tab)
+            names:Add(file:GetFileName())
+            if not (tab is EditorTab)
+                canReload = false
+            end
+            index = index + 1
+        end
+
+        FileChangedDialog newDialog
+        dialog = newDialog
+        dialog:Setup(me, shownKind, names, canReload)
+        dialog:Show()
+    end
+
+    // The dialog's answer, for each of its tabs still open.
+    private action ApplyChoice
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        CodeEditorTabPane pane = studio:GetTabPane()
+        Array<Tab> tabs = shownTabs
+        Array<Tab> none
+        shownTabs = none
+        dialog = undefined
+
+        integer index = 0
+        repeat while index < tabs:GetSize()
+            Tab tab = tabs:Get(index)
+            if IsStillOpen(pane, tab)
+                ApplyChoice(pane, tab)
+            end
+            index = index + 1
+        end
+    end
+
+    private action ApplyChoice(CodeEditorTabPane pane, Tab tab)
+        File file = GetTabFile(tab)
+        if shownKind = CHANGED
+            if chosen = RELOAD
+                ReloadFromDisk(tab)
+            else
+                // Keep Mine: not asked again until the file changes again;
+                // the next Save writes over it on purpose.
+                Remember(file)
+            end
+        elseif shownKind = DELETED
+            if chosen = CLOSE_TAB
+                pane:CloseFile(file)
+            else
+                Remember(file)
+            end
+        elseif shownKind = DELETED_EDITED
+            // The tab stays with its text; Save writes the file back.
+            Remember(file)
+        elseif shownKind = SAVE_CONFLICT
+            if chosen = OVERWRITE
+                if tab is EditorTab
+                    EditorTab editorTab = cast(EditorTab, tab)
+                    editorTab:SaveWithoutChecking()
+                elseif tab is VisualEditorTab
+                    VisualEditorTab visualTab = cast(VisualEditorTab, tab)
+                    visualTab:SaveWithoutChecking()
+                end
+            elseif chosen = RELOAD
+                ReloadFromDisk(tab)
+            end
+            // Cancel: nothing is written; the next Save asks again.
+        end
+    end
+
+    private action ReloadFromDisk(Tab tab)
+        if not (tab is EditorTab)
+            return now
+        end
+        EditorTab editorTab = cast(EditorTab, tab)
+        File file = editorTab:GetFile()
+        if file = undefined or not refresher:HasTabText(editorTab)
+            return now
+        end
+        check
+            text diskText = file:Read()
+            refresher:ReloadTab(editorTab, diskText)
+            Remember(file)
+        detect e
+        end
+    end
+
+    // The tab is still the one open for its file.
+    private action IsStillOpen(CodeEditorTabPane pane, Tab tab) returns boolean
+        File file = GetTabFile(tab)
+        if file = undefined or not pane:IsOpen(file)
+            return false
+        end
+        Tab openTab = pane:GetOpenTab(file)
+        return openTab = tab
+    end
+
+    private action GetTabFile(Tab tab) returns File
+        if tab is EditorTab
+            EditorTab editorTab = cast(EditorTab, tab)
+            return editorTab:GetFile()
+        elseif tab is VisualEditorTab
+            VisualEditorTab visualTab = cast(VisualEditorTab, tab)
+            return visualTab:GetFile()
+        end
+        return undefined
+    end
+
+    // The open EditorTabs, collected first so a reload or close while
+    // walking them can't change what's being walked.
+    private action GetOpenEditorTabs(QuorumStudio studio) returns Array<EditorTab>
+        Array<EditorTab> tabs
+        CodeEditorTabPane pane = studio:GetTabPane()
+        if pane = undefined
+            return tabs
+        end
+        Iterator<Tab> iterator = pane:GetOpenTabIterator()
+        repeat while iterator:HasNext()
+            Tab tab = iterator:Next()
+            if tab is EditorTab
+                EditorTab editorTab = cast(EditorTab, tab)
+                tabs:Add(editorTab)
+            end
+        end
+        return tabs
+    end
+
+    private action GetOpenProjects(QuorumStudio studio) returns Array<QuorumProject>
+        Array<QuorumProject> projects
+        ProjectManager projectManager = studio:GetProjectManager()
+        if projectManager = undefined
+            return projects
+        end
+        Iterator<QuorumProject> iterator = projectManager:GetIterator()
+        repeat while iterator:HasNext()
+            projects:Add(iterator:Next())
+        end
+        return projects
+    end
+
+    // The Project Tree doesn't show the Project, Build and Run folders
+    // (QuorumProjectView:GetLogicalTree), so changes there don't rebuild it.
+    private action IsShownInTree(text path, text folderPath) returns boolean
+        text inside = path:GetSubtext(folderPath:GetSize() + 1)
+        if inside:StartsWith("Project/") or inside:StartsWith("Build/") or inside:StartsWith("Run/")
+            return false
+        end
+        return true
+    end
+
+    private action ChangedSinceKnown(File file, text key) returns boolean
+        if not knownTimes:HasKey(key)
+            return true
+        end
+        number knownTime = knownTimes:GetValue(key)
+        number knownSize = knownSizes:GetValue(key)
+        number time = -1
+        number size = -1
+        check
+            time = GetTime(file)
+            size = file:GetFileSize()
+        detect e
+            return true
+        end
+        return time not= knownTime or size not= knownSize
+    end
+
+    // Milliseconds since 1970 (File:GetLastModifiedDate sets the DateTime
+    // to it; GetEpochTime gives it back once set), or -1 when missing.
+    private action GetTime(File file) returns number
+        DateTime date = file:GetLastModifiedDate()
+        if date = undefined
+            return -1
+        end
+        return date:GetEpochTime()
+    end
+
+    // Windows line ends count as the same text: the editor keeps only
+    // line feeds.
+    private action SameText(text left, text right) returns boolean
+        if left = right
+            return true
+        end
+        text lineEnd = left:GetCarriageReturn() + left:GetLineFeed()
+        text feed = left:GetLineFeed()
+        text leftValue = left:Replace(lineEnd, feed)
+        text rightValue = right:Replace(lineEnd, feed)
+        return leftValue = rightValue
+    end
+
+    // The same path on every system: / between folders.
+    private action Key(File file) returns text
+        text path = file:GetAbsolutePath()
+        return path:Replace("\", "/")
+    end
+end

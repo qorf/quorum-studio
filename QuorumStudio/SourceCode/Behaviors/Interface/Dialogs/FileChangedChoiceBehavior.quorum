@@ -1,0 +1,24 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.FileChangedDialog
+
+// FileChangedDialog's buttons: Keep Mine, Reload, Close Tab, Keep Tab,
+// Overwrite, Cancel. Each tells the dialog its answer; the dialog hides
+// and hands the answer to DiskChangeChecker.
+class FileChangedChoiceBehavior is Behavior
+    FileChangedDialog dialog = undefined
+    integer choice = 0
+
+    action Setup(FileChangedDialog dialogValue, integer value)
+        dialog = dialogValue
+        choice = value
+    end
+
+    action Run(BehaviorEvent event)
+        if dialog not= undefined
+            dialog:Choose(choice)
+        end
+    end
+end

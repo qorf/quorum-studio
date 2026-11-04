@@ -1,0 +1,102 @@
+package Libraries.Development.Environment.Studio
+
+use Libraries.Containers.HashTable
+use Libraries.System.File
+use Libraries.System.DateTime
+use Libraries.System.FileChangeEvent
+use Libraries.System.FileChangeListener
+
+/*
+Collects what the project watcher reports (01c). FileChanged only notes the
+path, what happened to it and the time; it never opens a dialog or touches
+a tab. QuorumStudio:Update asks IsReady each frame; once nothing new has
+come for about half a second (QUIET_TIME), it takes the paths with
+TakePaths and hands them to DiskChangeChecker, so a save that writes
+several times, or a pull that changes many files, is handled once.
+
+An OVERFLOW (the system lost changes) sets a flag instead: everything is
+checked (TakeCheckEverything).
+
+Main thread only: the Game hands the watcher's changes over in ContinueGame
+(Game:AddFileWatcher).
+*/
+class ProjectFileWatchListener is FileChangeListener
+    // How long nothing new must come before the changes are handled.
+    constant number QUIET_TIME = 500
+
+    // Each changed path, with / between folders, and what happened to it
+    // (FileChangeEvent's CREATED, MODIFIED or DELETED).
+    HashTable<text, integer> changedPaths
+    boolean checkEverything = false
+    // When the last change came, in milliseconds (DateTime:Now).
+    number lastChangeTime = 0
+    DateTime clock
+
+    action FileChanged(FileChangeEvent event)
+        if event = undefined
+            return now
+        end
+        lastChangeTime = clock:Now()
+        if event:IsOverflow()
+            checkEverything = true
+            return now
+        end
+        File file = event:GetFile()
+        if file = undefined
+            return now
+        end
+        text path = Normalize(file:GetAbsolutePath())
+        integer kind = event:GetKind()
+        if changedPaths:HasKey(path)
+            integer earlier = changedPaths:GetValue(path)
+            // A file made or deleted, then written, still made or deleted:
+            // the Project Tree needs to know.
+            if kind = event:MODIFIED and (earlier = event:CREATED or earlier = event:DELETED)
+                kind = earlier
+            end
+        end
+        changedPaths:Set(path, kind)
+    end
+
+    /*
+    This action says whether changes are waiting and nothing new has come
+    for about half a second.
+
+    Attribute: Returns True when it's time to handle the changes.
+    */
+    action IsReady returns boolean
+        if changedPaths:IsEmpty() and not checkEverything
+            return false
+        end
+        return clock:Now() - lastChangeTime >= QUIET_TIME
+    end
+
+    /*
+    This action hands over the changed paths and starts a new, empty set.
+
+    Attribute: Returns Each path (with / between folders) and what happened to it, as FileChangeEvent's CREATED, MODIFIED or DELETED.
+    */
+    action TakePaths returns HashTable<text, integer>
+        HashTable<text, integer> taken = changedPaths
+        HashTable<text, integer> fresh
+        changedPaths = fresh
+        return taken
+    end
+
+    /*
+    This action says whether the system lost changes (OVERFLOW), so every
+    open tab and every project should be checked, and clears the flag.
+
+    Attribute: Returns True when everything should be checked.
+    */
+    action TakeCheckEverything returns boolean
+        boolean value = checkEverything
+        checkEverything = false
+        return value
+    end
+
+    // The same path on every system: / between folders.
+    private action Normalize(text path) returns text
+        return path:Replace("\", "/")
+    end
+end

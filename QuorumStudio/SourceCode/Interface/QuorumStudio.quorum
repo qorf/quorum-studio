@@ -85,6 +85,7 @@ use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Development.Environment.Studio.Interface.StudioSceneEditorKeys
 use Libraries.Game.Graphics.Font
 use Libraries.Development.Environment.Configuration.IconConstants
+use Libraries.System.FileWatcher
 
 class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     constant integer MAJOR_VERSION = 8
@@ -146,6 +147,13 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     // Used to unilaterally enable/disable 3D scene features during development
     public boolean enabledScenes3D = true
+
+    // Files changed on disk outside Studio (01c): the watcher on every open
+    // project's folder, what it reported, and the checker that reloads or
+    // asks about open tabs.
+    FileWatcher projectWatcher
+    ProjectFileWatchListener projectChanges
+    DiskChangeChecker diskChecker
 
     action GetDisplayName returns text
         text name = NAME
@@ -244,10 +252,13 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         indexThread:ShutDown()
         gitRunner:ShutDown()
         networkRunner:ShutDown()
+        projectWatcher:Stop()
 
         BuildManager value = GetBuildManager()
         value:StopAll()
         if exitStatus = SAVE_CHANGES
+            // Nothing could answer the File Changed on Disk dialog now.
+            diskChecker:SetSavingWithoutAsking(true)
             Save()
         end
         logger:Log("Closing Quorum Studio")
@@ -403,6 +414,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         end
 
         AddResizeListener(me)
+        // Before Load, which opens the projects that were open last time.
+        SetupFileWatching()
         StudioFocusManager focusManager
         SetFocusManager(focusManager)
         FlowLayout flowLayout
@@ -477,6 +490,66 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         end 
         
 SetScreenSize(width, height)
+    end
+
+    /*
+    The project watcher (01c): Build, Run and .git are never watched; the
+    Game hands its changes to projectChanges on the main thread each frame.
+    The window regaining focus is a check too (DiskChangeChecker), so a
+    platform with no watcher still notices changes.
+    */
+    private action SetupFileWatching
+        AddWindowFocusListener(diskChecker)
+        if not projectWatcher:IsSupported()
+            return now
+        end
+        projectWatcher:ExcludeFolderName("Build")
+        projectWatcher:ExcludeFolderName("Run")
+        projectWatcher:ExcludeFolderName(".git")
+        projectWatcher:AddListener(projectChanges)
+        AddFileWatcher(projectWatcher)
+    end
+
+    /*
+    This action starts watching a project's folder and every folder in it,
+    when the project opens (ProjectTree:OpenedProject). A watch that fails
+    is logged and never stops the project opening.
+
+    Attribute: Parameter folder The project's folder.
+    */
+    action WatchProjectFolder(File folder)
+        if folder = undefined or not projectWatcher:IsSupported()
+            return now
+        end
+        check
+            projectWatcher:Watch(folder, true)
+        detect e
+            logger:Log("Studio can't watch " + folder:GetAbsolutePath() + " for changes on disk: " + e:GetErrorMessage())
+        end
+    end
+
+    /*
+    This action stops watching a project's folder, when the project closes
+    (ProjectTree:ClosedProject).
+
+    Attribute: Parameter folder The project's folder.
+    */
+    action UnwatchProjectFolder(File folder)
+        if folder = undefined or not projectWatcher:IsSupported()
+            return now
+        end
+        check
+            projectWatcher:Unwatch(folder)
+        detect e
+        end
+    end
+
+    action GetDiskChangeChecker returns DiskChangeChecker
+        return diskChecker
+    end
+
+    action GetProjectWatcher returns FileWatcher
+        return projectWatcher
     end
 
     action SetupFocus
@@ -988,6 +1061,18 @@ EditorTab editorTab = cast(EditorTab, codeTabs:Get(0))
     end
 
     action Update(number seconds)
+        // Files changed on disk: handled once the watcher has been quiet
+        // for about half a second, then the focus check and the dialog.
+        if projectChanges:IsReady()
+            if projectChanges:TakeCheckEverything()
+                HashTable<text, integer> lost = projectChanges:TakePaths()
+                diskChecker:CheckEverything()
+            else
+                diskChecker:CheckPaths(projectChanges:TakePaths())
+            end
+        end
+        diskChecker:Update()
+
         if splashScreenHide 
             splashScreen:Hide()
             splashScreenHide = false

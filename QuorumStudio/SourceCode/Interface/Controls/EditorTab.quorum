@@ -13,6 +13,8 @@ use Libraries.Interface.Behaviors.Controls.CloseAllEditorTabsBehavior
 use Libraries.Interface.Behaviors.Controls.CloseAllOtherEditorTabsBehavior
 use Libraries.Interface.Controls.Blocks.CodeEditor
 use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.DiskChangeChecker
+use Libraries.Game.Game
 use Libraries.Interface.Controls.Blocks.Palette.BlockPalette
 use Libraries.Development.Environment.Studio.BlockSelectionListener
 
@@ -82,7 +84,32 @@ class EditorTab is Tab, TextChangeListener
         return timeSinceDirty
     end
 
+    /*
+    This action writes the tab's text to its file. If the file changed on
+    disk since Studio last read or wrote it, nothing is written: the File
+    Changed on Disk dialog asks Overwrite, Reload or Cancel instead
+    (DiskChangeChecker:CanSave), and the tab keeps its unsaved changes
+    until then.
+    */
     action Save
+        if file = undefined
+            return now
+        end
+        DiskChangeChecker checker = GetDiskChangeChecker()
+        if checker not= undefined
+            if not checker:CanSave(me)
+                return now
+            end
+        end
+        SaveWithoutChecking()
+    end
+
+    /*
+    This action writes the tab's text to its file, over whatever is on
+    disk (the dialog's Overwrite), then remembers the file's new time and
+    size so Studio's own save doesn't look like a change from outside.
+    */
+    action SaveWithoutChecking
         if file not= undefined
             CodeTextBox box = GetTextBox()
             // if there is no textbox it might be a block editor
@@ -101,7 +128,21 @@ class EditorTab is Tab, TextChangeListener
                 SetIsDirty(false)
                 SetIsParseDirty(true)
             end
+            DiskChangeChecker checker = GetDiskChangeChecker()
+            if checker not= undefined
+                checker:Remember(file)
+            end
         end
+    end
+
+    private action GetDiskChangeChecker returns DiskChangeChecker
+        GameStateManager manager
+        Game game = manager:GetGame()
+        if game is QuorumStudio
+            QuorumStudio studio = cast(QuorumStudio, game)
+            return studio:GetDiskChangeChecker()
+        end
+        return undefined
     end
 
     action GetTextBox returns CodeTextBox

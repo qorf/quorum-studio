@@ -3,6 +3,7 @@ package Libraries.Development.Environment.Studio
 use Libraries.Containers.Array
 use Libraries.Containers.Iterator
 use Libraries.Containers.HashTable
+use Libraries.Containers.MultipleLineText
 use Libraries.System.File
 use Libraries.Game.GameStateManager
 use Libraries.Interface.Controls.Tab
@@ -14,6 +15,8 @@ use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Development.Environment.Projects.ProjectTreeItem
 use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
+use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Development.Environment.Projects.ProjectManager
 
 /*
 After git changed files on disk (a pull, a branch switch): reloads the
@@ -24,12 +27,20 @@ reloaded or closed. Main thread only.
 A pull names the files it changed (AddChangedFile), so only their tabs are
 reloaded; a branch switch names none, so every open tab in the project is
 compared with its file. Either way, a tab whose file is gone is closed.
+
+Also used by DiskChangeChecker (files changed outside Studio, 01c): with
+no project (undefined), ReloadOpenTabs and RefreshProjectTree work on every
+open project. Tabs in block mode are reloaded too. The tabs left alone for
+their unsaved text are handed back (GetKeptTabs), so a caller can ask
+about them. HasTabText, GetTabText and ReloadTab are the pieces the
+checker shares.
 */
 class ProjectFilesRefresher
     integer reloadedCount = 0
     Array<text> closedNames
     // Tabs left alone because they have unsaved text.
     Array<text> keptNames
+    Array<EditorTab> keptTabs
     // The files git changed, with / between folders. Empty: every tab.
     Array<text> changedPaths
     // How a closed tab is explained, after the file's name (one) or the
@@ -71,15 +82,24 @@ class ProjectFilesRefresher
         closedMany = many
     end
 
+    /*
+    This action reloads the open tabs of a project (or, with undefined, of
+    every open file) from disk, closes clean tabs whose file is gone, and
+    keeps tabs with unsaved text as they are (GetKeptTabs).
+    */
     action ReloadOpenTabs(QuorumProject project)
         reloadedCount = 0
         closedNames:Empty()
         keptNames:Empty()
+        keptTabs:Empty()
         GameStateManager manager
         QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
         CodeEditorTabPane editor = studio:GetTabPane()
-        File folder = project:GetLocation()
-        text folderPath = Normalize(folder:GetAbsolutePath())
+        text folderPath = ""
+        if project not= undefined
+            File folder = project:GetLocation()
+            folderPath = Normalize(folder:GetAbsolutePath())
+        end
 
         // Collected first: closing a tab while walking the tabs would
         // change what's being walked.
@@ -92,7 +112,7 @@ class ProjectFilesRefresher
                 File file = editorTab:GetFile()
                 if file not= undefined
                     text path = Normalize(file:GetAbsolutePath())
-                    if path:StartsWith(folderPath + "/")
+                    if project = undefined or path:StartsWith(folderPath + "/")
                         tabsInProject:Add(editorTab)
                     end
                 end
@@ -110,22 +130,24 @@ class ProjectFilesRefresher
                 if editorTab:IsDirty()
                     // Unsaved text stays, even if the file is gone.
                     keptNames:Add(file:GetFileName())
+                    keptTabs:Add(editorTab)
                 elseif gone
                     closedNames:Add(file:GetFileName())
                     editor:CloseFile(file)
-                else
-                    CodeTextBox box = editorTab:GetTextBox()
-                    if box not= undefined
-                        check
-                            text newText = file:Read()
-                            if box:GetText() not= newText
-                                box:SetText(newText)
-                                editorTab:SetIsDirty(false)
-                                editorTab:SetIsParseDirty(true)
-                                reloadedCount = reloadedCount + 1
-                            end
-                        detect e
+                elseif HasTabText(editorTab)
+                    check
+                        text newText = file:Read()
+                        if GetTabText(editorTab) not= newText
+                            ReloadTab(editorTab, newText)
+                            reloadedCount = reloadedCount + 1
                         end
+                        // What's on disk now is what the tab shows, so the
+                        // watcher's check that follows finds nothing to do.
+                        DiskChangeChecker checker = studio:GetDiskChangeChecker()
+                        if checker not= undefined
+                            checker:Remember(file)
+                        end
+                    detect e
                     end
                 end
             end
@@ -133,9 +155,98 @@ class ProjectFilesRefresher
         end
     end
 
+    /*
+    This action says whether a tab has text this class can read and set:
+    a text box, or a block editor.
+
+    Attribute: Parameter tab The tab.
+    Attribute: Returns True for a text box or a block editor.
+    */
+    action HasTabText(EditorTab tab) returns boolean
+        if tab = undefined
+            return false
+        end
+        CodeTextBox box = tab:GetTextBox()
+        if box not= undefined
+            return true
+        end
+        CodeEditor blocks = tab:GetBlockEditor()
+        return blocks not= undefined
+    end
+
+    /*
+    This action returns a tab's text, from its text box or, in block mode,
+    its block editor's code. Call HasTabText first; without either, "".
+
+    Attribute: Parameter tab The tab.
+    Attribute: Returns The tab's text.
+    */
+    action GetTabText(EditorTab tab) returns text
+        CodeTextBox box = tab:GetTextBox()
+        if box not= undefined
+            return box:GetText()
+        end
+        CodeEditor blocks = tab:GetBlockEditor()
+        if blocks not= undefined
+            MultipleLineText code = blocks:GetCode()
+            return code:GetText()
+        end
+        return ""
+    end
+
+    /*
+    This action puts new text into a tab, as read from its file, and marks
+    the tab as saved. In a text box the caret stays on its line when the
+    new text still has that line (SetText would put it at the start). A
+    block editor takes the code as a whole.
+
+    Attribute: Parameter tab The tab.
+    Attribute: Parameter newText The file's text.
+    */
+    action ReloadTab(EditorTab tab, text newText)
+        CodeTextBox box = tab:GetTextBox()
+        if box not= undefined
+            integer line = box:GetCaretLine()
+            box:SetText(newText)
+            integer lineCount = box:GetLineCount()
+            if line >= lineCount
+                line = lineCount - 1
+            end
+            if line > 0
+                box:SetCaretPositionToLine(line)
+            end
+        else
+            CodeEditor blocks = tab:GetBlockEditor()
+            if blocks = undefined
+                return now
+            end
+            blocks:SetCode(newText)
+        end
+        // SetText reports a change, which marks the tab as edited.
+        tab:SetIsDirty(false)
+        tab:SetIsParseDirty(true)
+    end
+
     // As NewFileDialog:AppendToProjectTree does: build the project's item
-    // again and put it where the old one was, keeping what was open.
+    // again and put it where the old one was, keeping what was open. With
+    // undefined, every open project's item is built again.
     action RefreshProjectTree(QuorumProject project)
+        if project = undefined
+            GameStateManager allManager
+            QuorumStudio allStudio = cast(QuorumStudio, allManager:GetGame())
+            ProjectManager projects = allStudio:GetProjectManager()
+            Array<QuorumProject> openProjects
+            Iterator<QuorumProject> projectIterator = projects:GetIterator()
+            repeat while projectIterator:HasNext()
+                openProjects:Add(projectIterator:Next())
+            end
+            integer index = 0
+            repeat while index < openProjects:GetSize()
+                RefreshProjectTree(openProjects:Get(index))
+                index = index + 1
+            end
+            return now
+        end
         ProjectView view = project:GetProjectView()
         if not (view is QuorumProjectView)
             return now
@@ -191,6 +302,11 @@ class ProjectFilesRefresher
 
     action GetKeptNames returns Array<text>
         return keptNames
+    end
+
+    // The tabs left alone because they have unsaved text, for a dialog.
+    action GetKeptTabs returns Array<EditorTab>
+        return keptTabs
     end
 
     // The same path on every system: / between folders.

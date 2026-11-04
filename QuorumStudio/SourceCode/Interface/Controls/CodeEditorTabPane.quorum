@@ -87,6 +87,7 @@ class CodeEditorTabPane is TabPane, TabChangeListener
                 text path = file:GetAbsolutePath()
                 openFiles:RemoveKey(path)
                 openTabs:RemoveKey(path)
+                ForgetOnDisk(file)
             end
         elseif event:GetTab() is VisualEditorTab
             VisualEditorTab tab = cast(VisualEditorTab, event:GetTab())
@@ -95,6 +96,7 @@ class CodeEditorTabPane is TabPane, TabChangeListener
                 text path = file:GetAbsolutePath()
                 openFiles:RemoveKey(path)
                 openTabs:RemoveKey(path)
+                ForgetOnDisk(file)
             end
         elseif event:GetTab() is SpreadsheetTab
             SpreadsheetTab tab = cast(SpreadsheetTab, event:GetTab())
@@ -131,6 +133,12 @@ dialog:SetDiscardBehavior(discard)
                 // dont save the tab will just get removed
             elseif editorTab:GetExitFlag() = editorTab:SAVE_CHANGES
                 editorTab:Save()
+                // Not saved: the file changed on disk, and the File Changed
+                // on Disk dialog asks first. The tab stays open with its text.
+                if editorTab:IsDirty()
+                    editorTab:SetExitFlag(editorTab:CANCEL_CLOSE)
+                    return now
+                end
                                     end
 end
                 parent:TabPane:Remove(tab)
@@ -257,6 +265,9 @@ end
         end
         text contents = ""
 
+        // Remembered before reading: a change made in between is found by
+        // the next check, which compares the text.
+        RememberOnDisk(file)
         check
             contents = file:Read()
         detect error is FileNotFoundError
@@ -545,6 +556,7 @@ end
             end
         end
 
+        RememberOnDisk(file)
         tab:Load()
 
         tab:SetName(file:GetPath())
@@ -663,6 +675,31 @@ end
                 queuedFileOpen = undefined
             end
         end
+    end
+
+    // The file's time and size as Studio read it (DiskChangeChecker).
+    private action RememberOnDisk(File file)
+        DiskChangeChecker checker = GetDiskChangeChecker()
+        if checker not= undefined
+            checker:Remember(file)
+        end
+    end
+
+    private action ForgetOnDisk(File file)
+        DiskChangeChecker checker = GetDiskChangeChecker()
+        if checker not= undefined
+            checker:Forget(file)
+        end
+    end
+
+    private action GetDiskChangeChecker returns DiskChangeChecker
+        GameStateManager manager
+        Game game = manager:GetGame()
+        if game is QuorumStudio
+            QuorumStudio studio = cast(QuorumStudio, game)
+            return studio:GetDiskChangeChecker()
+        end
+        return undefined
     end
 
     action GetDirtyTabsCount returns integer

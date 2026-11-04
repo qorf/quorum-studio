@@ -20,6 +20,7 @@ use Libraries.Game.Scenes.SceneProperties
 use Libraries.Game.Layer2D
 use Libraries.Interface.Item3D
 use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.DiskChangeChecker
 use Libraries.Game.Graphics.Camera
 use Libraries.Containers.Number32BitArray
 use Libraries.Interface.Controls.Scenes.Layers.EditorLayer
@@ -154,8 +155,41 @@ class VisualEditorTab is Tab
         return propertiesPanel
     end
 
+    /*
+    This action saves the scene. If its file changed on disk since Studio
+    last read or wrote it, nothing is written: the File Changed on Disk
+    dialog asks Overwrite or Cancel instead (DiskChangeChecker:CanSave).
+    A scene can't be reloaded from disk yet.
+    */
     action Save
+        DiskChangeChecker checker = GetDiskChangeChecker()
+        if checker not= undefined and file not= undefined
+            if not checker:CanSave(me)
+                return now
+            end
+        end
+        SaveWithoutChecking()
+    end
+
+    /*
+    This action saves the scene over whatever is on disk (the dialog's
+    Overwrite), then remembers the file's new time and size.
+    */
+    action SaveWithoutChecking
         editor:Save()
+        DiskChangeChecker checker = GetDiskChangeChecker()
+        if checker not= undefined and file not= undefined
+            checker:Remember(file)
+        end
+    end
+
+    private action GetDiskChangeChecker returns DiskChangeChecker
+        Game game = manager:GetGame()
+        if game is QuorumStudio
+            QuorumStudio studio = cast(QuorumStudio, game)
+            return studio:GetDiskChangeChecker()
+        end
+        return undefined
     end
 
     action OnToggleOn

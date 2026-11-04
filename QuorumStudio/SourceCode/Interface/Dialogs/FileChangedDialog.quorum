@@ -1,0 +1,229 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Game.Graphics.Label
+use Libraries.Containers.Array
+use Libraries.Development.Environment.Studio.DiskChangeChecker
+use Libraries.Development.Environment.Studio.Behaviors.FileChangedChoiceBehavior
+
+/*
+Asks about open files changed or deleted on disk by something other than
+Studio (01c), for DiskChangeChecker. One question, then the files (when
+more than one), then the buttons:
+
+- changed, with unsaved edits: Reload, Keep Mine;
+- deleted, no edits: Close Tab, Keep Tab;
+- deleted, with unsaved edits: Keep Tab (Save writes the file back);
+- changed on disk when saving: Reload, Overwrite, Cancel (no Reload for a
+  scene, which can't be reloaded yet).
+
+The safe choice (Keep Mine, Keep Tab, Cancel) is the last button, has the
+focus, is the Enter default, and is what Escape and the close button mean:
+however the dialog hides without another button, the answer is KEEP.
+Nothing is announced: the question is the dialog's description, and each
+button's name says what it does. Made in the Forms style, as
+TreeGitConfirmDialog and StageConfirmDialog are.
+*/
+class FileChangedDialog is Dialog
+    constant integer TEXT_SIZE = 16
+    constant number WIDTH_SHARE = 0.5
+    // Files listed by name; more are counted on one last line.
+    constant integer MAXIMUM_LINES = 8
+
+    DiskChangeChecker checker = undefined
+    Page page = undefined
+    Label questionLabel = undefined
+    Array<Label> lineLabels
+    Button safeButton = undefined
+    FileChangedChoiceBehavior keepBehavior
+    FileChangedChoiceBehavior reloadBehavior
+    FileChangedChoiceBehavior closeBehavior
+    FileChangedChoiceBehavior overwriteBehavior
+    integer chosen = 0
+    boolean reported = false
+
+    on create
+        SetModal(true)
+    end
+
+    /*
+    This action builds the dialog. Call it once, before Show.
+
+    Attribute: Parameter checkerValue Told the answer when the dialog hides.
+    Attribute: Parameter kind DiskChangeChecker's CHANGED, DELETED, DELETED_EDITED or SAVE_CONFLICT.
+    Attribute: Parameter names The files' names, at least one.
+    Attribute: Parameter canReload False when a file can't be reloaded (a scene): no Reload button.
+    */
+    action Setup(DiskChangeChecker checkerValue, integer kind, Array<text> names, boolean canReload)
+        checker = checkerValue
+        chosen = checker:KEEP
+        keepBehavior:Setup(me, checker:KEEP)
+        reloadBehavior:Setup(me, checker:RELOAD)
+        closeBehavior:Setup(me, checker:CLOSE_TAB)
+        overwriteBehavior:Setup(me, checker:OVERWRITE)
+
+        boolean many = names:GetSize() > 1
+        boolean deleted = (kind = checker:DELETED) or (kind = checker:DELETED_EDITED)
+        text title = "File Changed on Disk"
+        if deleted and many
+            title = "Files Deleted on Disk"
+        elseif deleted
+            title = "File Deleted on Disk"
+        elseif many
+            title = "Files Changed on Disk"
+        end
+        text question = GetQuestion(kind, names, canReload)
+        SetName(title)
+        SetDescription(question)
+        SetPercentageWidth(WIDTH_SHARE)
+
+        page = InitializeDefaultPage()
+        page:SetSkipLabelsInFocus(true)
+        // The words start at the left edge, not centered.
+        page:LeftAlignContent()
+        questionLabel = page:AddLabel("Question", question)
+        questionLabel:SetFontSize(TEXT_SIZE)
+        // The words sit inside the label's height, so the row gap shows
+        // between the question and the list.
+        questionLabel:SetPositionOnBaseLine(false)
+        if many
+            AddNameLines(names)
+        end
+
+        Grouping buttonGroup = page:AddGrouping("Choices")
+        buttonGroup:PositionFromBottom()
+        if kind = checker:CHANGED
+            AddChoice(buttonGroup, "Reload", reloadBehavior)
+            safeButton = AddChoice(buttonGroup, "Keep Mine", keepBehavior)
+        elseif kind = checker:DELETED
+            AddChoice(buttonGroup, "Close Tab", closeBehavior)
+            safeButton = AddChoice(buttonGroup, "Keep Tab", keepBehavior)
+        elseif kind = checker:DELETED_EDITED
+            safeButton = AddChoice(buttonGroup, "Keep Tab", keepBehavior)
+        else
+            if canReload
+                AddChoice(buttonGroup, "Reload", reloadBehavior)
+            end
+            AddChoice(buttonGroup, "Overwrite", overwriteBehavior)
+            safeButton = AddChoice(buttonGroup, "Cancel", keepBehavior)
+        end
+        // The safe button's look, as the dialog's default.
+        safeButton:SetInterfaceOptionsKey("DialogAcceptButton")
+        // Enter where no button has focus.
+        SetBehavior(keepBehavior)
+
+        PageHeightEstimate estimate
+        estimate:Start(page, WIDTH_SHARE)
+        estimate:AddLabel(questionLabel)
+        integer index = 0
+        repeat while index < lineLabels:GetSize()
+            estimate:AddLabel(lineLabels:Get(index))
+            index = index + 1
+        end
+        estimate:AddFooter(safeButton)
+        SetPixelHeight(estimate:GetHeight())
+    end
+
+    /*
+    This action is a button's answer: it's kept, and the dialog hides.
+
+    Attribute: Parameter choice DiskChangeChecker's KEEP, RELOAD, CLOSE_TAB or OVERWRITE.
+    */
+    action Choose(integer choice)
+        chosen = choice
+        Hide()
+    end
+
+    action OnShow
+        safeButton:Focus()
+    end
+
+    // Escape and the close button hide the dialog without Choose: KEEP.
+    action OnHide
+        if reported or checker = undefined
+            return now
+        end
+        reported = true
+        checker:DialogClosed(chosen)
+    end
+
+    private action AddChoice(Grouping buttonGroup, text name, FileChangedChoiceBehavior behavior) returns Button
+        Button button = buttonGroup:AddButton(name)
+        button:SetBehavior(behavior)
+        FitToWords(button)
+        return button
+    end
+
+    /*
+    A footer button whose name has more than one word sizes itself to its
+    words (FIT_CONTENTS, the Button default that AddButton turns off), so
+    its words never break onto a second line inside it. A one-word name
+    can't break, so it keeps the footer's minimum width.
+    */
+    private action FitToWords(Button button)
+        button:SetAutomaticFontSizing(false)
+        text name = button:GetName()
+        if name:Contains(" ")
+            button:SetHorizontalLayoutMode(button:parent:Control:FIT_CONTENTS)
+        end
+    end
+
+    // One label per file, up to MAXIMUM_LINES; the rest are counted.
+    private action AddNameLines(Array<text> names)
+        integer shown = names:GetSize()
+        if shown > MAXIMUM_LINES
+            shown = MAXIMUM_LINES - 1
+        end
+        integer index = 0
+        repeat while index < shown
+            AddLine(names:Get(index))
+            index = index + 1
+        end
+        integer rest = names:GetSize() - shown
+        if rest = 1
+            AddLine("and 1 more file")
+        elseif rest > 1
+            AddLine("and " + rest + " more files")
+        end
+    end
+
+    private action AddLine(text value)
+        Label line = page:AddLabel("File " + (lineLabels:GetSize() + 1), value)
+        line:SetFontSize(TEXT_SIZE)
+        lineLabels:Add(line)
+    end
+
+    private action GetQuestion(integer kind, Array<text> names, boolean canReload) returns text
+        boolean many = names:GetSize() > 1
+        text name = names:Get(0)
+        if kind = checker:CHANGED
+            if many
+                return "These files changed on disk, and their tabs have unsaved changes. Keep your versions, or reload them and lose your unsaved changes?"
+            end
+            return name + " changed on disk. Keep your version, or reload it and lose your unsaved changes?"
+        elseif kind = checker:DELETED
+            if many
+                return "These files were deleted on disk. Close their tabs, or keep the tabs open?"
+            end
+            return name + " was deleted on disk. Close its tab, or keep the tab open?"
+        elseif kind = checker:DELETED_EDITED
+            if many
+                return "These files were deleted on disk. Their tabs still have your unsaved changes, and Save writes each file back."
+            end
+            return name + " was deleted on disk. Its tab still has your unsaved changes, and Save writes the file back."
+        end
+        if many
+            if canReload
+                return "These files changed on disk since Studio last read them. Overwrite them with your versions, reload them and lose your changes, or cancel the save?"
+            end
+            return "These files changed on disk since Studio last read them. Overwrite them with your versions, or cancel the save?"
+        end
+        if canReload
+            return name + " changed on disk since Studio last read it. Overwrite it with your version, reload it and lose your changes, or cancel the save?"
+        end
+        return name + " changed on disk since Studio last read it. Overwrite it with your version, or cancel the save?"
+    end
+end
