@@ -9,7 +9,7 @@
 
 cd "$(dirname "$0")" || exit 1
 
-JAVA="/Applications/QuorumStudio.app/Contents/MacOS/Java/jdk/Contents/Home/bin/java"
+JAVA="/Applications/QuorumStudio.app/Contents/app/Java/jdk/Contents/Home/bin/java"
 AGENT="/Applications/YourKit Java Profiler.app/Contents/Resources/bin/mac/libyjpagent.dylib"
 SNAPSHOTS="$(pwd)/snapshots"
 
@@ -21,4 +21,4 @@ mkdir -p "$SNAPSHOTS"
 # dir=...           where to save it
 "$JAVA" -XstartOnFirstThread \
     "-agentpath:$AGENT=sampling,onexit=snapshot,dir=$SNAPSHOTS" \
-    -jar Run/Default.jar
+    -jar Run/QuorumStudio.jar

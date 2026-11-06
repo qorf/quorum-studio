@@ -22,6 +22,7 @@ use Libraries.Game.GameStateManager
 use Libraries.Game.Graphics.Label
 use Libraries.Game.Graphics.ColorGroup
 use Libraries.Containers.Array
+use Libraries.Containers.HashTable
 use Libraries.System.File
 use Libraries.Development.Versioning.TeamStatus
 use Libraries.Development.Versioning.TeamFileChange
@@ -34,6 +35,7 @@ use Libraries.Interface.Controls.ProgressBar
 use Libraries.Development.Environment.Studio.Behaviors.TeamCancelProgressBehavior
 use Libraries.Development.Environment.Resources
 use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Development.Environment.Projects.ProjectTree
 use Libraries.Development.Environment.Studio.Behaviors.Behaviors
@@ -106,6 +108,22 @@ class TeamTab is Tab
     // A refresh is waiting out the short delay after a save.
     boolean refreshSoon = false
     number refreshWait = 0
+    // Something changed while the tab wasn't showing, so its status is old.
+    // A status is read only while the tab shows, or on Refresh (Studio plan
+    // FileWatching.md, 2026-11-06); this one is read when it is next shown.
+    boolean outOfDate = false
+    // Whether the tab was showing on the last Update, to notice it being
+    // brought to the front.
+    boolean wasShowing = false
+    // Rows kept across rebuilds, by what they show (Studio plan
+    // TeamTabSpeed.md, fix 1): a row whose file and state didn't change is
+    // put back as it is, already laid out. rowsShown are this rebuild's;
+    // rowsBefore the last one's, which AddChangeGroup takes from.
+    HashTable<text, TeamFileItem> rowsShown
+    HashTable<text, TeamFileItem> rowsBefore
+    // What the shown rows were made from, to skip a rebuild that would
+    // change nothing.
+    text shownSignature = ""
 
     // Groups other steps add above git's, in order.
     Array<TeamGroupItem> sections
@@ -485,7 +503,14 @@ class TeamTab is Tab
         refreshQueued = false
         UpdateToPushSection()
         UpdatePushButton()
-        Rebuild()
+        // A status with the same rows as the one shown changes only the
+        // header (TeamTabSpeed.md, fix 1).
+        text signature = GetStatusSignature()
+        if signature not= "" and signature = shownSignature
+            UpdateHeader()
+        else
+            Rebuild()
+        end
     end
 
     /*
@@ -692,6 +717,7 @@ class TeamTab is Tab
     */
     action RequestRefresh
         refreshSoon = false
+        outOfDate = false
         if behaviors = undefined or refreshQueued
             return now
         end
@@ -707,6 +733,42 @@ class TeamTab is Tab
     action RequestRefreshSoon
         refreshSoon = true
         refreshWait = 0
+    end
+
+    /*
+    This action notes that the project may have changed while the tab isn't
+    showing. No status is read now; one is read when the tab is next brought
+    to the front (Studio plan FileWatching.md). Call it on the main thread.
+    */
+    action MarkOutOfDate
+        outOfDate = true
+    end
+
+    /*
+    This action is called when the tab is brought to the front: it reads a
+    status if the one shown is old, or there is none yet.
+    */
+    action Shown
+        if outOfDate or status = undefined
+            RequestRefresh()
+        end
+    end
+
+    /*
+    This action returns true if this tab is the one showing in the output
+    pane.
+    */
+    private action IsShowingNow returns boolean
+        GameStateManager showManager
+        if not (showManager:GetGame() is QuorumStudio)
+            return false
+        end
+        QuorumStudio showStudio = cast(QuorumStudio, showManager:GetGame())
+        OutputEditorTabPane pane = showStudio:GetOutputPane()
+        if pane = undefined
+            return false
+        end
+        return pane:IsTeamTabSelected()
     end
 
     /*
@@ -779,6 +841,12 @@ class TeamTab is Tab
             pendingStatus = undefined
             SetStatus(value)
         end
+        // Brought to the front: read a status if it is old (FileWatching.md).
+        boolean showing = IsShowingNow()
+        if showing and not wasShowing
+            Shown()
+        end
+        wasShowing = showing
         if pendingMonitor not= undefined
             progressMonitor = pendingMonitor
             pendingMonitor = undefined
@@ -1091,6 +1159,12 @@ class TeamTab is Tab
         picked:Empty()
         pickAnchor = -1
         pickSelectionKey = ""
+        // Kept rows (fix 1): last time's are taken from; unused ones go.
+        HashTable<text, TeamFileItem> previous = rowsBefore
+        rowsBefore = rowsShown
+        rowsShown = previous
+        rowsShown:Empty()
+        shownSignature = GetStatusSignature()
         ClearRows()
         UpdateHeader()
         ColorGroup mutedColor = GetMutedColor()
@@ -1126,6 +1200,10 @@ class TeamTab is Tab
             end
         end
 
+        // Every row is one line, so the list needn't lay out all of them to
+        // know its height: only the rows on screen are laid out, as they're
+        // drawn (Studio plan TeamTabSpeed.md, fix 2).
+        changesList:SetFixedLineHeight(MeasureRowHeight())
         // One layout for all the rows, as the Search Results tab does.
         changesList:Resize()
         changesList:SetScrollPercentageY(0)
@@ -1185,15 +1263,27 @@ class TeamTab is Tab
         end
         integer index = 0
         repeat while index < changes:GetSize()
-            TeamFileItem row
             TeamFileChange change = changes:Get(index)
-            row:Setup(change, group, mutedColor)
-            row:SetStageable(true)
-            PrepareRow(row)
-            row:SetActivationBehavior(openFileBehavior)
+            text rowKey = GetShownKey(key, change)
+            TeamFileItem row = undefined
+            if rowsBefore:HasKey(rowKey)
+                // Shows the same: kept as it is, already laid out (fix 1).
+                row = rowsBefore:RemoveKey(rowKey)
+                row:Reuse(change, group)
+            else
+                TeamFileItem made
+                row = made
+                row:Setup(change, group, mutedColor)
+                row:SetStageable(true)
+                PrepareRow(row)
+                row:SetActivationBehavior(openFileBehavior)
+            end
             if arrivedHere and recentPaths:Has(change:GetProjectPath())
                 row:SetNote(noteWords)
+            else
+                row:ClearNote()
             end
+            rowsShown:Add(rowKey, row)
             group:AddRow(row)
             index = index + 1
         end
@@ -1221,6 +1311,115 @@ class TeamTab is Tab
                 index = index + 1
             end
         end
+    end
+
+    /*
+    This action returns a row's key for keeping it (TeamTabSpeed.md, fix 1):
+    its group, path, and everything it shows. A row with the same key looks
+    the same, so it can be put back as it is.
+    */
+    private action GetShownKey(text groupKey, TeamFileChange change) returns text
+        return groupKey + "|" + change:GetProjectPath() + "|" + change:GetMark() + "|"
+            + change:GetStateWords() + "|" + change:GetFolder() + "|" + change:IsChangedAgain()
+    end
+
+    /*
+    This action returns what the rows would be made from: every change's
+    shown key, the number of sections, the folded groups, the "just staged"
+    paths and the push counts, or "" if the status isn't ready. Two equal signatures make the same rows
+    (TeamTabSpeed.md, fix 1).
+    */
+    private action GetStatusSignature returns text
+        if status = undefined or not status:IsReady()
+            return ""
+        end
+        text result = "" + sections:GetSize() + "|" + recentStaged
+        // The folded groups and the "just staged" paths change what is
+        // added, and the push counts change the "nothing to commit" lines.
+        integer index = 0
+        repeat while index < collapsedKeys:GetSize()
+            result = result + "|f:" + collapsedKeys:Get(index)
+            index = index + 1
+        end
+        index = 0
+        repeat while index < recentPaths:GetSize()
+            result = result + "|r:" + recentPaths:Get(index)
+            index = index + 1
+        end
+        StatusResult counts = status:GetResult()
+        if counts not= undefined
+            result = result + "|a:" + counts:GetAheadCount() + "|u:" + counts:HasUpstream()
+        end
+        result = result + AddSignature(GROUP_CONFLICTS, status:GetConflicts())
+        result = result + AddSignature(GROUP_STAGED, status:GetStaged())
+        result = result + AddSignature(GROUP_NOT_STAGED, status:GetNotStaged())
+        result = result + AddSignature(GROUP_UNTRACKED, status:GetUntracked())
+        return result
+    end
+
+    private action AddSignature(text groupKey, Array<TeamFileChange> changes) returns text
+        text result = ""
+        integer index = 0
+        repeat while index < changes:GetSize()
+            // Quorum text has no escapes, so rows are joined with "||".
+            result = result + "||" + GetShownKey(groupKey, changes:Get(index))
+            index = index + 1
+        end
+        return result
+    end
+
+    /*
+    This action returns the height of the tallest kind of row in the list:
+    the first group row, file row, message row and commit row are laid out
+    (they're near the top, so they would be laid out to be drawn anyway) and
+    the tallest is used (TeamTabSpeed.md, fix 2). It returns 0, which makes
+    the list measure every row as before, if none could be measured, such as
+    before the display is ready.
+    */
+    private action MeasureRowHeight returns number
+        number tallest = 0
+        boolean groupSeen = false
+        boolean fileSeen = false
+        boolean messageSeen = false
+        boolean commitSeen = false
+        integer index = 0
+        repeat while index < changesList:GetSize()
+            ListItem row = changesList:GetListItem(index)
+            boolean measure = false
+            if row is TeamGroupItem
+                measure = not groupSeen
+                groupSeen = true
+            elseif row is TeamFileItem
+                measure = not fileSeen
+                fileSeen = true
+            elseif row is TeamMessageItem
+                measure = not messageSeen
+                messageSeen = true
+            elseif row is TeamCommitItem
+                measure = not commitSeen
+                commitSeen = true
+            else
+                // A kind of row this doesn't know: measure each one.
+                measure = true
+            end
+            if measure
+                if row:GetDefaultLayoutProperties():NeedsRendering()
+                    row:LoadGraphics(row:GetDefaultLayoutProperties())
+                end
+                if row:NeedsLayout()
+                    row:Resize()
+                end
+                if row:GetHeight() > tallest
+                    tallest = row:GetHeight()
+                end
+            end
+            if groupSeen and fileSeen and messageSeen and commitSeen
+                // Every known kind is measured.
+                index = changesList:GetSize()
+            end
+            index = index + 1
+        end
+        return tallest
     end
 
     // Removes every row, from the end, which is quick for a List.

@@ -186,19 +186,44 @@ class QuorumProjectView is ProjectView
 
     private action GetItem(File source) returns ProjectTreeItem
         ProjectTreeItem value
-        Array<File> files = source:GetDirectoryListing()
+        Array<File> listing = source:GetDirectoryListing()
 
-        FileSorter sorter
+        // Folders first, then files, each sorted by name. Each entry is
+        // asked once whether it's a folder, here, rather than in every
+        // comparison of the sort, which spent almost all of the Project
+        // Tree's sorting time on file system checks (Studio plan
+        // StartupTime.md, "Sorting the Project Tree", 2026-11-06).
+        Array<File> folders
+        Array<File> files
+        if listing not= undefined
+            integer entry = 0
+            repeat while entry < listing:GetSize()
+                File found = listing:Get(entry)
+                if found:IsDirectory()
+                    folders:Add(found)
+                else
+                    files:Add(found)
+                end
+                entry = entry + 1
+            end
+        end
+        FileNameSorter sorter
+        folders:Sort(sorter)
         files:Sort(sorter)
+
         Array<ProjectTreeItem> items
+        i = 0
+        repeat while i < folders:GetSize()
+            ProjectTreeItem directory = GetItem(folders:Get(i))
+            items:Add(directory)
+            i = i + 1
+        end
+
         i = 0
         repeat while i < files:GetSize()
             File file = files:Get(i)
 
-            if file:IsDirectory()
-                ProjectTreeItem directory = GetItem(file)
-                items:Add(directory)
-            elseif file:IsHidden()
+            if file:IsHidden()
                 //for now do nothing if the file is hidden
             else
                 ProjectTreeItem item

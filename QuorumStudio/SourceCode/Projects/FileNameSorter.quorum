@@ -1,0 +1,20 @@
+package Libraries.Development.Environment.Projects
+
+use Libraries.Containers.Support.Comparison
+use Libraries.System.File
+
+/*
+FileNameSorter orders files by name only. It never asks the disk anything,
+so sorting a folder's entries costs no file system checks; folders and files
+are separated before sorting, each checked once (Studio plan StartupTime.md,
+"Sorting the Project Tree", 2026-11-06). FileSorter, which checked whether
+each file was a folder in every comparison, spent almost all of the Project
+Tree's sorting time on those checks.
+*/
+class FileNameSorter is Comparison
+    action Compare(Object a, Object b) returns integer
+        File left = cast(File, a)
+        File right = cast(File, b)
+        return left:GetFileName():Compare(right:GetFileName())
+    end
+end

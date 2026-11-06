@@ -172,44 +172,26 @@ class OutputEditorTabPane is TabPane
         return selection:GetTab():Equals(teamTab)
     end
 
-    // Asks the Team tab for a new status, if it's open; if it isn't, the
-    // Project Tree reads one for its marks. Main thread only.
+    // Asks for a new git status only if the Team tab is showing; otherwise
+    // the Team tab and the Project Tree's marks just become out of date, and
+    // a status is read when the tab is next brought to the front, or on
+    // Refresh (Studio plan FileWatching.md, the user's rule, 2026-11-06).
+    // The Team tab passes each status it reads to the tree. Main thread only.
     action RefreshTeamTab
-        if IsTeamTabOpen()
+        if IsTeamTabSelected()
             teamTab:RequestRefresh()
         else
-            RefreshTreeGitMarks()
+            teamTab:MarkOutOfDate()
         end
     end
 
-    // The same, a moment later, so several saves run one status. With the
-    // Team tab closed, the tree reads at once.
+    // The same, a moment later while the tab shows, so several saves run one
+    // status.
     action RefreshTeamTabSoon
-        if IsTeamTabOpen()
+        if IsTeamTabSelected()
             teamTab:RequestRefreshSoon()
         else
-            RefreshTreeGitMarks()
-        end
-    end
-
-    // The selected project's marks in the Project Tree (Tree T2).
-    private action RefreshTreeGitMarks
-        GameStateManager treeManager
-        if not (treeManager:GetGame() is QuorumStudio)
-            return now
-        end
-        QuorumStudio studio = cast(QuorumStudio, treeManager:GetGame())
-        StudioFocusManager focus = studio:GetStudioFocusManager()
-        if focus = undefined
-            return now
-        end
-        Project project = focus:GetProjectFocus()
-        if project is QuorumProject
-            QuorumProject quorumProject = cast(QuorumProject, project)
-            ProjectTree tree = studio:GetProjectTree()
-            if tree not= undefined
-                tree:RefreshGitMarks(quorumProject)
-            end
+            teamTab:MarkOutOfDate()
         end
     end
     

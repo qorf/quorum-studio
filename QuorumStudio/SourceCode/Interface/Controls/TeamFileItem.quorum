@@ -145,8 +145,12 @@ class TeamFileItem is ListItem
         return picked
     end
 
-    // "just staged" (A1), or "" to hide it.
+    // "just staged" (A1), or "" to hide it. The same note again changes
+    // nothing, so a kept row isn't laid out again (TeamTabSpeed.md, fix 1).
     action SetNote(text value)
+        if note:GetText() = value
+            return now
+        end
         note:SetText(value)
         if value = ""
             note:Hide()
@@ -154,6 +158,27 @@ class TeamFileItem is ListItem
             note:Show()
         end
         RequestLayout()
+    end
+
+    /*
+    This action gives a kept row (Studio plan TeamTabSpeed.md, fix 1) this
+    rebuild's change and group. What it shows is the same, so nothing is
+    laid out again. A kept row is never picked: the picked rows are emptied
+    on a rebuild.
+    */
+    action Reuse(TeamFileChange value, TeamGroupItem groupRow)
+        change = value
+        group = groupRow
+        if picked
+            SetPicked(false)
+        end
+    end
+
+    // Hides "just staged" if it shows, without laying the row out otherwise.
+    action ClearNote
+        if note:GetText() not= ""
+            SetNote("")
+        end
     end
 
     action SetStageable(boolean value)
