@@ -286,37 +286,51 @@ foundBlock = editor:AddTextStyle("Lexer" + i, style, searchBlock)
         if table not= undefined
             Class clazzInFile = table:GetClassInFile(path:GetAbsolutePath())
             if clazzInFile not= undefined
+                // AddTextStyle only searches forward from searchBlock, but
+                // fields come in hash-table order. So every use is collected
+                // first, sorted, and added in file order. Added field by field,
+                // a use above the last one styled was skipped and stayed
+                // uncolored.
+                Array<TextStyle> fieldUses
                 Iterator<Variable> variables = clazzInFile:GetVariables()
                 repeat while variables not= undefined and variables:HasNext()
                     Variable var = variables:Next()
-    
+
                     Iterator<Location> uses = var:GetUseLocationIterator(var:GetFile())
                     repeat while uses not= undefined and uses:HasNext()
                         Location location = uses:Next()
                         if location:GetFile():GetAbsolutePath() = path:GetAbsolutePath()
                             integer start = location:GetIndex()
                             integer finish = location:GetIndexEnd()
-    
+
                             TextStyle style
                             style:SetIndex(start)
                             style:SetSize(finish - start + 1)
                             style:SetColor(fieldColor)
-foundBlock = editor:AddTextStyle("Semantics" + i, style, searchBlock)
-                    if foundBlock not= undefined
-                        searchBlock = foundBlock
-                    end
-                            i = i + 1
+                            fieldUses:Add(style)
                         end
                     end
-    
+
                     integer start = var:GetIndex()
                     integer finish = var:GetIndexEnd()
-    
+
                     TextStyle style
                     style:SetIndex(start)
                     style:SetSize(finish - start + 1)
                     style:SetColor(fieldColor)
-foundBlock = editor:AddTextStyle("SemanticsName", style)
+                    foundBlock = editor:AddTextStyle("SemanticsName", style)
+                end
+
+                TextStyleIndexComparison byIndex
+                fieldUses:Sort(byIndex)
+                integer useIndex = 0
+                repeat while useIndex < fieldUses:GetSize()
+                    foundBlock = editor:AddTextStyle("Semantics" + i, fieldUses:Get(useIndex), searchBlock)
+                    if foundBlock not= undefined
+                        searchBlock = foundBlock
+                    end
+                    i = i + 1
+                    useIndex = useIndex + 1
                 end
             end
         end
