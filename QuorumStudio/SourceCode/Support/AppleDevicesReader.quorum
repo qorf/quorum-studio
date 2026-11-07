@@ -10,7 +10,9 @@ use Libraries.System.SystemHelper
     Simulators come from xcrun simctl, which takes about 0.2 seconds, so they are
     looked up again whenever the list is needed (RefreshSimulators). Connected
     devices come from xcrun xctrace, which takes a few seconds, so they are looked
-    up at startup and before sending to a device (RefreshPhysicalDevices).
+    up before sending to a device (RefreshPhysicalDevices), and at startup on a
+    background thread (RefreshAppleDevicesBehavior), so the window doesn't wait.
+    Until that first refresh finishes, GetAvailableDevices returns an empty list.
 
     On recent Xcode versions, the iOS Simulator is a separate download. Without it
     there are no simulators, and HasSimulatorRuntime returns false.
@@ -29,10 +31,6 @@ shared class AppleDevicesReader
     text newestIPhoneName = ""
     integer bootAttempts = 3
     integer bootRetryDelay = 3000 //milliseconds
-
-    on create
-        Refresh()
-    end
 
     /* Simulators first, newest iOS version first, then connected devices. */
     action GetAvailableDevices returns Array<AppleDevice>

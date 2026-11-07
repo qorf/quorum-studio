@@ -1,0 +1,16 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Mobile.AppleDevicesReader
+
+/*
+    Reads the iOS simulators and connected devices on a background thread at
+    startup. xcrun xctrace takes about 2 seconds, which the window used to wait
+    for while the first project opened.
+*/
+class RefreshAppleDevicesBehavior is QuorumStudioBehavior
+    action Run(BehaviorEvent event)
+        AppleDevicesReader reader
+        reader:Refresh()
+    end
+end

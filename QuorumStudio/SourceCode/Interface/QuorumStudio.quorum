@@ -28,6 +28,7 @@ use Libraries.Game.InputTable
 use Libraries.Development.Environment.Studio.Interface.KeyMap
 use Libraries.Containers.Iterator
 use Libraries.Development.Environment.Studio.Behaviors.ScanLibraryBehavior
+use Libraries.Development.Environment.Studio.Behaviors.RefreshAppleDevicesBehavior
 use Libraries.Development.Environment.Studio.Build.BuildManager
 use Libraries.Concurrency.ThreadRunner
 use Libraries.System.SystemHelper
@@ -388,9 +389,8 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         return undefined
     end
 
-    /* When Scanning starts, because it is in another thread anyway, check for available devices on bootup. */
+    /* The library scan has started. (The iOS device list is read by RefreshAppleDevicesBehavior.) */
     action Started
-        AppleDevicesReader reader
     end
 
     action Stopped
@@ -472,6 +472,12 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         buildLoop:SetBuildManager(builder)
 
         indexThread:Add(buildLoop)
+
+        // The iOS device list takes about 2 seconds to read (xcrun), so it's
+        // read on its own thread rather than while the project opens.
+        ThreadRunner networkRunner = behaviors:GetNetworkThreadRunner()
+        RefreshAppleDevicesBehavior refreshDevices
+        networkRunner:Add(refreshDevices)
         FocusWindow()
 
         if options:IsShowingFramesPerSecondCounter()

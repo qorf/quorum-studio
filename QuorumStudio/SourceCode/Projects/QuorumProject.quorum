@@ -388,30 +388,15 @@ public constant text PYTHON_SPIKE_PROGRAM_SLOT = "PythonSpikeProgramSlot"
     end
 
     action HasIOSDeviceSignature returns boolean
-        if me:iosDeviceUniqueID not= undefined and not me:iosDeviceUniqueID:IsEmpty()
-            return true
-        end
-        return false
+        text signature = GetIOSDeviceSignature()
+        return not signature:IsEmpty()
     end
     action SetIOSDevice(text value)
         SetPropertyValue(IOS_DEVICE, value)
-
-        //once we have the value, if we are on mac
-        //get the UUID for the device
-        Properties properties
-        if properties:IsMac()
-            AppleDevicesReader reader
-            Array<AppleDevice> devices = reader:GetAvailableDevices()
-            i = 0
-            repeat while i < devices:GetSize()
-                AppleDevice device = devices:Get(i)
-                if device:GetName() = value
-                    me:iosDeviceUniqueID = device:GetSignature()
-                    i = devices:GetSize()
-                end
-                i = i + 1
-            end
-        end
+        // The device's ID is looked up when it's asked for
+        // (GetIOSDeviceSignature), so opening a project doesn't wait for the
+        // iOS device list.
+        me:iosDeviceUniqueID = ""
     end
 
     action GetIOSBundle returns text
@@ -1555,7 +1540,24 @@ detect error
         This varies by physical machine and is thus not stored in the project properties.
     */
     action GetIOSDeviceSignature returns text
-        return iosDeviceUniqueID
+        if me:iosDeviceUniqueID:IsEmpty()
+            Properties properties
+            if properties:IsMac()
+                text name = GetIOSDevice()
+                AppleDevicesReader reader
+                Array<AppleDevice> devices = reader:GetAvailableDevices()
+                i = 0
+                repeat while i < devices:GetSize()
+                    AppleDevice device = devices:Get(i)
+                    if device:GetName() = name
+                        me:iosDeviceUniqueID = device:GetSignature()
+                        i = devices:GetSize()
+                    end
+                    i = i + 1
+                end
+            end
+        end
+        return me:iosDeviceUniqueID
     end
 
 end
