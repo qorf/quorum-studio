@@ -17,6 +17,8 @@ use Libraries.Development.Environment.Studio.Interface.EditorTab
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Interface.Controls.Blocks.CodeEditor
 use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Interface.Item
 
 /*
 After git changed files on disk (a pull, a branch switch): reloads the
@@ -282,10 +284,150 @@ class ProjectFilesRefresher
             return now
         end
 
+        // Where the selection is now, so it can be put back (or as close as
+        // possible) after the rebuild. Without this, Tree:Remove moved the
+        // selection to the next row whenever it was inside the old item.
+        TreeSelection treeSelection = projectTree:GetSelection()
+        Array<TreeItem> selectedPath = treeSelection:GetPath()
+        boolean nothingSelected = selectedPath:IsEmpty()
+        boolean selectionInside = false
+        boolean focusInside = false
+        text selectedFile = ""
+        text parentFile = ""
+        integer selectedIndex = -1
+        if not nothingSelected
+            if selectedPath:Get(0) = oldItem
+                selectionInside = true
+                TreeItem selectedItem = selectedPath:GetFromEnd()
+                selectedFile = RowPath(selectedItem)
+                TreeItem parentItem = selectedItem:GetParentTreeItem()
+                if parentItem not= undefined
+                    parentFile = RowPath(parentItem)
+                    selectedIndex = ChildIndex(parentItem, selectedItem)
+                end
+                Item focused = studio:GetFocus()
+                focusInside = IsInside(focused, oldItem)
+            end
+        end
+
+        // The new item goes in first, opened as the old one was, and gets the
+        // selection before the old one is removed. Tree:Remove reads the
+        // selection's first row, so it must not be empty or inside oldItem.
         HashTable<text, text> expand = projectTree:GetExpandState()
-        projectTree:Remove(oldItem)
         projectTree:Add(counter, treeItem)
         projectTree:LoadExpandState(expand)
+
+        TreeItem restored = undefined
+        if selectionInside or nothingSelected
+            restored = FindNearestRow(treeItem, selectedFile, parentFile, selectedIndex)
+            projectTree:Select(restored:GetTreePath())
+        end
+
+        projectTree:Remove(oldItem)
+
+        if nothingSelected
+            projectTree:Deselect()
+        elseif focusInside and restored not= undefined
+            restored:Focus()
+        end
+    end
+
+    // A tree row's file path, or "" for a row with no file.
+    private action RowPath(TreeItem row) returns text
+        if not (row is ProjectTreeItem)
+            return ""
+        end
+        ProjectTreeItem projectRow = cast(ProjectTreeItem, row)
+        File file = projectRow:GetFile()
+        if file = undefined
+            return ""
+        end
+        return file:GetAbsolutePath()
+    end
+
+    // Where a row sits among its parent's rows, or -1.
+    private action ChildIndex(TreeItem parentItem, TreeItem child) returns integer
+        integer index = 0
+        Iterator<TreeItem> children = parentItem:GetTreeItems()
+        repeat while children:HasNext()
+            if children:Next() = child
+                return index
+            end
+            index = index + 1
+        end
+        return -1
+    end
+
+    // Whether an item is a row inside root (or root itself).
+    private action IsInside(Item value, TreeItem root) returns boolean
+        if not (value is TreeItem)
+            return false
+        end
+        TreeItem row = cast(TreeItem, value)
+        repeat while row not= undefined
+            if row = root
+                return true
+            end
+            row = row:GetParentTreeItem()
+        end
+        return false
+    end
+
+    // The row for a file path under root, searching only open folders (a
+    // selected row is always visible), or undefined.
+    private action FindRow(TreeItem root, text path) returns TreeItem
+        if path = ""
+            return undefined
+        end
+        if RowPath(root) = path
+            return root
+        end
+        if not root:IsOpen()
+            return undefined
+        end
+        Iterator<TreeItem> children = root:GetTreeItems()
+        repeat while children:HasNext()
+            TreeItem found = FindRow(children:Next(), path)
+            if found not= undefined
+                return found
+            end
+        end
+        return undefined
+    end
+
+    /*
+    The row to select after a rebuild: the same file if it's still there;
+    otherwise the row now at the same place in the same folder (the file
+    was deleted or renamed), or the folder itself, or the project's row.
+    */
+    private action FindNearestRow(TreeItem projectItem, text selectedFile, text parentFile, integer selectedIndex) returns TreeItem
+        TreeItem same = FindRow(projectItem, selectedFile)
+        if same not= undefined
+            return same
+        end
+        TreeItem folder = FindRow(projectItem, parentFile)
+        if folder = undefined
+            return projectItem
+        end
+        if folder:IsOpen() and selectedIndex >= 0
+            integer count = folder:GetSize()
+            if count > 0
+                integer index = selectedIndex
+                if index >= count
+                    index = count - 1
+                end
+                integer position = 0
+                Iterator<TreeItem> children = folder:GetTreeItems()
+                repeat while children:HasNext()
+                    TreeItem child = children:Next()
+                    if position = index
+                        return child
+                    end
+                    position = position + 1
+                end
+            end
+        end
+        return folder
     end
 
     action GetReloadedCount returns integer

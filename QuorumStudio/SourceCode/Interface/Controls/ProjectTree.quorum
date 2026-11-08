@@ -111,8 +111,12 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
                 Select(curr:GetTreePath())
                 return true
             end
+            // Keep looking in the next folders if it isn't in this one (this
+            // used to return after the first open folder, found or not).
             if curr:IsOpen()
-                return LoadSelection(path, curr)
+                if LoadSelection(path, curr)
+                    return true
+                end
             end
         end
         return false
