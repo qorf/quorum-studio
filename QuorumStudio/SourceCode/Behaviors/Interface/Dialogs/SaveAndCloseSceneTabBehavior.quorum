@@ -1,0 +1,34 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.SaveBeforeClosingDialog
+use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
+use Libraries.Interface.Controls.Tab
+
+/*
+The SaveAndCloseSceneTabBehavior is the Save button of the Save Before
+Closing dialog when one scene tab is closed with changes: the scene is
+saved, then its tab closes.
+*/
+class SaveAndCloseSceneTabBehavior is SaveChangesBehavior
+    SaveBeforeClosingDialog dialog = undefined
+    VisualEditorTab tab = undefined
+
+    action SetDialog(SaveBeforeClosingDialog dialog)
+        me:dialog = dialog
+    end
+
+    action SetTab(VisualEditorTab tab)
+        me:tab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if dialog not= undefined
+            dialog:Hide()
+        end
+        if tab not= undefined and tab:GetTabPane() not= undefined
+            tab:SetExitFlag(tab:SAVE_CHANGES)
+            tab:GetTabPane():Remove(cast(Tab, tab))
+        end
+    end
+end

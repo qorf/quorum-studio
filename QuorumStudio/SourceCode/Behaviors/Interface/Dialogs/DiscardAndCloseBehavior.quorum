@@ -8,6 +8,8 @@ use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Interface.Controls.Tab
 use Libraries.Containers.Array
 use Libraries.Interface.Controls.TabBar
+use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
+use Libraries.Containers.Iterator
 
 class DiscardAndCloseBehavior is DiscardChangesBehavior, CloseTabsSharedParent
     SaveBeforeClosingDialog dialog = undefined
@@ -16,6 +18,23 @@ class DiscardAndCloseBehavior is DiscardChangesBehavior, CloseTabsSharedParent
     end
 
     action Run(BehaviorEvent event)
+        // Closing all: the scenes' changes were already discarded in this
+        // dialog, so closing each scene tab doesn't ask again. (Closing the
+        // others removes their tabs directly, without asking.)
+        if not IsIgnoreCurrent()
+            GameStateManager manager
+            QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+            CodeEditorTabPane tabPane = studio:GetTabPane()
+            Iterator<Tab> tabs = tabPane:GetOpenTabIterator()
+            repeat while tabs:HasNext()
+                Tab tab = tabs:Next()
+                if tab is VisualEditorTab
+                    VisualEditorTab sceneTab = cast(VisualEditorTab, tab)
+                    sceneTab:SetExitFlag(sceneTab:DISCARD_CHANGES)
+                end
+            end
+        end
+
         if IsIgnoreCurrent()
             CloseOtherTabs()
         else

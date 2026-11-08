@@ -6,6 +6,11 @@ use Libraries.Development.Environment.Studio.Interface.GoToLineDialog
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Interface.Item2D
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.Scenes.SceneEditor
+use Libraries.Interface.Controls.Scenes.SceneConstants
+use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 
 class GoToLineBehavior is QuorumStudioBehavior
@@ -14,6 +19,21 @@ class GoToLineBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
         QuorumStudio studio = GetMainApplication()
         CodeEditorTabPane tabPane = studio:GetTabPane()
+
+        // A scene has no lines. There, the same key is the scene's grid key
+        // (it reaches here when the focus is on the scene's tab rather than
+        // in the scene), so it turns the scene's grid on or off instead.
+        TabPaneSelection selection = tabPane:GetSelection()
+        if selection not= undefined and selection:GetTab() is VisualEditorTab
+            VisualEditorTab sceneTab = cast(VisualEditorTab, selection:GetTab())
+            SceneEditor editor = sceneTab:GetSceneEditor()
+            if editor not= undefined
+                SceneConstants constants
+                editor:RunCommand(constants:COMMAND_GRID_TOGGLE)
+            end
+            return now
+        end
+
         Item2D tabbedItem = tabPane:GetCurrentItem()
 
         if tabbedItem not= undefined

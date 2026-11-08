@@ -233,7 +233,15 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         changes to the files themselves.
         or CANCEL EXIT in which the dialog is closed and the exitFlag is reset to true from the cancel exit behavior
         so that the next time the user goes to exit QuroumStudio they will be prompted with the dialog again.*/
-        if codeTabs:GetDirtyTabsCount() > 0 and (openSaveBeforeClosingBehavior:GetExitFlag()) 
+        integer dirtyCount = 0
+        check
+            dirtyCount = codeTabs:GetDirtyTabsCount()
+        detect e
+            logger:Log("Counting changed tabs failed: " + e:GetErrorMessage())
+            // Unsure what changed, so ask rather than lose work.
+            dirtyCount = 1
+        end
+        if dirtyCount > 0 and (openSaveBeforeClosingBehavior:GetExitFlag())
             openSaveBeforeClosingBehavior:Run()
             SaveBeforeClosingDialog dialog = openSaveBeforeClosingBehavior:GetDialog()
             return false

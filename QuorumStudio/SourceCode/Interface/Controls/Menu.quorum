@@ -24,6 +24,9 @@ use Libraries.Development.Environment.Studio.Behaviors.CheckForUpdatesBehavior
 use Libraries.Development.Environment.Studio.Behaviors.AboutBoxBehavior
 use Libraries.System.Properties
 use Libraries.Development.Environment.Studio.Behaviors.OpenLogBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SceneMenuBehavior
+use Libraries.Development.Environment.Studio.Interface.StudioSceneEditorKeys
+use Libraries.Interface.Controls.Scenes.SceneConstants
 
 class Menu is MenuBar, SelectionListener
     KeyboardEvent keys
@@ -31,6 +34,8 @@ class Menu is MenuBar, SelectionListener
     MenuItem editMenu
     MenuItem viewMenu
     MenuItem navigateMenu
+    // The scene editor's actions, one step each (Scenes menu).
+    MenuItem scenesMenu
     MenuItem teamMenu
     MenuItem runMenu
     MenuItem windowsMenu
@@ -72,6 +77,7 @@ class Menu is MenuBar, SelectionListener
         editMenu:SetShortcut(keyMap:GetEditMenuKey())
         viewMenu:SetShortcut(keyMap:GetViewMenuKey())
         navigateMenu:SetShortcut(keyMap:GetNavigateMenuKey())
+        scenesMenu:SetShortcut(keyMap:GetScenesMenuKey())
         runMenu:SetShortcut(keyMap:GetRunMenuKey())
         teamMenu:SetShortcut(keyMap:GetTeamMenuKey())
         windowsMenu:SetShortcut(keyMap:GetWindowsMenuKey())
@@ -100,6 +106,7 @@ class Menu is MenuBar, SelectionListener
         SetupEditMenu()
         SetupViewMenu()
         SetupNavigateMenu()
+        SetupScenesMenu()
         SetupRunMenu()
         SetupTeamMenu()
         SetupWindowsMenu()
@@ -109,6 +116,7 @@ class Menu is MenuBar, SelectionListener
         editMenu:SetMnemonic("e")
         viewMenu:SetMnemonic("v")
         navigateMenu:SetMnemonic("n")
+        scenesMenu:SetMnemonic("c")
         runMenu:SetMnemonic("r")
         teamMenu:SetMnemonic("t")
         windowsMenu:SetMnemonic("w")
@@ -119,6 +127,7 @@ class Menu is MenuBar, SelectionListener
         menuItems:Add(editMenu)
         menuItems:Add(viewMenu)
         menuItems:Add(navigateMenu)
+        menuItems:Add(scenesMenu)
         menuItems:Add(runMenu)
         menuItems:Add(teamMenu)
         menuItems:Add(windowsMenu)
@@ -393,6 +402,168 @@ class Menu is MenuBar, SelectionListener
 
         navigateMenu:SetName("Navigate")
         navigateMenu:Add(navigateItems)
+    end
+
+    /*
+        Makes the Scenes menu: the scene editor's actions, grouped as
+        Camera, Cursor, Selection, Terrain, Grid, Panels and Say. Each item
+        runs one step of its action in the scene in the selected tab
+        (SceneEditor:RunCommand), and shows the key that does it, from the
+        user's scene keys. The key is shown as a label only; the scene
+        editor's own input tables handle the keys.
+    */
+    private action SetupScenesMenu
+        StudioSceneEditorKeys sceneKeys
+        sceneKeys:SetKeyMap(keyMap)
+        SceneConstants constants
+        Array<MenuItem> scenesItems
+
+        Array<MenuItem> cameraItems
+        AddSceneItem(cameraItems, "Look Left", constants:COMMAND_LOOK_LEFT, sceneKeys:GetCameraLookLeftKey())
+        AddSceneItem(cameraItems, "Look Right", constants:COMMAND_LOOK_RIGHT, sceneKeys:GetCameraLookRightKey())
+        AddSceneItem(cameraItems, "Look Up", constants:COMMAND_LOOK_UP, sceneKeys:GetCameraLookUpKey())
+        AddSceneItem(cameraItems, "Look Down", constants:COMMAND_LOOK_DOWN, sceneKeys:GetCameraLookDownKey())
+        AddSceneItem(cameraItems, "Slide Left", constants:COMMAND_SLIDE_LEFT, sceneKeys:GetCameraSlideLeftKey())
+        AddSceneItem(cameraItems, "Slide Right", constants:COMMAND_SLIDE_RIGHT, sceneKeys:GetCameraSlideRightKey())
+        AddSceneItem(cameraItems, "Slide Up", constants:COMMAND_SLIDE_UP, sceneKeys:GetCameraSlideUpKey())
+        AddSceneItem(cameraItems, "Slide Down", constants:COMMAND_SLIDE_DOWN, sceneKeys:GetCameraSlideDownKey())
+        AddSceneItem(cameraItems, "Orbit Left", constants:COMMAND_ORBIT_LEFT, sceneKeys:GetCameraOrbitLeftKey())
+        AddSceneItem(cameraItems, "Orbit Right", constants:COMMAND_ORBIT_RIGHT, sceneKeys:GetCameraOrbitRightKey())
+        AddSceneItem(cameraItems, "Orbit Up", constants:COMMAND_ORBIT_UP, sceneKeys:GetCameraOrbitUpKey())
+        AddSceneItem(cameraItems, "Orbit Down", constants:COMMAND_ORBIT_DOWN, sceneKeys:GetCameraOrbitDownKey())
+        AddSceneItem(cameraItems, "Zoom In", constants:COMMAND_ZOOM_IN, sceneKeys:GetCameraZoomInKey())
+        AddSceneItem(cameraItems, "Zoom Out", constants:COMMAND_ZOOM_OUT, sceneKeys:GetCameraZoomOutKey())
+        AddSceneItem(cameraItems, "Point at Selection", constants:COMMAND_POINT_AT_SELECTION, undefined)
+        AddSceneSubmenu(scenesItems, "Camera", "a", cameraItems)
+
+        Array<MenuItem> cursorItems
+        AddSceneItem(cursorItems, "Move Left", constants:COMMAND_CURSOR_LEFT, sceneKeys:GetSelectionMoveLeft3DKey())
+        AddSceneItem(cursorItems, "Move Right", constants:COMMAND_CURSOR_RIGHT, sceneKeys:GetSelectionMoveRight3DKey())
+        AddSceneItem(cursorItems, "Move Forward", constants:COMMAND_CURSOR_FORWARD, sceneKeys:GetSelectionMoveForward3DKey())
+        AddSceneItem(cursorItems, "Move Backward", constants:COMMAND_CURSOR_BACKWARD, sceneKeys:GetSelectionMoveBackward3DKey())
+        AddSceneItem(cursorItems, "Move Up", constants:COMMAND_CURSOR_UP, sceneKeys:GetSelectionMoveUp3DKey())
+        AddSceneItem(cursorItems, "Move Down", constants:COMMAND_CURSOR_DOWN, sceneKeys:GetSelectionMoveDown3DKey())
+        AddSceneItem(cursorItems, "Larger Cursor", constants:COMMAND_CURSOR_LARGER, sceneKeys:GetCursorSizeUpKey())
+        AddSceneItem(cursorItems, "Smaller Cursor", constants:COMMAND_CURSOR_SMALLER, sceneKeys:GetCursorSizeDownKey())
+        AddSceneItem(cursorItems, "Select Items at Cursor", constants:COMMAND_CURSOR_SELECT, sceneKeys:GetCursorSelectItemsKey())
+        AddSceneSubmenu(scenesItems, "Cursor", "c", cursorItems)
+
+        Array<MenuItem> selectionItems
+        AddSceneItem(selectionItems, "Move Left", constants:COMMAND_SELECTION_LEFT, sceneKeys:GetSelectionMoveLeft3DKey())
+        AddSceneItem(selectionItems, "Move Right", constants:COMMAND_SELECTION_RIGHT, sceneKeys:GetSelectionMoveRight3DKey())
+        AddSceneItem(selectionItems, "Move Forward", constants:COMMAND_SELECTION_FORWARD, sceneKeys:GetSelectionMoveForward3DKey())
+        AddSceneItem(selectionItems, "Move Backward", constants:COMMAND_SELECTION_BACKWARD, sceneKeys:GetSelectionMoveBackward3DKey())
+        AddSceneItem(selectionItems, "Move Up", constants:COMMAND_SELECTION_UP, sceneKeys:GetSelectionMoveUp3DKey())
+        AddSceneItem(selectionItems, "Move Down", constants:COMMAND_SELECTION_DOWN, sceneKeys:GetSelectionMoveDown3DKey())
+        AddSceneItem(selectionItems, "Turn Left", constants:COMMAND_SELECTION_TURN_LEFT, sceneKeys:GetSelectionRotateYawLeftKey())
+        AddSceneItem(selectionItems, "Turn Right", constants:COMMAND_SELECTION_TURN_RIGHT, sceneKeys:GetSelectionRotateYawRightKey())
+        AddSceneItem(selectionItems, "Turn Up", constants:COMMAND_SELECTION_TURN_UP, sceneKeys:GetSelectionRotatePitchUpKey())
+        AddSceneItem(selectionItems, "Turn Down", constants:COMMAND_SELECTION_TURN_DOWN, sceneKeys:GetSelectionRotatePitchDownKey())
+        AddSceneItem(selectionItems, "Roll Left", constants:COMMAND_SELECTION_ROLL_LEFT, sceneKeys:GetSelectionRotateRollLeftKey())
+        AddSceneItem(selectionItems, "Roll Right", constants:COMMAND_SELECTION_ROLL_RIGHT, sceneKeys:GetSelectionRotateRollRightKey())
+        AddSceneItem(selectionItems, "Larger", constants:COMMAND_SELECTION_LARGER, sceneKeys:GetSelectionScaleUpKey())
+        AddSceneItem(selectionItems, "Smaller", constants:COMMAND_SELECTION_SMALLER, sceneKeys:GetSelectionScaleDownKey())
+        AddSceneItem(selectionItems, "Stretch X", constants:COMMAND_SELECTION_STRETCH_X, sceneKeys:GetSelectionScaleXUpKey())
+        AddSceneItem(selectionItems, "Shrink X", constants:COMMAND_SELECTION_SHRINK_X, sceneKeys:GetSelectionScaleXDownKey())
+        AddSceneItem(selectionItems, "Stretch Y", constants:COMMAND_SELECTION_STRETCH_Y, sceneKeys:GetSelectionScaleYUpKey())
+        AddSceneItem(selectionItems, "Shrink Y", constants:COMMAND_SELECTION_SHRINK_Y, sceneKeys:GetSelectionScaleYDownKey())
+        AddSceneItem(selectionItems, "Stretch Z", constants:COMMAND_SELECTION_STRETCH_Z, sceneKeys:GetSelectionScaleZUpKey())
+        AddSceneItem(selectionItems, "Shrink Z", constants:COMMAND_SELECTION_SHRINK_Z, sceneKeys:GetSelectionScaleZDownKey())
+        AddSceneItem(selectionItems, "Reset Scale", constants:COMMAND_SELECTION_RESET_SCALE, sceneKeys:GetSelectionResetScaleKey())
+        AddSceneItem(selectionItems, "Drop to Ground", constants:COMMAND_SELECTION_DROP, sceneKeys:GetItemDropToGroundKey())
+        AddSceneItem(selectionItems, "Delete", constants:COMMAND_SELECTION_DELETE, sceneKeys:GetSelectionDeleteKey())
+        AddSceneItem(selectionItems, "Leave Selection", constants:COMMAND_SELECTION_LEAVE, sceneKeys:GetSelectionCancelKey())
+        AddSceneSubmenu(scenesItems, "Selection", "s", selectionItems)
+
+        // The terrain's tools, named as EditorTerrain:GetToolName names them.
+        // They're written here, since making an EditorTerrain at startup
+        // would build a whole terrain's objects before any scene is open.
+        Array<text> toolNames
+        toolNames:Add("Raise")
+        toolNames:Add("Lower")
+        toolNames:Add("Smooth")
+        toolNames:Add("Flatten")
+        toolNames:Add("Ramp")
+        toolNames:Add("Paint")
+        toolNames:Add("Blend Paint")
+        toolNames:Add("Add Region")
+        toolNames:Add("Remove Region")
+        toolNames:Add("Stamp")
+        toolNames:Add("Erode")
+        toolNames:Add("Auto Paint")
+        toolNames:Add("Foliage")
+        toolNames:Add("Fill Water")
+        toolNames:Add("Paint Water")
+        Array<MenuItem> toolItems
+        AddSceneItem(toolItems, "No Tool", constants:COMMAND_TERRAIN_TOOL, undefined)
+        integer tool = 1
+        repeat while tool <= toolNames:GetSize()
+            AddSceneItem(toolItems, toolNames:Get(tool - 1), constants:COMMAND_TERRAIN_TOOL + tool, sceneKeys:GetTerrainToolKey(tool))
+            tool = tool + 1
+        end
+        Array<MenuItem> terrainItems
+        AddSceneSubmenu(terrainItems, "Tools", "t", toolItems)
+        AddSceneItem(terrainItems, "Use Brush", constants:COMMAND_TERRAIN_USE_BRUSH, sceneKeys:GetTerrainBrushUseKey())
+        AddSceneItem(terrainItems, "Stronger Brush", constants:COMMAND_TERRAIN_STRONGER, sceneKeys:GetTerrainStrengthUpKey())
+        AddSceneItem(terrainItems, "Weaker Brush", constants:COMMAND_TERRAIN_WEAKER, sceneKeys:GetTerrainStrengthDownKey())
+        // The brush's size keys are the selection's size keys: with a
+        // terrain selected, they size its brush (TerrainSelectionHighlight).
+        AddSceneItem(terrainItems, "Larger Brush", constants:COMMAND_TERRAIN_LARGER, sceneKeys:GetSelectionScaleUpKey())
+        AddSceneItem(terrainItems, "Smaller Brush", constants:COMMAND_TERRAIN_SMALLER, sceneKeys:GetSelectionScaleDownKey())
+        AddSceneItem(terrainItems, "Next Paint Layer", constants:COMMAND_TERRAIN_NEXT_LAYER, sceneKeys:GetTerrainNextLayerKey())
+        AddSceneItem(terrainItems, "Set Ramp Point", constants:COMMAND_TERRAIN_RAMP_POINT, sceneKeys:GetTerrainRampPointKey())
+        AddSceneItem(terrainItems, "Take Height", constants:COMMAND_TERRAIN_TAKE_HEIGHT, sceneKeys:GetTerrainTakeHeightKey())
+        AddSceneSubmenu(scenesItems, "Terrain", "t", terrainItems)
+
+        Array<MenuItem> gridItems
+        AddSceneItem(gridItems, "Show or Hide Grid", constants:COMMAND_GRID_TOGGLE, sceneKeys:GetToggleGridKey())
+        AddSceneItem(gridItems, "Larger Squares", constants:COMMAND_GRID_LARGER, sceneKeys:GetIncreaseGridUnitKey())
+        AddSceneItem(gridItems, "Smaller Squares", constants:COMMAND_GRID_SMALLER, sceneKeys:GetDecreaseGridUnitKey())
+        AddSceneSubmenu(scenesItems, "Grid", "g", gridItems)
+
+        Array<MenuItem> panelItems
+        AddSceneItem(panelItems, "Go to Properties", constants:COMMAND_PROPERTIES_FOCUS, sceneKeys:GetFocusPropertiesKey())
+        AddSceneItem(panelItems, "Close Section", constants:COMMAND_PROPERTIES_CLOSE_SECTION, sceneKeys:GetPropertiesSectionCloseKey())
+        AddSceneItem(panelItems, "Open Section", constants:COMMAND_PROPERTIES_OPEN_SECTION, sceneKeys:GetPropertiesSectionOpenKey())
+        AddSceneItem(panelItems, "Find in Scene", constants:COMMAND_FIND, sceneKeys:GetOpenFindDialogKey())
+        AddSceneSubmenu(scenesItems, "Panels", "p", panelItems)
+
+        Array<MenuItem> sayItems
+        AddSceneItem(sayItems, "Where Am I", constants:COMMAND_SAY_LOCATION, sceneKeys:GetReportLocationKey())
+        AddSceneItem(sayItems, "Camera Direction", constants:COMMAND_SAY_CAMERA_DIRECTION, sceneKeys:GetReportCameraDirectionKey())
+        AddSceneItem(sayItems, "Items in View", constants:COMMAND_SAY_ITEMS_IN_VIEW, sceneKeys:GetReportItemsInViewKey())
+        AddSceneSubmenu(scenesItems, "Say", "y", sayItems)
+
+        scenesMenu:SetName("Scenes")
+        scenesMenu:Add(scenesItems)
+    end
+
+    /*
+        Adds one Scenes menu item: its name, the command it runs, and its
+        key shown as a label only. The text form of SetShortcut is used, so
+        the menu doesn't take the key as a second shortcut of its own.
+    */
+    private action AddSceneItem(Array<MenuItem> items, text name, integer command, InputSet key)
+        MenuItem item
+        item:SetName(name)
+        if key not= undefined
+            item:SetShortcut(key:GetDisplayName())
+        end
+        SceneMenuBehavior behavior
+        behavior:SetCommand(command)
+        item:SetBehavior(behavior)
+        items:Add(item)
+    end
+
+    /*
+        Adds a submenu to the Scenes menu, or to one of its submenus.
+    */
+    private action AddSceneSubmenu(Array<MenuItem> items, text name, text mnemonic, Array<MenuItem> children)
+        MenuItem submenu
+        submenu:SetName(name)
+        submenu:SetMnemonic(mnemonic)
+        submenu:Add(children)
+        items:Add(submenu)
     end
 
     private action SetupTeamMenu

@@ -1,0 +1,69 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.Scenes.SceneEditor
+
+/*
+    The SceneMenuBehavior is one item of the Scenes menu. It holds one of
+    SceneConstants' COMMAND_ numbers, and when chosen, runs that command once
+    in the scene open in the selected editor tab, as SceneEditor:RunCommand
+    does: one step of what the item's key does. With no scene tab selected,
+    it does nothing.
+
+    Attribute: Example
+    use Libraries.Development.Environment.Studio.Behaviors.SceneMenuBehavior
+    use Libraries.Interface.Controls.Scenes.SceneConstants
+
+    SceneConstants constants
+    SceneMenuBehavior zoomIn
+    zoomIn:SetCommand(constants:COMMAND_ZOOM_IN)
+*/
+class SceneMenuBehavior is QuorumStudioBehavior
+    integer command = 0
+
+    /*
+        Sets the command the item runs.
+
+        Attribute: Parameter value One of SceneConstants' COMMAND_ numbers
+    */
+    action SetCommand(integer value)
+        command = value
+    end
+
+    /*
+        Returns the command the item runs.
+
+        Attribute: Returns One of SceneConstants' COMMAND_ numbers
+    */
+    action GetCommand returns integer
+        return command
+    end
+
+    action Run(BehaviorEvent event)
+        QuorumStudio studio = GetMainApplication()
+        if studio = undefined
+            return now
+        end
+        CodeEditorTabPane pane = studio:GetTabPane()
+        if pane = undefined
+            return now
+        end
+        TabPaneSelection selection = pane:GetSelection()
+        if selection = undefined
+            return now
+        end
+        Tab tab = selection:GetTab()
+        if tab is VisualEditorTab
+            VisualEditorTab sceneTab = cast(VisualEditorTab, tab)
+            SceneEditor editor = sceneTab:GetSceneEditor()
+            if editor not= undefined
+                editor:RunCommand(command)
+            end
+        end
+    end
+end

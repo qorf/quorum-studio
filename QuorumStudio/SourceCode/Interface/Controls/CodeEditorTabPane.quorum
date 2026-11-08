@@ -1,4 +1,6 @@
 package Libraries.Development.Environment.Studio
+use Libraries.Development.Environment.Studio.Behaviors.DiscardSceneTabBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SaveAndCloseSceneTabBehavior
 use Libraries.Interface.Controls.TabPane
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Containers.Array
@@ -140,6 +142,31 @@ dialog:SetDiscardBehavior(discard)
                     return now
                 end
                                     end
+        elseif tab is VisualEditorTab
+            // A changed scene asks before closing, as code does.
+            VisualEditorTab sceneTab = cast(VisualEditorTab, tab)
+            if sceneTab:GetExitFlag() = sceneTab:CANCEL_CLOSE and sceneTab:IsDirty()
+                OpenSaveBeforeClosingDialog sceneBehave
+                sceneBehave:SetSingleItemWording(true)
+                sceneBehave:Setup()
+                SaveAndCloseSceneTabBehavior sceneSave
+                sceneSave:SetTab(sceneTab)
+                DiscardSceneTabBehavior sceneDiscard
+                sceneDiscard:SetTab(sceneTab)
+                SaveBeforeClosingDialog sceneDialog = sceneBehave:GetDialog()
+                sceneDialog:SetSaveBehavior(sceneSave)
+                sceneDialog:SetDiscardBehavior(sceneDiscard)
+                sceneBehave:Run()
+                return now
+            elseif sceneTab:GetExitFlag() = sceneTab:SAVE_CHANGES
+                sceneTab:Save()
+                // Not saved: the file changed on disk, and the File Changed
+                // on Disk dialog asks first. The tab stays open.
+                if sceneTab:IsDirty()
+                    sceneTab:SetExitFlag(sceneTab:CANCEL_CLOSE)
+                    return now
+                end
+            end
 end
                 parent:TabPane:Remove(tab)
 end
@@ -713,6 +740,11 @@ end
                 if et:IsDirty()
                     dirtyTabs = dirtyTabs + 1
                 end
+            elseif tab is VisualEditorTab
+                VisualEditorTab visualTab = cast(VisualEditorTab, tab)
+                if visualTab:IsDirty()
+                    dirtyTabs = dirtyTabs + 1
+                end
             end
         end
         return dirtyTabs
@@ -730,8 +762,11 @@ end
                 end
             elseif tab is VisualEditorTab
                 VisualEditorTab visualTab = cast(VisualEditorTab, tab)
-                // TO-DO: Determine if the tab is dirty and only change it if it is.
-                visualTab:Save()
+                // Only a scene with changes is written, so saving never
+                // rewrites a scene that wasn't changed.
+                if visualTab:IsDirty()
+                    visualTab:Save()
+                end
             end
         end
     end

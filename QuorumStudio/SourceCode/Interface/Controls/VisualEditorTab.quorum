@@ -54,6 +54,13 @@ class VisualEditorTab is Tab
     constant number MINIMUM_PROPERTIES_WIDTH = 150
     constant number MAXIMUM_PROPERTIES_WIDTH = 800
 
+    // What closing the tab does with changes: ask (CANCEL_CLOSE), throw
+    // them away, or save them. Set by the Save Before Closing dialog.
+    integer exitFlag = 0
+    public constant integer CANCEL_CLOSE = 0
+    public constant integer DISCARD_CHANGES = 1
+    public constant integer SAVE_CHANGES = 2
+
     action GetFile returns File
         return file
     end
@@ -169,6 +176,32 @@ class VisualEditorTab is Tab
             end
         end
         SaveWithoutChecking()
+    end
+
+    /*
+    This action sets what closing the tab does with changes: CANCEL_CLOSE
+    asks, DISCARD_CHANGES throws them away, SAVE_CHANGES saves them.
+    */
+    action SetExitFlag(integer exitFlag)
+        me:exitFlag = exitFlag
+    end
+
+    /*
+    This action returns what closing the tab does with changes.
+    */
+    action GetExitFlag returns integer
+        return exitFlag
+    end
+
+    /*
+    This action returns true if the scene has changes that saving would
+    write, so Studio asks before closing and only saves changed scenes.
+    */
+    action IsDirty returns boolean
+        if editor = undefined
+            return false
+        end
+        return editor:HasUnsavedChanges()
     end
 
     /*
