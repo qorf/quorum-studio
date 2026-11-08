@@ -82,6 +82,11 @@ class DiskChangeChecker is WindowFocusListener
     // At exit Save writes without asking (nothing could answer a dialog).
     boolean savingWithoutAsking = false
 
+    // Tree rebuilds held while Studio builds or runs (11b): the projects
+    // to rebuild, or all of them after the watcher lost changes.
+    Array<QuorumProject> heldTreeProjects
+    boolean heldEverything = false
+
     ProjectFilesRefresher refresher
 
     /*
@@ -222,7 +227,7 @@ class DiskChangeChecker is WindowFocusListener
                         gitTouched = true
                     end
                     boolean structural = (kind = kinds:CREATED) or (kind = kinds:DELETED)
-                    if structural and IsShownInTree(path, folderPath) and not treeProjects:Has(project)
+                    if structural and IsShownInTree(path, folderPath, project) and not treeProjects:Has(project)
                         treeProjects:Add(project)
                     end
                 end
@@ -230,9 +235,14 @@ class DiskChangeChecker is WindowFocusListener
             end
         end
 
+        // Held, not rebuilt now: QuorumStudio:Update rebuilds them once
+        // the build thread is idle (11b).
         integer treeIndex = 0
         repeat while treeIndex < treeProjects:GetSize()
-            refresher:RefreshProjectTree(treeProjects:Get(treeIndex))
+            QuorumProject treeProject = treeProjects:Get(treeIndex)
+            if not heldTreeProjects:Has(treeProject)
+                heldTreeProjects:Add(treeProject)
+            end
             treeIndex = treeIndex + 1
         end
 
@@ -260,8 +270,92 @@ class DiskChangeChecker is WindowFocusListener
     Project Tree item again: after the watcher lost changes (OVERFLOW).
     */
     action CheckEverything
-        refresher:RefreshProjectTree(undefined)
+        heldEverything = true
         CheckOpenTabs()
+    end
+
+    /*
+    This action checks again what the watcher lost changes in: each open
+    project whose folder is one of these folders, is inside one, or holds
+    one, has its Project Tree item built again, and every open tab is
+    checked. Other projects are left alone (11b: one project's OVERFLOW
+    used to rebuild every project's rows).
+
+    Attribute: Parameter folders The watched folders that lost changes, with / between folders.
+    */
+    action CheckOverflowedFolders(Array<text> folders)
+        if folders = undefined or folders:IsEmpty()
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        Array<QuorumProject> projects = GetOpenProjects(studio)
+        boolean gitTouched = false
+        integer index = 0
+        repeat while index < projects:GetSize()
+            QuorumProject project = projects:Get(index)
+            text projectPath = Key(project:GetLocation())
+            integer folderIndex = 0
+            boolean matched = false
+            repeat while folderIndex < folders:GetSize() and not matched
+                text folder = folders:Get(folderIndex)
+                if folder = projectPath or folder:StartsWith(projectPath + "/") or projectPath:StartsWith(folder + "/")
+                    matched = true
+                end
+                folderIndex = folderIndex + 1
+            end
+            if matched
+                if not heldTreeProjects:Has(project)
+                    heldTreeProjects:Add(project)
+                end
+                if project:HasGitSupport()
+                    gitTouched = true
+                end
+            end
+            index = index + 1
+        end
+        if gitTouched
+            OutputEditorTabPane outputPane = studio:GetOutputPane()
+            if outputPane not= undefined
+                outputPane:RefreshTeamTabSoon()
+            end
+        end
+        CheckOpenTabs()
+    end
+
+    /*
+    This action says whether tree rebuilds are waiting (11b).
+
+    Attribute: Returns True when a project's rows are waiting to be rebuilt.
+    */
+    action HasHeldTreeChanges returns boolean
+        return heldEverything or not heldTreeProjects:IsEmpty()
+    end
+
+    /*
+    This action rebuilds the held projects' rows once: every open project
+    if the watcher lost changes, otherwise each held project still open.
+    */
+    action ApplyHeldTreeChanges
+        if heldEverything
+            refresher:RefreshProjectTree(undefined)
+        else
+            GameStateManager manager
+            QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+            Array<QuorumProject> openProjects = GetOpenProjects(studio)
+            integer index = 0
+            repeat while index < heldTreeProjects:GetSize()
+                QuorumProject heldProject = heldTreeProjects:Get(index)
+                // A project closed meanwhile has no rows to rebuild.
+                if openProjects:Has(heldProject)
+                    refresher:RefreshProjectTree(heldProject)
+                end
+                index = index + 1
+            end
+        end
+        Array<QuorumProject> none
+        heldTreeProjects = none
+        heldEverything = false
     end
 
     /*
@@ -287,6 +381,11 @@ class DiskChangeChecker is WindowFocusListener
         if checkOpenTabsSoon
             checkOpenTabsSoon = false
             CheckOpenTabs()
+            // Back from another app (Git, a terminal): show the tree's held
+            // changes now, even during a long run (11b).
+            if HasHeldTreeChanges()
+                ApplyHeldTreeChanges()
+            end
         end
         if choiceWaiting
             choiceWaiting = false
@@ -564,9 +663,16 @@ class DiskChangeChecker is WindowFocusListener
 
     // The Project Tree doesn't show the Project, Build and Run folders
     // (QuorumProjectView:GetLogicalTree), so changes there don't rebuild it.
-    private action IsShownInTree(text path, text folderPath) returns boolean
+    // In the Quorum compiler's own project, Library/Compiled is RunLibrary's
+    // output, rewritten on every run: changes inside it don't rebuild the
+    // tree either (11b). The folder still shows; its rows catch up on the
+    // project's next rebuild.
+    private action IsShownInTree(text path, text folderPath, QuorumProject project) returns boolean
         text inside = path:GetSubtext(folderPath:GetSize() + 1)
         if inside:StartsWith("Project/") or inside:StartsWith("Build/") or inside:StartsWith("Run/")
+            return false
+        end
+        if inside:StartsWith("Library/Compiled/") and project:IsCompilerProject()
             return false
         end
         return true

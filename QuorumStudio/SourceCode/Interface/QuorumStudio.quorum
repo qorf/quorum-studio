@@ -1081,12 +1081,24 @@ EditorTab editorTab = cast(EditorTab, codeTabs:Get(0))
         if projectChanges:IsReady()
             if projectChanges:TakeCheckEverything()
                 HashTable<text, integer> lost = projectChanges:TakePaths()
+                Array<text> lostFolders = projectChanges:TakeOverflowFolders()
                 diskChecker:CheckEverything()
             else
+                // A folder that lost changes is checked again on its own
+                // (11b), then the changes that did come.
+                diskChecker:CheckOverflowedFolders(projectChanges:TakeOverflowFolders())
                 diskChecker:CheckPaths(projectChanges:TakePaths())
             end
         end
         diskChecker:Update()
+        // Held tree rebuilds (11b): once the build thread is idle and the
+        // build's last writes have arrived, so it's one rebuild, not two.
+        if diskChecker:HasHeldTreeChanges() and not projectChanges:HasPending()
+            ThreadRunner buildRunner = behaviors:GetBuildThreadRunner()
+            if not buildRunner:IsBusy()
+                diskChecker:ApplyHeldTreeChanges()
+            end
+        end
 
         if splashScreenHide 
             splashScreen:Hide()

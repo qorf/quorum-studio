@@ -1,6 +1,8 @@
 package Libraries.Development.Environment.Studio
 
 use Libraries.Containers.HashTable
+use Libraries.Containers.Array
+use Libraries.Containers.Iterator
 use Libraries.System.File
 use Libraries.System.DateTime
 use Libraries.System.FileChangeEvent
@@ -14,8 +16,9 @@ come for about half a second (QUIET_TIME), it takes the paths with
 TakePaths and hands them to DiskChangeChecker, so a save that writes
 several times, or a pull that changes many files, is handled once.
 
-An OVERFLOW (the system lost changes) sets a flag instead: everything is
-checked (TakeCheckEverything).
+An OVERFLOW (the system lost changes) names the watched folder that lost
+them: that folder is checked again (TakeOverflowFolders). One with no
+folder sets a flag instead: everything is checked (TakeCheckEverything).
 
 Main thread only: the Game hands the watcher's changes over in ContinueGame
 (Game:AddFileWatcher).
@@ -28,6 +31,9 @@ class ProjectFileWatchListener is FileChangeListener
     // (FileChangeEvent's CREATED, MODIFIED or DELETED).
     HashTable<text, integer> changedPaths
     boolean checkEverything = false
+    // The watched folders that lost changes (an OVERFLOW names its folder),
+    // with / between folders, as keys and values.
+    HashTable<text, text> overflowFolders
     // When the last change came, in milliseconds (DateTime:Now).
     number lastChangeTime = 0
     DateTime clock
@@ -38,7 +44,15 @@ class ProjectFileWatchListener is FileChangeListener
         end
         lastChangeTime = clock:Now()
         if event:IsOverflow()
-            checkEverything = true
+            // Only the folder that lost changes is checked again (11b);
+            // without one, everything is.
+            File lostFolder = event:GetFile()
+            if lostFolder = undefined
+                checkEverything = true
+            else
+                text folderPath = Normalize(lostFolder:GetAbsolutePath())
+                overflowFolders:Set(folderPath, folderPath)
+            end
             return now
         end
         File file = event:GetFile()
@@ -65,10 +79,37 @@ class ProjectFileWatchListener is FileChangeListener
     Attribute: Returns True when it's time to handle the changes.
     */
     action IsReady returns boolean
-        if changedPaths:IsEmpty() and not checkEverything
+        if not HasPending()
             return false
         end
         return clock:Now() - lastChangeTime >= QUIET_TIME
+    end
+
+    /*
+    This action says whether changes have come that aren't handed over
+    yet, ready or not (11b: a held tree rebuild waits for them).
+
+    Attribute: Returns True when changes are waiting.
+    */
+    action HasPending returns boolean
+        return not changedPaths:IsEmpty() or checkEverything or not overflowFolders:IsEmpty()
+    end
+
+    /*
+    This action hands over the watched folders that lost changes since the
+    last call, and starts a new, empty set.
+
+    Attribute: Returns Each folder's path, with / between folders.
+    */
+    action TakeOverflowFolders returns Array<text>
+        Array<text> folders
+        Iterator<text> keys = overflowFolders:GetKeyIterator()
+        repeat while keys:HasNext()
+            folders:Add(keys:Next())
+        end
+        HashTable<text, text> fresh
+        overflowFolders = fresh
+        return folders
     end
 
     /*
