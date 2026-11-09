@@ -21,6 +21,9 @@ use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Item2D
+use Libraries.Interface.Controls.Scenes.SceneEditor
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
+use Libraries.Interface.Controls.Scenes.Dialogs.PropertiesDialog
 use Libraries.Interface.Controls.Button
 
 class EditorBehavior is QuorumStudioBehavior
@@ -48,4 +51,32 @@ class EditorBehavior is QuorumStudioBehavior
     end
 
     blueprint action Run(Item item)
+
+    /*
+        Returns the scene editor an item belongs to: the editor itself, a
+        scene item or selection highlight in it, or a control in its
+        Properties panel. Otherwise, undefined. Undo and Redo use it, so they
+        reach the scene wherever the focus is in its tab.
+
+        Attribute: Parameter item The focused item
+        Attribute: Returns The scene editor, or undefined
+    */
+    action FindSceneEditor(Item item) returns SceneEditor
+        if item is SceneEditor
+            return cast(SceneEditor, item)
+        elseif item is EditorItem
+            EditorItem sceneItem = cast(EditorItem, item)
+            return sceneItem:GetSceneEditor()
+        elseif item is Item2D
+            Item2D current = cast(Item2D, item)
+            repeat while current not= undefined
+                if current is PropertiesDialog
+                    PropertiesDialog dialog = cast(PropertiesDialog, current)
+                    return dialog:GetSceneEditor()
+                end
+                current = current:GetParent()
+            end
+        end
+        return undefined
+    end
 end

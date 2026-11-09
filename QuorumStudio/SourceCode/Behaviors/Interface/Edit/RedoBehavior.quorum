@@ -25,8 +25,10 @@ class RedoBehavior is EditorBehavior
                 edits:Redo()
                 box:GetEditorTab():SetIsDirty(true)
             end
-        elseif item is SceneEditor
-            SceneEditor controller = cast(SceneEditor, item)
+        elseif FindSceneEditor(item) not= undefined
+            // The scene, a scene item or highlight in it, or its Properties
+            // panel: the scene's change is redone.
+            SceneEditor controller = FindSceneEditor(item)
             SceneEditorEditManager manager = controller:GetEditManager()
             if manager not= undefined and manager:CanRedo()
                 manager:Redo()
