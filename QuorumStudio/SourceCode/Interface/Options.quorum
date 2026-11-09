@@ -26,6 +26,7 @@ use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Game.Graphics.Color
 use Libraries.Interface.Options.LightQuorumStudio
 use Libraries.Interface.Options.DarkQuorumStudio
+use Libraries.Interface.Controls.Scenes.TerrainCursorSettings
 use Libraries.System.Logging.FileLogger
 use Libraries.Game.ScreenResolution
 use Libraries.Game.DesktopDisplay
@@ -65,6 +66,14 @@ class Options is ProjectListener
     constant text BLOCKS_SCOPE_WIDTH_SCALING = "Blocks Scope Width Scaling"
     constant text BLOCK_MODE = "Block Mode"
     constant text CLOSED_PROPERTIES_SECTIONS = "Closed Properties Sections"
+    constant text TERRAIN_CURSOR_BEAM = "Terrain Cursor Beam"
+    constant text TERRAIN_CURSOR_CROSSHAIR = "Terrain Cursor Crosshair"
+    constant text TERRAIN_CURSOR_COLOR = "Terrain Cursor Color"
+    constant text TERRAIN_CURSOR_GLOW_STRENGTH = "Terrain Cursor Glow Strength"
+    constant text TERRAIN_CURSOR_GLOW_WIDTH = "Terrain Cursor Glow Width"
+    constant text TERRAIN_CURSOR_TOP_FADE = "Terrain Cursor Top Fade"
+    constant text TERRAIN_CURSOR_CROSSHAIR_OPACITY = "Terrain Cursor Crosshair Opacity"
+    constant text TERRAIN_CURSOR_PULSE = "Terrain Cursor Pulse"
     constant text LOCAL_PASSWORD_ENCRYPTION_KEY = "KbPdSgVkYp3s6v9y$B&E)H@McQfThWmZ"
     public constant text QUORUM_WEBSITE_PASSWORD_KEY = "QUORUM-WEBSITE_3948Y 93F8 34F93 94F8Y3P4F34FOI3U4F&&__"
     text loginCookie = undefined
@@ -106,6 +115,10 @@ class Options is ProjectListener
     // closed, such as "Physics" (step 15). Every scene tab's panel shares
     // this list, and changes it as sections open and close.
     Array<text> closedPropertiesSections
+
+    // How scene editors mark the terrain cursor: its beam, crosshair,
+    // color and pulse. Every scene tab shares this one.
+    TerrainCursorSettings terrainCursorSettings
 
     action IsOverridingStandardLibrary returns boolean
         return overrideLibraryLocation
@@ -432,6 +445,10 @@ action GetBlocksScopeWidthScaling returns number
         return closedPropertiesSections
     end
 
+    action GetTerrainCursorSettings returns TerrainCursorSettings
+        return terrainCursorSettings
+    end
+
     action GetTreeSelect returns text
         return treeSelect
     end
@@ -688,6 +705,14 @@ action GetBlocksScopeWidthScaling returns number
         notation:Add(BLOCK_MODE, blockMode)
         notation:Add(BLOCKS_HEIGHT_SCALING, blocksHeightScaling)
         notation:Add(BLOCKS_SCOPE_WIDTH_SCALING, blocksScopeWidthScaling)
+        notation:Add(TERRAIN_CURSOR_BEAM, terrainCursorSettings:IsShowingBeam())
+        notation:Add(TERRAIN_CURSOR_CROSSHAIR, terrainCursorSettings:IsShowingCrosshair())
+        notation:Add(TERRAIN_CURSOR_COLOR, terrainCursorSettings:GetColorName())
+        notation:Add(TERRAIN_CURSOR_GLOW_STRENGTH, terrainCursorSettings:GetGlowStrength())
+        notation:Add(TERRAIN_CURSOR_GLOW_WIDTH, terrainCursorSettings:GetGlowWidth())
+        notation:Add(TERRAIN_CURSOR_TOP_FADE, terrainCursorSettings:GetTopFade())
+        notation:Add(TERRAIN_CURSOR_CROSSHAIR_OPACITY, terrainCursorSettings:GetCrosshairOpacity())
+        notation:Add(TERRAIN_CURSOR_PULSE, terrainCursorSettings:GetPulseName())
 
         JavaScriptObjectNotation closedSections
         closedSections:SetArray()
@@ -975,7 +1000,54 @@ if object:IsNumber()
                     index = index + 1
                 end
             end
+        elseif key = TERRAIN_CURSOR_BEAM
+            if object:IsBoolean()
+                terrainCursorSettings:SetShowBeam(object:GetBoolean())
+            end
+        elseif key = TERRAIN_CURSOR_CROSSHAIR
+            if object:IsBoolean()
+                terrainCursorSettings:SetShowCrosshair(object:GetBoolean())
+            end
+        elseif key = TERRAIN_CURSOR_COLOR
+            if object:IsText()
+                terrainCursorSettings:SetColorName(object:GetText())
+            end
+        elseif key = TERRAIN_CURSOR_GLOW_STRENGTH
+            if IsWhole(object)
+                terrainCursorSettings:SetGlowStrength(GetWhole(object))
+            end
+        elseif key = TERRAIN_CURSOR_GLOW_WIDTH
+            if IsWhole(object)
+                terrainCursorSettings:SetGlowWidth(GetWhole(object))
+            end
+        elseif key = TERRAIN_CURSOR_TOP_FADE
+            if IsWhole(object)
+                terrainCursorSettings:SetTopFade(GetWhole(object))
+            end
+        elseif key = TERRAIN_CURSOR_CROSSHAIR_OPACITY
+            if IsWhole(object)
+                terrainCursorSettings:SetCrosshairOpacity(GetWhole(object))
+            end
+        elseif key = TERRAIN_CURSOR_PULSE
+            if object:IsText()
+                terrainCursorSettings:SetPulseName(object:GetText())
+            end
         end
+    end
+
+    // True if a value is an integer or a number, as a hand-edited file may
+    // have either.
+    private action IsWhole(JavaScriptObjectNotation object) returns boolean
+        return object:IsInteger() or object:IsNumber()
+    end
+
+    // A value as a whole number, rounded if it is a number.
+    private action GetWhole(JavaScriptObjectNotation object) returns integer
+        if object:IsInteger()
+            return object:GetInteger()
+        end
+        number value = object:GetNumber() + 0.5
+        return cast(integer, value)
     end
     action GetSpecialBetaBuild returns boolean
         return specialBetaBuild

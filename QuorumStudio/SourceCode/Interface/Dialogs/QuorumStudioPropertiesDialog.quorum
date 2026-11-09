@@ -36,6 +36,8 @@ use Libraries.Interface.Forms.Banner
 use Libraries.Interface.Controls.Checkbox
 use Libraries.Interface.Layouts.FormRowLayout
 use Libraries.Interface.Forms.Page
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Controls.Scenes.TerrainCursorSettings
 
 
 class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
@@ -52,6 +54,16 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
     TextField blockHeightField = undefined
     TextField blockWidthField = undefined
 
+    // The Scene Editor tab: the terrain cursor's beam, crosshair and pulse.
+    Checkbox showBeamCheckbox = undefined
+    Checkbox showCrosshairCheckbox = undefined
+    Array<RadioButton> colorButtons
+    Array<RadioButton> pulseButtons
+    TextField glowStrengthField = undefined
+    TextField glowWidthField = undefined
+    TextField topFadeField = undefined
+    TextField crosshairOpacityField = undefined
+
     TabPane tabPane
 
     EmptyTextFieldBehavior emptyTextFieldBehavior
@@ -61,8 +73,12 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
     Options options = undefined
 
     action OnShow
-        GetDefaultPage():GetFirstFocusableItem():Focus()
-end
+        tabPane:Focus()
+        Tab tab = tabPane:GetSelectedTab()
+        if not tab:Equals(tabPane:Get(0))
+            tab:Activate()
+        end
+    end
 
     on create
         okBehavior:SetDialog(me)
@@ -81,7 +97,16 @@ end
         SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:STANDARD)
         SetPercentageHeight(0.72)
         
-        CreatePropertiesPage()
+        LayoutProperties viewProperties = tabPane:GetViewAreaLayoutProperties()
+        viewProperties:SetPercentageWidth(1.0)
+        viewProperties:SetPercentageHeight(1.0)
+        FlowLayout tabLayout
+        tabPane:SetViewAreaLayout(tabLayout)
+        tabPane:SetPercentageWidth(1.0)
+        tabPane:SetVerticalLayoutMode(viewProperties:FILL)
+        tabPane:Add(CreateGeneralTab())
+        tabPane:Add(CreateSceneEditorTab())
+        Add(tabPane)
         Load()
     end
 
@@ -148,6 +173,33 @@ end
             options:SetStandardLibraryOverrideRawLocation("")
             options:SetOverridingStandardLibrary(false)
         end
+
+        // The Scene Editor tab. Every open scene shares these settings, so
+        // they change there at once.
+        TerrainCursorSettings settings = options:GetTerrainCursorSettings()
+        settings:SetShowBeam(showBeamCheckbox:GetToggleState())
+        settings:SetShowCrosshair(showCrosshairCheckbox:GetToggleState())
+        integer colorIndex = 0
+        repeat while colorIndex < colorButtons:GetSize()
+            RadioButton colorButton = colorButtons:Get(colorIndex)
+            if colorButton:GetToggleState()
+                Array<text> colorNames = settings:GetColorNames()
+                settings:SetColorName(colorNames:Get(colorIndex))
+            end
+            colorIndex = colorIndex + 1
+        end
+        integer pulseIndex = 0
+        repeat while pulseIndex < pulseButtons:GetSize()
+            RadioButton pulseButton = pulseButtons:Get(pulseIndex)
+            if pulseButton:GetToggleState()
+                settings:SetPulse(pulseIndex)
+            end
+            pulseIndex = pulseIndex + 1
+        end
+        settings:SetGlowStrength(ReadWhole(glowStrengthField, settings:GetGlowStrength()))
+        settings:SetGlowWidth(ReadWhole(glowWidthField, settings:GetGlowWidth()))
+        settings:SetTopFade(ReadWhole(topFadeField, settings:GetTopFade()))
+        settings:SetCrosshairOpacity(ReadWhole(crosshairOpacityField, settings:GetCrosshairOpacity()))
     end
 
     action Load
@@ -186,17 +238,46 @@ end
 
         text libraryLocation = options:GetStandardLibraryOverrideRawLocation()
         libraryField:SetText(libraryLocation)
+
+        TerrainCursorSettings settings = options:GetTerrainCursorSettings()
+        showBeamCheckbox:SetToggleState(settings:IsShowingBeam())
+        showCrosshairCheckbox:SetToggleState(settings:IsShowingCrosshair())
+        Array<text> colorNames = settings:GetColorNames()
+        integer colorIndex = colorNames:GetFirstLocation(settings:GetColorName())
+        if colorIndex >= 0 and colorIndex < colorButtons:GetSize()
+            RadioButton colorButton = colorButtons:Get(colorIndex)
+            colorButton:SetToggleState(true)
+        end
+        integer pulseIndex = settings:GetPulse()
+        if pulseIndex >= 0 and pulseIndex < pulseButtons:GetSize()
+            RadioButton pulseButton = pulseButtons:Get(pulseIndex)
+            pulseButton:SetToggleState(true)
+        end
+        glowStrengthField:SetText("" + settings:GetGlowStrength())
+        glowWidthField:SetText("" + settings:GetGlowWidth())
+        topFadeField:SetText("" + settings:GetTopFade())
+        crosshairOpacityField:SetText("" + settings:GetCrosshairOpacity())
     end
 
     action IsInitialized returns boolean
         return initialized
     end
 
-    private action CreatePropertiesPage
-        Page page = InitializeDefaultPage()
-        page:SetSkipLabelsInFocus(true)
+    /*
+        The General tab: appearance, blocks and the library.
+    */
+    private action CreateGeneralTab returns Tab
+        Tab tab
+        tab:SetName("General")
+        tab:DisplayCloseButton(false)
+
+        StackedRowPage page
         page:LeftAlignContent()
-        
+        ApplyDefaultStyleToPage(page)
+        // No offset for a top bar, since this page is in a pane.
+        page:SetPixelHeight(0)
+        page:SetSkipLabelsInFocus(true)
+
         Grouping appearanceCard = page:AddGrouping("Appearance")
         appearanceCard:SetTitle("Appearance")
         appearanceCard:AddLabel("Color Mode")
@@ -230,6 +311,87 @@ end
 
         cancelButton:SetBehavior(cancelBehavior)
         okayButton:SetBehavior(okBehavior)
+
+        tab:SetFocusTarget(lightModeButton)
+        tab:SetRelatedItem(page)
+        return tab
+    end
+
+    /*
+        The Scene Editor tab: how the terrain cursor is marked so it can be
+        seen from far away.
+    */
+    private action CreateSceneEditorTab returns Tab
+        Tab tab
+        tab:SetName("Scene Editor")
+        tab:DisplayCloseButton(false)
+
+        StackedRowPage page
+        page:LeftAlignContent()
+        ApplyDefaultStyleToPage(page)
+        page:SetPixelHeight(0)
+        page:SetSkipLabelsInFocus(true)
+
+        TerrainCursorSettings settings = options:GetTerrainCursorSettings()
+
+        Grouping beamCard = page:AddGrouping("Beam")
+        beamCard:SetTitle("Beam")
+        showBeamCheckbox = beamCard:AddCheckbox("Show Beam")
+        beamCard:AddLabel("Color")
+        Grouping colorChoices = beamCard:AddGrouping("Color Choices")
+        Array<text> colorNames = settings:GetColorNames()
+        integer colorIndex = 0
+        repeat while colorIndex < colorNames:GetSize()
+            colorButtons:Add(colorChoices:AddRadioButton(colorNames:Get(colorIndex)))
+            colorIndex = colorIndex + 1
+        end
+        beamCard:AddLabel("Glow Strength (%)")
+        glowStrengthField = beamCard:AddTextField("Glow Strength")
+        beamCard:AddLabel("Glow Width")
+        glowWidthField = beamCard:AddTextField("Glow Width")
+        beamCard:AddLabel("Top Fade (%)")
+        topFadeField = beamCard:AddTextField("Top Fade")
+
+        Grouping crosshairCard = page:AddGrouping("Crosshair")
+        crosshairCard:SetTitle("Crosshair")
+        showCrosshairCheckbox = crosshairCard:AddCheckbox("Show Crosshair")
+        crosshairCard:AddLabel("Opacity (%)")
+        crosshairOpacityField = crosshairCard:AddTextField("Crosshair Opacity")
+
+        Grouping motionCard = page:AddGrouping("Motion")
+        motionCard:SetTitle("Motion")
+        motionCard:AddLabel("Pulse")
+        Grouping pulseChoices = motionCard:AddGrouping("Pulse Choices")
+        Array<text> pulseNames = settings:GetPulseNames()
+        integer pulseIndex = 0
+        repeat while pulseIndex < pulseNames:GetSize()
+            pulseButtons:Add(pulseChoices:AddRadioButton(pulseNames:Get(pulseIndex)))
+            pulseIndex = pulseIndex + 1
+        end
+
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancelButton = buttonGroup:AddButton("Cancel")
+        Button okayButton = buttonGroup:AddButton("Ok")
+        // The main action: the accent button style.
+        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
+        buttonGroup:PositionFromBottom()
+        cancelButton:SetBehavior(cancelBehavior)
+        okayButton:SetBehavior(okBehavior)
+
+        tab:SetFocusTarget(showBeamCheckbox)
+        tab:SetRelatedItem(page)
+        return tab
+    end
+
+    // A whole number from a field, or a fallback if it isn't one.
+    private action ReadWhole(TextField field, integer fallback) returns integer
+        integer value = fallback
+        check
+            number typed = cast(number, field:GetText())
+            value = cast(integer, typed + 0.5)
+        detect error
+        end
+        return value
     end
 
     action OnHide()
