@@ -9,6 +9,7 @@ use Libraries.Interface.Views.LabelBoxView
 use Libraries.Game.Graphics.Color
 use Libraries.Game.Graphics.Label
 use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.SliderField
 use Libraries.Interface.Controls.ButtonGroup
 use Libraries.Interface.Controls.List
 use Libraries.Interface.Controls.Button
@@ -1073,7 +1074,16 @@ private action CreateSpikeTab returns Tab
         page:SetSkipLabelsInFocus(true)
 
         page:AddLabel("LEGO Spike Slot (0 - 10)")
-        spikeProgramSlot = page:AddTextField("Program Slot")
+        // The slot is a slider with a number field, from 0 to 10 in whole
+        // steps. The number field is used as the plain field was: putting
+        // the slot in it moves the slider, and it is read when OK is pressed.
+        SliderField spikeSlider
+        spikeSlider:Setup("Program Slot", "The slot on the LEGO Spike hub the program goes in, from 0 to 10", 0, 10, 1, 1)
+        // No width of its own, so the page lines it up under its label and
+        // keeps it a field's width, as it does a text field.
+        spikeSlider:SetPercentageWidth(0)
+        page:Add(spikeSlider)
+        spikeProgramSlot = spikeSlider:GetField()
 
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancel = buttonGroup:AddButton("Cancel")
@@ -1081,7 +1091,7 @@ private action CreateSpikeTab returns Tab
         // The main action: the accent button style.
         ok:SetInterfaceOptionsKey("DialogAcceptButton")
         buttonGroup:PositionFromBottom()
-        tab:SetFocusTarget(spikeProgramSlot)
+        tab:SetFocusTarget(spikeSlider:GetSlider())
         tab:SetRelatedItem(page)
 
         ok:SetBehavior(okBehavior)

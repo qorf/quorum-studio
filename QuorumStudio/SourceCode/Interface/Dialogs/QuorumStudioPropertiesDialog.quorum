@@ -9,6 +9,7 @@ use Libraries.Interface.Views.LabelBoxView
 use Libraries.Game.Graphics.Color
 use Libraries.Game.Graphics.Label
 use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.SliderField
 use Libraries.Interface.Controls.Button
 use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environment.Projects.ProjectProperty
@@ -264,6 +265,19 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
     end
 
     /*
+        Adds a slider with its number field to a card, after the label the
+        card already has for it (Slider plan): the Forms layout puts them on
+        one row and both in the Tab order. Returns the number field, which
+        is filled and read as a plain field is.
+    */
+    private action AddSlider(Grouping card, text name, text description, number minimum, number maximum, number step, number pageStep) returns TextField
+        SliderField sliderField
+        sliderField:Setup(name, description, minimum, maximum, step, pageStep)
+        card:Add(sliderField)
+        return sliderField:GetField()
+    end
+
+    /*
         The General tab: appearance, blocks and the library.
     */
     private action CreateGeneralTab returns Tab
@@ -286,15 +300,15 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         darkModeButton = colorModeChoices:AddRadioButton("Dark Mode")
         framesPerSecondCheckbox = appearanceCard:AddCheckbox("Display Framerate")
         appearanceCard:AddLabel("Frame Rate")
-        frameRateField = appearanceCard:AddTextField("Frame Rate")
+        frameRateField = AddSlider(appearanceCard, "Frame Rate", "The most frames a second Quorum Studio draws", 10, 120, 1, 10)
 
         Grouping blocksCard = page:AddGrouping("Blocks")
         blocksCard:SetTitle("Blocks")
         blockModeCheckbox = blocksCard:AddCheckbox("Blocks")
         blocksCard:AddLabel("Height Scaling")
-        blockHeightField = blocksCard:AddTextField("Blocks Height Scaling")
-        blocksCard:AddLabel("Scope Width Scaling")
-        blockWidthField = blocksCard:AddTextField("Blocks Scope Width Scaling")
+        blockHeightField = AddSlider(blocksCard, "Blocks Height Scaling", "How tall blocks are, compared with their usual height", 0.25, 5, 0.05, 0.25)
+        blocksCard:AddLabel("Width Scaling")
+        blockWidthField = AddSlider(blocksCard, "Blocks Width Scaling", "How wide blocks' scopes are, compared with their usual width", 0.25, 5, 0.05, 0.25)
 
         Grouping libraryCard = page:AddGrouping("Library")
         libraryCard:SetTitle("Library")
@@ -346,17 +360,17 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
             colorIndex = colorIndex + 1
         end
         beamCard:AddLabel("Glow Strength (%)")
-        glowStrengthField = beamCard:AddTextField("Glow Strength")
+        glowStrengthField = AddSlider(beamCard, "Glow Strength", "How bright the beam's glow is, in percent", 0, 100, 1, 10)
         beamCard:AddLabel("Glow Width")
-        glowWidthField = beamCard:AddTextField("Glow Width")
+        glowWidthField = AddSlider(beamCard, "Glow Width", "How wide the beam's glow is", 10, 80, 1, 10)
         beamCard:AddLabel("Top Fade (%)")
-        topFadeField = beamCard:AddTextField("Top Fade")
+        topFadeField = AddSlider(beamCard, "Top Fade", "How much the beam fades toward its top, in percent", 0, 100, 1, 10)
 
         Grouping crosshairCard = page:AddGrouping("Crosshair")
         crosshairCard:SetTitle("Crosshair")
         showCrosshairCheckbox = crosshairCard:AddCheckbox("Show Crosshair")
         crosshairCard:AddLabel("Opacity (%)")
-        crosshairOpacityField = crosshairCard:AddTextField("Crosshair Opacity")
+        crosshairOpacityField = AddSlider(crosshairCard, "Crosshair Opacity", "How solid the crosshair is, in percent: 0 is invisible", 0, 100, 1, 10)
 
         Grouping motionCard = page:AddGrouping("Motion")
         motionCard:SetTitle("Motion")
