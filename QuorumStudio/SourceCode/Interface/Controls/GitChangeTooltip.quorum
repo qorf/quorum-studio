@@ -1,0 +1,430 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Containers.Array
+use Libraries.Game.Game
+use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.Label
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Layouts.ManualLayout
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Development.Versioning.DiffResult
+use Libraries.Development.Versioning.DiffEdit
+use Libraries.Development.Versioning.GitConstants
+
+/*
+The tooltip on a line changed since the last commit. Its title says what
+changed ("3 lines became 1 since your last commit"); under it are the old
+lines, marked with a minus, the new ones, marked with a plus, and buttons
+to put the old lines back, go to the next change, or close the tooltip.
+The change lane (StatusLineGutter) shows it when the mouse rests on a mark,
+and Shift+F1 shows it for the caret's line in the text editor
+(CodeTextBox), or the selected block's line in the block editor
+(StudioBlockEditor), with the focus on its first button. The editor is
+either of the two.
+
+A change is a block: every line of an added or changed block, and the
+line above lines that were deleted, shows the whole block.
+*/
+class GitChangeTooltip
+    // At most this many old and this many new lines are shown.
+    constant integer MAXIMUM_SHOWN_LINES = 8
+    // Longer lines are cut, with an ellipsis.
+    constant integer MAXIMUM_LINE_LENGTH = 100
+    // Sizes in points, before the interface scale.
+    constant number LINE_GAP = 2
+    constant number BUTTONS_GAP = 8
+    constant number BUTTON_GAP = 6
+    constant number BUTTON_HEIGHT = 24
+    constant number BUTTON_PADDING = 12
+    constant integer FONT_SIZE = 14
+
+    GitConstants gitConstants
+    OptionsConstants optionsConstants
+    GutterSupport support
+    GameStateManager manager
+    Color color
+
+    // For a theme without the gutter's colors: the light theme's.
+    Color addedFallback = color:CustomColor(0/255.0, 128/255.0, 112/255.0, 1)
+    Color deletedFallback = color:CustomColor(190/255.0, 30/255.0, 40/255.0, 1)
+
+    /*
+    The change a line of the editor's text is part of, or undefined when it
+    has none: a line of an added or changed block, or a line with lines
+    deleted just below it.
+    */
+    action GetChange(Control editor, integer line) returns DiffEdit
+        StatusLineGutter gutter = GetGutter(editor)
+        if gutter = undefined
+            return undefined
+        end
+        DiffResult result = gutter:GetDiffResult()
+        if result = undefined
+            return undefined
+        end
+        Array<DiffEdit> edits = result:GetEdits()
+        if line < 0 or line >= edits:GetSize()
+            return undefined
+        end
+        DiffEdit edit = edits:Get(line)
+        integer type = edit:GetEditType()
+        if type = gitConstants:EDIT_INSERT or type = gitConstants:EDIT_CHANGE
+            if edit:GetBlockStart() >= 0
+                return edit
+            end
+            return undefined
+        end
+        if edit:HasDeletion() and edit:GetDeletedLineCount() > 0
+            return edit
+        end
+        return undefined
+    end
+
+    // The editor's change lane, or undefined for another control.
+    private action GetGutter(Control editor) returns StatusLineGutter
+        if editor is CodeTextBox
+            CodeTextBox box = cast(CodeTextBox, editor)
+            return box:GetStatusGutter()
+        elseif editor is StudioBlockEditor
+            StudioBlockEditor blocks = cast(StudioBlockEditor, editor)
+            return blocks:GetStatusGutter()
+        end
+        return undefined
+    end
+
+    // How many lines of text the editor has.
+    private action GetTextLineCount(Control editor) returns integer
+        if editor is CodeTextBox
+            CodeTextBox box = cast(CodeTextBox, editor)
+            return box:GetLineCount()
+        elseif editor is StudioBlockEditor
+            StudioBlockEditor blocks = cast(StudioBlockEditor, editor)
+            return blocks:GetRawTextLineCount()
+        end
+        return 0
+    end
+
+    // One line of the editor's text.
+    private action GetTextLine(Control editor, integer line) returns text
+        if editor is CodeTextBox
+            CodeTextBox box = cast(CodeTextBox, editor)
+            return box:GetLine(line)
+        elseif editor is StudioBlockEditor
+            StudioBlockEditor blocks = cast(StudioBlockEditor, editor)
+            return blocks:GetTextLine(line)
+        end
+        return ""
+    end
+
+    /*
+    Puts the change back in the editor, as it was at the last commit, as
+    one step that Undo takes back.
+    */
+    action Restore(Control editor, DiffEdit edit, integer line)
+        if editor is CodeTextBox
+            CodeTextBox box = cast(CodeTextBox, editor)
+            box:RestoreChange(edit, line)
+        elseif editor is StudioBlockEditor
+            StudioBlockEditor blocks = cast(StudioBlockEditor, editor)
+            blocks:RestoreChange(edit, line)
+        end
+    end
+
+    /*
+    Goes to the next change after a line: the caret in the text editor, the
+    block in the block editor.
+    */
+    action GoToNextChange(Control editor, integer line)
+        if editor is CodeTextBox
+            CodeTextBox box = cast(CodeTextBox, editor)
+            box:SetCaretPositionToLine(line)
+            box:NextChange()
+        elseif editor is StudioBlockEditor
+            StudioBlockEditor blocks = cast(StudioBlockEditor, editor)
+            blocks:GoToNextChange(line)
+        end
+    end
+
+    /*
+    True if the change is lines deleted below its line, rather than an
+    added or changed block.
+    */
+    action IsDeletion(DiffEdit edit) returns boolean
+        integer type = edit:GetEditType()
+        if type = gitConstants:EDIT_INSERT or type = gitConstants:EDIT_CHANGE
+            return false
+        end
+        return true
+    end
+
+    /*
+    The tooltip's title: what changed since the last commit, such as "3
+    lines became 1 since your last commit".
+    */
+    action GetTitle(DiffEdit edit) returns text
+        text since = " since your last commit"
+        if IsDeletion(edit)
+            return Lines(edit:GetDeletedLineCount()) + " deleted below this line" + since
+        end
+        integer newCount = edit:GetBlockEnd() - edit:GetBlockStart() + 1
+        if edit:GetEditType() = gitConstants:EDIT_INSERT
+            return Lines(newCount) + " added" + since
+        end
+        integer oldCount = edit:GetOldLineCount()
+        if oldCount = 1 and newCount = 1
+            return "Changed" + since
+        end
+        if oldCount = newCount
+            return Lines(newCount) + " changed" + since
+        end
+        return Lines(oldCount) + " became " + newCount + since
+    end
+
+    // "1 line" or "3 lines".
+    private action Lines(integer count) returns text
+        if count = 1
+            return "1 line"
+        end
+        return "" + count + " lines"
+    end
+
+    /*
+    The name of the button that undoes the change: "Restore the old line",
+    "Restore the 3 old lines", "Remove the added line" or "Restore the
+    deleted lines".
+    */
+    action GetRestoreName(DiffEdit edit) returns text
+        if IsDeletion(edit)
+            if edit:GetDeletedLineCount() = 1
+                return "Restore the deleted line"
+            end
+            return "Restore the " + edit:GetDeletedLineCount() + " deleted lines"
+        end
+        if edit:GetEditType() = gitConstants:EDIT_INSERT
+            if edit:GetBlockEnd() = edit:GetBlockStart()
+                return "Remove the added line"
+            end
+            return "Remove the " + (edit:GetBlockEnd() - edit:GetBlockStart() + 1) + " added lines"
+        end
+        if edit:GetOldLineCount() = 1
+            return "Restore the old line"
+        end
+        return "Restore the " + edit:GetOldLineCount() + " old lines"
+    end
+
+    /*
+    The tooltip's content for a change on a line: the old lines, the new
+    lines, and the buttons.
+    */
+    action MakeContent(Control editor, DiffEdit edit, integer line) returns Control
+        number scale = GetScale()
+
+        Font codeFont
+        codeFont:LoadFont(editor:GetDefaultMonospaceFontName())
+
+        ColorGroup addedColor = support:GetThemeColor(optionsConstants:GIT_ADDED_COLOR, addedFallback)
+        ColorGroup deletedColor = support:GetThemeColor(optionsConstants:GIT_DELETED_COLOR, deletedFallback)
+
+        Array<Label> labels
+        if IsDeletion(edit)
+            AddLines(labels, edit:GetDeletedText(), "- ", deletedColor, codeFont)
+        else
+            if edit:GetEditType() = gitConstants:EDIT_CHANGE
+                AddLines(labels, edit:GetOldText(), "- ", deletedColor, codeFont)
+            end
+            text newText = ""
+            text lineFeed = ""
+            lineFeed = lineFeed:GetLineFeed()
+            integer index = edit:GetBlockStart()
+            integer lineCount = GetTextLineCount(editor)
+            repeat while index <= edit:GetBlockEnd() and index < lineCount
+                if index > edit:GetBlockStart()
+                    newText = newText + lineFeed
+                end
+                newText = newText + GetTextLine(editor, index)
+                index = index + 1
+            end
+            AddLines(labels, newText, "+ ", addedColor, codeFont)
+        end
+
+        integer endLine = line
+        if IsDeletion(edit) = false
+            endLine = edit:GetBlockEnd()
+        end
+
+        Array<Button> buttons
+        buttons:Add(MakeButton(GetRestoreName(edit), editor, edit, line, 0))
+        buttons:Add(MakeButton("Next change", editor, edit, endLine, 1))
+        buttons:Add(MakeButton("Close", editor, edit, line, 2))
+
+        // Widths and heights, in pixels.
+        number width = 0
+        number height = 0
+        integer counter = 0
+        repeat while counter < labels:GetSize()
+            Label label = labels:Get(counter)
+            label:SetInterfaceScale(scale)
+            if label:GetWidth() > width
+                width = label:GetWidth()
+            end
+            height = height + label:GetHeight() + LINE_GAP * scale
+            counter = counter + 1
+        end
+
+        number buttonsWidth = 0
+        counter = 0
+        repeat while counter < buttons:GetSize()
+            Button button = buttons:Get(counter)
+            LayoutProperties properties = button:GetDefaultLayoutProperties()
+            if counter > 0
+                buttonsWidth = buttonsWidth + BUTTON_GAP * scale
+            end
+            buttonsWidth = buttonsWidth + properties:GetPixelWidth() * scale
+            counter = counter + 1
+        end
+        if buttonsWidth > width
+            width = buttonsWidth
+        end
+        height = height + BUTTONS_GAP * scale + BUTTON_HEIGHT * scale
+
+        Control content
+        ManualLayout layout
+        content:SetLayout(layout)
+        content:SetName("Change")
+
+        // ManualLayout counts positions up from the bottom, in pixels; it
+        // scales sizes but not positions. Top to bottom: the lines, then the
+        // buttons.
+        number top = height
+        counter = 0
+        repeat while counter < labels:GetSize()
+            Label label = labels:Get(counter)
+            top = top - label:GetHeight()
+            Place(label, 0, top)
+            content:Add(label)
+            top = top - LINE_GAP * scale
+            counter = counter + 1
+        end
+
+        number x = 0
+        counter = 0
+        repeat while counter < buttons:GetSize()
+            Button button = buttons:Get(counter)
+            Place(button, x, 0)
+            content:Add(button)
+            LayoutProperties properties = button:GetDefaultLayoutProperties()
+            x = x + properties:GetPixelWidth() * scale + BUTTON_GAP * scale
+            counter = counter + 1
+        end
+
+        // Tooltip measures content by its pixel size, before the scale.
+        LayoutProperties contentProperties = content:GetDefaultLayoutProperties()
+        contentProperties:SetHorizontalLayoutMode(contentProperties:STANDARD)
+        contentProperties:SetVerticalLayoutMode(contentProperties:STANDARD)
+        contentProperties:SetPixelWidth(width / scale)
+        contentProperties:SetPixelHeight(height / scale)
+        content:SetSize(width, height)
+        return content
+    end
+
+    /*
+    One label for each line of a text, up to the most shown, each starting
+    with a mark ("- " or "+ ") in the code font and the change's color, then
+    a line saying how many more there are.
+    */
+    private action AddLines(Array<Label> labels, text lines, text mark, ColorGroup lineColor, Font codeFont)
+        text lineFeed = ""
+        lineFeed = lineFeed:GetLineFeed()
+        text tab = ""
+        tab = tab:GetTab()
+        Array<text> parts = lines:Split(lineFeed)
+        if lines:IsEmpty()
+            parts:Empty()
+            parts:Add("")
+        end
+
+        integer counter = 0
+        repeat while counter < parts:GetSize() and counter < MAXIMUM_SHOWN_LINES
+            text value = parts:Get(counter)
+            value = value:Replace(tab, "    ")
+            if value:GetSize() > MAXIMUM_LINE_LENGTH
+                value = value:GetSubtext(0, MAXIMUM_LINE_LENGTH) + "..."
+            end
+            Label label
+            label:SetFont(codeFont)
+            label:SetFontSize(FONT_SIZE)
+            label:SetFontColor(lineColor)
+            label:SetText(mark + value)
+            labels:Add(label)
+            counter = counter + 1
+        end
+
+        if parts:GetSize() > MAXIMUM_SHOWN_LINES
+            Label more
+            more:SetInterfaceOptionsKey("Tooltip")
+            more:SetFontSize(FONT_SIZE)
+            integer rest = parts:GetSize() - MAXIMUM_SHOWN_LINES
+            if rest = 1
+                more:SetText("and 1 more line")
+            else
+                more:SetText("and " + rest + " more lines")
+            end
+            labels:Add(more)
+        end
+    end
+
+    /*
+    A button of the tooltip, sized to its words, doing one of
+    GitChangeTooltipBehavior's actions.
+    */
+    private action MakeButton(text name, Control editor, DiffEdit edit, integer line, integer move) returns Button
+        Button button
+        button:SetName(name)
+        button:SetFontSize(FONT_SIZE)
+
+        Label measure
+        measure:SetFontSize(FONT_SIZE)
+        measure:SetInterfaceScale(1)
+        measure:SetText(name)
+
+        LayoutProperties properties = button:GetDefaultLayoutProperties()
+        properties:SetHorizontalLayoutMode(properties:STANDARD)
+        properties:SetVerticalLayoutMode(properties:STANDARD)
+        properties:SetPixelWidth(measure:GetWidth() + 2 * BUTTON_PADDING)
+        properties:SetPixelHeight(BUTTON_HEIGHT)
+
+        GitChangeTooltipBehavior behavior
+        behavior:Setup(editor, edit, line, move)
+        button:SetBehavior(behavior)
+        return button
+    end
+
+    // Places a part at a spot measured from the content's bottom left.
+    private action Place(Control part, number x, number y)
+        LayoutProperties properties = part:GetDefaultLayoutProperties()
+        properties:SetPercentageX(0)
+        properties:SetPercentageY(0)
+        properties:SetPercentageOriginX(0)
+        properties:SetPercentageOriginY(0)
+        properties:SetPixelX(x)
+        properties:SetPixelY(y)
+    end
+
+    // The game's interface scale, or 1 without a game.
+    private action GetScale returns number
+        Game game = manager:GetGame()
+        if game = undefined
+            return 1
+        end
+        number scale = game:GetInterfaceScale()
+        if scale <= 0
+            return 1
+        end
+        return scale
+    end
+end

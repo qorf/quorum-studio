@@ -965,12 +965,20 @@ public class Git {
      * Adds an edit for one line of the text being edited. The types are
      * GitConstants' EDIT_INSERT 0, EDIT_CHANGE 1 and EDIT_EQUAL 3.
      */
-    private static void AddEdit(quorum.Libraries.Development.Versioning.DiffResult result, int line, int type) {
+    private static quorum.Libraries.Development.Versioning.DiffEdit AddEdit(quorum.Libraries.Development.Versioning.DiffResult result, int line, int type) {
         quorum.Libraries.Development.Versioning.DiffEdit edit = new quorum.Libraries.Development.Versioning.DiffEdit();
         edit.startLine = line;
         edit.endLine = line;
         edit.SetEditType(type);
         result.GetEdits().Add(edit);
+        return edit;
+    }
+
+    /*
+     * Lines joined by line feeds, as the editor keeps them.
+     */
+    private static String JoinLines(List<String> lines) {
+        return String.join("\n", lines);
     }
 
     /*
@@ -992,13 +1000,15 @@ public class Git {
      * Marks the last line added as having lines deleted after it. Lines
      * deleted from the top of the file have no line above them to mark.
      */
-    private static void MarkDeletionBefore(quorum.Libraries.Development.Versioning.DiffResult result) {
+    private static quorum.Libraries.Development.Versioning.DiffEdit MarkDeletionBefore(quorum.Libraries.Development.Versioning.DiffResult result) {
         int size = result.GetEdits().GetSize();
         if (size > 0) {
             quorum.Libraries.Development.Versioning.DiffEdit edit =
                 (quorum.Libraries.Development.Versioning.DiffEdit) result.GetEdits().Get(size - 1);
             edit.SetHasDeletion(true);
+            return edit;
         }
+        return null;
     }
 
     public DiffResult_ RequestDiff(Repository_ quorumRepository, DiffRequest_ request) {
@@ -1064,8 +1074,19 @@ public class Git {
                             if (type == DeltaType.CHANGE) {
                                 editType = 1;
                             }
+                            // Each line of the block knows the block's place
+                            // and the lines it had at the last commit, so the
+                            // editor can show them and put them back.
+                            int blockStart = line;
+                            int blockEnd = line + target.size() - 1;
+                            String oldText = type == DeltaType.CHANGE ? JoinLines(source.getLines()) : "";
+                            int oldLineCount = type == DeltaType.CHANGE ? source.size() : 0;
                             for (int i = 0; i < target.size(); i++) {
-                                AddEdit(resultForFile, line, editType);
+                                quorum.Libraries.Development.Versioning.DiffEdit edit = AddEdit(resultForFile, line, editType);
+                                edit.SetBlockStart(blockStart);
+                                edit.SetBlockEnd(blockEnd);
+                                edit.SetOldText(oldText);
+                                edit.SetOldLineCount(oldLineCount);
                                 line = line + 1;
                             }
                             if (type == DeltaType.CHANGE) {
@@ -1083,7 +1104,11 @@ public class Git {
                                     resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesInserted_() + target.size());
                             }
                         } else if (type == DeltaType.DELETE) {
-                            MarkDeletionBefore(resultForFile);
+                            quorum.Libraries.Development.Versioning.DiffEdit above = MarkDeletionBefore(resultForFile);
+                            if (above != null) {
+                                above.SetDeletedText(JoinLines(source.getLines()));
+                                above.SetDeletedLineCount(source.size());
+                            }
                             resultForFile.Set_Libraries_Development_Versioning_DiffResult__linesDeleted_(
                                 resultForFile.Get_Libraries_Development_Versioning_DiffResult__linesDeleted_() + source.size());
                         }

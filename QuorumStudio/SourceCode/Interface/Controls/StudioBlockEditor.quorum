@@ -19,6 +19,8 @@ use Libraries.Development.Versioning.DiffEdit
 use Libraries.Development.Versioning.GitConstants
 use Libraries.Game.GameStateManager
 use Libraries.Interface.Accessibility
+use Libraries.Game.Shapes.Rectangle
+use Libraries.Containers.MultipleLineText
 
 /*
 Studio's block editor. A click in its line number gutter toggles the
@@ -53,7 +55,12 @@ class StudioBlockEditor is CodeEditor
         studioGutter:AddGutterListener(me)
         Add(cast(Gutter, studioGutter))
         Add(cast(Gutter, statusGutter))
+        // Shift+F1 on a changed block shows the change's tooltip.
+        SetTooltipEnabled(true)
     end
+
+    // The tooltip of the change on a line since the last commit.
+    GitChangeTooltip changeTooltip
 
     action GetBuildManager returns BuildManager
         return manager
@@ -248,4 +255,159 @@ class StudioBlockEditor is CodeEditor
         end
         return file
     end
+
+    // One line of the code's text, counting from 0.
+    action GetTextLine(integer line) returns text
+        MultipleLineText code = GetCode()
+        if line < 0 or line >= code:GetLineCount()
+            return ""
+        end
+        return code:GetLine(line):GetText()
+    end
+
+    // The text line of the selected block, or -1 when none is selected.
+    private action GetSelectedTextLine returns integer
+        return GetBreakpointLine(GetSelection():GetBlock())
+    end
+
+    /*
+    The editor's tooltip is the change on the selected block's line
+    (GitChangeTooltip): Shift+F1 shows it, with the focus on its first
+    button. Resting the mouse on the blocks doesn't; the change lane shows it
+    for the mouse.
+    */
+    action IsTooltipShownOnHover returns boolean
+        return false
+    end
+
+    action HasTooltipContent returns boolean
+        return changeTooltip:GetChange(me, GetSelectedTextLine()) not= undefined
+    end
+
+    action GetTooltipTitle returns text
+        DiffEdit edit = changeTooltip:GetChange(me, GetSelectedTextLine())
+        if edit = undefined
+            return ""
+        end
+        return changeTooltip:GetTitle(edit)
+    end
+
+    action GetTooltipText returns text
+        return ""
+    end
+
+    /*
+    The words screen readers get as the editor's help stay its description:
+    the change tooltip follows the selection, and is read when it opens.
+    */
+    action GetTooltipWords returns text
+        text description = GetDescription()
+        if description = undefined
+            return ""
+        end
+        return description
+    end
+
+    action CreateTooltipContent returns Control
+        integer line = GetSelectedTextLine()
+        DiffEdit edit = changeTooltip:GetChange(me, line)
+        if edit = undefined
+            return undefined
+        end
+        return changeTooltip:MakeContent(me, edit, line)
+    end
+
+    action IsTooltipInteractive returns boolean
+        return true
+    end
+
+    // Below the selected block.
+    action GetTooltipArea returns Rectangle
+        Block block = GetSelection():GetBlock()
+        if block = undefined
+            return undefined
+        end
+        Rectangle area
+        area:SetRectangle(block:GetScreenX(), block:GetScreenY(), block:GetWidth(), block:GetHeight())
+        return area
+    end
+
+    /*
+    Puts a change back as it was at the last commit, as one step that Undo
+    takes back: a changed block of lines gets its old lines again, added
+    lines are removed, and deleted lines go back below their line. The
+    block where the change was is then selected.
+
+    Attribute: Parameter edit The change, from the change lane's diff.
+    Attribute: Parameter line The line the change was shown on.
+    */
+    action RestoreChange(DiffEdit edit, integer line)
+        if edit = undefined
+            return now
+        end
+        text lineFeed = ""
+        lineFeed = lineFeed:GetLineFeed()
+        integer type = edit:GetEditType()
+        integer lineCount = GetRawTextLineCount()
+        integer size = GetCode():GetSize()
+        integer first = edit:GetBlockStart()
+        integer last = edit:GetBlockEnd()
+        integer selectLine = line
+
+        if type = gitConstants:EDIT_CHANGE
+            if first >= 0 and last < lineCount
+                integer startIndex = GetIndexOfLineStart(first)
+                ReplaceText(startIndex, GetIndexOfLineEnd(last) - startIndex, edit:GetOldText())
+                selectLine = first
+            end
+        elseif type = gitConstants:EDIT_INSERT
+            if first >= 0 and last < lineCount
+                if last + 1 < lineCount
+                    // The lines and the line break after the last one.
+                    integer startIndex = GetIndexOfLineStart(first)
+                    ReplaceText(startIndex, GetIndexOfLineStart(last + 1) - startIndex, "")
+                elseif first > 0
+                    // The last lines: the line break before them too.
+                    integer endIndex = GetIndexOfLineEnd(first - 1)
+                    ReplaceText(endIndex, size - endIndex, "")
+                else
+                    ReplaceText(0, size, "")
+                end
+                selectLine = first - 1
+                if selectLine < 0
+                    selectLine = 0
+                end
+            end
+        elseif edit:GetDeletedLineCount() > 0 and line < lineCount
+            ReplaceText(GetIndexOfLineEnd(line), 0, lineFeed + edit:GetDeletedText())
+            selectLine = line + 1
+        end
+
+        if selectLine < GetRawTextLineCount()
+            SelectBlockAtTextLine(selectLine, true)
+        end
+    end
+
+    /*
+    Selects the block of the next change after a line: a line added or
+    changed, or one with lines deleted below it, as the change lane marks.
+    */
+    action GoToNextChange(integer line)
+        DiffResult result = statusGutter:GetDiffResult()
+        if result = undefined
+            return now
+        end
+        Array<DiffEdit> edits = result:GetEdits()
+        integer index = line + 1
+        repeat while index < edits:GetSize()
+            DiffEdit edit = edits:Get(index)
+            integer type = edit:GetEditType()
+            if type = gitConstants:EDIT_INSERT or type = gitConstants:EDIT_CHANGE or edit:HasDeletion()
+                SelectBlockAtTextLine(index, true)
+                return now
+            end
+            index = index + 1
+        end
+    end
+
 end

@@ -1,0 +1,76 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.TooltipManager
+use Libraries.Interface.Controls.Control
+use Libraries.Game.GameStateManager
+use Libraries.Development.Versioning.DiffEdit
+
+/*
+What the buttons of a changed line's tooltip (GitChangeTooltip) do:
+RESTORE puts the lines back as they were at the last commit, as one step
+that Undo takes back; NEXT goes to the next change; CLOSE closes the
+tooltip. Each closes the tooltip first. The editor is the text editor or the
+block editor. When the tooltip was opened from the editor with Shift+F1,
+the focus goes back to the editor, and after NEXT the next change's
+tooltip opens the same way, so the changes can be reviewed one after
+another from the keyboard.
+*/
+class GitChangeTooltipBehavior is Behavior
+    public constant integer RESTORE = 0
+    public constant integer NEXT = 1
+    public constant integer CLOSE = 2
+
+    Control editor = undefined
+    DiffEdit edit = undefined
+    // The line the change shows on, or for NEXT the change's last line.
+    integer line = -1
+    integer move = CLOSE
+    GameStateManager manager
+
+    /*
+    Sets the editor, the change, its line and what the button does.
+    */
+    action Setup(Control changedEditor, DiffEdit change, integer changeLine, integer value)
+        editor = changedEditor
+        edit = change
+        line = changeLine
+        move = value
+    end
+
+    action Run(BehaviorEvent event)
+        if editor = undefined
+            return now
+        end
+        GitChangeTooltip changes
+
+        // Opened from the editor's keyboard, not from the change lane.
+        boolean fromEditor = false
+        TooltipManager tooltips = manager:GetTooltipManager()
+        if tooltips not= undefined
+            Control owner = tooltips:GetOwner()
+            if owner not= undefined
+                fromEditor = owner:Equals(editor)
+            end
+            tooltips:HideTooltip()
+        end
+
+        if move = RESTORE
+            editor:Focus()
+            changes:Restore(editor, edit, line)
+        elseif move = NEXT
+            editor:Focus()
+            changes:GoToNextChange(editor, line)
+            if fromEditor and tooltips not= undefined
+                tooltips:Show(editor, true)
+            end
+        elseif fromEditor
+            editor:Focus()
+        end
+    end
+
+    action IsFinished returns boolean
+        return true
+    end
+end

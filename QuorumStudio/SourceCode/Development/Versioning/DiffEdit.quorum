@@ -6,6 +6,19 @@ class DiffEdit
     integer editType = -1
     boolean hasDeletion = false
 
+    // For a line in an added or changed block: the block's first and last
+    // line in the text being edited, and the lines it had at the last
+    // commit, joined by line feeds (none for an added block).
+    integer blockStart = -1
+    integer blockEnd = -1
+    text oldText = ""
+    integer oldLineCount = 0
+
+    // For a line with lines deleted below it: the deleted lines, joined by
+    // line feeds.
+    text deletedText = ""
+    integer deletedLineCount = 0
+
     action GetStartLine returns integer
         return startLine
     end
@@ -36,4 +49,71 @@ class DiffEdit
     action SetHasDeletion(boolean hasDeletion)
         me:hasDeletion = hasDeletion
     end
+
+    /*
+    The first line of this line's added or changed block, counting from 0,
+    or -1 for an unchanged line.
+    */
+    action GetBlockStart returns integer
+        return blockStart
+    end
+
+    action SetBlockStart(integer line)
+        blockStart = line
+    end
+
+    /*
+    The last line of this line's added or changed block, counting from 0,
+    or -1 for an unchanged line.
+    */
+    action GetBlockEnd returns integer
+        return blockEnd
+    end
+
+    action SetBlockEnd(integer line)
+        blockEnd = line
+    end
+
+    /*
+    The lines this line's block had at the last commit, joined by line
+    feeds: empty for an added block.
+    */
+    action GetOldText returns text
+        return oldText
+    end
+
+    action SetOldText(text value)
+        oldText = value
+    end
+
+    // How many lines the block had at the last commit.
+    action GetOldLineCount returns integer
+        return oldLineCount
+    end
+
+    action SetOldLineCount(integer count)
+        oldLineCount = count
+    end
+
+    /*
+    The lines deleted just below this line since the last commit, joined by
+    line feeds, when this line HasDeletion and isn't itself changed.
+    */
+    action GetDeletedText returns text
+        return deletedText
+    end
+
+    action SetDeletedText(text value)
+        deletedText = value
+    end
+
+    // How many lines were deleted just below this line.
+    action GetDeletedLineCount returns integer
+        return deletedLineCount
+    end
+
+    action SetDeletedLineCount(integer count)
+        deletedLineCount = count
+    end
+
 end

@@ -61,6 +61,8 @@ use Libraries.Development.Versioning.DiffResult
 use Libraries.Development.Versioning.DiffEdit
 use Libraries.Language.Compile.CompilerError
 use Libraries.Development.Versioning.GitConstants
+use Libraries.Interface.Controls.Control
+use Libraries.Game.Shapes.Rectangle
 use Libraries.Language.Compile.Library
 use Libraries.Interface.Accessibility
 use Libraries.Language.Compile.Parsing.QuorumLexerConstants
@@ -86,6 +88,8 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     // Line numbers with the breakpoint dot and the stopped-line arrow (G1).
     StudioLineGutter gutter
     StatusLineGutter statusGutter
+    // The tooltip of the change on a line since the last commit.
+    GitChangeTooltip changeTooltip
     EditorTab tab = undefined
 
     Array<text> findReplaceNames
@@ -128,6 +132,8 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
         Add(cast(Gutter, statusGutter))
         gutter:AddGutterListener(me)
         statusGutter:AddGutterListener(me)
+        // Shift+F1 on a changed line shows the change's tooltip.
+        SetTooltipEnabled(true)
         SetPopupMenu(GeneratePopupMenu())
         SetMoveFocusOnTab(false)
         // Added here, when the box is made, so the box is first in its own
@@ -1952,6 +1958,125 @@ class CodeTextBox is TextBox, SelectionListener, BreakpointListener, GutterListe
     end
     action GetStatusGutter returns StatusLineGutter
         return statusGutter
+    end
+
+
+    /*
+    The editor's tooltip is the change on the caret's line (GitChangeTooltip):
+    Shift+F1 shows it, with the focus on its first button. Resting the mouse
+    on the text doesn't; the change lane shows it for the mouse.
+    */
+    action IsTooltipShownOnHover returns boolean
+        return false
+    end
+
+    action HasTooltipContent returns boolean
+        return changeTooltip:GetChange(me, GetCaretLine()) not= undefined
+    end
+
+    action GetTooltipTitle returns text
+        DiffEdit edit = changeTooltip:GetChange(me, GetCaretLine())
+        if edit = undefined
+            return ""
+        end
+        return changeTooltip:GetTitle(edit)
+    end
+
+    action GetTooltipText returns text
+        return ""
+    end
+
+    /*
+    The words screen readers get as the editor's help stay its description:
+    the change tooltip follows the caret, and is read when it opens.
+    */
+    action GetTooltipWords returns text
+        text description = GetDescription()
+        if description = undefined
+            return ""
+        end
+        return description
+    end
+
+    action CreateTooltipContent returns Control
+        integer line = GetCaretLine()
+        DiffEdit edit = changeTooltip:GetChange(me, line)
+        if edit = undefined
+            return undefined
+        end
+        return changeTooltip:MakeContent(me, edit, line)
+    end
+
+    action IsTooltipInteractive returns boolean
+        return true
+    end
+
+    // Below the caret's line, from where the code starts.
+    action GetTooltipArea returns Rectangle
+        integer row = GetCaretLine()
+        return statusGutter:GetRowArea(row)
+    end
+
+    /*
+    Puts a change back as it was at the last commit, as one step that Undo
+    takes back: a changed block gets its old lines again, an added block is
+    removed, and deleted lines go back below their line. The caret goes to
+    where the change was.
+
+    Attribute: Parameter edit The change, from the change lane's diff.
+    Attribute: Parameter line The line the change was shown on.
+    */
+    action RestoreChange(DiffEdit edit, integer line)
+        if edit = undefined
+            return now
+        end
+        GitConstants constants
+        text lineFeed = ""
+        lineFeed = lineFeed:GetLineFeed()
+        integer type = edit:GetEditType()
+        integer lineCount = GetLineCount()
+        integer caretLine = line
+        integer first = edit:GetBlockStart()
+        integer last = edit:GetBlockEnd()
+
+        GetTextBoxEditManager():SetSpecialAction(true)
+        if type = constants:EDIT_CHANGE
+            if first >= 0 and last < lineCount
+                integer startIndex = GetIndexOfLine(first)
+                Delete(startIndex, GetLineEndIndex(last))
+                Insert(startIndex, edit:GetOldText(), false)
+                caretLine = first
+            end
+        elseif type = constants:EDIT_INSERT
+            if first >= 0 and last < lineCount
+                if last + 1 < lineCount
+                    // The lines and the line break after the last one.
+                    Delete(GetIndexOfLine(first), GetIndexOfLine(last + 1))
+                elseif first > 0
+                    // The last lines of the text: the line break before them too.
+                    Delete(GetLineEndIndex(first - 1), GetText():GetSize())
+                else
+                    Delete(0, GetText():GetSize())
+                end
+                caretLine = first - 1
+                if caretLine < 0
+                    caretLine = 0
+                end
+            end
+        elseif edit:GetDeletedLineCount() > 0 and line < lineCount
+            Insert(GetLineEndIndex(line), lineFeed + edit:GetDeletedText(), false)
+            caretLine = line + 1
+        end
+        GetTextBoxEditManager():SetSpecialAction(false)
+
+        if caretLine < GetLineCount()
+            SetCaretPositionToLine(caretLine)
+        end
+    end
+
+    // The index just after a line's last character, before its line break.
+    private action GetLineEndIndex(integer line) returns integer
+        return GetIndexOfLine(line) + GetLine(line):GetSize()
     end
 
 end

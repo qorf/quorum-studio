@@ -31,6 +31,7 @@ use Libraries.Game.GameStateManager
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Game.Graphics.ColorGroup
 use Libraries.Interface.Controls.CharacterIcon
+use Libraries.Interface.TooltipManager
 use Libraries.Interface.Views.ControlShaderView
 
 class Toolbar is ToolBar
@@ -125,29 +126,30 @@ class Toolbar is ToolBar
 
     action Setup
         // Files
-        AddButtonToToolbar(61892, const:TOOLBAR_FILE_ICON_COLOR, behaviors:GetOpenNewProjectBehavior(), "New Project", keymap:GetNewProjectKey():GetDisplayName())
-        AddButtonToToolbar(61897, const:TOOLBAR_FILE_ICON_COLOR, behaviors:GetOpenNewFileBehavior(), "New File", keymap:GetNewFileKey():GetDisplayName())
-        AddButtonToToolbar(61564, const:TOOLBAR_FILE_ICON_COLOR, behaviors:GetOpenProjectBehavior(), "Open Project", keymap:GetOpenProjectKey():GetDisplayName())
-        AddButtonToToolbar(61639, const:TOOLBAR_FILE_ICON_COLOR, behaviors:GetSaveAllBehavior(), "Save All", keymap:GetSaveAllKey():GetDisplayName())
+        AddButtonToToolbar(61892, const:TOOLBAR_FILE_ICON_COLOR, behaviors:GetOpenNewProjectBehavior(), "New Project", "Creates a new project.", keymap:GetNewProjectKey():GetDisplayName())
+        AddButtonToToolbar(61897, const:TOOLBAR_FILE_ICON_COLOR, behaviors:GetOpenNewFileBehavior(), "New File", "Creates a new file.", keymap:GetNewFileKey():GetDisplayName())
+        AddButtonToToolbar(61564, const:TOOLBAR_FILE_ICON_COLOR, behaviors:GetOpenProjectBehavior(), "Open Project", "Opens a project from your computer.", keymap:GetOpenProjectKey():GetDisplayName())
+        AddButtonToToolbar(61639, const:TOOLBAR_FILE_ICON_COLOR, behaviors:GetSaveAllBehavior(), "Save All", "Saves every file you've changed.", keymap:GetSaveAllKey():GetDisplayName())
         AddSeparator()
         // Undo and redo
-        AddButtonToToolbar(61666, const:TOOLBAR_EDIT_ICON_COLOR, behaviors:GetUndoBehavior(), "Undo", keymap:GetUndoKey():GetDisplayName())
-        AddButtonToToolbar(61470, const:TOOLBAR_EDIT_ICON_COLOR, behaviors:GetRedoBehavior(), "Redo", keymap:GetRedoKey():GetDisplayName())
+        AddButtonToToolbar(61666, const:TOOLBAR_EDIT_ICON_COLOR, behaviors:GetUndoBehavior(), "Undo", "Undoes your last change.", keymap:GetUndoKey():GetDisplayName())
+        AddButtonToToolbar(61470, const:TOOLBAR_EDIT_ICON_COLOR, behaviors:GetRedoBehavior(), "Redo", "Redoes the change you last undid.", keymap:GetRedoKey():GetDisplayName())
         AddSeparator()
         // Build and run
-        AddButtonToToolbar(63203, const:TOOLBAR_BUILD_ICON_COLOR, behaviors:GetThreadedBuildProjectBehavior(), "Build", keymap:GetBuildKey():GetDisplayName())
-        AddButtonToToolbar(57450, const:TOOLBAR_BUILD_ICON_COLOR, behaviors:GetThreadedCleanBuildProjectBehavior(), "Clean and Build", keymap:GetCleanBuildKey():GetDisplayName())
-        AddLabeledButtonToToolbar(61515, "Run", const:TOOLBAR_RUN_FILL_COLOR, behaviors:GetThreadedRunProjectBehavior(), "Run", keymap:GetRunKey():GetDisplayName())
+        AddButtonToToolbar(63203, const:TOOLBAR_BUILD_ICON_COLOR, behaviors:GetThreadedBuildProjectBehavior(), "Build", "Builds the project and checks it for errors.", keymap:GetBuildKey():GetDisplayName())
+        AddButtonToToolbar(57450, const:TOOLBAR_BUILD_ICON_COLOR, behaviors:GetThreadedCleanBuildProjectBehavior(), "Clean and Build", "Removes the last build, then builds the whole project again.", keymap:GetCleanBuildKey():GetDisplayName())
+        AddLabeledButtonToToolbar(61515, "Run", const:TOOLBAR_RUN_FILL_COLOR, behaviors:GetThreadedRunProjectBehavior(), "Run", "Builds the project and runs it.", keymap:GetRunKey():GetDisplayName())
         AddSeparator()
         // Debugging. Stop keeps its red: it is the one way to stop a program.
-        AddLabeledButtonToToolbar(61832, "Debug", const:TOOLBAR_DEBUG_FILL_COLOR, behaviors:GetThreadedDebugProjectBehavior(), "Debug", keymap:GetDebugKey():GetDisplayName())
-        AddButtonToToolbar(61517, const:TOOLBAR_STOP_BUTTON_COLOR, behaviors:GetThreadedStopBehavior(), "Stop", keymap:GetStopKey():GetDisplayName())
-        AddButtonToToolbar(61516, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedPauseBehavior(), "Pause", keymap:GetPauseKey():GetDisplayName())
-        AddButtonToToolbar(61520, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedContinueBehavior(), "Continue", keymap:GetContinueKey():GetDisplayName())
-        AddButtonToToolbar(61537, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedStepOverBehavior(), "Step Over", keymap:GetStepOverKey():GetDisplayName())
-        AddButtonToToolbar(61769, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedStepIntoBehavior(), "Step Into", keymap:GetStepIntoKey():GetDisplayName())
-        AddButtonToToolbar(61768, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedStepOutBehavior(), "Step Out", keymap:GetStepOutKey():GetDisplayName())
+        AddLabeledButtonToToolbar(61832, "Debug", const:TOOLBAR_DEBUG_FILL_COLOR, behaviors:GetThreadedDebugProjectBehavior(), "Debug", "Builds the project and runs it in the debugger.", keymap:GetDebugKey():GetDisplayName())
+        AddButtonToToolbar(61517, const:TOOLBAR_STOP_BUTTON_COLOR, behaviors:GetThreadedStopBehavior(), "Stop", "Stops the running program.", keymap:GetStopKey():GetDisplayName())
+        AddButtonToToolbar(61516, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedPauseBehavior(), "Pause", "Pauses the program you're debugging.", keymap:GetPauseKey():GetDisplayName())
+        AddButtonToToolbar(61520, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedContinueBehavior(), "Continue", "Continues the paused program.", keymap:GetContinueKey():GetDisplayName())
+        AddButtonToToolbar(61537, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedStepOverBehavior(), "Step Over", "Runs the current line, without going into actions it calls.", keymap:GetStepOverKey():GetDisplayName())
+        AddButtonToToolbar(61769, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedStepIntoBehavior(), "Step Into", "Runs the current line, going into an action it calls.", keymap:GetStepIntoKey():GetDisplayName())
+        AddButtonToToolbar(61768, const:TOOLBAR_STEP_ICON_COLOR, behaviors:GetThreadedStepOutBehavior(), "Step Out", "Runs to the end of the current action.", keymap:GetStepOutKey():GetDisplayName())
         SetupButtonFocus()
+        SetupTooltips()
     end
 
     action SetupButtonFocus
@@ -171,7 +173,47 @@ class Toolbar is ToolBar
         SetPreviousFocus(last)
     end
 
-    private action AddButtonToToolbar(integer unicode, text optionsKey, Behavior behavior, text name, text description)
+    /*
+    The first line of a toolbar button's tooltip: its name, a middle dot
+    (character 183), and its key, such as Run, the dot, then "Command + R",
+    drawn in bold (SetupTooltips). The tooltip's text under it is the
+    button's description, a sentence saying what it does, which screen
+    readers also read. The library's ToolBar turns its buttons' tooltips on.
+    */
+    private action MakeTooltipTitle(text name, text key) returns text
+        if key = undefined
+            return name
+        end
+        if key:IsEmpty()
+            return name
+        end
+        text dot = ""
+        dot = dot:GetUnicodeValue(183)
+        return name + " " + dot + " " + key
+    end
+
+    /*
+    Draws every tooltip's first line in Studio's bold sans font
+    (FiraSans-Bold, beside the regular one in Resources/Fonts). Without the
+    file, titles stay in the regular font.
+    */
+    private action SetupTooltips
+        File boldFile
+        boldFile:SetPath("Resources/Fonts/FiraSans-Bold.otf")
+        if not boldFile:Exists()
+            return now
+        end
+        GameStateManager manager
+        TooltipManager tooltips = manager:GetTooltipManager()
+        if tooltips = undefined
+            return now
+        end
+        Font boldFont
+        boldFont:LoadFont(boldFile)
+        tooltips:SetTitleFont(boldFont)
+    end
+
+    private action AddButtonToToolbar(integer unicode, text optionsKey, Behavior behavior, text name, text description, text key)
         Button button
         button:SetFont(fontAwesome)
         button:SetFontSize(GetFontSize())
@@ -217,6 +259,7 @@ class Toolbar is ToolBar
         button:SetName(name)
         button:SetLabelText(value)
         button:SetDescription(description)
+        button:SetTooltipTitle(MakeTooltipTitle(name, key))
 
         if behavior not= undefined
             button:SetBehavior(behavior)
@@ -232,7 +275,7 @@ class Toolbar is ToolBar
     most (Run and Debug). The icon is the Font Awesome glyph; the word is in
     the default font.
     */
-    private action AddLabeledButtonToToolbar(integer unicode, text label, text fillKey, Behavior behavior, text name, text description)
+    private action AddLabeledButtonToToolbar(integer unicode, text label, text fillKey, Behavior behavior, text name, text description, text key)
         Button button
         // The name first: Button:SetName also sets the label text.
         button:SetName(name)
@@ -299,6 +342,7 @@ class Toolbar is ToolBar
         // Lines the box's top up with the tops of the icons beside it.
         button:SetTopMargin(8)
         button:SetDescription(description)
+        button:SetTooltipTitle(MakeTooltipTitle(name, key))
         if behavior not= undefined
             button:SetBehavior(behavior)
         end

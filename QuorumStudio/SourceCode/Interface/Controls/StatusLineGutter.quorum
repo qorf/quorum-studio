@@ -14,6 +14,15 @@ use Libraries.Development.Versioning.DiffResult
 use Libraries.Development.Versioning.DiffEdit
 use Libraries.Development.Versioning.GitConstants
 use Libraries.Language.Compile.Hints.Hint
+use Libraries.Game.Game
+use Libraries.Game.GameStateManager
+use Libraries.Game.InputMonitor
+use Libraries.Game.InputSet
+use Libraries.Game.InputTable
+use Libraries.Game.Shapes.Rectangle
+use Libraries.Interface.TooltipManager
+use Libraries.Interface.Behaviors.Controls.MouseOnBehavior
+use Libraries.Interface.Behaviors.Controls.MouseOffBehavior
 
 /*
 The lane between the line numbers and the code (G1). A thin bar marks each
@@ -21,6 +30,12 @@ line git sees as added or changed, and a small red wedge marks where lines
 were deleted. A line with a hint and no change gets a short yellow mark.
 It works in both editors: GutterSupport finds the text line on each of the
 block editor's rows.
+
+In either editor, resting the mouse on a mark shows the change's tooltip
+(GitChangeTooltip), below that line: the old and new lines, and buttons to
+restore the old ones, go to the next change, or close. The lane has its own
+input group, "StatusLineGutter": the gutter's, plus the mouse moving on and
+off, which the tooltip needs.
 */
 class StatusLineGutter is Gutter
     // Sizes in points.
@@ -37,6 +52,197 @@ class StatusLineGutter is Gutter
     on create
         LayoutProperties properties = GetDefaultLayoutProperties()
         properties:SetBorderThickness(0)
+        SetTooltipEnabled(true)
+        SetupInput()
+    end
+
+    // The change tooltip's content and words.
+    GitChangeTooltip changes
+    // The row under the mouse when the tooltip manager last asked, or -1.
+    integer hoverRow = -1
+    // A row can't be under the mouse when this many rows are checked.
+    constant integer MAXIMUM_ROWS = 1000
+
+    /*
+    Uses the "StatusLineGutter" input group: a copy of the gutter's, plus the
+    mouse moving on and off the lane. It is made once, by the first lane.
+    */
+    private action SetupInput
+        GameStateManager manager
+        Game game = manager:GetGame()
+        if game = undefined
+            return now
+        end
+        if game:GetInputTable("StatusLineGutter") = undefined
+            InputTable gutterTable = game:GetInputTable("Gutter")
+            if gutterTable = undefined
+                return now
+            end
+            InputTable laneTable = gutterTable:Copy()
+            laneTable:SetIdentifier("StatusLineGutter")
+
+            InputSet mouseOn
+            mouseOn:SetInputType(mouseOn:MOUSE_MOVEMENT_INPUT)
+            mouseOn:SetInputTrigger(mouseOn:BEGIN)
+            MouseOnBehavior onBehavior
+            laneTable:Add(mouseOn, onBehavior)
+
+            InputSet mouseOff
+            mouseOff:SetInputType(mouseOff:MOUSE_MOVEMENT_INPUT)
+            mouseOff:SetInputTrigger(mouseOff:FINISH)
+            MouseOffBehavior offBehavior
+            laneTable:Add(mouseOff, offBehavior)
+
+            game:AddInputTable(laneTable)
+        end
+        SetInputGroup("StatusLineGutter")
+    end
+
+    /*
+    The mouse moved onto the lane: only the tooltip manager is told, so the
+    lane doesn't light up as a control under the mouse does.
+    */
+    action BeginMouseOver
+        hoverRow = GetRowUnderMouse()
+        GameStateManager manager
+        TooltipManager tooltips = manager:GetTooltipManager()
+        if tooltips not= undefined
+            tooltips:PointerEntered(me)
+        end
+    end
+
+    action EndMouseOver
+        GameStateManager manager
+        TooltipManager tooltips = manager:GetTooltipManager()
+        if tooltips not= undefined
+            tooltips:PointerLeft(me)
+        end
+    end
+
+    /*
+    The row under the mouse, counting from the editor's first row, or -1 when
+    the mouse isn't beside a row.
+    */
+    private action GetRowUnderMouse returns integer
+        ScrollableLineControl control = GetControl()
+        if control = undefined or drawnOnce = false
+            return -1
+        end
+        InputMonitor monitor
+        number y = monitor:GetMouseY() - GetScreenY() - GetBarOffset()
+        integer row = startRow
+        integer checked = 0
+        repeat while checked < MAXIMUM_ROWS and row < control:GetLineCount()
+            if y >= control:GetLineY(row)
+                return row
+            end
+            row = row + 1
+            checked = checked + 1
+        end
+        return -1
+    end
+
+    // As UpdateVisuals: the rows move up by the horizontal scroll bar.
+    private action GetBarOffset returns number
+        ScrollableLineControl control = GetControl()
+        if control = undefined
+            return 0
+        end
+        if control:IsShowingHorizontalBar()
+            return control:GetBarThickness() * control:GetInterfaceScale()
+        end
+        return 0
+    end
+
+    /*
+    The editor the lane belongs to: the text editor or the block editor, or
+    undefined for another control.
+    */
+    private action GetEditor returns Control
+        ScrollableLineControl control = GetControl()
+        if control is CodeTextBox or control is StudioBlockEditor
+            return control
+        end
+        return undefined
+    end
+
+    private action GetLineUnderMouse returns integer
+        integer row = GetRowUnderMouse()
+        if row < 0
+            return -1
+        end
+        ScrollableLineControl control = GetControl()
+        Array<integer> textLines = support:GetTextLines(control, startRow)
+        integer index = row - startRow
+        if index < 0 or index >= textLines:GetSize()
+            return -1
+        end
+        return textLines:Get(index)
+    end
+
+    private action GetChangeUnderMouse returns DiffEdit
+        Control editor = GetEditor()
+        if editor = undefined
+            return undefined
+        end
+        return changes:GetChange(editor, GetLineUnderMouse())
+    end
+
+    action HasTooltipContent returns boolean
+        return GetChangeUnderMouse() not= undefined
+    end
+
+    action GetTooltipTitle returns text
+        DiffEdit edit = GetChangeUnderMouse()
+        if edit = undefined
+            return ""
+        end
+        return changes:GetTitle(edit)
+    end
+
+    action GetTooltipText returns text
+        return ""
+    end
+
+    action CreateTooltipContent returns Control
+        DiffEdit edit = GetChangeUnderMouse()
+        Control editor = GetEditor()
+        if edit = undefined or editor = undefined
+            return undefined
+        end
+        return changes:MakeContent(editor, edit, GetLineUnderMouse())
+    end
+
+    action IsTooltipInteractive returns boolean
+        return true
+    end
+
+    // Below the row under the mouse, from where the code starts.
+    action GetTooltipArea returns Rectangle
+        return GetRowArea(GetRowUnderMouse())
+    end
+
+    action IsTooltipTargetChanged returns boolean
+        integer row = GetRowUnderMouse()
+        if row not= hoverRow
+            hoverRow = row
+            return true
+        end
+        return false
+    end
+
+    /*
+    A row's place on the screen, a sliver at the lane's right edge where the
+    code starts, for placing a tooltip at that row. Undefined for -1.
+    */
+    action GetRowArea(integer row) returns Rectangle
+        ScrollableLineControl control = GetControl()
+        if control = undefined or row < 0
+            return undefined
+        end
+        Rectangle area
+        area:SetRectangle(GetScreenX() + GetWidth(), GetScreenY() + control:GetLineY(row) + GetBarOffset(), 1, control:GetLineHeight(row))
+        return area
     end
 
     Array<Drawable> drawables
