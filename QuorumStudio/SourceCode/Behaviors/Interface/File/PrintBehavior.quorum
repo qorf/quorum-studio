@@ -1,0 +1,435 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Containers.Array
+use Libraries.Containers.HashTable
+use Libraries.System.File
+use Libraries.Interface.Item
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Controls.Scenes.SceneEditor
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
+use Libraries.Interface.Controls.Scenes.Items.EditorTerrain
+use Libraries.Interface.Controls.Scenes.Items.Highlights.TerrainSelectionHighlight
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
+use Libraries.Development.Environment.Studio.Interface.ModelPreviewTab
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Development.Environment.Studio.Interface.PrintDialog
+use Libraries.Development.Environment.Studio.Interface.PrintProgressDialog
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Development.Environment.Projects.ProjectManager
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Containers.Iterator
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Configuration.Options
+use Libraries.Game.Graphics.Models.Data.ModelData
+use Libraries.Game.Graphics.Models.Data.ModelLoader
+use Libraries.Game.Graphics.Worlds.TerrainPrintMesh
+use Libraries.Fabrication.PrintSetup
+use Libraries.Fabrication.Profiles.Profile
+use Libraries.Fabrication.Printers.Printer
+use Libraries.Fabrication.Printers.BambuPrinter
+use Libraries.Fabrication.Printers.PrinterList
+use Libraries.Concurrency.ThreadRunner
+
+/*
+    The PrintBehavior is File > Print. It looks at what is chosen:
+
+    1. a model file (.gltf, .glb, .obj or .stl) selected in the project
+       tree, when the tree has the focus;
+    2. otherwise, the selected editor tab: a model's preview tab, or a
+       scene's tab (its terrain);
+    3. anything else: nothing, for now (later: source code).
+
+    It opens the Print dialog for it. The dialog's Print starts slicing on
+    the build thread (PrintModelSliceBehavior or PrintSliceBehavior), and
+    the result goes to the Output tab. A Bambu Lab printer needs Bambu's
+    own files, chosen in Quorum Studio Properties (the 3D Printing tab); until
+    they are, the dialog says so and doesn't print.
+
+    Nothing here is saved. Studio's default printer and Bambu's files are
+    the 3D Printing tab's (Options); this behavior only reads them.
+
+    Each model file's print choices (a PrintSetup) are kept while Studio
+    runs, so its preview tab and the Print dialog share them (GetSetup).
+    A terrain's print choices are its own (TerrainItem:GetPrintChoices),
+    set in the scene's Print section and saved in the scene.
+*/
+class PrintBehavior is QuorumStudioBehavior
+    ThreadRunner runner = undefined
+    HashTable<text, PrintSetup> setups
+    PrinterList printers
+
+    /*
+        Sets the thread the slicing runs on.
+
+        Attribute: Parameter runner The thread runner
+    */
+    action SetThreadRunner(ThreadRunner runner)
+        me:runner = runner
+    end
+
+    action Run(BehaviorEvent event)
+        QuorumStudio studio = GetMainApplication()
+        if studio = undefined or runner = undefined
+            return now
+        end
+
+        File treeFile = GetTreeModelFile(studio)
+        if treeFile not= undefined
+            OpenForModel(studio, treeFile)
+            return now
+        end
+
+        CodeEditorTabPane pane = studio:GetTabPane()
+        if pane = undefined
+            return now
+        end
+        TabPaneSelection selection = pane:GetSelection()
+        if selection = undefined
+            return now
+        end
+        Tab tab = selection:GetTab()
+        if tab is ModelPreviewTab
+            ModelPreviewTab previewTab = cast(ModelPreviewTab, tab)
+            OpenForModel(studio, previewTab:GetFile())
+        elseif tab is VisualEditorTab
+            VisualEditorTab sceneTab = cast(VisualEditorTab, tab)
+            SceneEditor editor = sceneTab:GetSceneEditor()
+            if editor not= undefined
+                OpenForTerrain(studio, editor)
+            end
+        end
+        // Anything else: nothing yet. Later: source code.
+    end
+
+    /*
+        Returns the print choices kept for a model file, making them the
+        first time: the model loaded, every part included, real size, its
+        own up axis, and Studio's default printer. Returns undefined if the
+        file can't be loaded (the Output tab says why).
+
+        Attribute: Parameter file The model file
+        Attribute: Returns Its print choices, or undefined
+    */
+    action GetSetup(File file) returns PrintSetup
+        text key = file:GetAbsolutePath()
+        if setups:HasKey(key)
+            // the printer is always Studio's (Quorum Studio Properties)
+            PrintSetup kept = setups:GetValue(key)
+            kept:SetPrinter(GetPrinter())
+            return kept
+        end
+        ModelData data = undefined
+        check
+            ModelLoader loader
+            data = loader:Load(file)
+        detect e
+            GetOutput():Append("Couldn't load " + file:GetFileName() + " to print it: " + e:GetErrorMessage())
+        end
+        if data = undefined
+            return undefined
+        end
+        PrintSetup setup
+        setup:SetModel(data)
+        setup:SetUnits(UnitsFor(file))
+        setup:SetUpAxis(NaturalUpAxis(file))
+        setup:SetPrinter(GetPrinter())
+        setup:UseRealSize()
+        setups:Add(key, setup)
+        return setup
+    end
+
+    /*
+        Returns true for the model files Studio previews and prints.
+    */
+    action IsModelFile(File file) returns boolean
+        if file = undefined
+            return false
+        end
+        text extension = file:GetFileExtension()
+        extension = extension:ToLowerCase()
+        return extension = "gltf" or extension = "glb" or extension = "obj" or extension = "stl"
+    end
+
+    /*
+        Returns a model file's own up axis: "Z" for STL files, which are
+        usually made Z-up, and "Y" for the others, which are usually Y-up.
+    */
+    action NaturalUpAxis(File file) returns text
+        text extension = file:GetFileExtension()
+        extension = extension:ToLowerCase()
+        if extension = "stl"
+            return "Z"
+        end
+        return "Y"
+    end
+
+    /*
+        Returns how many millimeters one unit of a model file is: 1000 for
+        glTF, whose units are meters, and 1 (millimeters) for the others.
+    */
+    action UnitsFor(File file) returns number
+        text extension = file:GetFileExtension()
+        extension = extension:ToLowerCase()
+        if extension = "gltf" or extension = "glb"
+            return 1000
+        end
+        return 1
+    end
+
+    /*
+        Slices a model with its choices on the build thread.
+    */
+    action StartModelPrint(PrintSetup setup, File file)
+        if NeedsBambuFiles(setup:GetPrinter())
+            SayBambuFilesNeeded()
+            return now
+        end
+        ApplyBambuFiles(setup:GetPrinter())
+        RefreshPreview(setup)
+        PrintModelSliceBehavior slice
+        slice:Setup(setup, file, GetOutput())
+        runner:Add(slice)
+        PrintProgressDialog progress
+        progress:SetupForModel(WithoutExtension(file:GetFileName()), slice)
+        progress:Show()
+    end
+
+    /*
+        Slices a terrain on the build thread, sized by its print choices
+        (TerrainItem:GetPrintChoices). The solid is built now, on the
+        interface thread, so a brush stroke during slicing can't change it.
+    */
+    action StartTerrainPrint(EditorTerrain terrain, Printer printer, File file)
+        if NeedsBambuFiles(printer)
+            SayBambuFilesNeeded()
+            return now
+        end
+        ApplyBambuFiles(printer)
+        Profile settings
+        settings:SetName(printer:GetName())
+        settings:SetParent(printer)
+        settings:SetNumber("unitScale", 1)
+        TerrainPrintMesh builder = terrain:GetPrintChoices()
+        ModelData solid = builder:Build(terrain:GetWorldTerrain():GetData(), settings)
+        PrintSliceBehavior slice
+        slice:Setup(solid, settings, file, builder, GetOutput())
+        runner:Add(slice)
+        PrintProgressDialog progress
+        progress:SetupForTerrain(terrain:GetName(), slice)
+        progress:Show()
+    end
+
+    // The model file selected in the project tree, if the tree had the
+    // focus before File > Print; otherwise undefined.
+    private action GetTreeModelFile(QuorumStudio studio) returns File
+        Item focus = studio:GetCurrentFocus()
+        if focus is MenuItem
+            focus = studio:GetPreviousFocus()
+        end
+        if not (focus is ProjectTree)
+            return undefined
+        end
+        ProjectTree tree = cast(ProjectTree, focus)
+        TreeSelection selection = tree:GetSelection()
+        if selection = undefined or selection:IsEmpty()
+            return undefined
+        end
+        TreeItem value = selection:GetTreeItem()
+        if not (value is ProjectTreeItem)
+            return undefined
+        end
+        ProjectTreeItem item = cast(ProjectTreeItem, value)
+        File file = item:GetFile()
+        if file not= undefined and file:IsFile() and IsModelFile(file)
+            return file
+        end
+        return undefined
+    end
+
+    private action OpenForModel(QuorumStudio studio, File file)
+        PrintSetup setup = GetSetup(file)
+        if setup = undefined
+            return now
+        end
+        File printFile = PrintFile(studio, file, WithoutExtension(file:GetFileName()))
+        if printFile = undefined
+            return now
+        end
+        PrintDialog dialog
+        dialog:SetupForModel(me, file:GetFileName(), setup, NaturalUpAxis(file), printFile)
+        dialog:Show()
+    end
+
+    private action OpenForTerrain(QuorumStudio studio, SceneEditor editor)
+        EditorTerrain terrain = FindTerrain(editor)
+        if terrain = undefined
+            return now
+        end
+        text sceneName = "Scene"
+        File sceneFile = editor:GetFile()
+        if sceneFile not= undefined
+            sceneName = WithoutExtension(sceneFile:GetFileName())
+        end
+        text name = sceneName
+        Array<EditorTerrain> terrains = editor:GetEditorTerrains()
+        if terrains:GetSize() > 1
+            name = name + "-" + terrain:GetName()
+        end
+        File printFile = PrintFile(studio, editor:GetFile(), name)
+        if printFile = undefined
+            return now
+        end
+        PrintDialog dialog
+        dialog:SetupForTerrain(me, sceneName, terrain, GetPrinter(), printFile)
+        dialog:Show()
+    end
+
+    // The selected terrain, or the scene's only terrain; otherwise
+    // undefined, after saying why in the Output tab.
+    private action FindTerrain(SceneEditor editor) returns EditorTerrain
+        EditorItem selected = editor:GetSelectedItem()
+        if selected is TerrainSelectionHighlight
+            TerrainSelectionHighlight highlight = cast(TerrainSelectionHighlight, selected)
+            return highlight:GetEditorTerrain()
+        end
+        Array<EditorTerrain> terrains = editor:GetEditorTerrains()
+        if terrains:GetSize() = 1
+            return terrains:Get(0)
+        end
+        if terrains:IsEmpty()
+            GetOutput():Append("This scene has no terrain to print.")
+        else
+            GetOutput():Append("This scene has " + terrains:GetSize() + " terrains. Select the one to print.")
+        end
+        return undefined
+    end
+
+    // <project>/Prints/<name>.gcode, in the project that holds the file
+    // being printed (the model or the scene); the focused project only if
+    // no open project holds it.
+    private action PrintFile(QuorumStudio studio, File source, text name) returns File
+        File folder = ProjectFolderOf(studio, source)
+        if folder = undefined
+            StudioFocusManager manager = studio:GetStudioFocusManager()
+            Project project = manager:GetProjectFocus()
+            if project = undefined
+                GetOutput():Append("Open the project to print from it.")
+                return undefined
+            end
+            folder = project:GetLocation()
+        end
+        File printFile
+        printFile:SetWorkingDirectory(folder:GetAbsolutePath())
+        printFile:SetPath("Prints/" + name + ".gcode")
+        return printFile
+    end
+
+    // The folder of the open project that holds the file, or undefined.
+    private action ProjectFolderOf(QuorumStudio studio, File source) returns File
+        if source = undefined
+            return undefined
+        end
+        text path = source:GetAbsolutePath()
+        ProjectManager projects = studio:GetProjectManager()
+        Iterator<QuorumProject> iterator = projects:GetIterator()
+        repeat while iterator not= undefined and iterator:HasNext()
+            QuorumProject project = iterator:Next()
+            File location = project:GetLocation()
+            text folder = location:GetAbsolutePath()
+            if path:StartsWith(folder + "/") or path:StartsWith(folder + "\")
+                return location
+            end
+        end
+        return undefined
+    end
+
+    /*
+        Returns Studio's printer, chosen in Quorum Studio Properties on the
+        3D Printing tab, or the generic printer until one is chosen. Every
+        print uses it; it doesn't change per model.
+    */
+    action GetPrinter returns Printer
+        QuorumStudio studio = GetMainApplication()
+        Printer printer = printers:Find(studio:GetOptions():GetDefaultPrinter())
+        if printer = undefined
+            printer = printers:Find("Generic printer")
+        end
+        return printer
+    end
+
+    /*
+        Returns true if the printer is a Bambu printer and Bambu's three
+        files aren't chosen yet (Quorum Studio Properties, 3D Printing tab).
+    */
+    action NeedsBambuFiles(Profile printer) returns boolean
+        if not (printer is BambuPrinter)
+            return false
+        end
+        QuorumStudio studio = GetMainApplication()
+        Options options = studio:GetOptions()
+        return options:GetBambuStartGcode() = "" or options:GetBambuEndGcode() = "" or options:GetBambuSettings() = ""
+    end
+
+    // Gives a Bambu printer the files chosen on the 3D 3D Printing tab. Options
+    // keeps where they are; the library is given Files, never paths.
+    private action ApplyBambuFiles(Profile printer)
+        if printer is BambuPrinter
+            BambuPrinter bambu = cast(BambuPrinter, printer)
+            QuorumStudio studio = GetMainApplication()
+            Options options = studio:GetOptions()
+            File start
+            start:SetAbsolutePath(options:GetBambuStartGcode())
+            File finish
+            finish:SetAbsolutePath(options:GetBambuEndGcode())
+            File settings
+            settings:SetAbsolutePath(options:GetBambuSettings())
+            bambu:SetBambuFiles(start, finish, settings)
+        end
+    end
+
+    private action SayBambuFilesNeeded
+        GetOutput():Append("A Bambu printer needs Bambu's own files. Choose them in Quorum Studio Properties, on the 3D 3D Printing tab.")
+    end
+
+    // The model's preview tab shows the choices made in the dialog.
+    private action RefreshPreview(PrintSetup setup)
+        QuorumStudio studio = GetMainApplication()
+        CodeEditorTabPane pane = studio:GetTabPane()
+        TabPaneSelection selection = pane:GetSelection()
+        if selection = undefined
+            return now
+        end
+        Tab tab = selection:GetTab()
+        if tab is ModelPreviewTab
+            ModelPreviewTab previewTab = cast(ModelPreviewTab, tab)
+            if previewTab:GetSetup() = setup
+                previewTab:ChoicesChanged()
+            end
+        end
+    end
+
+    private action GetOutput returns OutputTab
+        QuorumStudio studio = GetMainApplication()
+        return studio:GetOutputPane():GetOutputTab()
+    end
+
+    private action WithoutExtension(text name) returns text
+        integer i = name:GetSize() - 1
+        repeat while i > 0
+            if name:GetCharacter(i) = "."
+                return name:GetSubtext(0, i)
+            end
+            i = i - 1
+        end
+        return name
+    end
+end

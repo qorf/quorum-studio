@@ -1,0 +1,177 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Controls.Scenes.PropertiesPanel
+use Libraries.System.File
+use Libraries.Game.Game
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Fabrication.PrintSetup
+
+/*
+    The ModelPreviewTab opens a model file (.gltf, .glb, .obj or .stl) from
+    the project tree: the model on a printer's bed at its printed size,
+    with rulers, and on the right a Properties panel with the print
+    choices: the printer and size, which side goes down, supports and a
+    brim, which parts print, and whether each part can print. Its Print
+    button, and File > Print while it is selected, print with those
+    choices.
+
+    It is laid out like a scene's tab (VisualEditorTab): the view, a drag
+    bar, then the panel. It never asks to save: nothing in it changes the
+    file. The print choices are kept for the file while Studio runs (see
+    PrintBehavior:GetSetup), so the tab and the Print dialog share them.
+*/
+class ModelPreviewTab is Tab
+    File file = undefined
+    ModelPreviewEditor editor
+    PrintSetup setup = undefined
+    GameStateManager manager
+    // The file's own up axis: "Y" for glTF and OBJ, "Z" for STL. "As
+    // modeled" in the Placement section goes back to it.
+    text naturalUpAxis = "Y"
+
+    Control container
+    PartitionBar propertiesPartition
+    PropertiesPanel propertiesPanel
+    PrintSizeSection sizeSection
+    PrintPlacementSection placementSection
+    PrintPartsSection partsSection
+    number propertiesWidth = 320
+    constant number PARTITION_WIDTH = 6
+    constant number MINIMUM_PROPERTIES_WIDTH = 150
+    constant number MAXIMUM_PROPERTIES_WIDTH = 800
+
+    action GetFile returns File
+        return file
+    end
+
+    action SetFile(File file)
+        me:file = file
+    end
+
+    /*
+        Returns the file's own up axis: "Y" or "Z".
+    */
+    action GetNaturalUpAxis returns text
+        return naturalUpAxis
+    end
+
+    /*
+        Sets the file's own up axis: "Y" or "Z".
+    */
+    action SetNaturalUpAxis(text axis)
+        naturalUpAxis = axis
+    end
+
+    /*
+        Returns the print choices for the tab's model.
+    */
+    action GetSetup returns PrintSetup
+        return setup
+    end
+
+    /*
+        Returns the preview, so the sections can refresh it.
+    */
+    action GetEditor returns ModelPreviewEditor
+        return editor
+    end
+
+    /*
+        Builds the tab: loads the model, the print choices Studio kept for
+        it, and the three Print sections.
+
+        Attribute: Parameter printSetup The print choices for the file
+    */
+    action Load(PrintSetup printSetup)
+        setup = printSetup
+
+        FlowLayout layout
+        container:SetLayout(layout)
+        container:SetPercentageWidth(1.0)
+        container:SetPercentageHeight(1.0)
+        container:SetName("Model Preview")
+
+        propertiesPartition:SetPixelWidth(PARTITION_WIDTH)
+        propertiesPartition:SetVerticalLayoutMode(propertiesPartition:parent:Control:FILL)
+        propertiesPartition:SetInputGroup("PropertiesPartition")
+        propertiesPartition:SetName("Properties Partition")
+
+        container:Add(editor)
+        container:Add(propertiesPartition)
+        container:Add(propertiesPanel)
+        SetPropertiesWidth(propertiesWidth)
+
+        SetRelatedItem(container)
+        SetFocusTarget(editor)
+
+        editor:SetPropertiesPanel(propertiesPanel)
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        propertiesPanel:SetClosedSections(studio:GetOptions():GetClosedPropertiesSections())
+
+        editor:SetTab(me)
+        editor:LoadModel(file, setup)
+
+        // The Print sections, in this order. They don't follow the
+        // selection: they show for as long as the tab is open.
+        sizeSection:SetTab(me)
+        placementSection:SetTab(me)
+        partsSection:SetTab(me)
+        editor:AddPropertiesDialog(sizeSection)
+        editor:AddPropertiesDialog(placementSection)
+        editor:AddPropertiesDialog(partsSection)
+        sizeSection:Show()
+        placementSection:Show()
+        partsSection:Show()
+        sizeSection:ShowChoices()
+        placementSection:ShowChoices()
+        partsSection:ShowChoices()
+    end
+
+    /*
+        Called by a section after a choice changes: places the model again
+        and updates the other sections' sizes and checks.
+    */
+    action ChoicesChanged
+        editor:Refresh()
+        sizeSection:ShowSize()
+        partsSection:ShowCheck()
+    end
+
+    /*
+        Sets the width of the Properties panel, in pixels before the
+        interface scale, from 150 to 800. The view takes the rest.
+
+        Attribute: Parameter width The panel's width
+    */
+    action SetPropertiesWidth(number width)
+        if width < MINIMUM_PROPERTIES_WIDTH
+            width = MINIMUM_PROPERTIES_WIDTH
+        elseif width > MAXIMUM_PROPERTIES_WIDTH
+            width = MAXIMUM_PROPERTIES_WIDTH
+        end
+        propertiesWidth = width
+        propertiesPanel:SetPixelWidth(width)
+        editor:SetPixelWidth(-(width + PARTITION_WIDTH))
+        container:RequestLayout()
+    end
+
+    action OnToggleOn
+        parent:Tab:OnToggleOn()
+        editor:ShowLayers()
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        studio:BringMenuLayerToFront()
+    end
+
+    action OnToggleOff
+        editor:HideLayers()
+        parent:Tab:OnToggleOff()
+    end
+
+    action OnClose
+        editor:HideLayers()
+    end
+end

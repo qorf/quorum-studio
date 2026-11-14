@@ -1,0 +1,72 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Game.Graphics.Label
+
+/*
+    A WrappedLabel is a line of text that wraps to the width it is given,
+    and grows as tall as its lines. A plain Label in a FlowLayout keeps the
+    width of its text, because the layout only sizes controls, so long text
+    runs past a narrow card. As a control, a WrappedLabel gets its width
+    from the layout, and gives it to its label as the label's maximum
+    width, which makes the label wrap.
+
+    It isn't focusable by default. Information a screen reader user must
+    be able to reach, such as a properties card's facts, should be made
+    focusable (SetFocusable(true)) and put in its dialog's focus order:
+    its text is its name, so it is read when it gets the focus.
+
+    Attribute: Example
+    use Libraries.Development.Environment.Studio.Interface.WrappedLabel
+
+    WrappedLabel note
+    note:SetText("Change it in Quorum Studio Properties, on the 3D Printing tab.")
+*/
+class WrappedLabel is Control
+    Label label
+
+    on create
+        FlowLayout layout
+        SetLayout(layout)
+        Control layoutValues
+        SetPercentageWidth(1.0)
+        SetVerticalLayoutMode(layoutValues:FIT_CONTENTS)
+        SetFocusable(false)
+        // read as a plain item, by its text, when it has the focus
+        SetAccessibilityCode(parent:Item:ITEM)
+        Add(label)
+    end
+
+    /*
+        Sets the text. It is also the label's name, which a screen reader
+        reads when the label has the focus.
+
+        Attribute: Parameter value The text
+    */
+    action SetText(text value)
+        label:SetText(value)
+        SetName(value)
+        RequestLayout()
+    end
+
+    /*
+        Returns the text.
+
+        Attribute: Returns The text
+    */
+    action GetText returns text
+        return label:GetText()
+    end
+
+    /*
+        Gives the label the width the layout gave this line, so it wraps,
+        then lays the line out again.
+    */
+    action Resize
+        if GetWidth() > 0
+            label:SetMaximumWidth(GetWidth())
+        end
+        parent:Control:Resize()
+    end
+end

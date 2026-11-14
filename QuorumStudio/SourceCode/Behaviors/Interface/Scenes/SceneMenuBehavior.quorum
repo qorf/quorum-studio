@@ -3,6 +3,7 @@ package Libraries.Development.Environment.Studio.Behaviors
 use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
+use Libraries.Development.Environment.Studio.Interface.ModelPreviewTab
 use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Interface.Selections.TabPaneSelection
 use Libraries.Interface.Controls.Tab
@@ -12,8 +13,8 @@ use Libraries.Interface.Controls.Scenes.SceneEditor
     The SceneMenuBehavior is one item of the Scenes menu. It holds one of
     SceneConstants' COMMAND_ numbers, and when chosen, runs that command once
     in the scene open in the selected editor tab, as SceneEditor:RunCommand
-    does: one step of what the item's key does. With no scene tab selected,
-    it does nothing.
+    does: one step of what the item's key does. A 3D print model preview
+    tab counts as a scene tab. With no scene tab selected, it does nothing.
 
     Attribute: Example
     use Libraries.Development.Environment.Studio.Behaviors.SceneMenuBehavior
@@ -63,6 +64,14 @@ class SceneMenuBehavior is QuorumStudioBehavior
             SceneEditor editor = sceneTab:GetSceneEditor()
             if editor not= undefined
                 editor:RunCommand(command)
+            end
+        elseif tab is ModelPreviewTab
+            // A 3D print model preview is a scene editor too, so its
+            // properties and view can be reached from the menu and its keys.
+            ModelPreviewTab previewTab = cast(ModelPreviewTab, tab)
+            SceneEditor preview = previewTab:GetEditor()
+            if preview not= undefined
+                preview:RunCommand(command)
             end
         end
     end

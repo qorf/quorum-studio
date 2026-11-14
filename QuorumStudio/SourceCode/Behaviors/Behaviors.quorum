@@ -15,12 +15,14 @@ class Behaviors
     constant text SAVE = "Save"
     constant text SAVE_ALL = "Save All"
     constant text EXIT = "Exit"
+    constant text PRINT = "Print"
 
     OpenProjectBehavior openProjectBehavior
     CloseProjectBehavior closeProjectBehavior
     SaveBehavior saveBehavior
 
     SaveAllBehavior saveAllBehavior
+    PrintBehavior printBehavior
     ExitBehavior exitBehavior
 
     DefaultMenuOpenBehavior defaultMenuOpenBehavior
@@ -334,6 +336,7 @@ class Behaviors
         behaviors:Add(OPEN_NEW_PROJECT, openNewProjectBehavior)
         behaviors:Add(SAVE, saveBehavior)
         behaviors:Add(SAVE_ALL, saveAllBehavior)
+        behaviors:Add(PRINT, printBehavior)
         behaviors:Add(EXIT, exitBehavior)
 
         //team menu
@@ -398,6 +401,8 @@ class Behaviors
         //Threaded redirects for the build system
         threadedBuild:SetNestedBehavior(buildProjectBehavior)
         threadedBuild:SetThreadRunner(buildSystemRunner)
+        // Printing slices on the build thread, after any build already waiting.
+        printBehavior:SetThreadRunner(buildSystemRunner)
         threadedCleanAndBuild:SetNestedBehavior(cleanBuildProjectBehavior)
         threadedCleanAndBuild:SetThreadRunner(buildSystemRunner)
         threadedClean:SetNestedBehavior(cleanProjectBehavior)
@@ -598,6 +603,10 @@ class Behaviors
 
     action GetSaveAllBehavior returns SaveAllBehavior
         return saveAllBehavior
+    end
+
+    action GetPrintBehavior returns PrintBehavior
+        return printBehavior
     end
 
     action GetExitBehavior returns ExitBehavior

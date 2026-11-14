@@ -1,0 +1,145 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.ComboBox
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Events.ComboBoxListener
+use Libraries.Interface.Events.ComboBoxChangedEvent
+use Libraries.Interface.Controls.Scenes.Dialogs.PropertiesDialog
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
+use Libraries.Game.Graphics.Label
+use Libraries.Fabrication.PrintSetup
+use Libraries.Development.Environment.Studio.Behaviors.PrintChoiceBehavior
+
+/*
+    The PrintPlacementSection is the second Print section of a model's
+    preview tab: which side goes down on the bed (as modeled, or the
+    flattest side), and whether to add supports and a brim.
+*/
+class PrintPlacementSection is PropertiesDialog, ComboBoxListener
+    ModelPreviewTab tab = undefined
+    ComboBox sideBox = undefined
+    Checkbox supportsBox = undefined
+    Checkbox brimBox = undefined
+    PrintChoiceBehavior supportsBehavior
+    PrintChoiceBehavior brimBehavior
+    boolean updating = false
+
+    // the side-down choices, in the combo box's order
+    constant integer AS_MODELED = 0
+    constant integer FLATTEST_SIDE = 1
+
+    /*
+        Sets the tab whose model this section prints.
+    */
+    action SetTab(ModelPreviewTab value)
+        tab = value
+    end
+
+    private action CreateInterface(Control panel, Array<Control> focusArray)
+        SetName("Print Placement")
+
+        Label headingLabel
+        headingLabel:SetSize(18)
+        headingLabel:SetText("Placement")
+        headingLabel:SetLeftMargin(20)
+        panel:Add(headingLabel)
+        SetHeading(headingLabel)
+
+        Control card = AddCard(panel, "On the bed")
+
+        Control sideLine = MakeCardLine()
+        ComboBox box
+        sideBox = box
+        sideBox:SetName("Side down")
+        sideBox:SetDescription("Which side of the model rests on the bed")
+        sideBox:SetHorizontalLayoutMode(sideLine:FILL)
+        sideBox:Add("As modeled (its bottom down)")
+        sideBox:Add("Flattest side down")
+        sideBox:AddComboBoxListener(me)
+        sideLine:Add(sideBox)
+        focusArray:Add(sideBox)
+        card:Add(sideLine)
+
+        Control supportsLine = MakeCardLine()
+        Checkbox supports
+        supportsBox = supports
+        supportsBox:SetName("Supports")
+        supportsBox:SetDescription("Adds supports under parts that hang out more than 60 degrees")
+        supportsBehavior:SetPlacementSection(me)
+        supportsBox:SetBehavior(supportsBehavior)
+        supportsLine:Add(supportsBox)
+        focusArray:Add(supportsBox)
+        card:Add(supportsLine)
+
+        Control brimLine = MakeCardLine()
+        Checkbox brim
+        brimBox = brim
+        brimBox:SetName("Brim")
+        brimBox:SetDescription("Prints a flat rim around the first layer, so small contact areas, such as wheels, stay on the bed")
+        brimBehavior:SetPlacementSection(me)
+        brimBox:SetBehavior(brimBehavior)
+        brimLine:Add(brimBox)
+        focusArray:Add(brimBox)
+        card:Add(brimLine)
+    end
+
+    /*
+        Fills the controls from the tab's print choices.
+    */
+    action ShowChoices
+        if tab = undefined
+            return now
+        end
+        PrintSetup setup = tab:GetSetup()
+        updating = true
+        if setup:GetUpAxis() = "auto"
+            sideBox:Select(FLATTEST_SIDE)
+        else
+            sideBox:Select(AS_MODELED)
+        end
+        supportsBox:SetToggleState(setup:HasSupports())
+        brimBox:SetToggleState(setup:HasBrim())
+        updating = false
+    end
+
+    action ComboBoxChanged(ComboBoxChangedEvent event)
+        if updating or tab = undefined
+            return now
+        end
+        PrintSetup setup = tab:GetSetup()
+        if sideBox:GetSelectedIndex() = FLATTEST_SIDE
+            setup:SetUpAxis("auto")
+        else
+            // as modeled: the file's own up axis (Y for glTF and OBJ, Z for STL)
+            setup:SetUpAxis(tab:GetNaturalUpAxis())
+        end
+        tab:ChoicesChanged()
+    end
+
+    /*
+        Called when Supports or Brim is toggled.
+    */
+    action ChoicesToggled
+        if updating or tab = undefined
+            return now
+        end
+        PrintSetup setup = tab:GetSetup()
+        setup:SetSupports(supportsBox:GetToggleState())
+        setup:SetBrim(brimBox:GetToggleState())
+        tab:ChoicesChanged()
+    end
+
+    action SelectionChanged(SelectionEvent event)
+        // Stays shown whatever is selected in the view.
+    end
+
+    action SetFields(EditorItem item)
+    end
+
+    action FocusField
+        sideBox:Focus()
+    end
+end

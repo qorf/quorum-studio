@@ -1,0 +1,687 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Containers.Array
+use Libraries.Compute.Vector3
+use Libraries.Compute.Vector4
+use Libraries.Compute.Matrix4
+use Libraries.Compute.Math
+use Libraries.Game.Layer3D
+use Libraries.Game.Graphics.Model
+use Libraries.Game.Graphics.Font
+use Libraries.Game.Graphics.Glyph
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.Camera
+use Libraries.Game.Graphics.PerspectiveCamera
+use Libraries.Game.Graphics.TextureRegion
+use Libraries.Interface.Controls.Scenes.SceneConstants
+
+/*
+    A BillboardLabel is a line of text standing in a 3D scene: one flat
+    plane for each character, showing that character's picture from the
+    font, all turned to face the camera. By default the text is the same
+    height on screen however far away it is; SetWorldHeight gives it a
+    height in the scene instead, so it grows and shrinks with what it
+    labels as the camera moves. SetFlat lays the text on the floor
+    instead, and SetInPlane in any plane, running a given way from its
+    spot, like text printed on the ground or on a ruler's face. Because
+    the planes are in the scene, models in front of the text hide it.
+
+    The characters are the font's own pictures, as a Label draws them,
+    made at two to four times the size the text has on screen and drawn
+    smaller, so the edges follow the letters' shapes closely. Text
+    with a height in the scene makes its pictures again, at the next
+    power of two (16 to 128 pixels), when its size on screen changes
+    enough. Behind each white character are four black copies, nudged
+    left, right, up and down by a sixteenth of the text's height and a
+    little farther from the camera, which make an outline. The white
+    characters are blended, drawn in the see-through pass after the solid
+    models, so their edges blend smoothly; that pass hides what is behind
+    a solid model. The black copies are solid (cut out below half alpha),
+    so they are always drawn first, under the white. The planes are also
+    unlit,
+    so the scene's lights don't darken the text as the camera moves round.
+
+    Every plane is a helper (SceneConstants:EDITOR_TAG): not selectable,
+    not saved, and not taking mouse events.
+
+    Attribute: Example
+    use Libraries.Development.Environment.Studio.Interface.BillboardLabel
+
+    BillboardLabel label
+    label:Setup(layer, font, 16)
+    label:SetText("20.0 mm wide")
+    label:SetSpot(1, 0, 2)
+    // each frame
+    label:Face(layer:GetCamera(), viewHeight)
+*/
+class BillboardLabel
+    Layer3D layer = undefined
+    Font font = undefined
+    // The font's size for the characters' pictures, in its own pixels.
+    number pixelHeight = 16
+    // How tall the text is in the scene, in scene units, or 0 to keep it
+    // the same height on screen.
+    number worldHeight = 0
+    // How far each outline copy is nudged, in the font's pixels: a
+    // sixteenth of the text's height, set in Layout.
+    number outlinePixels = 2
+    text shown = ""
+    boolean visible = true
+    Vector3 spot
+
+    // One white plane per character, then its outline copies, in order.
+    Array<Model> planes
+    // Where each plane sits in the text, in the font's pixels from the
+    // text's center (x right, y up), and its size in pixels.
+    Array<number> planeX
+    Array<number> planeY
+    Array<number> planeWidth
+    Array<number> planeHeight
+    // How many planes the text uses; the rest are hidden, kept for reuse.
+    integer used = 0
+    // The text's width in the font's pixels, from its characters' advances.
+    number textWidth = 0
+    // The text's lowest and highest edges above its spot, outline
+    // included, in the font's pixels.
+    number textBottom = 0
+    number textTop = 0
+
+    // Whether the text lies in a plane of the scene instead of facing the
+    // camera; the way it runs from its spot and the plane's normal (each
+    // of length 1); and whether it may turn end for end to read forwards.
+    boolean inPlane = false
+    number runX = 1
+    number runY = 0
+    number runZ = 0
+    number normalX = 0
+    number normalY = 1
+    number normalZ = 0
+    boolean mayTurn = true
+
+    // Where the text sits across its spot: centered on it, starting at it
+    // (the text runs to the spot's right on screen), or ending at it (the
+    // text runs to its left).
+    public constant integer ALIGN_CENTER = 0
+    public constant integer ALIGN_START = 1
+    public constant integer ALIGN_END = 2
+    integer alignment = 0
+
+    // The camera's state when the planes were last placed, so they are
+    // placed again only when it, the spot or the text changes.
+    Vector3 lastPosition
+    Vector3 lastDirection
+    number lastViewHeight = -1
+    boolean placed = false
+
+    Color white
+    Color black
+    Math math
+
+    // How far behind the white character each outline copy sits, as a
+    // multiple of how far it is nudged, along the line of sight. The
+    // copies are solid and the white character is blended, so the white
+    // one is always drawn after them; it only has to be nearer, so its
+    // see-through test doesn't take a copy for a model in front.
+    constant number OUTLINE_BACK = 1
+    // The smallest and largest font sizes for the pictures of text with a
+    // height in the scene, in the font's pixels.
+    constant integer SMALLEST_RASTER = 16
+    constant integer LARGEST_RASTER = 128
+    // The characters' pictures are made this many times the size they
+    // show on screen, then drawn smaller, so their edges follow the
+    // letter's shape more closely than at one picture pixel per screen
+    // pixel. Sizes below are in picture pixels.
+    constant number RASTER_SCALE = 2
+    // How far above its spot the text's lowest edge stands, as a share of
+    // the text's height (4 pixels for 32 pixel pictures).
+    constant number STANDING_GAP = 0.125
+
+    /*
+        Sets the layer the planes go in, the font, and how tall the text is
+        on screen. The font is copied and set to that size.
+
+        Attribute: Parameter value The 3D layer
+        Attribute: Parameter textFont The font, such as a Label's
+        Attribute: Parameter heightInPixels How tall the text is on screen
+    */
+    action Setup(Layer3D value, Font textFont, integer heightInPixels)
+        layer = value
+        font = textFont:Copy()
+        font:SetSize(cast(integer, heightInPixels * RASTER_SCALE))
+        pixelHeight = heightInPixels * RASTER_SCALE
+        white:SetColor(1, 1, 1, 1)
+        black:SetColor(0, 0, 0, 1)
+    end
+
+    /*
+        Sets the text, making planes for any new characters.
+
+        Attribute: Parameter value The text
+    */
+    action SetText(text value)
+        if value = shown
+            return now
+        end
+        shown = value
+        Layout()
+        placed = false
+    end
+
+    /*
+        Sets how tall the text is in the scene, in scene units, so it grows
+        and shrinks on screen as the camera moves nearer or farther, as the
+        scene's models do. 0, the default, keeps the text the height given
+        to Setup on screen.
+
+        Attribute: Parameter value The text's height in scene units, or 0
+    */
+    action SetWorldHeight(number value)
+        if value = worldHeight
+            return now
+        end
+        worldHeight = value
+        placed = false
+    end
+
+    /*
+        Returns the text's height in the scene, in scene units, or 0 if it
+        keeps its height on screen.
+    */
+    action GetWorldHeight returns number
+        return worldHeight
+    end
+
+    /*
+        Returns the text.
+    */
+    action GetText returns text
+        return shown
+    end
+
+    /*
+        Sets the point in the scene the text stands on: centered across
+        it, with its lowest edge just above it.
+    */
+    action SetSpot(number x, number y, number z)
+        if spot:GetX() = x and spot:GetY() = y and spot:GetZ() = z
+            return now
+        end
+        spot:Set(x, y, z)
+        placed = false
+    end
+
+    /*
+        Sets where the text sits across its spot on screen: ALIGN_CENTER
+        (centered on it, the default), ALIGN_START (starting at it, running
+        to the right) or ALIGN_END (ending at it, running to the left).
+
+        Attribute: Parameter value ALIGN_CENTER, ALIGN_START or ALIGN_END
+    */
+    action SetAlignment(integer value)
+        if value = alignment
+            return now
+        end
+        alignment = value
+        placed = false
+    end
+
+    /*
+        Returns where the text sits across its spot: ALIGN_CENTER,
+        ALIGN_START or ALIGN_END.
+    */
+    action GetAlignment returns integer
+        return alignment
+    end
+
+    /*
+        Lays the text flat on the floor (the scene's x and z), running
+        from its spot the way given, and centered across that line, like
+        text printed on the ground beside a ruler. It turns end for end
+        when the camera would see it backwards, keeping it on the same side
+        of the spot. Its alignment is along the way it runs (see
+        SetInPlane).
+
+        Attribute: Parameter directionX The way the text runs, along x
+        Attribute: Parameter directionZ The way the text runs, along z
+    */
+    action SetFlat(number directionX, number directionZ)
+        SetInPlane(directionX, 0, directionZ, 0, 1, 0, true)
+    end
+
+    /*
+        Lays the text in a plane of the scene, running from its spot the
+        way given and centered across that line, like text printed on a
+        ruler's face. The plane is given by its normal (at a right angle to
+        the way the text runs); the text is drawn on whichever side faces
+        the camera, so it is never mirrored, with its letters' tops pointing
+        to the left as it runs (up the screen for text on the floor). If
+        mayTurnAround is true, the text turns end for end when the camera
+        would see it backwards, keeping it on the same side of the spot.
+        While it lies in a plane, its alignment is along the way it runs:
+        ALIGN_START starts it at the spot, running the way given; ALIGN_END
+        ends it there; ALIGN_CENTER centers it on the spot. Across that
+        line it is always centered on the spot.
+
+        Attribute: Parameter directionX The way the text runs, along x
+        Attribute: Parameter directionY The way the text runs, along y
+        Attribute: Parameter directionZ The way the text runs, along z
+        Attribute: Parameter planeNormalX The plane's normal, along x
+        Attribute: Parameter planeNormalY The plane's normal, along y
+        Attribute: Parameter planeNormalZ The plane's normal, along z
+        Attribute: Parameter mayTurnAround True to turn it to read forwards
+    */
+    action SetInPlane(number directionX, number directionY, number directionZ, number planeNormalX, number planeNormalY, number planeNormalZ, boolean mayTurnAround)
+        number runLength = math:SquareRoot(directionX * directionX + directionY * directionY + directionZ * directionZ)
+        number normalLength = math:SquareRoot(planeNormalX * planeNormalX + planeNormalY * planeNormalY + planeNormalZ * planeNormalZ)
+        if runLength = 0 or normalLength = 0
+            return now
+        end
+        number newRunX = directionX / runLength
+        number newRunY = directionY / runLength
+        number newRunZ = directionZ / runLength
+        number newNormalX = planeNormalX / normalLength
+        number newNormalY = planeNormalY / normalLength
+        number newNormalZ = planeNormalZ / normalLength
+        if inPlane and mayTurn = mayTurnAround and newRunX = runX and newRunY = runY and newRunZ = runZ
+                and newNormalX = normalX and newNormalY = normalY and newNormalZ = normalZ
+            return now
+        end
+        inPlane = true
+        runX = newRunX
+        runY = newRunY
+        runZ = newRunZ
+        normalX = newNormalX
+        normalY = newNormalY
+        normalZ = newNormalZ
+        mayTurn = mayTurnAround
+        placed = false
+    end
+
+    /*
+        Stands the text up facing the camera again, as it is by default.
+    */
+    action SetUpright
+        if inPlane
+            inPlane = false
+            placed = false
+        end
+    end
+
+    /*
+        Returns true if the text lies in a plane of the scene (SetFlat or
+        SetInPlane) rather than facing the camera.
+    */
+    action IsInPlane returns boolean
+        return inPlane
+    end
+
+    /*
+        Shows the text.
+    */
+    action Show
+        if not visible
+            visible = true
+            ShowPlanes()
+        end
+    end
+
+    /*
+        Hides the text.
+    */
+    action Hide
+        if visible
+            visible = false
+            HidePlanes()
+        end
+    end
+
+    /*
+        Turns the text to face the camera and sizes it to its height on
+        screen. Call it every frame; it only moves the planes when the
+        camera, the spot or the text has changed.
+
+        Attribute: Parameter camera The layer's camera
+        Attribute: Parameter viewHeight The view's height in pixels
+    */
+    action Face(Camera camera, number viewHeight)
+        if not visible or used = 0 or viewHeight <= 0
+            return now
+        end
+        Vector3 position = camera:GetPosition()
+        Vector3 direction = camera:GetDirection()
+        if placed and viewHeight = lastViewHeight and Same(position, lastPosition) and Same(direction, lastDirection)
+            return now
+        end
+        lastPosition:Set(position)
+        lastDirection:Set(direction)
+        lastViewHeight = viewHeight
+        placed = true
+
+        // the camera's right and up, from its direction and up
+        Vector3 up = camera:GetUp()
+        number rightX = direction:GetY() * up:GetZ() - direction:GetZ() * up:GetY()
+        number rightY = direction:GetZ() * up:GetX() - direction:GetX() * up:GetZ()
+        number rightZ = direction:GetX() * up:GetY() - direction:GetY() * up:GetX()
+        number length = math:SquareRoot(rightX * rightX + rightY * rightY + rightZ * rightZ)
+        if length = 0
+            return now
+        end
+        rightX = rightX / length
+        rightY = rightY / length
+        rightZ = rightZ / length
+        // up again, at a right angle to the direction and right
+        number upX = rightY * direction:GetZ() - rightZ * direction:GetY()
+        number upY = rightZ * direction:GetX() - rightX * direction:GetZ()
+        number upZ = rightX * direction:GetY() - rightY * direction:GetX()
+
+        // A plane's picture runs along its x (left to right) and its z
+        // (bottom to top), and it faces up its y. Its x goes to the
+        // camera's right, its z to the camera's up, so its y points away
+        // from the camera: the camera sees the plane's back, which a
+        // double-sided plane draws the right way round.
+        Matrix4 turn
+        turn:row0column0 = rightX
+        turn:row1column0 = rightY
+        turn:row2column0 = rightZ
+        turn:row0column1 = direction:GetX()
+        turn:row1column1 = direction:GetY()
+        turn:row2column1 = direction:GetZ()
+        turn:row0column2 = upX
+        turn:row1column2 = upY
+        turn:row2column2 = upZ
+
+        // Scene units for one screen pixel at the spot's distance.
+        number ahead = (spot:GetX() - position:GetX()) * direction:GetX() + (spot:GetY() - position:GetY()) * direction:GetY()
+            + (spot:GetZ() - position:GetZ()) * direction:GetZ()
+        if ahead <= 0
+            // behind the camera
+            HidePlanes()
+            return now
+        end
+        number fieldOfView = 67
+        if camera is PerspectiveCamera
+            PerspectiveCamera perspective = cast(PerspectiveCamera, camera)
+            fieldOfView = perspective:GetFieldOfView()
+        end
+        number perScreenPixel = 2 * ahead * math:Tangent(math:DegreesToRadians(fieldOfView / 2)) / viewHeight
+        // Scene units per picture pixel. Text that keeps its height on
+        // screen: a picture pixel is 1 / RASTER_SCALE of a screen pixel.
+        number unit = perScreenPixel / RASTER_SCALE
+        if worldHeight > 0
+            // Text with a height in the scene: its pictures are made again
+            // when its size on screen calls for another font size, so they
+            // are never much smaller than it is drawn.
+            number screenHeight = worldHeight / perScreenPixel
+            integer wanted = RasterSizeFor(screenHeight)
+            if wanted not= pixelHeight
+                pixelHeight = wanted
+                font:SetSize(wanted)
+                Layout()
+            end
+            unit = worldHeight / pixelHeight
+        end
+
+        // Which way the text runs (textRight) and which way its letters'
+        // tops point (textUp), in the scene. Standing text runs to the
+        // screen's right, which is the right worked out above reversed (it
+        // points to the screen's left; seen at the first build, the
+        // letters' order was reversed), and points up the screen.
+        number textRightX = -rightX
+        number textRightY = -rightY
+        number textRightZ = -rightZ
+        number textUpX = upX
+        number textUpY = upY
+        number textUpZ = upZ
+        integer placing = alignment
+        // the text's height in the font's pixels from its spot: it stands
+        // on the spot, or lying in a plane its middle is at the spot
+        number lift = 0
+        if inPlane
+            // Running the given way, or, if it may turn around, whichever
+            // way of it runs to the screen's right, so it never reads
+            // backwards. Turned around, text that starts at the spot ends
+            // there instead, so it stays on the same side of it.
+            textRightX = runX
+            textRightY = runY
+            textRightZ = runZ
+            if mayTurn and runX * -rightX + runY * -rightY + runZ * -rightZ < 0
+                textRightX = -runX
+                textRightY = -runY
+                textRightZ = -runZ
+                if alignment = ALIGN_START
+                    placing = ALIGN_END
+                elseif alignment = ALIGN_END
+                    placing = ALIGN_START
+                end
+            end
+            // the plane's normal, on the camera's side, so the camera sees
+            // the plane's front and the text isn't mirrored
+            number faceX = normalX
+            number faceY = normalY
+            number faceZ = normalZ
+            if faceX * (position:GetX() - spot:GetX()) + faceY * (position:GetY() - spot:GetY()) + faceZ * (position:GetZ() - spot:GetZ()) < 0
+                faceX = -faceX
+                faceY = -faceY
+                faceZ = -faceZ
+            end
+            // the letters' tops: the text's right crossed with the normal
+            // (away from the camera, up the screen, for text on the floor)
+            textUpX = textRightY * faceZ - textRightZ * faceY
+            textUpY = textRightZ * faceX - textRightX * faceZ
+            textUpZ = textRightX * faceY - textRightY * faceX
+            lift = 0 - (textBottom + textTop) / 2
+
+            // The plane's x along the text's right, its z along the
+            // letters' tops, and its y out of the plane toward the camera,
+            // which sees the plane's front.
+            turn:row0column0 = textRightX
+            turn:row1column0 = textRightY
+            turn:row2column0 = textRightZ
+            turn:row0column1 = faceX
+            turn:row1column1 = faceY
+            turn:row2column1 = faceZ
+            turn:row0column2 = textUpX
+            turn:row1column2 = textUpY
+            turn:row2column2 = textUpZ
+        end
+
+        // The characters are laid out centered; starting or ending at the
+        // spot moves them half the text's width along its right.
+        number across = 0
+        if placing = ALIGN_START
+            across = textWidth / 2
+        elseif placing = ALIGN_END
+            across = -textWidth / 2
+        end
+
+        integer i = 0
+        repeat while i < used
+            Model plane = planes:Get(i)
+            number px = (planeX:Get(i) + across) * unit
+            number py = (planeY:Get(i) + lift) * unit
+            plane:SetRotationTransform(turn)
+            plane:SetScale(planeWidth:Get(i) * unit, 1, planeHeight:Get(i) * unit)
+            number atX = spot:GetX() + textRightX * px + textUpX * py
+            number atY = spot:GetY() + textRightY * px + textUpY * py
+            number atZ = spot:GetZ() + textRightZ * px + textUpZ * py
+            // Each white character sits a little nearer the camera than its
+            // outline copies, so its see-through test finds them farther and
+            // draws it over them. It moves straight toward the camera, along
+            // the line of sight, which doesn't move it on screen (moving
+            // along the camera's direction slid characters off the view's
+            // center sideways). The copies stay put, so lying on the floor
+            // they don't sink into the bed.
+            if i mod 5 = 0
+                number sightX = atX - position:GetX()
+                number sightY = atY - position:GetY()
+                number sightZ = atZ - position:GetZ()
+                number sight = math:SquareRoot(sightX * sightX + sightY * sightY + sightZ * sightZ)
+                if sight > 0
+                    number nearer = OUTLINE_BACK * outlinePixels * unit / sight
+                    atX = atX - sightX * nearer
+                    atY = atY - sightY * nearer
+                    atZ = atZ - sightZ * nearer
+                end
+            end
+            plane:SetPosition(atX, atY, atZ)
+            i = i + 1
+        end
+        ShowPlanes()
+    end
+
+    // Lays the characters out in pixels, centered, making planes as needed:
+    // each character is five planes, the white one first, then its four
+    // black outline copies.
+    private action Layout
+        // the text's width, from the characters' advances
+        number total = 0
+        integer c = 0
+        repeat while c < shown:GetSize()
+            Glyph glyph = font:GetGlyph(shown:GetCharacter(c))
+            total = total + glyph:horizontalAdvance
+            c = c + 1
+        end
+        textWidth = total
+        // the outline is a sixteenth of the text's height (a screen pixel
+        // for 16 pixel text drawn from pictures twice its size)
+        outlinePixels = pixelHeight / 16
+        number x = -total / 2
+        // the baseline, so capital letters sit about centered
+        number baseline = -pixelHeight / 3
+
+        used = 0
+        c = 0
+        repeat while c < shown:GetSize()
+            Glyph glyph = font:GetGlyph(shown:GetCharacter(c))
+            TextureRegion region = glyph:texture
+            if region not= undefined
+                number width = region:GetRegionWidth()
+                number height = region:GetRegionHeight()
+                // as Label places a character: its left at the pen plus
+                // lengthToGlyph, its top heightFromBaseLine above the line
+                number centerX = x + glyph:lengthToGlyph + width / 2
+                number centerY = baseline + glyph:heightFromBaseLine - height / 2
+                AddPlane(region, white, true, centerX, centerY, width, height)
+                AddPlane(region, black, false, centerX - outlinePixels, centerY, width, height)
+                AddPlane(region, black, false, centerX + outlinePixels, centerY, width, height)
+                AddPlane(region, black, false, centerX, centerY - outlinePixels, width, height)
+                AddPlane(region, black, false, centerX, centerY + outlinePixels, width, height)
+            end
+            x = x + glyph:horizontalAdvance
+            c = c + 1
+        end
+        // The text stands on its spot: its lowest edge, outline included,
+        // at the spot, so text on the bed isn't half inside it.
+        if used > 0
+            number lowest = planeY:Get(0) - planeHeight:Get(0) / 2
+            integer k = 1
+            repeat while k < used
+                number bottom = planeY:Get(k) - planeHeight:Get(k) / 2
+                if bottom < lowest
+                    lowest = bottom
+                end
+                k = k + 1
+            end
+            k = 0
+            repeat while k < used
+                planeY:Set(k, planeY:Get(k) - lowest + STANDING_GAP * pixelHeight)
+                k = k + 1
+            end
+            // its lowest and highest edges now, for centering flat text
+            textBottom = STANDING_GAP * pixelHeight
+            textTop = textBottom
+            k = 0
+            repeat while k < used
+                number top = planeY:Get(k) + planeHeight:Get(k) / 2
+                if top > textTop
+                    textTop = top
+                end
+                k = k + 1
+            end
+        end
+
+        // planes the text no longer uses
+        integer i = used
+        repeat while i < planes:GetSize()
+            planes:Get(i):Hide()
+            i = i + 1
+        end
+    end
+
+    // The font size for the pictures of text this tall on screen: the
+    // smallest power of two at least RASTER_SCALE times it, from
+    // SMALLEST_RASTER to LARGEST_RASTER.
+    private action RasterSizeFor(number screenHeight) returns integer
+        integer size = SMALLEST_RASTER
+        repeat while size < screenHeight * RASTER_SCALE and size < LARGEST_RASTER
+            size = size * 2
+        end
+        return size
+    end
+
+    // Uses the next plane (making one if needed) for a character's picture.
+    private action AddPlane(TextureRegion region, Color color, boolean blended, number x, number y, number width, number height)
+        // The region's sides count rows from the picture's top, but the
+        // texture's rows run from the bottom (the 2D painter allows for
+        // it), so a plane needs them turned over: 1 - v. Without it a
+        // character showed only its lower part, upside down (found from
+        // the logged regions: 'B' at rows 1 to 13 of a 19 row texture).
+        Vector4 coordinates
+        coordinates:Set(region:GetLeftSide(), 1 - region:GetBottomSide(), region:GetRightSide(), 1 - region:GetTopSide())
+        Model plane = undefined
+        if used < planes:GetSize()
+            plane = planes:Get(used)
+            planeX:Set(used, x)
+            planeY:Set(used, y)
+            planeWidth:Set(used, width)
+            planeHeight:Set(used, height)
+        else
+            Model made
+            plane = made
+            SceneConstants constants
+            plane:SetProperty(constants:EDITOR_TAG, undefined)
+            plane:SetFocusable(false)
+            plane:SetAcceptsMouseInput(false)
+            planes:Add(plane)
+            planeX:Add(x)
+            planeY:Add(y)
+            planeWidth:Add(width)
+            planeHeight:Add(height)
+            layer:Add(plane)
+        end
+        // a 1 by 1 plane, scaled in Face; planes showing the same character
+        // share one blueprint
+        // Unlit. The white characters are blended: drawn in the see-through
+        // pass, so their edges blend smoothly, and models in front still
+        // hide them. The black outline copies are solid (cut out below half
+        // alpha), drawn with the solid models, so they are always drawn
+        // before the white characters, under them. With every plane
+        // blended, the pass's order decided what was on top, and it isn't
+        // plane by plane: planes showing the same character share a
+        // blueprint and are drawn together, at the place of the farthest
+        // one, so a '0''s outline was drawn over the '2' beside it.
+        plane:LoadPlane(1, 1, region:GetTextureField(), coordinates, true, true, blended)
+        plane:SetColor(color)
+        used = used + 1
+    end
+
+    private action HidePlanes
+        integer i = 0
+        repeat while i < planes:GetSize()
+            planes:Get(i):Hide()
+            i = i + 1
+        end
+    end
+
+    private action ShowPlanes
+        integer i = 0
+        repeat while i < used
+            planes:Get(i):Show()
+            i = i + 1
+        end
+    end
+
+    private action Same(Vector3 a, Vector3 b) returns boolean
+        return a:GetX() = b:GetX() and a:GetY() = b:GetY() and a:GetZ() = b:GetZ()
+    end
+end

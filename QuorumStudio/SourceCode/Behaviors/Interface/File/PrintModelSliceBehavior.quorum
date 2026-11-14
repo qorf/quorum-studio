@@ -1,0 +1,91 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Containers.Array
+use Libraries.System.File
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Data.Formats.NumberFormatter
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Fabrication.PrintSetup
+
+/*
+    The PrintModelSliceBehavior slices one model with its print choices,
+    on the build thread, and writes what happened to the Output tab: the
+    file written, the printed size, any warnings, and how many details
+    were too small to print. A new one is made for each print.
+*/
+class PrintModelSliceBehavior is QuorumStudioBehavior
+    PrintSetup setup = undefined
+    File file = undefined
+    OutputTab out = undefined
+    NumberFormatter format
+    // How the slicing ended.
+    boolean finished = false
+    boolean failed = false
+
+    /*
+        Sets what to slice and where to write it.
+
+        Attribute: Parameter printSetup The model's print choices
+        Attribute: Parameter gcode Where to write the G-code
+        Attribute: Parameter outputTab The Output tab
+    */
+    action Setup(PrintSetup printSetup, File gcode, OutputTab outputTab)
+        setup = printSetup
+        file = gcode
+        out = outputTab
+    end
+
+
+    /*
+        Returns how far the slicing is, from 0 to 1, for the progress window.
+    */
+    action GetProgress returns number
+        return setup:GetProgress()
+    end
+
+    /*
+        Returns what the slicing is doing, such as "Writing G-code".
+    */
+    action GetStage returns text
+        return setup:GetStage()
+    end
+
+    /*
+        Returns true once the slicing has ended, whether it worked or not.
+    */
+    action IsFinished returns boolean
+        return finished
+    end
+
+    /*
+        Returns true if the slicing ended with an error.
+    */
+    action Failed returns boolean
+        return failed
+    end
+
+    action Run(BehaviorEvent event)
+        File written = undefined
+        check
+            written = setup:Print(file)
+        detect e
+            failed = true
+            out:Append("Printing failed: " + e:GetErrorMessage())
+        end
+        finished = true
+        if failed
+            return now
+        end
+        out:Append("Wrote " + written:GetAbsolutePath() + ": " + format:Fixed(setup:GetPrintWidth(), 1) + " x "
+            + format:Fixed(setup:GetPrintDepth(), 1) + " x " + format:Fixed(setup:GetPrintHeight(), 1) + " mm.")
+        if setup:GetDroppedPathCount() > 0
+            out:Append("" + setup:GetDroppedPathCount() + " details were smaller than the printer's line and were left out.")
+        end
+        Array<text> warnings = setup:GetWarnings()
+        integer i = 0
+        repeat while i < warnings:GetSize()
+            out:Append("Warning: " + warnings:Get(i))
+            i = i + 1
+        end
+    end
+end

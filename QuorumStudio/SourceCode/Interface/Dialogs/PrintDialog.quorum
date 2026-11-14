@@ -1,0 +1,426 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Containers.Array
+use Libraries.System.File
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.ComboBox
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Controls.RadioButton
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Events.SelectionListener
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Events.TextChangeListener
+use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Interface.Events.ComboBoxListener
+use Libraries.Interface.Events.ComboBoxChangedEvent
+use Libraries.Game.Graphics.Label
+use Libraries.Data.Formats.NumberFormatter
+use Libraries.Fabrication.PrintSetup
+use Libraries.Fabrication.Geometry.MeshCheck
+use Libraries.Fabrication.Printers.Printer
+use Libraries.Interface.Controls.Scenes.Items.EditorTerrain
+use Libraries.Game.Graphics.Worlds.TerrainPrintMesh
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.PrintDialogPrintBehavior
+use Libraries.Development.Environment.Studio.Behaviors.PrintDialogChangeBehavior
+use Libraries.Development.Environment.Studio.Behaviors.PrintDialogBrowseBehavior
+use Libraries.Interface.Controls.FileChooser
+use Libraries.Interface.Controls.FileFilter
+use Libraries.Development.Environment.Studio.Behaviors.PrintBehavior
+
+/*
+    The PrintDialog is what File > Print opens: one dialog for everything
+    Studio can print, showing only what applies.
+
+    For a model (from its preview tab or the project tree): the printer,
+    the size (real size, fit to the bed, or a longest side), which side
+    goes down, supports and a brim, which parts print, and a summary with
+    the printed size, whether it fits, and any part that isn't a closed
+    solid. The choices are the same ones the model's preview tab shows, so
+    printing from either gives the same print.
+
+    For a scene's terrain: the printer's name, and a summary.
+
+    Print (or Enter) starts printing; Cancel (or Escape) closes it.
+
+    The dialog saves nothing and doesn't choose the printer: it names
+    Studio's printer, which is set, with Bambu's files, in Quorum Studio
+    Properties on the 3D Printing tab.
+*/
+class PrintDialog is Dialog, SelectionListener, TextChangeListener, ComboBoxListener
+    PrintBehavior owner = undefined
+    DialogCancelBehavior cancelBehavior
+    PrintDialogPrintBehavior printBehavior
+    PrintDialogChangeBehavior changeBehavior
+    PrintDialogBrowseBehavior browseBehavior
+    NumberFormatter format
+
+    // what is printed: a model's setup, or a terrain
+    PrintSetup setup = undefined
+    text naturalUpAxis = "Y"
+    EditorTerrain terrain = undefined
+    // a terrain's print choices: its own, set in the scene's Print section
+    TerrainPrintMesh terrainChoices = undefined
+    File printFile = undefined
+    Printer printer = undefined
+
+    Grouping sizeChoices = undefined
+    TextField longestField = undefined
+    ComboBox sideBox = undefined
+    Checkbox supportsBox = undefined
+    Checkbox brimBox = undefined
+    Array<Checkbox> partBoxes
+    Label summaryLabel = undefined
+    TextField fileField = undefined
+    Button printButton = undefined
+    boolean updating = false
+
+    constant number WIDTH_SHARE = 0.4
+    // Dialogs size themselves: a share of the window's height, as Quorum
+    // Studio Properties does. A model has more choices than a terrain.
+    constant number MODEL_HEIGHT_SHARE = 0.8
+    constant number TERRAIN_HEIGHT_SHARE = 0.55
+
+    on create
+        SetModal(true)
+    end
+
+    /*
+        Builds the dialog for a model.
+
+        Attribute: Parameter behavior The Print behavior, which does the printing
+        Attribute: Parameter title The model file's name
+        Attribute: Parameter modelSetup The model's print choices, shared with its tab
+        Attribute: Parameter upAxis The file's own up axis, "Y" or "Z"
+        Attribute: Parameter file Where the G-code goes
+    */
+    action SetupForModel(PrintBehavior behavior, text title, PrintSetup modelSetup, text upAxis, File file)
+        owner = behavior
+        setup = modelSetup
+        naturalUpAxis = upAxis
+        terrain = undefined
+        terrainChoices = undefined
+        printFile = file
+        if setup:GetPrinter() is Printer
+            printer = cast(Printer, setup:GetPrinter())
+        end
+        Build("Print " + title, true)
+    end
+
+    /*
+        Builds the dialog for a scene's terrain.
+
+        Attribute: Parameter behavior The Print behavior, which does the printing
+        Attribute: Parameter title The scene file's name
+        Attribute: Parameter sceneTerrain The terrain to print
+        Attribute: Parameter chosen Studio's printer
+        Attribute: Parameter file Where the G-code goes
+    */
+    action SetupForTerrain(PrintBehavior behavior, text title, EditorTerrain sceneTerrain, Printer chosen, File file)
+        owner = behavior
+        setup = undefined
+        terrain = sceneTerrain
+        terrainChoices = sceneTerrain:GetPrintChoices()
+        printer = chosen
+        printFile = file
+        Build("Print the terrain in " + title, false)
+    end
+
+    private action Build(text title, boolean forModel)
+        SetName(title)
+        SetPercentageWidth(WIDTH_SHARE)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:STANDARD)
+        if forModel
+            SetPercentageHeight(MODEL_HEIGHT_SHARE)
+        else
+            SetPercentageHeight(TERRAIN_HEIGHT_SHARE)
+        end
+        cancelBehavior:SetDialog(me)
+        printBehavior:SetDialog(me)
+        changeBehavior:SetDialog(me)
+        browseBehavior:SetDialog(me)
+        partBoxes:Empty()
+
+        Page page = InitializeDefaultPage()
+        page:SetSkipLabelsInFocus(true)
+        page:LeftAlignContent()
+
+        // the printer, named: it is Studio's, chosen in Quorum Studio
+        // Properties on the 3D Printing tab, not here
+        Grouping printerCard = page:AddGrouping("Printer")
+        printerCard:SetTitle("Printer")
+        text printerName = "No printer"
+        if printer not= undefined
+            printerName = printer:GetName()
+        end
+        printerCard:AddLabel("Printer Name", printerName)
+        printerCard:AddLabel("Printer Where", "Change it in Quorum Studio Properties, on the 3D Printing tab.")
+
+        if forModel
+            // the size
+            Grouping sizeCard = page:AddGrouping("Size")
+            sizeCard:SetTitle("Size")
+            sizeChoices = sizeCard:AddGrouping("Size Choices")
+            RadioButton real = sizeChoices:AddRadioButton("Real size")
+            real:SetDescription("The size the model was made at. glTF models are measured in meters.")
+            RadioButton fit = sizeChoices:AddRadioButton("Fit to bed")
+            fit:SetDescription("As large as fits: the longer side across becomes 80% of the bed")
+            RadioButton longest = sizeChoices:AddRadioButton("Longest side")
+            longest:SetDescription("The model's longest side is the number of millimeters in the next field")
+            sizeChoices:GetButtonAt(setup:GetSizeMode()):SetToggleState(true)
+            sizeChoices:AddSelectionListener(me)
+            sizeCard:AddLabel("Longest side, in millimeters")
+            longestField = sizeCard:AddTextField("Longest side, in millimeters")
+            longestField:SetText(format:Fixed(setup:GetLongestSide(), 1))
+            longestField:AddTextChangeListener(me)
+
+            // placement and parts
+            Grouping placementCard = page:AddGrouping("Placement and parts")
+            placementCard:SetTitle("Placement and parts")
+            Array<text> sides
+            sides:Add("As modeled (its bottom down)")
+            sides:Add("Flattest side down")
+            sideBox = placementCard:AddComboBox("Side down", sides)
+            if setup:GetUpAxis() = "auto"
+                sideBox:Select(1)
+            else
+                sideBox:Select(0)
+            end
+            sideBox:AddComboBoxListener(me)
+            supportsBox = placementCard:AddCheckbox("Supports")
+            supportsBox:SetDescription("Adds supports under parts that hang out more than 60 degrees")
+            supportsBox:SetToggleState(setup:HasSupports())
+            supportsBox:SetBehavior(changeBehavior)
+            brimBox = placementCard:AddCheckbox("Brim")
+            brimBox:SetDescription("Prints a flat rim around the first layer, so small contact areas stay on the bed")
+            brimBox:SetToggleState(setup:HasBrim())
+            brimBox:SetBehavior(changeBehavior)
+            MeshCheck meshCheck = setup:GetCheck()
+            i = 0
+            repeat while i < meshCheck:GetPartCount()
+                Checkbox part = placementCard:AddCheckbox(meshCheck:GetPartName(i))
+                part:SetToggleState(setup:IsPartIncluded(i))
+                part:SetBehavior(changeBehavior)
+                partBoxes:Add(part)
+                i = i + 1
+            end
+        end
+
+        // where the G-code goes: the project's Prints folder unless the
+        // user browses for, or types, another place
+        Grouping fileCard = page:AddGrouping("Save to")
+        fileCard:SetTitle("Save to")
+        fileCard:AddLabel("G-code file")
+        fileField = fileCard:AddTextField("G-code file")
+        fileField:SetDescription("Where the G-code is written. A Bambu printer also writes a .gcode.3mf beside it, with the same name.")
+        fileField:SetText(printFile:GetAbsolutePath())
+        Button browseButton = fileCard:AddButton("Browse…")
+        browseButton:SetBehavior(browseBehavior)
+
+        // the summary: what prints, whether it fits, and any warning
+        Grouping summaryCard = page:AddGrouping("Summary")
+        summaryCard:SetTitle("Summary")
+        summaryLabel = summaryCard:AddLabel("Summary", "")
+
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        buttonGroup:PositionFromBottom()
+        Button cancelButton = buttonGroup:AddButton("Cancel")
+        cancelButton:SetBehavior(cancelBehavior)
+        printButton = buttonGroup:AddButton("Print")
+        printButton:SetInterfaceOptionsKey("DialogAcceptButton")
+        printButton:SetBehavior(printBehavior)
+        SetBehavior(printBehavior)
+
+        page:CalculateDefaultFocusOrdering()
+        ShowSummary()
+    end
+
+    /*
+        Puts the controls' values into the print choices, then says the
+        summary again. The checkboxes and the side choice call it.
+    */
+    action ChoicesChanged
+        if updating
+            return now
+        end
+        ApplyChoices()
+        ShowSummary()
+    end
+
+    // Copies the controls into the setup (for a model).
+    private action ApplyChoices
+        if setup = undefined
+            return now
+        end
+        if printer not= undefined
+            setup:SetPrinter(printer)
+        end
+        if sideBox:GetSelectedIndex() = 1
+            setup:SetUpAxis("auto")
+        else
+            setup:SetUpAxis(naturalUpAxis)
+        end
+        setup:SetSupports(supportsBox:GetToggleState())
+        setup:SetBrim(brimBox:GetToggleState())
+        integer i = 0
+        repeat while i < partBoxes:GetSize()
+            Checkbox part = partBoxes:Get(i)
+            setup:SetPartIncluded(i, part:GetToggleState())
+            i = i + 1
+        end
+    end
+
+    // Says what prints, its size, whether it fits, and any warnings.
+    private action ShowSummary
+        text printerName = "no printer"
+        if printer not= undefined
+            printerName = "the " + printer:GetName()
+        end
+        text summary = ""
+        if setup not= undefined
+            summary = "Prints " + format:Fixed(setup:GetPrintWidth(), 1) + " x " + format:Fixed(setup:GetPrintDepth(), 1)
+                + " x " + format:Fixed(setup:GetPrintHeight(), 1) + " mm on " + printerName + ". "
+            if setup:Fits()
+                summary = summary + "Fits."
+            else
+                summary = summary + "Too large for the bed."
+            end
+            MeshCheck meshCheck = setup:GetCheck()
+            integer i = 0
+            repeat while i < meshCheck:GetPartCount()
+                if setup:IsPartIncluded(i) and not meshCheck:IsClosed(i)
+                    summary = summary + " " + meshCheck:GetPartName(i) + " isn't a closed solid (" + meshCheck:GetOpenEdgeCount(i) + " open edges)."
+                end
+                i = i + 1
+            end
+        else
+            if printer not= undefined and terrainChoices not= undefined
+                terrainChoices:Measure(terrain:GetWorldTerrain():GetData(), printer)
+                summary = "Prints " + format:Fixed(terrainChoices:GetWidth(), 1) + " x " + format:Fixed(terrainChoices:GetDepth(), 1)
+                    + " x " + format:Fixed(terrainChoices:GetHeight(), 1) + " mm on " + printerName + ". 1 unit prints as "
+                    + format:Fixed(terrainChoices:GetMillimetersPerUnit(), 2) + " mm. "
+                if terrainChoices:Fits(printer)
+                    summary = summary + "Fits."
+                else
+                    summary = summary + "Too large for the bed."
+                end
+                if terrainChoices:AreHillsLowered()
+                    summary = summary + " The hills were lowered to " + format:Fixed(terrainChoices:GetHillScaleUsed(), 1)
+                        + " times their true height, to fit."
+                end
+                summary = summary + " Change the size in the scene's Properties, in the Print section."
+            else
+                summary = "Prints the terrain on " + printerName + "."
+            end
+        end
+        if owner:NeedsBambuFiles(printer)
+            summary = summary + " A Bambu printer needs Bambu's own files: choose them in Quorum Studio Properties, on the 3D Printing tab."
+        end
+        summaryLabel:SetText(summary)
+    end
+
+    /*
+        Prints with the choices, and closes the dialog. Print and Enter
+        call it.
+    */
+    action PrintNow
+        if printer = undefined or owner:NeedsBambuFiles(printer)
+            return now
+        end
+        // the file in the Save to field, which the user may have changed
+        text path = fileField:GetText()
+        if path = ""
+            return now
+        end
+        File chosen
+        chosen:SetAbsolutePath(path)
+        printFile = chosen
+        ApplyChoices()
+        Hide()
+        if setup not= undefined
+            owner:StartModelPrint(setup, printFile)
+        else
+            owner:StartTerrainPrint(terrain, printer, printFile)
+        end
+    end
+
+    action SelectionChanged(SelectionEvent event)
+        if updating
+            return now
+        end
+        if setup not= undefined and sizeChoices not= undefined
+            if sizeChoices:GetButtonAt(0):GetToggleState()
+                setup:UseRealSize()
+            elseif sizeChoices:GetButtonAt(1):GetToggleState()
+                setup:UseFitToBed()
+            else
+                setup:SetLongestSide(setup:GetLongestSide())
+            end
+        end
+        ChoicesChanged()
+    end
+
+    /*
+        Opens the system's save dialog in the folder of the file in the Save
+        to field, and puts the file chosen there, ending in .gcode. The
+        Browse button calls it.
+    */
+    action Browse
+        File current
+        current:SetAbsolutePath(fileField:GetText())
+        File folder = current:GetParentDirectory()
+        if folder not= undefined and not folder:Exists()
+            // a new project's Prints folder isn't made until it prints
+            folder = folder:GetParentDirectory()
+        end
+        FileChooser chooser
+        FileFilter filter
+        filter:Add("gcode")
+        File chosen = chooser:SaveFileDialog(folder, filter)
+        if chosen = undefined
+            return now
+        end
+        text path = chosen:GetAbsolutePath()
+        if not path:EndsWith(".gcode")
+            path = path + ".gcode"
+        end
+        fileField:SetText(path)
+    end
+
+    action TextChanged(TextChangeEvent event)
+        if updating or setup = undefined or longestField = undefined
+            return now
+        end
+        if not event:GetControl():Equals(longestField)
+            return now
+        end
+        number value = -1
+        check
+            value = longestField:GetText():ParseNumber()
+        detect e is Error
+            value = -1
+        end
+        if value > 0
+            setup:SetLongestSide(value)
+            updating = true
+            sizeChoices:GetButtonAt(2):SetToggleState(true)
+            updating = false
+            ChoicesChanged()
+        end
+    end
+
+    action ComboBoxChanged(ComboBoxChangedEvent event)
+        ChoicesChanged()
+    end
+
+    action OnShow
+        if sizeChoices not= undefined
+            sizeChoices:Focus()
+        else
+            printButton:Focus()
+        end
+    end
+end

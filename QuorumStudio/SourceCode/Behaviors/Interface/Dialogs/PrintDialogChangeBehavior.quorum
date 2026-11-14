@@ -1,0 +1,24 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.PrintDialog
+
+/*
+    The PrintDialogChangeBehavior runs when a checkbox in the Print dialog
+    is toggled (Supports, Brim, or a part): the dialog takes the new
+    choices and says its summary again.
+*/
+class PrintDialogChangeBehavior is Behavior
+    PrintDialog dialog = undefined
+
+    action SetDialog(PrintDialog value)
+        dialog = value
+    end
+
+    action Run(BehaviorEvent event)
+        if dialog not= undefined
+            dialog:ChoicesChanged()
+        end
+    end
+end

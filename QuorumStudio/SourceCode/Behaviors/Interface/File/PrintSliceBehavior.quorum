@@ -1,0 +1,109 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.OutputTab
+use Libraries.Game.Graphics.Models.Data.ModelData
+use Libraries.Game.Graphics.Worlds.TerrainPrintMesh
+use Libraries.Fabrication.SliceJob
+use Libraries.Fabrication.Profiles.Profile
+use Libraries.Data.Formats.NumberFormatter
+use Libraries.Containers.Array
+use Libraries.System.File
+
+/*
+    The PrintSliceBehavior slices one solid that PrintBehavior built, on
+    the build thread, and writes what happened to the Output tab. A new one
+    is made for each print, so two prints in a row don't share anything.
+
+    Attribute: Example
+    use Libraries.Development.Environment.Studio.Behaviors.PrintSliceBehavior
+
+    PrintSliceBehavior slice
+    // slice:Setup(solid, profile, file, builder, outputTab)
+*/
+class PrintSliceBehavior is QuorumStudioBehavior
+    ModelData solid = undefined
+    Profile profile = undefined
+    File file = undefined
+    OutputTab out = undefined
+    text size = ""
+    boolean flat = false
+    // The slicing, kept for its progress, and how it ended.
+    SliceJob job
+    boolean finished = false
+    boolean failed = false
+
+    /*
+        Sets what to slice and where to write it.
+
+        Attribute: Parameter solid The solid, in millimeters
+        Attribute: Parameter profile The printer settings
+        Attribute: Parameter file Where to write the G-code
+        Attribute: Parameter builder The builder that made the solid, for its size
+        Attribute: Parameter out The Output tab
+    */
+    action Setup(ModelData solid, Profile profile, File file, TerrainPrintMesh builder, OutputTab out)
+        me:solid = solid
+        me:profile = profile
+        me:file = file
+        me:out = out
+        NumberFormatter format
+        size = format:Fixed(builder:GetWidth(), 0) + " x " + format:Fixed(builder:GetDepth(), 0) + " x "
+            + format:Fixed(builder:GetHeight(), 0) + " mm (1 unit = " + format:Fixed(builder:GetMillimetersPerUnit(), 2) + " mm)"
+        flat = builder:IsFlat()
+    end
+
+
+    /*
+        Returns how far the slicing is, from 0 to 1, for the progress window.
+    */
+    action GetProgress returns number
+        return job:GetProgress()
+    end
+
+    /*
+        Returns what the slicing is doing, such as "Writing G-code".
+    */
+    action GetStage returns text
+        return job:GetStage()
+    end
+
+    /*
+        Returns true once the slicing has ended, whether it worked or not.
+    */
+    action IsFinished returns boolean
+        return finished
+    end
+
+    /*
+        Returns true if the slicing ended with an error.
+    */
+    action Failed returns boolean
+        return failed
+    end
+
+    action Run(BehaviorEvent event)
+        job:SetQuiet(true)
+        File written = undefined
+        check
+            written = job:Run(solid, profile, file)
+        detect e
+            failed = true
+            out:Append("Printing failed: " + e:GetErrorMessage())
+        end
+        finished = true
+        if failed
+            return now
+        end
+        out:Append("Wrote " + written:GetAbsolutePath() + ": " + size + ".")
+        if flat
+            out:Append("The terrain is flat, so it prints as a 2 mm base.")
+        end
+        Array<text> warnings = job:GetWarnings()
+        integer i = 0
+        repeat while i < warnings:GetSize()
+            out:Append("Warning: " + warnings:Get(i))
+            i = i + 1
+        end
+    end
+end

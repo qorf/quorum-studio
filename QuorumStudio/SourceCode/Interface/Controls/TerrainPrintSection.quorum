@@ -1,0 +1,306 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.SliderField
+use Libraries.Interface.Controls.ButtonGroup
+use Libraries.Interface.Controls.RadioButton
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Interface.Selections.ButtonGroupSelection
+use Libraries.Interface.Selections.SceneEditorSelection
+use Libraries.Interface.Item
+use Libraries.Interface.Controls.Scenes.SceneEditor
+use Libraries.Interface.Controls.Scenes.Dialogs.PropertiesDialog
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
+use Libraries.Interface.Controls.Scenes.Items.EditorTerrain
+use Libraries.Interface.Controls.Scenes.Items.Highlights.TerrainSelectionHighlight
+use Libraries.Game.GameStateManager
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Worlds.TerrainPrintMesh
+use Libraries.Data.Formats.NumberFormatter
+use Libraries.Fabrication.Printers.Printer
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.Behaviors.PrintBehavior
+
+/*
+    The TerrainPrintSection is the last section of a scene's Properties
+    panel when a terrain is selected: how large to print the terrain (as
+    large as fits on the bed, or a longest side in millimeters), how many
+    times their true height the hills print, and the base under them. Under
+    the choices: the printed size, how large one unit prints, and whether
+    it fits.
+
+    The choices are the terrain's own (TerrainItem:GetPrintChoices), so
+    they are saved in the scene with it, and File > Print uses them. The printer is Studio's, chosen in Quorum Studio
+    Properties on the 3D Printing tab; the size is measured for it.
+*/
+class TerrainPrintSection is PropertiesDialog
+    // A child can't see its parent's fields, so it keeps its own manager.
+    GameStateManager gameManager
+    EditorTerrain terrain = undefined
+    TerrainPrintMesh choices = undefined
+    Printer printer = undefined
+
+    ButtonGroup sizeGroup = undefined
+    TextField longestField = undefined
+    TextField hillsField = undefined
+    TextField baseField = undefined
+    WrappedLabel sizeLabel = undefined
+    WrappedLabel unitLabel = undefined
+    WrappedLabel fitLabel = undefined
+    NumberFormatter format
+    // True while the controls are being filled, so filling them isn't
+    // taken as the user choosing.
+    boolean updating = false
+
+    constant number FIELD_LABEL_WIDTH = 110
+
+    private action CreateInterface(Control panel, Array<Control> focusArray)
+        SetName("Print")
+
+        Label headingLabel
+        headingLabel:SetSize(18)
+        headingLabel:SetText("Print")
+        headingLabel:SetLeftMargin(20)
+        panel:Add(headingLabel)
+        SetHeading(headingLabel)
+
+        // the size: fit to the bed, or a longest side
+        Control sizeCard = AddCard(panel, "Size")
+        Control sizeLine = MakeCardLine()
+        ButtonGroup group
+        sizeGroup = group
+        sizeGroup:SetName("Size")
+        sizeGroup:SetHorizontalLayoutMode(sizeLine:FILL)
+        sizeGroup:SetVerticalLayoutMode(sizeLine:FIT_CONTENTS)
+        FlowLayout groupLayout
+        sizeGroup:SetLayout(groupLayout)
+        AddSizeButton("Fit to bed", "As large as fits: the longer side becomes 80% of the bed")
+        AddSizeButton("Longest side", "The terrain's longer side is the number of millimeters in the next field")
+        sizeGroup:AddSelectionListener(me)
+        sizeLine:Add(sizeGroup)
+        focusArray:Add(sizeGroup)
+        sizeCard:Add(sizeLine)
+
+        Control fieldLine = MakeCardLine()
+        FlowLayout labelLayout
+        Control labelBox
+        labelBox:SetLayout(labelLayout)
+        labelBox:SetPercentageWidth(0)
+        labelBox:SetPixelWidth(FIELD_LABEL_WIDTH)
+        labelBox:SetVerticalLayoutMode(labelBox:FIT_CONTENTS)
+        labelBox:SetRightMargin(10)
+        Label fieldLabel
+        fieldLabel:SetText("Longest side (mm):")
+        labelBox:Add(fieldLabel)
+        fieldLine:Add(labelBox)
+        TextField field
+        longestField = field
+        longestField:SetName("Longest side, in millimeters")
+        longestField:SetRightMargin(8)
+        longestField:SetHorizontalLayoutMode(fieldLine:FILL)
+        longestField:AddTextChangeListener(me)
+        fieldLine:Add(longestField)
+        focusArray:Add(longestField)
+        sizeCard:Add(fieldLine)
+
+        // the hills and the base
+        Control heightCard = AddCard(panel, "Height")
+        SliderField hillsSlider = MakeSliderField("Hills:", "Hills, times their true height",
+            "How many times taller the hills print than in true proportion. 1 is true proportion; 2 or 3 helps gentle hills show.",
+            1, 10, 0.5, 1, FIELD_LABEL_WIDTH)
+        hillsSlider:SetDecimalPlaces(1)
+        hillsField = hillsSlider:GetField()
+        hillsField:AddTextChangeListener(me)
+        focusArray:Add(hillsSlider:GetSlider())
+        focusArray:Add(hillsField)
+        heightCard:Add(hillsSlider)
+
+        SliderField baseSlider = MakeSliderField("Base:", "Base, in millimeters",
+            "How thick the solid under the lowest ground is. Thicker is sturdier; thinner uses less filament.",
+            0.5, 10, 0.5, 1, FIELD_LABEL_WIDTH)
+        baseSlider:SetDecimalPlaces(1)
+        baseSlider:SetUnits("mm")
+        baseField = baseSlider:GetField()
+        baseField:AddTextChangeListener(me)
+        focusArray:Add(baseSlider:GetSlider())
+        focusArray:Add(baseField)
+        heightCard:Add(baseSlider)
+
+        // the result, in short lines, so it fits a narrow panel
+        Control resultCard = AddCard(panel, "Printed size")
+        sizeLabel = AddTextLine(resultCard, focusArray)
+        unitLabel = AddTextLine(resultCard, focusArray)
+        fitLabel = AddTextLine(resultCard, focusArray)
+    end
+
+    // A card line holding text as wide as the line, which wraps instead
+    // of running past the card. It is a stop in the section's focus order,
+    // in its place on screen, so a screen reader user can read it.
+    private action AddTextLine(Control card, Array<Control> focusArray) returns WrappedLabel
+        Control line = MakeCardLine()
+        WrappedLabel label
+        label:SetFocusable(true)
+        line:Add(label)
+        card:Add(line)
+        focusArray:Add(label)
+        return label
+    end
+
+    private action AddSizeButton(text name, text description)
+        Control layoutValues
+        RadioButton button
+        button:SetName(name)
+        button:SetDescription(description)
+        button:SetHorizontalLayoutMode(layoutValues:FILL)
+        sizeGroup:AddToGrouping(button)
+        sizeGroup:Add(button)
+    end
+
+    /*
+        Shows a terrain's print choices: fills the controls, then says the
+        size.
+
+        Attribute: Parameter value The terrain
+    */
+    action SetTerrain(EditorTerrain value)
+        terrain = value
+        if terrain = undefined
+            return now
+        end
+        choices = terrain:GetPrintChoices()
+        printer = GetPrintBehavior():GetPrinter()
+        updating = true
+        sizeGroup:GetButtonAt(choices:GetSizeMode()):SetToggleState(true)
+        longestField:SetText(format:Fixed(choices:GetLongestSide(), 1))
+        hillsField:SetText(format:Fixed(choices:GetHillScale(), 1))
+        baseField:SetText(format:Fixed(choices:GetBaseHeight(), 1))
+        updating = false
+        ShowSize()
+    end
+
+    /*
+        Measures the terrain with the choices, and says the printed size,
+        how large one unit prints, and whether it fits. The result is also
+        the longest-side field's description, so a screen reader hears it
+        there.
+    */
+    action ShowSize
+        if terrain = undefined or choices = undefined or printer = undefined
+            return now
+        end
+        choices:Measure(terrain:GetWorldTerrain():GetData(), printer)
+        text size = "Prints " + format:Fixed(choices:GetWidth(), 1) + " x " + format:Fixed(choices:GetDepth(), 1)
+            + " x " + format:Fixed(choices:GetHeight(), 1) + " mm"
+        text unit = "1 unit prints as " + format:Fixed(choices:GetMillimetersPerUnit(), 2) + " mm"
+        text fit = "Too large for the bed."
+        if choices:Fits(printer)
+            fit = "Fits on the bed."
+        end
+        if choices:AreHillsLowered()
+            fit = fit + " The hills were lowered to " + format:Fixed(choices:GetHillScaleUsed(), 1)
+                + " times their true height, to fit the printer's " + format:Fixed(printer:GetNumber("bedHeight"), 0) + " mm."
+        end
+        sizeLabel:SetText(size)
+        unitLabel:SetText(unit)
+        fitLabel:SetText(fit)
+        longestField:SetDescription(size + ", " + unit + ". " + fit)
+    end
+
+    action SelectionChanged(SelectionEvent event)
+        if event:GetSelection() is ButtonGroupSelection
+            if updating or choices = undefined
+                return now
+            end
+            ButtonGroupSelection choice = cast(ButtonGroupSelection, event:GetSelection())
+            if choice:GetIndex() = choices:FIT_TO_BED
+                choices:UseFitToBed()
+            else
+                choices:SetLongestSide(choices:GetLongestSide())
+            end
+            ShowSize()
+            return now
+        end
+        if not (event:GetSelection() is SceneEditorSelection)
+            return now
+        end
+
+        // shown while a terrain is selected, hidden otherwise
+        SceneEditorSelection selection = cast(SceneEditorSelection, event:GetSelection())
+        Item selectedItem = undefined
+        if selection:IsItemSelected()
+            selectedItem = selection:GetSelectedItem()
+        end
+        if selectedItem is TerrainSelectionHighlight
+            TerrainSelectionHighlight highlight = cast(TerrainSelectionHighlight, selectedItem)
+            SetTerrain(highlight:GetEditorTerrain())
+            if not IsShowing()
+                Show()
+            end
+        else
+            terrain = undefined
+            choices = undefined
+            if IsShowing()
+                Hide()
+            end
+        end
+    end
+
+    action TextChanged(TextChangeEvent event)
+        if updating or choices = undefined
+            return now
+        end
+        if event:GetControl():Equals(longestField)
+            number value = ReadNumber(longestField)
+            if value > 0
+                choices:SetLongestSide(value)
+                updating = true
+                sizeGroup:GetButtonAt(choices:LONGEST_SIDE):SetToggleState(true)
+                updating = false
+                ShowSize()
+            end
+        elseif event:GetControl():Equals(hillsField)
+            number value = ReadNumber(hillsField)
+            if value > 0
+                choices:SetHillScale(value)
+                ShowSize()
+            end
+        elseif event:GetControl():Equals(baseField)
+            number value = ReadNumber(baseField)
+            if value > 0
+                choices:SetBaseHeight(value)
+                ShowSize()
+            end
+        end
+    end
+
+    // The field's number, or -1 if it isn't one.
+    private action ReadNumber(TextField field) returns number
+        number value = -1
+        check
+            value = field:GetText():ParseNumber()
+        detect e is Error
+            value = -1
+        end
+        return value
+    end
+
+    private action GetPrintBehavior returns PrintBehavior
+        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+        return studio:GetBehaviors():GetPrintBehavior()
+    end
+
+    action SetFields(EditorItem item)
+        if item is TerrainSelectionHighlight
+            TerrainSelectionHighlight highlight = cast(TerrainSelectionHighlight, item)
+            SetTerrain(highlight:GetEditorTerrain())
+        end
+    end
+
+    action FocusField
+        sizeGroup:Focus()
+    end
+end

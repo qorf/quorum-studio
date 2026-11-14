@@ -1,0 +1,604 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.System.File
+use Libraries.Game.Game
+use Libraries.Game.GameStateManager
+use Libraries.Game.BoundingBox
+use Libraries.Game.Graphics.Model
+use Libraries.Game.Graphics.Color
+use Libraries.Game.Graphics.Camera
+use Libraries.Game.Graphics.Label
+use Libraries.Game.Graphics.Font
+use Libraries.Containers.Array
+use Libraries.Compute.Vector3
+use Libraries.Data.Formats.NumberFormatter
+use Libraries.Interface.Controls.Scenes.SceneEditor
+use Libraries.Interface.Controls.Scenes.SceneConstants
+use Libraries.Interface.Controls.Scenes.Layers.EditorLayer3D
+use Libraries.Interface.Controls.Scenes.Items.EditorCamera3D
+use Libraries.Fabrication.PrintSetup
+use Libraries.Development.Environment.Studio.QuorumStudio
+
+/*
+    The ModelPreviewEditor shows a model file the way it will print: on the
+    chosen printer's bed, at its printed size, with a ruler along its width,
+    depth and height labeled in millimeters. It is a scene editor with one
+    3D layer, so it has the scene editor's camera keys and mouse controls
+    and its docked Properties panel (which holds the Print sections), but
+    nothing in it can be selected, moved or saved: the model, the bed and
+    the rulers are all helpers (SceneConstants:EDITOR_TAG).
+
+    Its description, which a screen reader hears when it gets the focus,
+    says the file, the printer, the printed size and whether it fits.
+
+    The PrintSetup holds every choice; after a choice changes, call Refresh.
+*/
+class ModelPreviewEditor is SceneEditor
+    // A child can't see its parent's fields, so it keeps its own manager.
+    GameStateManager gameManager
+    EditorLayer3D modelLayer
+    Model model
+    Model bed
+    Model widthRuler
+    Model depthRuler
+    Model heightRuler
+    // Each ruler's tick marks, made as needed and hidden when not used.
+    Array<Model> widthTicks
+    Array<Model> depthTicks
+    Array<Model> heightTicks
+    // The bed's own rulers, along two of its edges.
+    Model bedWidthRuler
+    Model bedDepthRuler
+    Array<Model> bedWidthTicks
+    Array<Model> bedDepthTicks
+    Color rulerColor
+    // The bed's rulers stand past its edges, over the view's light
+    // background, where white doesn't show; they are dark.
+    Color bedRulerColor
+    // The ruler text, standing in the scene so the model hides what is
+    // behind it: each label is a plane per character, facing the camera
+    // (BillboardLabel). They use a bordered copy of Studio's label font.
+    Font labelFont = undefined
+    BillboardLabel widthLabel
+    BillboardLabel depthLabel
+    BillboardLabel heightLabel
+    BillboardLabel bedWidthLabel
+    BillboardLabel bedDepthLabel
+    // Where each label goes in the scene: past the end of its ruler.
+    Vector3 widthSpot
+    Vector3 depthSpot
+    Vector3 heightSpot
+    Vector3 bedWidthSpot
+    Vector3 bedDepthSpot
+    // The numbers at the rulers' long ticks (0, 5, 10... millimeters), made
+    // as needed, and where each goes in the scene. The first numberCount
+    // are in use; the rest are hidden.
+    Array<BillboardLabel> numberLabels
+    Array<Vector3> numberSpots
+    integer numberCount = 0
+    // The model's box in the scene, after its scale and turn, and the bed's
+    // size, in scene units.
+    BoundingBox localBox
+    BoundingBox worldBox
+    number modelWidth = 0
+    number modelDepth = 0
+    number modelHeight = 0
+    number bedWidth = 22
+    number bedDepth = 22
+    // Which sides face the camera (1 or -1, along x and z): the rulers go
+    // there, so the model never hides them.
+    number sideX = 1
+    number sideZ = 1
+    PrintSetup setup = undefined
+    File modelFile = undefined
+    // The tab, told when the printer changes in Quorum Studio Properties.
+    ModelPreviewTab tab = undefined
+    // The printer's name in Studio's options when last shown.
+    text shownPrinter = ""
+    boolean loaded = false
+    NumberFormatter format
+
+    // Scene units are centimeters (printed millimeters divided by 10), so
+    // a bed is 20 to 30 units across, at the camera's usual distances.
+    constant number MILLIMETERS_PER_UNIT = 10
+    // How thick the bed and the rulers are drawn, in scene units.
+    constant number BED_THICKNESS = 0.1
+    constant number RULER_THICKNESS = 0.03
+    // How far the rulers stand off the model's sides and the bed's edges,
+    // in scene units.
+    constant number RULER_GAP = 0.15
+    // How far the camera stands back, for each scene unit of the larger of
+    // the bed and the model.
+    constant number CAMERA_DISTANCE_PER_UNIT = 1.4
+    // Tick lengths in scene units: every fifth tick is long.
+    constant number LONG_TICK = 0.35
+    constant number SHORT_TICK = 0.18
+    // Rulers longer than this (in scene units) get thicker bars and longer
+    // ticks in proportion, so the bed's rulers, 22 units long, show from
+    // as far away as the model's do.
+    constant number RULER_SIZE_LENGTH = 5
+    // At most this many spaces between ticks on a ruler.
+    constant integer MOST_TICK_SPACES = 20
+    // The ruler text's starting font size, in pixels; each label then
+    // sizes its pictures to its height on screen.
+    constant integer LABEL_PIXELS = 16
+    // How tall the ruler text is in the scene, as a share of its ruler's
+    // long tick, so it grows and shrinks with the ruler.
+    constant number TEXT_PER_LONG_TICK = 0.8
+    // The gap below the height ruler's label, above the ruler's top (or
+    // the highest number, if it reaches higher), in text heights.
+    constant number HEIGHT_LABEL_GAP = 0.25
+
+    /*
+        Loads the model file into the view, with the bed and rulers for the
+        setup's printer and size.
+
+        Attribute: Parameter file The model file
+        Attribute: Parameter printSetup The print choices for it
+    */
+    action LoadModel(File file, PrintSetup printSetup)
+        modelFile = file
+        setup = printSetup
+        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+        shownPrinter = studio:GetOptions():GetDefaultPrinter()
+        SetName(file:GetFileName())
+
+        AddLayer(modelLayer)
+        SetSelectedLayer(modelLayer)
+        // no 3D cursor (the box a scene editor places items at) and no grid:
+        // nothing is placed here, and the bed shows the ground
+        modelLayer:ShowEditorComponents(false)
+
+        Color color
+        model:Load(file)
+        bed:LoadBox(1, 1, 1, color:CustomColor(0.25, 0.26, 0.29, 1))
+        rulerColor = color:CustomColor(0.95, 0.95, 0.96, 1)
+        bedRulerColor = color:CustomColor(0.15, 0.16, 0.18, 1)
+        MakeHelper(model)
+        MakeHelper(bed)
+        modelLayer:Add(bed)
+        modelLayer:Add(model)
+        AddRulerBar(widthRuler, rulerColor)
+        AddRulerBar(depthRuler, rulerColor)
+        AddRulerBar(heightRuler, rulerColor)
+        AddRulerBar(bedWidthRuler, bedRulerColor)
+        AddRulerBar(bedDepthRuler, bedRulerColor)
+
+        // white text with a black outline, readable over the model and the bed
+        Label probe
+        labelFont = probe:GetFont()
+        AddRulerLabel(widthLabel)
+        AddRulerLabel(depthLabel)
+        AddRulerLabel(heightLabel)
+        AddRulerLabel(bedWidthLabel)
+        AddRulerLabel(bedDepthLabel)
+
+        EditorCamera3D camera = modelLayer:GetEditorCamera()
+        camera:SetTarget(bed)
+        loaded = true
+        Refresh()
+        // the whole bed and model in view to start
+        camera:SetDistance(ViewDistance())
+    end
+
+    /*
+        Places the model, bed and rulers again from the setup: after the
+        printer, the size or the side down changes.
+    */
+    action Refresh
+        if not loaded or setup = undefined
+            return now
+        end
+
+        // the bed, at its real size, centered under the origin, its top at
+        // height 0
+        bedWidth = 22
+        bedDepth = 22
+        if setup:GetPrinter() not= undefined
+            bedWidth = setup:GetPrinter():GetNumber("bedWidth") / MILLIMETERS_PER_UNIT
+            bedDepth = setup:GetPrinter():GetNumber("bedDepth") / MILLIMETERS_PER_UNIT
+        end
+        bed:SetScale(bedWidth, BED_THICKNESS, bedDepth)
+        bed:SetPosition(0, -BED_THICKNESS / 2, 0)
+
+        // The model at its printed size, standing on the bed, centered.
+        number scale = setup:GetScale() / MILLIMETERS_PER_UNIT
+        model:SetScale(scale, scale, scale)
+        if setup:GetUpAxis() = "Z"
+            // A Z-up file is turned so its z points up. Its own box
+            // (CalculateBoundingBox) is before its scale and turn, so the box
+            // in the scene comes from its transform, at the origin first.
+            model:SetYawPitchRoll(0, -90, 0)
+            model:SetPosition(0, 0, 0)
+            model:CalculateBoundingBox(localBox)
+            worldBox:Invalidate()
+            worldBox:Extend(localBox, model:GetTransform())
+            Vector3 low = worldBox:GetMinimum()
+            Vector3 high = worldBox:GetMaximum()
+            model:SetPosition(-(low:GetX() + high:GetX()) / 2, -low:GetY(), -(low:GetZ() + high:GetZ()) / 2)
+            modelWidth = high:GetX() - low:GetX()
+            modelHeight = high:GetY() - low:GetY()
+            modelDepth = high:GetZ() - low:GetZ()
+        else
+            // Y up, as drawn: placed from the file's own vertices, the same
+            // numbers the slicer reads. The view draws z mirrored (a model
+            // is made left-handed when it loads), so the z center flips.
+            model:SetYawPitchRoll(0, 0, 0)
+            Array<number> bounds = setup:GetModelBounds()
+            number lowX = bounds:Get(0) * scale
+            number highX = bounds:Get(1) * scale
+            number lowY = bounds:Get(2) * scale
+            number highY = bounds:Get(3) * scale
+            number lowZ = bounds:Get(4) * scale
+            number highZ = bounds:Get(5) * scale
+            model:SetPosition(-(lowX + highX) / 2, -lowY, (lowZ + highZ) / 2)
+            modelWidth = highX - lowX
+            modelHeight = highY - lowY
+            modelDepth = highZ - lowZ
+        end
+
+        PlaceRulers()
+        FitCamera()
+
+        widthLabel:SetText(format:Fixed(setup:GetPrintWidth(), 1) + " mm wide")
+        depthLabel:SetText(format:Fixed(setup:GetPrintDepth(), 1) + " mm deep")
+        heightLabel:SetText(format:Fixed(setup:GetPrintHeight(), 1) + " mm tall")
+        bedWidthLabel:SetText("Bed " + format:Fixed(bedWidth * MILLIMETERS_PER_UNIT, 0) + " mm")
+        bedDepthLabel:SetText("Bed " + format:Fixed(bedDepth * MILLIMETERS_PER_UNIT, 0) + " mm")
+        PlaceLabels()
+    end
+
+    /*
+        Returns what a screen reader says when the view gets the focus: the
+        file, the printer, the printed size, and whether it fits.
+    */
+    action GetDescription returns text
+        if not loaded or setup = undefined
+            return "Model preview"
+        end
+        text printerName = "no printer"
+        if setup:GetPrinter() not= undefined
+            printerName = "a " + setup:GetPrinter():GetName()
+        end
+        text result = modelFile:GetFileName() + " on " + printerName + " bed. Prints "
+            + format:Fixed(setup:GetPrintWidth(), 1) + " millimeters wide, "
+            + format:Fixed(setup:GetPrintDepth(), 1) + " deep and "
+            + format:Fixed(setup:GetPrintHeight(), 1) + " tall. "
+        if setup:Fits()
+            return result + "Fits on the bed."
+        end
+        return result + "Too large for the bed."
+    end
+
+    /*
+        Sets the tab the preview is in.
+    */
+    action SetTab(ModelPreviewTab value)
+        tab = value
+    end
+
+    /*
+        A preview shows no sky, so the Properties panel has no Sky section.
+    */
+    action HasSky returns boolean
+        return false
+    end
+
+    /*
+        Keeps the 3D cursor hidden: a scene editor shows it whenever nothing
+        is selected, but nothing is placed in a preview.
+    */
+    action UpdateCursorVisibility
+        modelLayer:ShowCursor(false)
+    end
+
+    /*
+        Nothing in a preview is saved, so it never has unsaved changes.
+    */
+    action HasUnsavedChanges returns boolean
+        return false
+    end
+
+    /*
+        Nothing in a preview is saved.
+    */
+    action Save
+    end
+
+    /*
+        Keeps the labels next to their rulers as the camera moves.
+    */
+    action Update(number seconds)
+        parent:SceneEditor:Update(seconds)
+        if loaded
+            FollowPrinter()
+            FollowCamera()
+            PlaceLabels()
+        end
+    end
+
+    // The rulers snap to the model's sides and the bed's edges that face the
+    // camera: along the near bottom edges, and up the near corner.
+    private action PlaceRulers
+        numberCount = 0
+        number nearZ = sideZ * (modelDepth / 2 + RULER_GAP)
+        number nearX = sideX * (modelWidth / 2 + RULER_GAP)
+        // All three start at the near corner and count away from it; only
+        // the width ruler numbers the corner's 0.
+        PlaceRuler(widthRuler, widthTicks, widthSpot, widthLabel, 0, sideX * modelWidth / 2, RULER_THICKNESS, nearZ, -sideX, modelWidth, setup:GetPrintWidth(), 2, sideZ, true, rulerColor)
+        PlaceRuler(depthRuler, depthTicks, depthSpot, depthLabel, 2, nearX, RULER_THICKNESS, sideZ * modelDepth / 2, -sideZ, modelDepth, setup:GetPrintDepth(), 0, sideX, false, rulerColor)
+        PlaceRuler(heightRuler, heightTicks, heightSpot, heightLabel, 1, nearX, 0, nearZ, 1, modelHeight, setup:GetPrintHeight(), 0, sideX, false, rulerColor)
+        number bedZ = sideZ * (bedDepth / 2 + RULER_GAP)
+        number bedX = sideX * (bedWidth / 2 + RULER_GAP)
+        PlaceRuler(bedWidthRuler, bedWidthTicks, bedWidthSpot, bedWidthLabel, 0, sideX * bedWidth / 2, RULER_THICKNESS, bedZ, -sideX, bedWidth, bedWidth * MILLIMETERS_PER_UNIT, 2, sideZ, true, bedRulerColor)
+        PlaceRuler(bedDepthRuler, bedDepthTicks, bedDepthSpot, bedDepthLabel, 2, bedX, RULER_THICKNESS, sideZ * bedDepth / 2, -sideZ, bedDepth, bedDepth * MILLIMETERS_PER_UNIT, 0, sideX, false, bedRulerColor)
+        // numbers no ruler uses now are hidden
+        integer i = numberCount
+        repeat while i < numberLabels:GetSize()
+            numberLabels:Get(i):Hide()
+            i = i + 1
+        end
+    end
+
+    // When the camera moves round to another side, the rulers follow.
+    private action FollowCamera
+        Camera camera = modelLayer:GetCamera()
+        Vector3 position = camera:GetPosition()
+        number newX = 1
+        if position:GetX() < 0
+            newX = -1
+        end
+        number newZ = 1
+        if position:GetZ() < 0
+            newZ = -1
+        end
+        if newX not= sideX or newZ not= sideZ
+            sideX = newX
+            sideZ = newZ
+            PlaceRulers()
+        end
+    end
+
+    // The camera stands far enough back to see the bed and the whole model.
+    private action FitCamera
+        EditorCamera3D camera = modelLayer:GetEditorCamera()
+        number needed = ViewDistance()
+        if camera:GetDistance() < needed
+            camera:SetDistance(needed)
+        end
+    end
+
+    private action ViewDistance returns number
+        number largest = bedWidth
+        if bedDepth > largest
+            largest = bedDepth
+        end
+        if modelWidth > largest
+            largest = modelWidth
+        end
+        if modelDepth > largest
+            largest = modelDepth
+        end
+        if modelHeight > largest
+            largest = modelHeight
+        end
+        return largest * CAMERA_DISTANCE_PER_UNIT
+    end
+
+    private action AddRulerBar(Model bar, Color color)
+        bar:LoadBox(1, 1, 1, color)
+        MakeHelper(bar)
+        modelLayer:Add(bar)
+    end
+
+    private action AddRulerLabel(BillboardLabel label)
+        label:Setup(modelLayer, labelFont, LABEL_PIXELS)
+    end
+
+    // When the printer is changed in Quorum Studio Properties, the preview
+    // and its sections follow it.
+    private action FollowPrinter
+        if tab = undefined or setup = undefined
+            return now
+        end
+        QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
+        text chosen = studio:GetOptions():GetDefaultPrinter()
+        if chosen not= shownPrinter
+            shownPrinter = chosen
+            setup:SetPrinter(studio:GetBehaviors():GetPrintBehavior():GetPrinter())
+            tab:ChoicesChanged()
+        end
+    end
+
+    // Turns each label to the camera at its spot. The labels are in the
+    // scene, so the model hides any behind it, and the view's edges cut
+    // them off like everything else in it.
+    private action PlaceLabels
+        PlaceLabel(widthLabel, widthSpot)
+        PlaceLabel(depthLabel, depthSpot)
+        PlaceLabel(heightLabel, heightSpot)
+        PlaceLabel(bedWidthLabel, bedWidthSpot)
+        PlaceLabel(bedDepthLabel, bedDepthSpot)
+        integer i = 0
+        repeat while i < numberCount
+            PlaceLabel(numberLabels:Get(i), numberSpots:Get(i))
+            i = i + 1
+        end
+    end
+
+    private action PlaceLabel(BillboardLabel label, Vector3 spot)
+        label:SetSpot(spot:GetX(), spot:GetY(), spot:GetZ())
+        label:Face(modelLayer:GetCamera(), GetHeight())
+    end
+
+    // Places a ruler: a bar from the start along one axis (0 x, 1 y, 2 z),
+    // with a tick every 1, 2, 5, 10... millimeters (at most 20 spaces),
+    // every fifth tick long and numbered, sticking out along another axis
+    // in the direction of sign (1 or -1). The ruler runs from the start in
+    // the direction given (1 or -1 along its axis). Its label goes at
+    // labelSpot, just past its far end; numberZero says whether its 0 is
+    // numbered (rulers that meet at a corner share one 0). The label and
+    // the numbers are sized in the scene from the ruler's long tick, so
+    // they grow and shrink with the ruler as the camera moves.
+    private action PlaceRuler(Model bar, Array<Model> ticks, Vector3 labelSpot, BillboardLabel label, integer axis, number startX, number startY, number startZ,
+            number direction, number length, number millimeters, integer tickAxis, number sign, boolean numberZero, Color color)
+        // the bar's thickness and the ticks' lengths grow with a long ruler
+        number size = length / RULER_SIZE_LENGTH
+        if size < 1
+            size = 1
+        end
+        number thickness = RULER_THICKNESS * size
+        number longTick = LONG_TICK * size
+        number shortTick = SHORT_TICK * size
+        number textHeight = longTick * TEXT_PER_LONG_TICK
+        label:SetWorldHeight(textHeight)
+        bar:SetScale(Along(axis, 0, length, thickness), Along(axis, 1, length, thickness), Along(axis, 2, length, thickness))
+        number middle = direction * length / 2
+        bar:SetPosition(startX + Along(axis, 0, middle, 0), startY + Along(axis, 1, middle, 0), startZ + Along(axis, 2, middle, 0))
+
+        number spacing = TickSpacing(millimeters)
+        integer count = 0
+        if spacing > 0
+            count = cast(integer, millimeters / spacing) + 1
+        end
+
+        // The label and the numbers lie in the ruler's own plane, the one
+        // holding the bar and its ticks (its normal is the axis that is
+        // neither the ruler's nor its ticks'), fixed to the ruler as the
+        // camera moves, and turn end for end so they read forwards.
+        // (Facing the camera, the numbers slid about their ticks as it
+        // moved.) On the height ruler, the numbers and the label are level
+        // in its upright plane, starting just past the long ticks' tip and
+        // running out the way the ticks stick out.
+        integer normalAxis = 3 - axis - tickAxis
+        number normalX = Along(normalAxis, 0, 1, 0)
+        number normalY = Along(normalAxis, 1, 1, 0)
+        number normalZ = Along(normalAxis, 2, 1, 0)
+        number numberStart = sign * (longTick + shortTick / 2)
+        label:SetAlignment(label:ALIGN_START)
+        if axis = 1
+            // The label's middle stands half a text height and a gap above
+            // the ruler's top, or above the highest number, if that number
+            // would reach higher.
+            integer lastNumbered = (count - 1) - ((count - 1) mod 5)
+            number clear = direction * length
+            number highestNumber = direction * lastNumbered * spacing / MILLIMETERS_PER_UNIT + textHeight / 2
+            if highestNumber > clear
+                clear = highestNumber
+            end
+            label:SetInPlane(Along(tickAxis, 0, sign, 0), Along(tickAxis, 1, sign, 0), Along(tickAxis, 2, sign, 0), normalX, normalY, normalZ, true)
+            labelSpot:Set(startX + Along(tickAxis, 0, numberStart, 0), startY + clear + textHeight * (0.5 + HEIGHT_LABEL_GAP),
+                startZ + Along(tickAxis, 2, numberStart, 0))
+        else
+            // A floor ruler's label lies on the floor a long tick past the
+            // ruler's far end, on its line, running on the way it runs.
+            label:SetInPlane(Along(axis, 0, direction, 0), Along(axis, 1, direction, 0), Along(axis, 2, direction, 0), normalX, normalY, normalZ, true)
+            number past = direction * (length + longTick)
+            labelSpot:Set(startX + Along(axis, 0, past, 0), startY + Along(axis, 1, past, 0), startZ + Along(axis, 2, past, 0))
+        end
+        integer i = 0
+        repeat while i < count or i < ticks:GetSize()
+            if i >= ticks:GetSize()
+                Model made
+                made:LoadBox(1, 1, 1, color)
+                MakeHelper(made)
+                modelLayer:Add(made)
+                ticks:Add(made)
+            end
+            Model tick = ticks:Get(i)
+            if i < count
+                number tickLength = shortTick
+                if i mod 5 = 0
+                    tickLength = longTick
+                end
+                number along = direction * i * spacing / MILLIMETERS_PER_UNIT
+                number outward = sign * tickLength / 2
+                tick:SetScale(Along(tickAxis, 0, tickLength, thickness), Along(tickAxis, 1, tickLength, thickness), Along(tickAxis, 2, tickLength, thickness))
+                tick:SetPosition(startX + Along(axis, 0, along, 0) + Along(tickAxis, 0, outward, 0),
+                    startY + Along(axis, 1, along, 0) + Along(tickAxis, 1, outward, 0),
+                    startZ + Along(axis, 2, along, 0) + Along(tickAxis, 2, outward, 0))
+                tick:Show()
+                if i mod 5 = 0 and (i > 0 or numberZero)
+                    if axis = 1
+                        // level beside its tick, its middle at the tick's
+                        // height, starting just past the long tick's tip
+                        AddNumber(format:Fixed(i * spacing, 0), startX + Along(tickAxis, 0, numberStart, 0),
+                            startY + along, startZ + Along(tickAxis, 2, numberStart, 0), textHeight,
+                            Along(tickAxis, 0, sign, 0), 0, Along(tickAxis, 2, sign, 0), normalX, normalY, normalZ, label:ALIGN_START)
+                    else
+                        // flat on the floor past the long tick's tip,
+                        // centered on the tick, reading along the ruler
+                        number tip = sign * (longTick + shortTick)
+                        AddNumber(format:Fixed(i * spacing, 0), startX + Along(axis, 0, along, 0) + Along(tickAxis, 0, tip, 0),
+                            startY, startZ + Along(axis, 2, along, 0) + Along(tickAxis, 2, tip, 0), textHeight,
+                            Along(axis, 0, direction, 0), 0, Along(axis, 2, direction, 0), normalX, normalY, normalZ, label:ALIGN_CENTER)
+                    end
+                end
+            else
+                tick:Hide()
+            end
+            i = i + 1
+        end
+    end
+
+    // Uses the next number label (making one if needed) for a tick's
+    // number: at x, y, z, textHeight tall, lying in the plane with the
+    // normal given, running the way given, aligned along it as given.
+    private action AddNumber(text value, number x, number y, number z, number textHeight, number runX, number runY, number runZ,
+            number normalX, number normalY, number normalZ, integer alignment)
+        if numberCount >= numberLabels:GetSize()
+            BillboardLabel made
+            AddRulerLabel(made)
+            numberLabels:Add(made)
+            Vector3 spot
+            numberSpots:Add(spot)
+        end
+        BillboardLabel numberLabel = numberLabels:Get(numberCount)
+        numberLabel:SetWorldHeight(textHeight)
+        numberLabel:SetInPlane(runX, runY, runZ, normalX, normalY, normalZ, true)
+        numberLabel:SetAlignment(alignment)
+        numberLabels:Get(numberCount):SetText(value)
+        numberLabels:Get(numberCount):Show()
+        numberSpots:Get(numberCount):Set(x, y, z)
+        numberCount = numberCount + 1
+    end
+
+    // The value for one coordinate: onAxis if it is the axis, else otherwise.
+    private action Along(integer axis, integer coordinate, number onAxis, number otherwise) returns number
+        if axis = coordinate
+            return onAxis
+        end
+        return otherwise
+    end
+
+    // The smallest of 1, 2, 5, 10, 20, 50... millimeters that leaves at most
+    // MOST_TICK_SPACES spaces along the ruler.
+    private action TickSpacing(number millimeters) returns number
+        if millimeters <= 0
+            return 0
+        end
+        number spacing = 1
+        integer step = 0
+        repeat while millimeters / spacing > MOST_TICK_SPACES
+            if step mod 3 = 0
+                spacing = spacing * 2
+            elseif step mod 3 = 1
+                spacing = spacing * 2.5
+            else
+                spacing = spacing * 2
+            end
+            step = step + 1
+        end
+        return spacing
+    end
+
+    // Makes an item a helper: not selectable, not saved, not in the tree.
+    private action MakeHelper(Model item)
+        SceneConstants constants
+        item:SetProperty(constants:EDITOR_TAG, undefined)
+        item:SetFocusable(false)
+        // A 3D item the pointer is over takes mouse events before the view
+        // does, so a helper that took them would stop the wheel zooming.
+        item:SetAcceptsMouseInput(false)
+    end
+end

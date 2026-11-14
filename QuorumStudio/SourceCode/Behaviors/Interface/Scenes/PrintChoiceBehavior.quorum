@@ -1,0 +1,42 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Development.Environment.Studio.Interface.PrintPlacementSection
+use Libraries.Development.Environment.Studio.Interface.PrintPartsSection
+
+/*
+    The PrintChoiceBehavior runs when a checkbox in a model's Print
+    sections is toggled: Supports or Brim in the Placement section, or a
+    part's checkbox in the Parts section. It tells its section, which reads
+    the checkbox and updates the print choices.
+*/
+class PrintChoiceBehavior is Behavior
+    PrintPlacementSection placement = undefined
+    PrintPartsSection parts = undefined
+    // Which part's checkbox this is, for the Parts section.
+    integer partIndex = -1
+
+    /*
+        Makes this the behavior of a Placement section checkbox.
+    */
+    action SetPlacementSection(PrintPlacementSection section)
+        placement = section
+    end
+
+    /*
+        Makes this the behavior of a part's checkbox in the Parts section.
+    */
+    action SetPartsSection(PrintPartsSection section, integer index)
+        parts = section
+        partIndex = index
+    end
+
+    action Run(BehaviorEvent event)
+        if placement not= undefined
+            placement:ChoicesToggled()
+        elseif parts not= undefined
+            parts:PartToggled(partIndex)
+        end
+    end
+end

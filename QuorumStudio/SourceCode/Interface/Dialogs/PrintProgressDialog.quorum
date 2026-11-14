@@ -1,0 +1,125 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Controls.ProgressBar
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Game.Graphics.Label
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+use Libraries.Development.Environment.Studio.Behaviors.PrintSliceBehavior
+use Libraries.Development.Environment.Studio.Behaviors.PrintModelSliceBehavior
+
+/*
+    The PrintProgressDialog shows a print being sliced: a progress bar, and
+    what the slicer is doing ("Cutting it into layers", "Writing G-code").
+    It reads the slicing's progress each frame, from the build thread's
+    PrintSliceBehavior (a terrain) or PrintModelSliceBehavior (a model),
+    and closes itself when the slicing ends; the Output tab then says what
+    was written, or what went wrong.
+
+    Hide closes the window only: the print carries on.
+*/
+class PrintProgressDialog is Dialog
+    PrintSliceBehavior terrainSlice = undefined
+    PrintModelSliceBehavior modelSlice = undefined
+    DialogCancelBehavior hideBehavior
+    ProgressBar bar = undefined
+    Label stageLabel = undefined
+    Button hideButton = undefined
+    text shownStage = ""
+
+    constant number WIDTH_SHARE = 0.3
+    constant number HEIGHT_SHARE = 0.25
+
+    on create
+        SetModal(false)
+    end
+
+    /*
+        Shows the progress of a terrain's slicing.
+
+        Attribute: Parameter title What is printed, such as the scene's name
+        Attribute: Parameter slice The slicing, on the build thread
+    */
+    action SetupForTerrain(text title, PrintSliceBehavior slice)
+        terrainSlice = slice
+        modelSlice = undefined
+        Build(title)
+    end
+
+    /*
+        Shows the progress of a model's slicing.
+
+        Attribute: Parameter title The model file's name
+        Attribute: Parameter slice The slicing, on the build thread
+    */
+    action SetupForModel(text title, PrintModelSliceBehavior slice)
+        modelSlice = slice
+        terrainSlice = undefined
+        Build(title)
+    end
+
+    private action Build(text title)
+        SetName("Printing " + title)
+        SetPercentageWidth(WIDTH_SHARE)
+        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:STANDARD)
+        SetPercentageHeight(HEIGHT_SHARE)
+        hideBehavior:SetDialog(me)
+
+        Page page = InitializeDefaultPage()
+        page:SetSkipLabelsInFocus(true)
+        page:LeftAlignContent()
+
+        Grouping card = page:AddGrouping("Progress")
+        card:SetTitle("Slicing")
+        stageLabel = card:AddLabel("Stage", "Starting")
+        bar = card:AddProgressBar("Print progress", 0, 100)
+        bar:SetDescription("Starting")
+
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        buttonGroup:PositionFromBottom()
+        hideButton = buttonGroup:AddButton("Hide")
+        hideButton:SetDescription("Closes this window. The print carries on, and the Output tab says when it is written.")
+        hideButton:SetBehavior(hideBehavior)
+        SetBehavior(hideBehavior)
+
+        page:CalculateDefaultFocusOrdering()
+    end
+
+    /*
+        Moves the bar and the stage along, and closes the window when the
+        slicing ends.
+    */
+    action Update(number seconds)
+        if not IsShowing()
+            return now
+        end
+        number progress = 0
+        text stage = ""
+        boolean finished = false
+        if terrainSlice not= undefined
+            progress = terrainSlice:GetProgress()
+            stage = terrainSlice:GetStage()
+            finished = terrainSlice:IsFinished()
+        elseif modelSlice not= undefined
+            progress = modelSlice:GetProgress()
+            stage = modelSlice:GetStage()
+            finished = modelSlice:IsFinished()
+        end
+        bar:SetValue(progress * 100)
+        if stage not= "" and stage not= shownStage
+            shownStage = stage
+            stageLabel:SetText(stage)
+            // what a screen reader says when it reaches the bar
+            bar:SetDescription(stage)
+        end
+        if finished
+            Hide()
+        end
+    end
+
+    action OnShow
+        bar:Focus()
+    end
+end

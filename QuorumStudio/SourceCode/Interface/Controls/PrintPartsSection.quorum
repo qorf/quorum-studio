@@ -1,0 +1,162 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Controls.Scenes.Dialogs.PropertiesDialog
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
+use Libraries.Game.Graphics.Label
+use Libraries.Fabrication.PrintSetup
+use Libraries.Fabrication.Geometry.MeshCheck
+use Libraries.Development.Environment.Studio.Behaviors.PrintChoiceBehavior
+
+/*
+    The PrintPartsSection is the last Print section of a model's preview
+    tab: a checkbox for each part (mesh) of the model, then whether each
+    included part can print (is a closed solid). The check only informs;
+    printing is File > Print.
+
+    Each part's checkbox description says whether it is closed, so a
+    screen reader hears it with the part; the lines under the parts say the
+    same for sighted users.
+*/
+class PrintPartsSection is PropertiesDialog
+    ModelPreviewTab tab = undefined
+    Array<Checkbox> partBoxes
+    Array<PrintChoiceBehavior> partBehaviors
+    Control checkCard = undefined
+    Array<WrappedLabel> checkLabels
+    boolean updating = false
+
+    /*
+        Sets the tab whose model this section prints. Call before the
+        section is added to the editor, since the parts are made from it.
+    */
+    action SetTab(ModelPreviewTab value)
+        tab = value
+    end
+
+    private action CreateInterface(Control panel, Array<Control> focusArray)
+        SetName("Print Parts")
+
+        Label headingLabel
+        headingLabel:SetSize(18)
+        headingLabel:SetText("Parts and check")
+        headingLabel:SetLeftMargin(20)
+        panel:Add(headingLabel)
+        SetHeading(headingLabel)
+
+        // one checkbox for each part
+        Control partsCard = AddCard(panel, "Parts")
+        MeshCheck meshCheck = tab:GetSetup():GetCheck()
+        integer i = 0
+        repeat while i < meshCheck:GetPartCount()
+            Control line = MakeCardLine()
+            Checkbox box
+            box:SetName(meshCheck:GetPartName(i))
+            PrintChoiceBehavior behavior
+            behavior:SetPartsSection(me, i)
+            box:SetBehavior(behavior)
+            line:Add(box)
+            focusArray:Add(box)
+            partsCard:Add(line)
+            partBoxes:Add(box)
+            partBehaviors:Add(behavior)
+            i = i + 1
+        end
+
+        // can each part print? Information only: labels as wide as the
+        // card, so long lines wrap instead of running past it. Each is a
+        // stop in the focus order, after the checkboxes, so a screen reader
+        // user can read it.
+        checkCard = AddCard(panel, "Can it print?")
+        i = 0
+        repeat while i < meshCheck:GetPartCount()
+            Control line = MakeCardLine()
+            WrappedLabel status
+            status:SetFocusable(true)
+            focusArray:Add(status)
+            line:Add(status)
+            checkCard:Add(line)
+            checkLabels:Add(status)
+            i = i + 1
+        end
+    end
+
+    /*
+        Fills the checkboxes from the tab's print choices, and the check.
+    */
+    action ShowChoices
+        if tab = undefined
+            return now
+        end
+        PrintSetup setup = tab:GetSetup()
+        updating = true
+        integer i = 0
+        repeat while i < partBoxes:GetSize()
+            Checkbox box = partBoxes:Get(i)
+            box:SetToggleState(setup:IsPartIncluded(i))
+            i = i + 1
+        end
+        updating = false
+        ShowCheck()
+    end
+
+    /*
+        Says, for each part, whether it can print, in the lines under the
+        parts and in each part's checkbox description.
+    */
+    action ShowCheck
+        if tab = undefined
+            return now
+        end
+        PrintSetup setup = tab:GetSetup()
+        MeshCheck meshCheck = setup:GetCheck()
+        integer i = 0
+        repeat while i < meshCheck:GetPartCount() and i < checkLabels:GetSize()
+            text name = meshCheck:GetPartName(i)
+            text status = ""
+            text detail = ""
+            if not setup:IsPartIncluded(i)
+                status = name + ": turned off."
+            elseif meshCheck:IsClosed(i)
+                status = name + ": closed, can print."
+            else
+                status = name + ": " + meshCheck:GetOpenEdgeCount(i) + " open edges."
+                detail = " It isn't a closed solid, so it may print with gaps or missing walls."
+            end
+            WrappedLabel label = checkLabels:Get(i)
+            label:SetText(status)
+            Checkbox box = partBoxes:Get(i)
+            box:SetDescription("" + meshCheck:GetTriangleCount(i) + " triangles. " + status + detail)
+            i = i + 1
+        end
+    end
+
+    /*
+        Called when a part's checkbox is toggled.
+    */
+    action PartToggled(integer index)
+        if updating or tab = undefined
+            return now
+        end
+        Checkbox box = partBoxes:Get(index)
+        tab:GetSetup():SetPartIncluded(index, box:GetToggleState())
+        tab:ChoicesChanged()
+    end
+
+    action SelectionChanged(SelectionEvent event)
+        // Stays shown whatever is selected in the view.
+    end
+
+    action SetFields(EditorItem item)
+    end
+
+    action FocusField
+        if not partBoxes:IsEmpty()
+            Checkbox first = partBoxes:Get(0)
+            first:Focus()
+        end
+    end
+end

@@ -1073,8 +1073,12 @@ EditorTab editorTab = cast(EditorTab, codeTabs:Get(0))
             return true
         elseif extension = "csv"
             return true
-        else
-            //other supported extensions would be here
+        elseif GetBehaviors() not= undefined
+            // .gltf, .glb, .obj and .stl open in a model preview tab
+            Behaviors studioBehaviors = GetBehaviors()
+            if studioBehaviors:GetPrintBehavior():IsModelFile(file)
+                return true
+            end
         end
         return false
     end

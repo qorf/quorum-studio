@@ -65,6 +65,10 @@ class Options is ProjectListener
     constant text BLOCKS_HEIGHT_SCALING = "Blocks Height Scaling"
     constant text BLOCKS_SCOPE_WIDTH_SCALING = "Blocks Scope Width Scaling"
     constant text BLOCK_MODE = "Block Mode"
+    constant text DEFAULT_PRINTER = "Default Printer"
+    constant text BAMBU_START_GCODE = "Bambu Start G-code"
+    constant text BAMBU_END_GCODE = "Bambu End G-code"
+    constant text BAMBU_SETTINGS = "Bambu Settings"
     constant text CLOSED_PROPERTIES_SECTIONS = "Closed Properties Sections"
     constant text TERRAIN_CURSOR_BEAM = "Terrain Cursor Beam"
     constant text TERRAIN_CURSOR_CROSSHAIR = "Terrain Cursor Crosshair"
@@ -108,6 +112,14 @@ class Options is ProjectListener
     LightQuorumStudio lightMode
     DarkQuorumStudio darkMode
     boolean blockMode = true
+    // Studio's default printer for File > Print, by its name (3D Printing tab).
+    text defaultPrinter = ""
+    // Where Bambu's own files are (exported from Bambu Studio), as the
+    // file chooser gave them. Only Studio's settings keep these; the
+    // library is given Files.
+    text bambuStartGcode = ""
+    text bambuEndGcode = ""
+    text bambuSettings = ""
     number blocksHeightScaling = 1
     number blocksScopeWidthScaling = 1
 
@@ -477,6 +489,38 @@ action GetBlocksScopeWidthScaling returns number
         blockMode = blocks
     end
 
+    action GetDefaultPrinter returns text
+        return defaultPrinter
+    end
+
+    action SetDefaultPrinter(text name)
+        defaultPrinter = name
+    end
+
+    action GetBambuStartGcode returns text
+        return bambuStartGcode
+    end
+
+    action SetBambuStartGcode(text path)
+        bambuStartGcode = path
+    end
+
+    action GetBambuEndGcode returns text
+        return bambuEndGcode
+    end
+
+    action SetBambuEndGcode(text path)
+        bambuEndGcode = path
+    end
+
+    action GetBambuSettings returns text
+        return bambuSettings
+    end
+
+    action SetBambuSettings(text path)
+        bambuSettings = path
+    end
+
     action OpenedProject(QuorumProject project)
         File file = project:GetPropertiesLocation()
         if file not= undefined
@@ -703,6 +747,10 @@ action GetBlocksScopeWidthScaling returns number
         notation:Add(LIBRARY, libraryOverridePath)
         notation:Add(BETA, specialBetaBuild)
         notation:Add(BLOCK_MODE, blockMode)
+        notation:Add(DEFAULT_PRINTER, defaultPrinter)
+        notation:Add(BAMBU_START_GCODE, bambuStartGcode)
+        notation:Add(BAMBU_END_GCODE, bambuEndGcode)
+        notation:Add(BAMBU_SETTINGS, bambuSettings)
         notation:Add(BLOCKS_HEIGHT_SCALING, blocksHeightScaling)
         notation:Add(BLOCKS_SCOPE_WIDTH_SCALING, blocksScopeWidthScaling)
         notation:Add(TERRAIN_CURSOR_BEAM, terrainCursorSettings:IsShowingBeam())
@@ -987,6 +1035,22 @@ if object:IsNumber()
             if object:IsBoolean()
                 boolean blocks = object:GetBoolean()
                 me:blockMode = blocks
+            end
+        elseif key = DEFAULT_PRINTER
+            if object:IsText()
+                defaultPrinter = object:GetText()
+            end
+        elseif key = BAMBU_START_GCODE
+            if object:IsText()
+                bambuStartGcode = object:GetText()
+            end
+        elseif key = BAMBU_END_GCODE
+            if object:IsText()
+                bambuEndGcode = object:GetText()
+            end
+        elseif key = BAMBU_SETTINGS
+            if object:IsText()
+                bambuSettings = object:GetText()
             end
         elseif key = CLOSED_PROPERTIES_SECTIONS
             if not object:IsEmpty()

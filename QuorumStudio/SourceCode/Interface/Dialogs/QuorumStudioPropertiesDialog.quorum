@@ -39,9 +39,17 @@ use Libraries.Interface.Layouts.FormRowLayout
 use Libraries.Interface.Forms.Page
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Controls.Scenes.TerrainCursorSettings
+use Libraries.Interface.Controls.ComboBox
+use Libraries.Interface.Events.ComboBoxListener
+use Libraries.Interface.Events.ComboBoxChangedEvent
+use Libraries.Fabrication.Printers.BambuPrinter
+use Libraries.Containers.Iterator
+use Libraries.Fabrication.Printers.Printer
+use Libraries.Fabrication.Printers.PrinterList
+use Libraries.Development.Environment.Studio.Behaviors.BambuFileChooseBehavior
 
 
-class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
+class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener, ComboBoxListener
 
     boolean initialized = false
 
@@ -64,6 +72,21 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
     TextField glowWidthField = undefined
     TextField topFadeField = undefined
     TextField crosshairOpacityField = undefined
+
+    // The 3D Printing tab: the printer, and Bambu's own files.
+    ComboBox printerBox = undefined
+    Label printerFacts = undefined
+    Array<text> printerNames
+    PrinterList printers
+    Grouping bambuCard = undefined
+    Label bambuStatus = undefined
+    StackedRowPage printingPage = undefined
+    TextField bambuStartField = undefined
+    TextField bambuEndField = undefined
+    TextField bambuSettingsField = undefined
+    BambuFileChooseBehavior bambuStartChooser
+    BambuFileChooseBehavior bambuEndChooser
+    BambuFileChooseBehavior bambuSettingsChooser
 
     TabPane tabPane
 
@@ -107,6 +130,7 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         tabPane:SetVerticalLayoutMode(viewProperties:FILL)
         tabPane:Add(CreateGeneralTab())
         tabPane:Add(CreateSceneEditorTab())
+        tabPane:Add(CreatePrintingTab())
         Add(tabPane)
         Load()
     end
@@ -201,6 +225,15 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         settings:SetGlowWidth(ReadWhole(glowWidthField, settings:GetGlowWidth()))
         settings:SetTopFade(ReadWhole(topFadeField, settings:GetTopFade()))
         settings:SetCrosshairOpacity(ReadWhole(crosshairOpacityField, settings:GetCrosshairOpacity()))
+
+        // the 3D Printing tab
+        integer printerIndex = printerBox:GetSelectedIndex()
+        if printerIndex >= 0 and printerIndex < printerNames:GetSize()
+            options:SetDefaultPrinter(printerNames:Get(printerIndex))
+        end
+        options:SetBambuStartGcode(bambuStartField:GetText())
+        options:SetBambuEndGcode(bambuEndField:GetText())
+        options:SetBambuSettings(bambuSettingsField:GetText())
     end
 
     action Load
@@ -258,6 +291,18 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         glowWidthField:SetText("" + settings:GetGlowWidth())
         topFadeField:SetText("" + settings:GetTopFade())
         crosshairOpacityField:SetText("" + settings:GetCrosshairOpacity())
+
+        // the 3D Printing tab: the printer, or the generic printer until one
+        // is chosen
+        integer printerIndex = printerNames:GetFirstLocation(options:GetDefaultPrinter())
+        if printerIndex < 0
+            printerIndex = printerNames:GetFirstLocation("Generic printer")
+        end
+        bambuStartField:SetText(options:GetBambuStartGcode())
+        bambuEndField:SetText(options:GetBambuEndGcode())
+        bambuSettingsField:SetText(options:GetBambuSettings())
+        printerBox:Select(printerIndex)
+        ShowPrinter()
     end
 
     action IsInitialized returns boolean
@@ -395,6 +440,126 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener
         tab:SetFocusTarget(showBeamCheckbox)
         tab:SetRelatedItem(page)
         return tab
+    end
+
+    /*
+        The 3D Printing tab: the printer you print on, set once (File > Print
+        and every model's preview start with it), and, for a Bambu Lab
+        printer only, Bambu's own files, which Quorum can't include.
+    */
+    private action CreatePrintingTab returns Tab
+        Tab tab
+        tab:SetName("3D Printing")
+        tab:DisplayCloseButton(false)
+
+        StackedRowPage page
+        printingPage = page
+        page:LeftAlignContent()
+        ApplyDefaultStyleToPage(page)
+        page:SetPixelHeight(0)
+        page:SetSkipLabelsInFocus(true)
+
+        // the printer, by name, in alphabetical order
+        printerNames:Empty()
+        Iterator<Printer> each = printers:GetIterator()
+        repeat while each:HasNext()
+            Printer printer = each:Next()
+            printerNames:Add(printer:GetName())
+        end
+        printerNames:Sort()
+
+        Grouping printerCard = page:AddGrouping("Printer")
+        printerCard:SetTitle("Printer")
+        printerCard:AddLabel("Printer")
+        printerBox = printerCard:AddComboBox("Printer", printerNames)
+        printerBox:AddComboBoxListener(me)
+        printerFacts = printerCard:AddLabel("Printer Facts", "")
+
+        // Bambu's own files: shown only for a Bambu Lab printer
+        bambuCard = page:AddGrouping("Bambu Lab")
+        bambuCard:SetTitle("Bambu Lab files")
+        bambuCard:AddLabel("Bambu printers start with Bambu's own G-code, which Quorum can't include. Export these once from Bambu Studio for your printer.")
+        bambuStartField = AddBambuFileRow(bambuCard, "Start G-code", "Bambu Studio's start G-code for your printer", bambuStartChooser)
+        bambuEndField = AddBambuFileRow(bambuCard, "End G-code", "Bambu Studio's end G-code for your printer", bambuEndChooser)
+        bambuSettingsField = AddBambuFileRow(bambuCard, "Settings template", "A .gcode.3mf exported by Bambu Studio for your printer, or its project_settings file", bambuSettingsChooser)
+        bambuStatus = bambuCard:AddLabel("Bambu Files Found", "")
+
+        Grouping buttonGroup = page:AddGrouping("Confirm")
+        Button cancelButton = buttonGroup:AddButton("Cancel")
+        Button okayButton = buttonGroup:AddButton("Ok")
+        okayButton:SetInterfaceOptionsKey("DialogAcceptButton")
+        buttonGroup:PositionFromBottom()
+        cancelButton:SetBehavior(cancelBehavior)
+        okayButton:SetBehavior(okBehavior)
+
+        tab:SetFocusTarget(printerBox)
+        tab:SetRelatedItem(page)
+        return tab
+    end
+
+    // Says the chosen printer's bed and limits, in the line under it and in
+    // the box's description, and shows Bambu's files only for a Bambu
+    // printer. Choosing another printer calls it.
+    private action ShowPrinter
+        integer index = printerBox:GetSelectedIndex()
+        if index < 0 or index >= printerNames:GetSize()
+            return now
+        end
+        Printer printer = printers:Find(printerNames:Get(index))
+        text facts = "Bed " + printer:GetText("bedWidth") + " x " + printer:GetText("bedDepth") + " mm, "
+            + printer:GetText("bedHeight") + " mm tall. Nozzle up to " + printer:GetText("maxNozzleTemperature")
+            + " C, bed up to " + printer:GetText("maxBedTemperature") + " C."
+        if options:GetDefaultPrinter() = "" and printer:GetName() = "Generic printer"
+            facts = "Not chosen yet. " + facts
+        end
+        printerFacts:SetText(facts)
+        printerBox:SetDescription(facts)
+        if printer is BambuPrinter
+            bambuCard:Show()
+            ShowBambuStatus()
+        else
+            bambuCard:Hide()
+        end
+        printingPage:RequestLayout()
+    end
+
+    // Says whether the three files are where they were chosen.
+    private action ShowBambuStatus
+        text missing = ""
+        missing = missing + MissingName(bambuStartField, "the start G-code")
+        missing = missing + MissingName(bambuEndField, "the end G-code")
+        missing = missing + MissingName(bambuSettingsField, "the settings template")
+        if missing = ""
+            bambuStatus:SetText("All three files are found.")
+        else
+            bambuStatus:SetText("Not found or not chosen:" + missing + ".")
+        end
+    end
+
+    private action MissingName(TextField field, text name) returns text
+        File file
+        if field:GetText() not= ""
+            file:SetAbsolutePath(field:GetText())
+            if file:IsFile()
+                return ""
+            end
+        end
+        return " " + name
+    end
+
+    action ComboBoxChanged(ComboBoxChangedEvent event)
+        ShowPrinter()
+    end
+
+    // A file's label, its field, and its Choose button.
+    private action AddBambuFileRow(Grouping card, text name, text description, BambuFileChooseBehavior chooser) returns TextField
+        card:AddLabel(name)
+        TextField field = card:AddTextField(name)
+        field:SetDescription(description)
+        Button choose = card:AddButton("Choose " + name + "…")
+        chooser:SetField(field)
+        choose:SetBehavior(chooser)
+        return field
     end
 
     // A whole number from a field, or a fallback if it isn't one.

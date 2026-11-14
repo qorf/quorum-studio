@@ -55,6 +55,9 @@ use Libraries.Development.Environment.Studio.Behaviors.DiscardAndCloseBehavior
 use Libraries.Development.Environment.Studio.Interface.SaveBeforeClosingDialog
 use Libraries.Development.Environment.Studio.Behaviors.SaveAndCloseSingleTabBehavior
 use Libraries.Development.Environment.Studio.Behaviors.DiscardSingleTabBehavior
+use Libraries.Development.Environment.Studio.Interface.ModelPreviewTab
+use Libraries.Development.Environment.Studio.Behaviors.PrintBehavior
+use Libraries.Fabrication.PrintSetup
 
 class CodeEditorTabPane is TabPane, TabChangeListener
     KeyboardEvent keys
@@ -99,6 +102,17 @@ class CodeEditorTabPane is TabPane, TabChangeListener
                 openFiles:RemoveKey(path)
                 openTabs:RemoveKey(path)
                 ForgetOnDisk(file)
+            end
+        elseif event:GetTab() is ModelPreviewTab
+            // Forgotten when closed, so opening the file again makes a new
+            // tab. Kept, opening it again "activated" the closed tab: its
+            // 3D view was drawn with no tab, over the window.
+            ModelPreviewTab tab = cast(ModelPreviewTab, event:GetTab())
+            File file = tab:GetFile()
+            if file not= undefined
+                text path = file:GetAbsolutePath()
+                openFiles:RemoveKey(path)
+                openTabs:RemoveKey(path)
             end
         elseif event:GetTab() is SpreadsheetTab
             SpreadsheetTab tab = cast(SpreadsheetTab, event:GetTab())
@@ -600,6 +614,56 @@ end
         return tab
     end
 
+    /*
+        Opens a model file in a preview tab, to print it. If the model can't
+        be loaded, the Output tab says why and no tab opens.
+    */
+    private action OpenModelPreviewTab(File file) returns Tab
+        if openFiles:HasKey(file:GetAbsolutePath())
+            Tab openTab = openTabs:GetValue(file:GetAbsolutePath())
+            openTab:Activate()
+            return openTab
+        end
+
+        GameStateManager manager
+        Game game = manager:GetGame()
+        QuorumStudio studio = cast(QuorumStudio, game)
+        PrintBehavior printing = studio:GetBehaviors():GetPrintBehavior()
+        PrintSetup setup = printing:GetSetup(file)
+        if setup = undefined
+            return undefined
+        end
+
+        ModelPreviewTab tab
+        tab:SetFile(file)
+        tab:SetNaturalUpAxis(printing:NaturalUpAxis(file))
+        // If the preview can't be made, its 3D layer, already added, is
+        // taken away again (or it is drawn with no tab, over the window),
+        // and the Output tab says why.
+        check
+            tab:Load(setup)
+        detect e
+            check
+                tab:GetEditor():HideLayers()
+            detect hideError
+            end
+            studio:GetOutputPane():GetOutputTab():Append("Couldn't open the preview of " + file:GetFileName() + ": " + e:GetErrorMessage())
+            return undefined
+        end
+
+        tab:SetName(file:GetPath())
+        tab:SetIcon(resources:GetQuorumFile())
+        tab:DisplayCloseButton(true)
+        number scale = GetInterfaceScale()
+        tab:SetInterfaceScale(scale)
+        Add(cast(Tab, tab))
+        Resize()
+
+        openFiles:Add(file:GetAbsolutePath(), file)
+        openTabs:Add(file:GetAbsolutePath(), tab)
+        return tab
+    end
+
     private action OpenQuorumSpreadsheetTab(File file) returns SpreadsheetTab
         boolean value = openFiles:HasKey(file:GetAbsolutePath())
         if value //it's already open
@@ -660,6 +724,8 @@ end
     */
     action OpenNewTab(File file) returns Tab
         EditorTab returnedTab = undefined
+        if file not= undefined
+        end
 
         GameStateManager manager
         Game game = manager:GetGame()
@@ -675,6 +741,8 @@ end
             return OpenQuorumSceneTab(file)
         elseif extension = "csv"
             return OpenQuorumSpreadsheetTab(file)
+        elseif studio:GetBehaviors():GetPrintBehavior():IsModelFile(file)
+            return OpenModelPreviewTab(file)
         end
 
         return undefined

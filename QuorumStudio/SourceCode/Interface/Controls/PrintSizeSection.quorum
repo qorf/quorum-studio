@@ -1,0 +1,225 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Containers.Array
+use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.ButtonGroup
+use Libraries.Interface.Controls.RadioButton
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Events.SelectionEvent
+use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Interface.Selections.ButtonGroupSelection
+use Libraries.Interface.Controls.Scenes.Dialogs.PropertiesDialog
+use Libraries.Interface.Controls.Scenes.Items.EditorItem
+use Libraries.Game.Graphics.Label
+use Libraries.Data.Formats.NumberFormatter
+use Libraries.Fabrication.PrintSetup
+
+/*
+    The PrintSizeSection is the first Print section of a model's preview
+    tab: how large to print (real size, as large as fits on the bed, or a
+    longest side in millimeters), and under the choices, the printed size
+    and whether it fits on the printer's bed.
+
+    It names the printer but doesn't choose it: the printer is Studio's,
+    chosen in Quorum Studio Properties on the 3D Printing tab.
+*/
+class PrintSizeSection is PropertiesDialog
+    ModelPreviewTab tab = undefined
+    WrappedLabel printerLabel = undefined
+    ButtonGroup sizeGroup = undefined
+    TextField longestField = undefined
+    WrappedLabel sizeLabel = undefined
+    WrappedLabel percentLabel = undefined
+    WrappedLabel fitLabel = undefined
+    NumberFormatter format
+    // True while the controls are being filled, so filling them isn't
+    // taken as the user choosing.
+    boolean updating = false
+
+    // The width of a field's label, as in the terrain sections.
+    constant number FIELD_LABEL_WIDTH = 110
+
+    /*
+        Sets the tab whose model this section prints.
+    */
+    action SetTab(ModelPreviewTab value)
+        tab = value
+    end
+
+    private action CreateInterface(Control panel, Array<Control> focusArray)
+        SetName("Print Size")
+
+        Label headingLabel
+        headingLabel:SetSize(18)
+        headingLabel:SetText("Size")
+        headingLabel:SetLeftMargin(20)
+        panel:Add(headingLabel)
+        SetHeading(headingLabel)
+
+        // the printer, named; it is chosen in Quorum Studio Properties
+        Control printerCard = AddCard(panel, "Printer")
+        printerLabel = AddTextLine(printerCard, focusArray)
+        WrappedLabel whereLabel = AddTextLine(printerCard, focusArray)
+        whereLabel:SetText("Change it in Quorum Studio Properties, 3D Printing.")
+
+        // the size: real, fit to the bed, or a longest side
+        Control sizeCard = AddCard(panel, "Size")
+        Control sizeLine = MakeCardLine()
+        ButtonGroup group
+        sizeGroup = group
+        sizeGroup:SetName("Size")
+        sizeGroup:SetHorizontalLayoutMode(sizeLine:FILL)
+        sizeGroup:SetVerticalLayoutMode(sizeLine:FIT_CONTENTS)
+        FlowLayout groupLayout
+        sizeGroup:SetLayout(groupLayout)
+        AddSizeButton("Real size", "The size the model was made at. glTF models are measured in meters.")
+        AddSizeButton("Fit to bed", "As large as fits: the longer side across becomes 80% of the bed")
+        AddSizeButton("Longest side", "The model's longest side is the number of millimeters in the next field")
+        sizeGroup:AddSelectionListener(me)
+        sizeLine:Add(sizeGroup)
+        focusArray:Add(sizeGroup)
+        sizeCard:Add(sizeLine)
+
+        Control fieldLine = MakeCardLine()
+        FlowLayout labelLayout
+        Control labelBox
+        labelBox:SetLayout(labelLayout)
+        labelBox:SetPercentageWidth(0)
+        labelBox:SetPixelWidth(FIELD_LABEL_WIDTH)
+        labelBox:SetVerticalLayoutMode(labelBox:FIT_CONTENTS)
+        labelBox:SetRightMargin(10)
+        Label fieldLabel
+        fieldLabel:SetText("Longest side (mm):")
+        labelBox:Add(fieldLabel)
+        fieldLine:Add(labelBox)
+        TextField field
+        longestField = field
+        longestField:SetName("Longest side, in millimeters")
+        longestField:SetDescription("Typing a number here prints the model with its longest side this many millimeters")
+        longestField:SetRightMargin(8)
+        longestField:SetHorizontalLayoutMode(fieldLine:FILL)
+        longestField:AddTextChangeListener(me)
+        fieldLine:Add(longestField)
+        focusArray:Add(longestField)
+        sizeCard:Add(fieldLine)
+
+        // the result, in short lines, so it fits a narrow panel
+        sizeLabel = AddTextLine(sizeCard, focusArray)
+        percentLabel = AddTextLine(sizeCard, focusArray)
+        fitLabel = AddTextLine(sizeCard, focusArray)
+    end
+
+    // A card line holding text as wide as the line, which wraps instead
+    // of running past the card. It is a stop in the section's focus order,
+    // in its place on screen, so a screen reader user can read it.
+    private action AddTextLine(Control card, Array<Control> focusArray) returns WrappedLabel
+        Control line = MakeCardLine()
+        WrappedLabel label
+        label:SetFocusable(true)
+        line:Add(label)
+        card:Add(line)
+        focusArray:Add(label)
+        return label
+    end
+
+    private action AddSizeButton(text name, text description)
+        Control layoutValues
+        RadioButton button
+        button:SetName(name)
+        button:SetDescription(description)
+        button:SetHorizontalLayoutMode(layoutValues:FILL)
+        sizeGroup:AddToGrouping(button)
+        sizeGroup:Add(button)
+    end
+
+    /*
+        Fills the controls from the tab's print choices, and says the size.
+    */
+    action ShowChoices
+        if tab = undefined
+            return now
+        end
+        PrintSetup setup = tab:GetSetup()
+        updating = true
+        sizeGroup:GetButtonAt(setup:GetSizeMode()):SetToggleState(true)
+        longestField:RemoveTextChangeListener(me)
+        longestField:SetText(format:Fixed(setup:GetLongestSide(), 1))
+        longestField:AddTextChangeListener(me)
+        updating = false
+        ShowSize()
+    end
+
+    /*
+        Names the printer, and says the printed size and whether it fits.
+        The size is also the size field's description, so a screen reader
+        hears it there.
+    */
+    action ShowSize
+        if tab = undefined
+            return now
+        end
+        PrintSetup setup = tab:GetSetup()
+        if setup:GetPrinter() not= undefined
+            printerLabel:SetText(setup:GetPrinter():GetName())
+        end
+        text size = "Prints " + format:Fixed(setup:GetPrintWidth(), 1) + " x " + format:Fixed(setup:GetPrintDepth(), 1)
+            + " x " + format:Fixed(setup:GetPrintHeight(), 1) + " mm"
+        text percent = format:Fixed(setup:GetPercentOfRealSize(), 1) + "% of real size"
+        text fit = "Too large for the bed."
+        if setup:Fits()
+            fit = "Fits on the bed."
+        end
+        sizeLabel:SetText(size)
+        percentLabel:SetText(percent)
+        fitLabel:SetText(fit)
+        longestField:SetDescription(size + ", " + percent + ". " + fit)
+    end
+
+    action SelectionChanged(SelectionEvent event)
+        // The section stays shown whatever is selected in the view; only
+        // its own size choices matter.
+        if not (event:GetSelection() is ButtonGroupSelection) or updating or tab = undefined
+            return now
+        end
+        ButtonGroupSelection choice = cast(ButtonGroupSelection, event:GetSelection())
+        PrintSetup setup = tab:GetSetup()
+        integer index = choice:GetIndex()
+        if index = setup:REAL_SIZE
+            setup:UseRealSize()
+        elseif index = setup:FIT_TO_BED
+            setup:UseFitToBed()
+        elseif index = setup:LONGEST_SIDE
+            setup:SetLongestSide(setup:GetLongestSide())
+        end
+        tab:ChoicesChanged()
+    end
+
+    action TextChanged(TextChangeEvent event)
+        if updating or tab = undefined
+            return now
+        end
+        number value = -1
+        check
+            value = longestField:GetText():ParseNumber()
+        detect e is Error
+            value = -1
+        end
+        if value > 0
+            tab:GetSetup():SetLongestSide(value)
+            updating = true
+            sizeGroup:GetButtonAt(2):SetToggleState(true)
+            updating = false
+            tab:ChoicesChanged()
+        end
+    end
+
+    action SetFields(EditorItem item)
+    end
+
+    // The first stop in the section's focus order: the printer's name, at
+    // its top.
+    action FocusField
+        printerLabel:Focus()
+    end
+end

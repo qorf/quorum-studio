@@ -1,0 +1,31 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.FileChooser
+use Libraries.System.File
+
+/*
+    The BambuFileChooseBehavior is a Choose… button on the 3D Printing tab of
+    Quorum Studio Properties, beside one of Bambu's three files: it opens
+    the system's file chooser and puts the chosen file in its field.
+*/
+class BambuFileChooseBehavior is Behavior
+    TextField field = undefined
+
+    action SetField(TextField value)
+        field = value
+    end
+
+    action Run(BehaviorEvent event)
+        if field = undefined
+            return now
+        end
+        FileChooser chooser
+        File chosen = chooser:OpenFileDialog()
+        if chosen not= undefined
+            field:SetText(chosen:GetAbsolutePath())
+        end
+    end
+end
