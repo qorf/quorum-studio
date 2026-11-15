@@ -9,9 +9,13 @@ use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Interface.Item2D
 use Libraries.Development.Environment.Studio.Interface.CodeTextBox
 use Libraries.Interface.Controls.Blocks.CodeEditor
+use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Development.Environment.Studio.Interface.SpreadsheetFindDialog
 
 class OpenFindDialogBehavior is QuorumStudioBehavior 
     FindDialog dialog = undefined
+    // One dialog for spreadsheets, shared with Replace (Control-H).
+    SpreadsheetFindDialog spreadsheetDialog
     GameStateManager manager
 
     action Run(BehaviorEvent event)
@@ -37,6 +41,20 @@ class OpenFindDialogBehavior is QuorumStudioBehavior
             CodeEditor editor = cast(CodeEditor, tabbedItem)
             dialog:SetCodeEditor(editor)
             dialog:Show()
+        elseif tabbedItem is Spreadsheet
+            ShowSpreadsheetFind(cast(Spreadsheet, tabbedItem), false)
         end
+    end
+
+    /*
+    Opens the spreadsheet Find and Replace dialog for a CSV file's tab, with
+    the focus on the Find field, or on the Replace field (Control-H).
+    */
+    action ShowSpreadsheetFind(Spreadsheet sheet, boolean focusReplace)
+        if sheet:IsEditing()
+            sheet:CommitEditingWithoutFocus()
+        end
+        spreadsheetDialog:SetSpreadsheet(sheet, focusReplace)
+        spreadsheetDialog:ShowNear(sheet)
     end
 end

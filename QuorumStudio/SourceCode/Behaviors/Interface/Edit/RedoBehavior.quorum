@@ -1,4 +1,5 @@
 package Libraries.Development.Environment.Studio.Behaviors
+use Libraries.Interface.Controls.Spreadsheet
 
 use Libraries.Development.Environment.Studio.Behaviors.QuorumStudioBehavior
 use Libraries.Interface.Events.BehaviorEvent
@@ -40,6 +41,10 @@ BlockEditManager manager = editor:GetBlockEditManager()
             if manager not= undefined and manager:CanUndo()
                 manager:Redo()
             end
+        elseif item is Spreadsheet
+            // A CSV file's spreadsheet: its own steps (SpreadsheetEditManager).
+            Spreadsheet sheet = cast(Spreadsheet, item)
+            sheet:Redo()
         elseif item is CodeEditor
             CodeEditor editor = cast(CodeEditor, item)
             BlockEditManager manager = editor:GetBlockEditManager()

@@ -27,6 +27,9 @@ use Libraries.Development.Environment.Studio.Behaviors.OpenLogBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SceneMenuBehavior
 use Libraries.Development.Environment.Studio.Interface.StudioSceneEditorKeys
 use Libraries.Interface.Controls.Scenes.SceneConstants
+use Libraries.Development.Environment.Studio.Behaviors.DataMenuBehavior
+use Libraries.Interface.Behaviors.Controls.SpreadsheetKeyBehavior
+use Libraries.Interface.Behaviors.Controls.SpreadsheetMenuBehavior
 
 class Menu is MenuBar, SelectionListener
     KeyboardEvent keys
@@ -36,6 +39,8 @@ class Menu is MenuBar, SelectionListener
     MenuItem navigateMenu
     // The scene editor's actions, one step each (Scenes menu).
     MenuItem scenesMenu
+    // The spreadsheet's commands, for a CSV file's tab (Data menu).
+    MenuItem dataMenu
     MenuItem teamMenu
     MenuItem runMenu
     MenuItem windowsMenu
@@ -107,6 +112,7 @@ class Menu is MenuBar, SelectionListener
         SetupViewMenu()
         SetupNavigateMenu()
         SetupScenesMenu()
+        SetupDataMenu()
         SetupRunMenu()
         SetupTeamMenu()
         SetupWindowsMenu()
@@ -117,6 +123,7 @@ class Menu is MenuBar, SelectionListener
         viewMenu:SetMnemonic("v")
         navigateMenu:SetMnemonic("n")
         scenesMenu:SetMnemonic("c")
+        dataMenu:SetMnemonic("d")
         runMenu:SetMnemonic("r")
         teamMenu:SetMnemonic("t")
         windowsMenu:SetMnemonic("w")
@@ -128,6 +135,7 @@ class Menu is MenuBar, SelectionListener
         menuItems:Add(viewMenu)
         menuItems:Add(navigateMenu)
         menuItems:Add(scenesMenu)
+        menuItems:Add(dataMenu)
         menuItems:Add(runMenu)
         menuItems:Add(teamMenu)
         menuItems:Add(windowsMenu)
@@ -573,6 +581,104 @@ class Menu is MenuBar, SelectionListener
         submenu:SetMnemonic(mnemonic)
         submenu:Add(children)
         items:Add(submenu)
+    end
+
+    /*
+        Makes the Data menu: the spreadsheet's commands, for the CSV file in
+        the selected tab. Each item runs what its key or its right-click
+        menu item does (DataMenuBehavior), and shows the key as a label
+        only; the spreadsheet's own input tables handle the keys. Cut,
+        copy, paste, undo, redo and find are in the Edit menu.
+    */
+    private action SetupDataMenu
+        SpreadsheetKeyBehavior sheetKeys
+        SpreadsheetMenuBehavior menuCommands
+        KeyboardEvent board
+        InputSet modifiers
+        integer shift = modifiers:SHIFT
+        integer control = modifiers:CONTROL
+        // Control, or Command on a Mac, as SpreadsheetInputSetup uses.
+        integer primary = control
+        GameStateManager manager
+        // The key shown for clearing: Delete on a Mac (its Backspace), Forward Delete elsewhere.
+        integer clearKey = board:FORWARD_DELETE
+        if manager:GetOperatingSystem():Contains("OS X")
+            primary = modifiers:META
+            clearKey = board:BACKSPACE
+        end
+        Array<MenuItem> dataItems
+
+        AddDataKeyItem(dataItems, "Edit Cell", sheetKeys:EDIT, DataKey(board:F2, 0, 0))
+        AddDataKeyItem(dataItems, "Clear Cells", sheetKeys:CLEAR, DataKey(clearKey, 0, 0))
+
+        AddDataKeyItem(dataItems, "Select Row", sheetKeys:SELECT_ROW, DataKey(board:SPACE, shift, 0))
+        AddDataKeyItem(dataItems, "Select Column", sheetKeys:SELECT_COLUMN, DataKey(board:SPACE, control, 0))
+        AddDataKeyItem(dataItems, "Select All", sheetKeys:SELECT_EVERYTHING, DataKey(board:A, primary, 0))
+
+        AddDataKeyItem(dataItems, "Insert Rows or Columns", sheetKeys:INSERT, DataKey(board:EQUALS, primary, 0))
+        AddDataKeyItem(dataItems, "Delete Rows or Columns", sheetKeys:REMOVE, DataKey(board:MINUS, primary, 0))
+        AddDataMenuItem(dataItems, "Insert Row Above", menuCommands:INSERT_ROWS_ABOVE)
+        AddDataMenuItem(dataItems, "Insert Row Below", menuCommands:INSERT_ROWS_BELOW)
+        AddDataMenuItem(dataItems, "Insert Column Left", menuCommands:INSERT_COLUMNS_LEFT)
+        AddDataMenuItem(dataItems, "Insert Column Right", menuCommands:INSERT_COLUMNS_RIGHT)
+        AddDataMenuItem(dataItems, "Fit Column Width", menuCommands:FIT_WIDTH)
+
+        Array<MenuItem> goToItems
+        AddDataKeyItem(goToItems, "First Cell", sheetKeys:FIRST, DataKey(board:HOME, primary, 0))
+        AddDataKeyItem(goToItems, "Last Cell", sheetKeys:LAST, DataKey(board:END, primary, 0))
+        AddDataKeyItem(goToItems, "Start of Row", sheetKeys:HOME, DataKey(board:HOME, 0, 0))
+        AddDataKeyItem(goToItems, "Edge of Data Up", sheetKeys:EDGE_UP, DataKey(board:UP, primary, 0))
+        AddDataKeyItem(goToItems, "Edge of Data Down", sheetKeys:EDGE_DOWN, DataKey(board:DOWN, primary, 0))
+        AddDataKeyItem(goToItems, "Edge of Data Left", sheetKeys:EDGE_LEFT, DataKey(board:LEFT, primary, 0))
+        AddDataKeyItem(goToItems, "Edge of Data Right", sheetKeys:EDGE_RIGHT, DataKey(board:RIGHT, primary, 0))
+        AddDataKeyItem(goToItems, "Page Up", sheetKeys:PAGE_UP, DataKey(board:PAGE_UP, 0, 0))
+        AddDataKeyItem(goToItems, "Page Down", sheetKeys:PAGE_DOWN, DataKey(board:PAGE_DOWN, 0, 0))
+        AddSceneSubmenu(dataItems, "Go To", "g", goToItems)
+
+        AddDataKeyItem(dataItems, "Show Cell Menu", sheetKeys:MENU, DataKey(board:F10, shift, 0))
+
+        dataMenu:SetName("Data")
+        dataMenu:Add(dataItems)
+    end
+
+    // A key with up to two modifiers (0 for none), shown beside a Data menu item.
+    private action DataKey(integer key, integer first, integer second) returns InputSet
+        InputSet set
+        set:SetKeyboardInput(key)
+        if first not= 0
+            set:AddModifier(first)
+        end
+        if second not= 0 and second not= first
+            set:AddModifier(second)
+        end
+        return set
+    end
+
+    /*
+        Adds a Data menu item that runs one of SpreadsheetKeyBehavior's
+        commands, with its key shown as a label only (the text form of
+        SetShortcut, so the menu doesn't take the key as well).
+    */
+    private action AddDataKeyItem(Array<MenuItem> items, text name, integer command, InputSet key)
+        MenuItem item
+        item:SetName(name)
+        if key not= undefined
+            item:SetShortcut(key:GetDisplayName())
+        end
+        DataMenuBehavior behavior
+        behavior:SetKeyCommand(command)
+        item:SetBehavior(behavior)
+        items:Add(item)
+    end
+
+    // Adds a Data menu item that runs one of SpreadsheetMenuBehavior's commands; it has no key.
+    private action AddDataMenuItem(Array<MenuItem> items, text name, integer command)
+        MenuItem item
+        item:SetName(name)
+        DataMenuBehavior behavior
+        behavior:SetMenuCommand(command)
+        item:SetBehavior(behavior)
+        items:Add(item)
     end
 
     private action SetupTeamMenu

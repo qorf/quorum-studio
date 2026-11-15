@@ -1,0 +1,172 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Dialog
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Checkbox
+use Libraries.Interface.Controls.Button
+use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Interface.Item2D
+use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Forms.Page
+use Libraries.Interface.Forms.Grouping
+use Libraries.Game.Graphics.Label
+use Libraries.Game.InputSet
+use Libraries.Game.InputTable
+use Libraries.Interface.Events.KeyboardEvent
+use Libraries.Development.Environment.Studio.Behaviors.SpreadsheetFindDialogBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
+
+/*
+The SpreadsheetFindDialog class finds and replaces text in a CSV file's
+spreadsheet: Find Next and Find Previous move the current cell to the next
+or previous cell holding the text, Replace changes the current cell and finds
+the next, and Replace All changes every matching cell as one step that can be
+undone. Match Case tells capital letters from small ones; Whole Cell finds
+only cells whose whole text is the value. A line under the fields says what
+was found. Control-F and Control-H open it when a CSV file's tab is in front
+(OpenFindDialogBehavior, OpenReplaceDialogBehavior).
+*/
+class SpreadsheetFindDialog is Dialog
+    boolean initialized = false
+    Spreadsheet sheet = undefined
+    TextField findField = undefined
+    TextField replaceField = undefined
+    Checkbox matchCase = undefined
+    Checkbox wholeCell = undefined
+    Label status = undefined
+    boolean focusReplace = false
+    DialogCancelBehavior closeBehavior
+
+    on create
+        SetModal(false)
+        parent:Item:visible = false
+    end
+
+    action Setup
+        if initialized
+            return now
+        end
+        initialized = true
+        SetName("Find and Replace in Spreadsheet")
+        SetPixelWidth(460)
+        SetPixelHeight(330)
+        closeBehavior:SetDialog(me)
+
+        Page page = InitializeDefaultPage()
+        page:SetSkipLabelsInFocus(true)
+        page:AddLabel("Find")
+        findField = page:AddTextField("Find")
+        page:AddLabel("Replace with")
+        replaceField = page:AddTextField("Replace with")
+        matchCase = page:AddCheckbox("Match Case")
+        wholeCell = page:AddCheckbox("Whole Cell")
+        status = page:AddLabel("Status", "")
+
+        SpreadsheetFindDialogBehavior temp
+        // Enter in the Find field finds the next match.
+        InputTable table = findField:CopyAndActivateInputTable("SpreadsheetFindField")
+        findField:SetInputGroup("SpreadsheetFindField")
+        KeyboardEvent keys
+        InputSet enterSet
+        enterSet:SetKeyboardInput(keys:ENTER)
+        table:Add(enterSet, MakeBehavior(temp:FIND_NEXT))
+        InputSet escapeSet
+        escapeSet:SetKeyboardInput(keys:ESCAPE)
+        table:Add(escapeSet, closeBehavior)
+
+        Grouping findButtons = page:AddGrouping("Find Buttons")
+        Button previousButton = findButtons:AddButton("Find Previous")
+        previousButton:SetBehavior(MakeBehavior(temp:FIND_PREVIOUS))
+        Button nextButton = findButtons:AddButton("Find Next")
+        nextButton:SetInterfaceOptionsKey("DialogAcceptButton")
+        nextButton:SetBehavior(MakeBehavior(temp:FIND_NEXT))
+
+        Grouping replaceButtons = page:AddGrouping("Replace Buttons")
+        Button replaceButton = replaceButtons:AddButton("Replace")
+        replaceButton:SetBehavior(MakeBehavior(temp:REPLACE))
+        Button replaceAllButton = replaceButtons:AddButton("Replace All")
+        replaceAllButton:SetBehavior(MakeBehavior(temp:REPLACE_ALL))
+        Button closeButton = replaceButtons:AddButton("Close")
+        closeButton:SetBehavior(closeBehavior)
+    end
+
+    private action MakeBehavior(integer command) returns SpreadsheetFindDialogBehavior
+        SpreadsheetFindDialogBehavior behavior
+        behavior:Setup(me, command)
+        return behavior
+    end
+
+    /*
+    This action sets the spreadsheet to search, and whether the Replace field
+    gets the focus when the dialog opens (Control-H) or the Find field
+    (Control-F).
+    */
+    action SetSpreadsheet(Spreadsheet sheet, boolean focusReplace)
+        Setup()
+        me:sheet = sheet
+        me:focusReplace = focusReplace
+        status:SetText("")
+    end
+
+    action GetSpreadsheet returns Spreadsheet
+        return sheet
+    end
+
+    action GetFindText returns text
+        return findField:GetText()
+    end
+
+    action GetReplaceText returns text
+        return replaceField:GetText()
+    end
+
+    action IsMatchCase returns boolean
+        return matchCase:GetToggleState()
+    end
+
+    action IsWholeCell returns boolean
+        return wholeCell:GetToggleState()
+    end
+
+    /*
+    This action sets the line under the fields, which says what was found or
+    replaced.
+    */
+    action SetStatus(text value)
+        status:SetText(value)
+    end
+
+    /*
+    This action shows the dialog at the top right of the spreadsheet, where
+    the code editor's Find dialog goes.
+    */
+    action ShowNear(Item2D item)
+        Setup()
+        LayoutProperties properties = GetDefaultLayoutProperties()
+        properties:SetPercentageX(0)
+        properties:SetPercentageY(0)
+        properties:SetPercentageOriginX(1)
+        properties:SetPercentageOriginY(1)
+        number globalX = item:GetGlobalX() + item:GetWidth()
+        number globalY = item:GetGlobalY() + item:GetHeight()
+        properties:SetPixelX(globalX - item:GetWidth() * 0.02)
+        properties:SetPixelY(globalY - item:GetHeight() * 0.02)
+        Show()
+    end
+
+    action OnShow
+        parent:Item:visible = true
+        if focusReplace
+            replaceField:Focus()
+        else
+            findField:Focus()
+        end
+    end
+
+    action OnHide
+        parent:Item:visible = false
+        if sheet not= undefined
+            sheet:Focus()
+        end
+    end
+end

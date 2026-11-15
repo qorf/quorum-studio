@@ -9,6 +9,8 @@ use Libraries.Development.Environment.Configuration.Options
 use Libraries.System.File
 use Libraries.Containers.HashTable
 use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Options.InterfaceOptions
 
 /*
     This class represents the resources that are used on the system.
@@ -30,6 +32,25 @@ class Resources
     public constant text MAIN_FILE = TREES + "/" +"MainFile.png"
     public constant text MAIN_FILE_LIGHT = TREES + "/" +"MainFileLight.png"
     public constant text MAIN_FILE_DARK = TREES + "/" +"MainFileDark.png"
+    // Files that aren't Quorum code, by kind (GetFileTypeIcon).
+    public constant text CSV_FILE_LIGHT = TREES + "/" + "CsvFileLight.png"
+    public constant text CSV_FILE_DARK = TREES + "/" + "CsvFileDark.png"
+    public constant text JSON_FILE_LIGHT = TREES + "/" + "JsonFileLight.png"
+    public constant text JSON_FILE_DARK = TREES + "/" + "JsonFileDark.png"
+    public constant text GLTF_FILE_LIGHT = TREES + "/" + "GltfFileLight.png"
+    public constant text GLTF_FILE_DARK = TREES + "/" + "GltfFileDark.png"
+    public constant text OBJ_FILE_LIGHT = TREES + "/" + "ObjFileLight.png"
+    public constant text OBJ_FILE_DARK = TREES + "/" + "ObjFileDark.png"
+    public constant text SCENE_FILE_LIGHT = TREES + "/" + "SceneFileLight.png"
+    public constant text SCENE_FILE_DARK = TREES + "/" + "SceneFileDark.png"
+    public constant text ZIP_FILE_LIGHT = TREES + "/" + "ZipFileLight.png"
+    public constant text ZIP_FILE_DARK = TREES + "/" + "ZipFileDark.png"
+    public constant text PNG_FILE_LIGHT = TREES + "/" + "PngFileLight.png"
+    public constant text PNG_FILE_DARK = TREES + "/" + "PngFileDark.png"
+    public constant text JPG_FILE_LIGHT = TREES + "/" + "JpgFileLight.png"
+    public constant text JPG_FILE_DARK = TREES + "/" + "JpgFileDark.png"
+    public constant text GCODE_FILE_LIGHT = TREES + "/" + "GcodeFileLight.png"
+    public constant text GCODE_FILE_DARK = TREES + "/" + "GcodeFileDark.png"
     public constant text FOLDER = INTERFACE + "/" +"Folder2.png"
     public constant text FOLDER_LIGHT = INTERFACE + "/" +"FolderLight.png"
     public constant text FOLDER_DARK = INTERFACE + "/" +"FolderDark.png"
@@ -176,6 +197,27 @@ class Resources
         textures:Add(FOLDER_LIGHT, folderLight)
         textures:Add(FOLDER_DARK, folderDark)
 
+        // Icons for CSV, JSON, glTF, OBJ, scene, zip, PNG, JPEG and G-code
+        // files, light and dark.
+        LoadIconTexture(CSV_FILE_LIGHT)
+        LoadIconTexture(CSV_FILE_DARK)
+        LoadIconTexture(JSON_FILE_LIGHT)
+        LoadIconTexture(JSON_FILE_DARK)
+        LoadIconTexture(GLTF_FILE_LIGHT)
+        LoadIconTexture(GLTF_FILE_DARK)
+        LoadIconTexture(OBJ_FILE_LIGHT)
+        LoadIconTexture(OBJ_FILE_DARK)
+        LoadIconTexture(SCENE_FILE_LIGHT)
+        LoadIconTexture(SCENE_FILE_DARK)
+        LoadIconTexture(ZIP_FILE_LIGHT)
+        LoadIconTexture(ZIP_FILE_DARK)
+        LoadIconTexture(PNG_FILE_LIGHT)
+        LoadIconTexture(PNG_FILE_DARK)
+        LoadIconTexture(JPG_FILE_LIGHT)
+        LoadIconTexture(JPG_FILE_DARK)
+        LoadIconTexture(GCODE_FILE_LIGHT)
+        LoadIconTexture(GCODE_FILE_DARK)
+
         breakpointImage:LoadFromFile(BREAKPOINT)
 
         applicationIcon:SetPath(APPLICATION_ICON)
@@ -223,6 +265,75 @@ class Resources
     action GetQuorumFile returns Icon
         Icon icon
         icon:Load(quorumFile)
+        return icon
+    end
+
+    // Loads a texture and keeps it under its path, for GetTexture.
+    private action LoadIconTexture(text path)
+        Texture texture
+        texture:LoadFromFile(path)
+        textures:Add(path, texture)
+    end
+
+    /*
+        The interface options key of the icon for a file's kind:
+        CSV_FILE_ICON, JSON_FILE_ICON, GLTF_FILE_ICON (.gltf and .glb),
+        OBJ_FILE_ICON, SCENE_FILE_ICON (.qs), ZIP_FILE_ICON, PNG_FILE_ICON,
+        JPG_FILE_ICON (.jpg and .jpeg), GCODE_FILE_ICON, or "" for any other
+        file.
+    */
+    action GetFileTypeIconKey(File file) returns text
+        OptionsConstants constants
+        if file = undefined
+            return ""
+        end
+        text extension = file:GetFileExtension()
+        extension = extension:ToLowerCase()
+        if extension = "csv"
+            return constants:CSV_FILE_ICON
+        elseif extension = "json"
+            return constants:JSON_FILE_ICON
+        elseif extension = "gltf" or extension = "glb"
+            return constants:GLTF_FILE_ICON
+        elseif extension = "obj"
+            return constants:OBJ_FILE_ICON
+        elseif extension = "qs"
+            return constants:SCENE_FILE_ICON
+        elseif extension = "zip"
+            return constants:ZIP_FILE_ICON
+        elseif extension = "png"
+            return constants:PNG_FILE_ICON
+        elseif extension = "jpg" or extension = "jpeg"
+            return constants:JPG_FILE_ICON
+        elseif extension = "gcode"
+            return constants:GCODE_FILE_ICON
+        end
+        return ""
+    end
+
+    /*
+        The icon for a file that isn't Quorum code, in the current theme,
+        for the project tree and tabs; the Quorum file icon for other files.
+    */
+    action GetFileTypeIcon(File file) returns Icon
+        text key = GetFileTypeIconKey(file)
+        if key = ""
+            return GetQuorumFile()
+        end
+        GameStateManager manager
+        InterfaceOptions io = manager:GetInterfaceOptions()
+        Texture texture = undefined
+        if io not= undefined
+            text path = io:GetCustomProperty(key)
+            if path not= undefined
+                texture = GetTexture(path)
+            end
+        end
+        if texture = undefined
+            return GetQuorumFile()
+        end
+        Icon icon
+        icon:Load(texture)
         return icon
     end
 

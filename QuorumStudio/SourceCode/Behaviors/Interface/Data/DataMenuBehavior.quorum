@@ -1,0 +1,116 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Development.Environment.Studio.CodeEditorTabPane
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.Interface.SpreadsheetTab
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Selections.TabPaneSelection
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Interface.Behaviors.Controls.SpreadsheetKeyBehavior
+use Libraries.Interface.Behaviors.Controls.SpreadsheetMenuBehavior
+
+/*
+    The DataMenuBehavior is one item of the Data menu. It runs one of the
+    spreadsheet's own commands in the spreadsheet open in the selected
+    editor tab, as its key or its right-click menu item does: a
+    SpreadsheetKeyBehavior command, or, with SetMenuCommand, a
+    SpreadsheetMenuBehavior one. With no spreadsheet tab selected, it does
+    nothing.
+
+    Attribute: Example
+    use Libraries.Development.Environment.Studio.Behaviors.DataMenuBehavior
+    use Libraries.Interface.Behaviors.Controls.SpreadsheetKeyBehavior
+
+    SpreadsheetKeyBehavior keys
+    DataMenuBehavior selectRow
+    selectRow:SetKeyCommand(keys:SELECT_ROW)
+*/
+class DataMenuBehavior is QuorumStudioBehavior
+    integer command = 0
+    boolean isMenuCommand = false
+
+    /*
+        Sets the item to run one of SpreadsheetKeyBehavior's commands.
+
+        Attribute: Parameter value One of SpreadsheetKeyBehavior's command numbers
+    */
+    action SetKeyCommand(integer value)
+        command = value
+        isMenuCommand = false
+    end
+
+    /*
+        Sets the item to run one of SpreadsheetMenuBehavior's commands.
+
+        Attribute: Parameter value One of SpreadsheetMenuBehavior's command numbers
+    */
+    action SetMenuCommand(integer value)
+        command = value
+        isMenuCommand = true
+    end
+
+    /*
+        Returns the command the item runs.
+
+        Attribute: Returns The command number
+    */
+    action GetCommand returns integer
+        return command
+    end
+
+    /*
+        Returns whether the command is one of SpreadsheetMenuBehavior's,
+        rather than SpreadsheetKeyBehavior's.
+
+        Attribute: Returns True for a menu command
+    */
+    action IsMenuCommand returns boolean
+        return isMenuCommand
+    end
+
+    action Run(BehaviorEvent event)
+        Spreadsheet sheet = GetSelectedSpreadsheet()
+        if sheet = undefined
+            return now
+        end
+        // The spreadsheet takes the focus first, as its keys need it to
+        // have, so a cell that begins editing keeps its edit field.
+        if not sheet:IsFocused()
+            sheet:Focus()
+        end
+        if isMenuCommand
+            SpreadsheetMenuBehavior menuBehavior
+            menuBehavior:Setup(sheet, command)
+            menuBehavior:Run(event)
+        else
+            SpreadsheetKeyBehavior keyBehavior
+            keyBehavior:Setup(command, false)
+            BehaviorEvent sheetEvent
+            sheetEvent:SetItem(sheet)
+            keyBehavior:Run(sheetEvent)
+        end
+    end
+
+    // The spreadsheet in the selected editor tab, or undefined.
+    private action GetSelectedSpreadsheet returns Spreadsheet
+        QuorumStudio studio = GetMainApplication()
+        if studio = undefined
+            return undefined
+        end
+        CodeEditorTabPane pane = studio:GetTabPane()
+        if pane = undefined
+            return undefined
+        end
+        TabPaneSelection selection = pane:GetSelection()
+        if selection = undefined
+            return undefined
+        end
+        Tab tab = selection:GetTab()
+        if not (tab is SpreadsheetTab)
+            return undefined
+        end
+        SpreadsheetTab sheetTab = cast(SpreadsheetTab, tab)
+        return sheetTab:GetSpreadsheet()
+    end
+end

@@ -39,6 +39,10 @@ use Libraries.Development.Environment.Projects.Quorum.QuorumProject
 use Libraries.Development.Environment.Studio.Interface.VisualEditorTab
 use Libraries.Development.Environment.Studio.Interface.SpreadsheetTab
 use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Interface.Controls.Support.SpreadsheetFileProblem
+use Libraries.Development.Environment.Studio.Interface.ErrorDialog
+use Libraries.Development.Environment.Studio.Behaviors.SaveAndCloseSpreadsheetTabBehavior
+use Libraries.Development.Environment.Studio.Behaviors.DiscardSpreadsheetTabBehavior
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Development.Environment.Configuration.OptionsConstants
 use Libraries.Development.Environment.Configuration.Options
@@ -60,6 +64,9 @@ use Libraries.Development.Environment.Studio.Behaviors.PrintBehavior
 use Libraries.Fabrication.PrintSetup
 
 class CodeEditorTabPane is TabPane, TabChangeListener
+    // CSV files larger than this, in bytes, open after a warning that they
+    // may be slow (to set after measuring; 20 MB for now).
+    constant number LARGE_SPREADSHEET_BYTES = 20971520
     KeyboardEvent keys
     Color color
     HashTable<text, File> openFiles
@@ -121,6 +128,7 @@ class CodeEditorTabPane is TabPane, TabChangeListener
                 text path = file:GetAbsolutePath()
                 openFiles:RemoveKey(path)
                 openTabs:RemoveKey(path)
+                ForgetOnDisk(file)
             end
         end
     end
@@ -178,6 +186,31 @@ dialog:SetDiscardBehavior(discard)
                 // on Disk dialog asks first. The tab stays open.
                 if sceneTab:IsDirty()
                     sceneTab:SetExitFlag(sceneTab:CANCEL_CLOSE)
+                    return now
+                end
+            end
+        elseif tab is SpreadsheetTab
+            // A changed CSV file asks before closing, as a scene does.
+            SpreadsheetTab sheetTab = cast(SpreadsheetTab, tab)
+            if sheetTab:GetExitFlag() = sheetTab:CANCEL_CLOSE and sheetTab:IsDirty()
+                OpenSaveBeforeClosingDialog sheetBehave
+                sheetBehave:SetSingleItemWording(true)
+                sheetBehave:Setup()
+                SaveAndCloseSpreadsheetTabBehavior sheetSave
+                sheetSave:SetTab(sheetTab)
+                DiscardSpreadsheetTabBehavior sheetDiscard
+                sheetDiscard:SetTab(sheetTab)
+                SaveBeforeClosingDialog sheetDialog = sheetBehave:GetDialog()
+                sheetDialog:SetSaveBehavior(sheetSave)
+                sheetDialog:SetDiscardBehavior(sheetDiscard)
+                sheetBehave:Run()
+                return now
+            elseif sheetTab:GetExitFlag() = sheetTab:SAVE_CHANGES
+                sheetTab:Save()
+                // Not saved: the file changed on disk, and the File Changed
+                // on Disk dialog asks first. The tab stays open.
+                if sheetTab:IsDirty()
+                    sheetTab:SetExitFlag(sheetTab:CANCEL_CLOSE)
                     return now
                 end
             end
@@ -282,6 +315,16 @@ end
                 end 
 
                 tab:SetIcon(icon)
+            elseif tab is SpreadsheetTab
+                // Other kinds of file keep their own icons, in the theme now used.
+                SpreadsheetTab sheetTab = cast(SpreadsheetTab, tab)
+                tab:SetIcon(resources:GetFileTypeIcon(sheetTab:GetFile()))
+            elseif tab is VisualEditorTab
+                VisualEditorTab sceneTab = cast(VisualEditorTab, tab)
+                tab:SetIcon(resources:GetFileTypeIcon(sceneTab:GetFile()))
+            elseif tab is ModelPreviewTab
+                ModelPreviewTab modelTab = cast(ModelPreviewTab, tab)
+                tab:SetIcon(resources:GetFileTypeIcon(modelTab:GetFile()))
             end
         end
     end
@@ -601,7 +644,7 @@ end
         tab:Load()
 
         tab:SetName(file:GetPath())
-        tab:SetIcon(resources:GetQuorumFile())
+        tab:SetIcon(resources:GetFileTypeIcon(file))
         tab:DisplayCloseButton(true)
         number scale = GetInterfaceScale()
         tab:SetInterfaceScale(scale)
@@ -652,7 +695,7 @@ end
         end
 
         tab:SetName(file:GetPath())
-        tab:SetIcon(resources:GetQuorumFile())
+        tab:SetIcon(resources:GetFileTypeIcon(file))
         tab:DisplayCloseButton(true)
         number scale = GetInterfaceScale()
         tab:SetInterfaceScale(scale)
@@ -677,45 +720,50 @@ end
         tab:SetFile(file)
         tab:SetName(file:GetPath())
 
+        // A large file: a warning, then the file opens anyway.
+        number size = 0
+        check
+            size = file:GetFileSize()
+        detect sizeError
+        end
+        if size > LARGE_SPREADSHEET_BYTES
+            ShowSpreadsheetWarning("Large File", file:GetFileName() + " is large (" + cast(integer, size / 1048576) + " MB), so it may be slow to open and edit.")
+        end
 
-        //We may need to lazy load or popup a message to the user for big files
-        //for now, load anything they throw at us
-        tab:Load()
+        Array<SpreadsheetFileProblem> problems = undefined
+        check
+            problems = tab:Load()
+        detect loadError
+            ShowSpreadsheetWarning("Couldn't Open File", "Couldn't open " + file:GetFileName() + ": " + loadError:GetErrorMessage())
+            return undefined
+        end
+        if problems not= undefined and not problems:IsEmpty()
+            // Not valid CSV: say where, and that saving writes it corrected.
+            SpreadsheetFileProblem first = problems:Get(0)
+            Spreadsheet sheet = tab:GetSpreadsheet()
+            ShowSpreadsheetWarning("Not Valid CSV", file:GetFileName() + " isn't valid CSV at " + sheet:GetCellName(first:GetRow(), first:GetColumn()) + ": " + first:GetDescription() + " Saving will write it as valid CSV.")
+        end
+        RememberOnDisk(file)
 
-        Spreadsheet sheet
-        tab:SetRelatedItem(sheet)
-        tab:Setup()
-        
-
-
-//
-//        GameStateManager manager
-//        Game game = manager:GetGame()
-//        QuorumStudio studio = cast(QuorumStudio, game)
-//        ProjectManager projects = studio:GetProjectManager()
-//        Iterator<QuorumProject> iterator = projects:GetIterator()
-//        repeat while iterator not= undefined and iterator:HasNext()
-//            QuorumProject project = iterator:Next()
-//            if project:IsScene(file)
-//                //This scene file is in a project's location somewhere.
-//                tab:SetProjectLocation(project:GetLocation())
-//            end
-//        end
-//
-//        tab:Load()
-//
-//        tab:SetName(file:GetPath())
-        tab:SetIcon(resources:GetQuorumFile())
+        tab:SetIcon(resources:GetFileTypeIcon(file))
         tab:DisplayCloseButton(true)
         number scale = GetInterfaceScale()
         tab:SetInterfaceScale(scale)
         Add(cast(Tab,tab))
-        //Resize()
+        Resize()
 
         openFiles:Add(file:GetAbsolutePath(), file)
         openTabs:Add(file:GetAbsolutePath(), tab)
 
         return tab
+    end
+
+    // A warning about a CSV file, in a dialog with an OK button.
+    private action ShowSpreadsheetWarning(text title, text message)
+        ErrorDialog dialog
+        dialog:SetName(title)
+        dialog:SetError(message)
+        dialog:Show()
     end
 
     /*
@@ -813,6 +861,11 @@ end
                 if visualTab:IsDirty()
                     dirtyTabs = dirtyTabs + 1
                 end
+            elseif tab is SpreadsheetTab
+                SpreadsheetTab sheetTab = cast(SpreadsheetTab, tab)
+                if sheetTab:IsDirty()
+                    dirtyTabs = dirtyTabs + 1
+                end
             end
         end
         return dirtyTabs
@@ -834,6 +887,11 @@ end
                 // rewrites a scene that wasn't changed.
                 if visualTab:IsDirty()
                     visualTab:Save()
+                end
+            elseif tab is SpreadsheetTab
+                SpreadsheetTab sheetTab = cast(SpreadsheetTab, tab)
+                if sheetTab:IsDirty()
+                    sheetTab:Save()
                 end
             end
         end

@@ -1,4 +1,5 @@
 package Libraries.Development.Environment.Studio
+use Libraries.Development.Environment.Studio.Interface.SpreadsheetTab
 
 use Libraries.Containers.Array
 use Libraries.Containers.Iterator
@@ -583,6 +584,9 @@ class DiskChangeChecker is WindowFocusListener
                 elseif tab is VisualEditorTab
                     VisualEditorTab visualTab = cast(VisualEditorTab, tab)
                     visualTab:SaveWithoutChecking()
+                elseif tab is SpreadsheetTab
+                    SpreadsheetTab sheetTab = cast(SpreadsheetTab, tab)
+                    sheetTab:SaveWithoutChecking()
                 end
             elseif chosen = RELOAD
                 ReloadFromDisk(tab)
@@ -592,6 +596,14 @@ class DiskChangeChecker is WindowFocusListener
     end
 
     private action ReloadFromDisk(Tab tab)
+        if tab is SpreadsheetTab
+            SpreadsheetTab sheetTab = cast(SpreadsheetTab, tab)
+            check
+                sheetTab:ReloadFromDisk()
+            detect e
+            end
+            return now
+        end
         if not (tab is EditorTab)
             return now
         end
@@ -625,6 +637,9 @@ class DiskChangeChecker is WindowFocusListener
         elseif tab is VisualEditorTab
             VisualEditorTab visualTab = cast(VisualEditorTab, tab)
             return visualTab:GetFile()
+        elseif tab is SpreadsheetTab
+            SpreadsheetTab sheetTab = cast(SpreadsheetTab, tab)
+            return sheetTab:GetFile()
         end
         return undefined
     end

@@ -167,6 +167,9 @@ class QuorumProjectView is ProjectView
             Icon icon
             icon:Load(texture)
             return icon
+        elseif resources:GetFileTypeIconKey(file) not= ""
+            // A CSV, JSON, glTF, OBJ, scene, zip, image or G-code file: its own icon.
+            return resources:GetFileTypeIcon(file)
         elseif not project:IsMainFile(file)
             text logo = io:GetCustomProperty(optionsConstants:QUORUM_FILE_ICON)
             Texture texture = resources:GetTexture(logo)

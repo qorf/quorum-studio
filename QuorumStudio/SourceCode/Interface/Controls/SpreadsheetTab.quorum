@@ -1,18 +1,38 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Tab
-use Libraries.System.File
-use Libraries.Compute.Statistics.DataFrame
-use Libraries.Interface.Controls.TextBox
 use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Interface.Controls.Support.SpreadsheetFileProblem
+use Libraries.Interface.Events.SpreadsheetListener
+use Libraries.Interface.Events.SpreadsheetChangedEvent
+use Libraries.System.File
 use Libraries.Containers.Array
-use Libraries.Compute.Statistics.DataFrameColumn
-use Libraries.Interface.Controls.Column
-use Libraries.Interface.Controls.Cell
+use Libraries.Game.GameStateManager
+use Libraries.Game.Game
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.DiskChangeChecker
 
-class SpreadsheetTab is Tab
+/*
+The SpreadsheetTab class is a tab showing a comma separated value (CSV) file
+in a Spreadsheet, where the user can move around, edit, add and remove rows
+and columns, undo, and save. Saving writes the file exactly as it was read,
+except for what changed. As the scene tab does, it knows when it has unsaved
+changes, so Studio asks before closing it, saves it with Save All, and checks
+that the file wasn't changed outside Studio before writing (DiskChangeChecker).
+*/
+class SpreadsheetTab is Tab, SpreadsheetListener
     File file = undefined
-    DataFrame frame
+    Spreadsheet sheet
+    boolean dirty = false
+    GameStateManager manager
+
+    // What closing the tab does with changes: ask (CANCEL_CLOSE), throw them
+    // away (DISCARD_CHANGES) or save them (SAVE_CHANGES), as VisualEditorTab.
+    integer exitFlag = 0
+    public constant integer CANCEL_CLOSE = 0
+    public constant integer DISCARD_CHANGES = 1
+    public constant integer SAVE_CHANGES = 2
+
     action GetFile returns File
         return file
     end
@@ -21,33 +41,108 @@ class SpreadsheetTab is Tab
         me:file = file
     end
 
-
-    action Load
-        
-        frame:Load(file)
-
-        
+    action GetSpreadsheet returns Spreadsheet
+        return sheet
     end
 
-    action Setup
-        Item2D item = GetRelatedItem()
-        if item not= undefined and item is Spreadsheet
-            Spreadsheet sheet = cast(Spreadsheet, item)
-            Array<DataFrameColumn> columns = frame:GetColumns()
-            i = 0
-            repeat while i < columns:GetSize()
-                DataFrameColumn column = columns:Get(i)
-                Column sheetColumn
-                j = 0
-                repeat while j < column:GetSize()
-                    Cell cell
-                    cell:SetText(column:GetAsText(j))
-                    sheetColumn:Add(cell)
-                    j = j + 1
-                end
-                sheet:Add(sheetColumn)
-                i = i + 1
+    /*
+    This action reads the file into the spreadsheet and makes the spreadsheet
+    the tab's content. It returns what wasn't valid CSV in the file (empty
+    when it was valid), so the tab pane can warn before the tab shows.
+    */
+    action Load returns Array<SpreadsheetFileProblem>
+        sheet:SetName(file:GetFileName())
+        sheet:Load(file)
+        sheet:SetPercentageWidth(1.0)
+        sheet:SetPercentageHeight(1.0)
+        sheet:SetPixelWidth(0)
+        sheet:SetPixelHeight(0)
+        sheet:AddSpreadsheetListener(me)
+        SetRelatedItem(sheet)
+        SetFocusTarget(sheet)
+        dirty = false
+        return sheet:GetLoadProblems()
+    end
+
+    /*
+    This action returns true if the spreadsheet has changes that saving would
+    write, so Studio asks before closing and only saves changed files.
+    */
+    action IsDirty returns boolean
+        return dirty
+    end
+
+    /*
+    This action is told each change to the spreadsheet: it now has unsaved
+    changes.
+    */
+    action SpreadsheetChanged(SpreadsheetChangedEvent event)
+        if event:GetKind() not= event:EVERYTHING
+            dirty = true
+        end
+    end
+
+    /*
+    This action saves the file. If it changed on disk since Studio last read
+    or wrote it, nothing is written: the File Changed on Disk dialog asks
+    Overwrite or Cancel instead (DiskChangeChecker:CanSave).
+    */
+    action Save
+        DiskChangeChecker checker = GetDiskChangeChecker()
+        if checker not= undefined and file not= undefined
+            if not checker:CanSave(me)
+                return now
             end
         end
+        SaveWithoutChecking()
+    end
+
+    /*
+    This action saves the file over whatever is on disk (the dialog's
+    Overwrite), then remembers the file's new time and size.
+    */
+    action SaveWithoutChecking
+        if file = undefined
+            return now
+        end
+        sheet:Save(file)
+        dirty = false
+        DiskChangeChecker checker = GetDiskChangeChecker()
+        if checker not= undefined
+            checker:Remember(file)
+        end
+    end
+
+    /*
+    This action reads the file again, throwing away unsaved changes, as the
+    File Changed on Disk dialog's Reload does.
+    */
+    action ReloadFromDisk
+        if file = undefined
+            return now
+        end
+        sheet:Load(file)
+        dirty = false
+        DiskChangeChecker checker = GetDiskChangeChecker()
+        if checker not= undefined
+            checker:Remember(file)
+        end
+    end
+
+    action SetExitFlag(integer exitFlag)
+        me:exitFlag = exitFlag
+    end
+
+    action GetExitFlag returns integer
+        return exitFlag
+    end
+
+    private action GetDiskChangeChecker returns DiskChangeChecker
+        Game game = manager:GetGame()
+        if game is QuorumStudio
+            QuorumStudio studio = cast(QuorumStudio, game)
+            return studio:GetDiskChangeChecker()
+        end
+        return undefined
     end
 end

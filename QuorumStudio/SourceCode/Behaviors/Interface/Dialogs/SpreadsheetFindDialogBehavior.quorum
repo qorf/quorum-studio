@@ -1,0 +1,73 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.Spreadsheet
+use Libraries.Development.Environment.Studio.Interface.SpreadsheetFindDialog
+
+/*
+The SpreadsheetFindDialogBehavior class is a button of the spreadsheet Find
+and Replace dialog: Find Next, Find Previous, Replace or Replace All. It
+passes the dialog's text and choices to the spreadsheet and says what
+happened on the dialog's status line.
+*/
+class SpreadsheetFindDialogBehavior is QuorumStudioBehavior
+    public constant integer FIND_NEXT = 0
+    public constant integer FIND_PREVIOUS = 1
+    public constant integer REPLACE = 2
+    public constant integer REPLACE_ALL = 3
+
+    SpreadsheetFindDialog dialog = undefined
+    integer command = FIND_NEXT
+
+    action Setup(SpreadsheetFindDialog dialog, integer command)
+        me:dialog = dialog
+        me:command = command
+    end
+
+    action Run(BehaviorEvent event)
+        if dialog = undefined
+            return now
+        end
+        Spreadsheet sheet = dialog:GetSpreadsheet()
+        if sheet = undefined
+            return now
+        end
+        text value = dialog:GetFindText()
+        if value = ""
+            dialog:SetStatus("Type the text to find.")
+            return now
+        end
+        boolean matchCase = dialog:IsMatchCase()
+        boolean wholeCell = dialog:IsWholeCell()
+        if command = FIND_NEXT or command = FIND_PREVIOUS
+            boolean found = sheet:Find(value, matchCase, wholeCell, command = FIND_NEXT)
+            Report(sheet, found)
+        elseif command = REPLACE
+            boolean replaced = sheet:Replace(value, dialog:GetReplaceText(), matchCase, wholeCell)
+            if replaced
+                dialog:SetStatus("Replaced. Now at " + CurrentName(sheet) + ".")
+            else
+                Report(sheet, sheet:Matches(sheet:GetText(sheet:GetSelection():GetRow(), sheet:GetSelection():GetColumn()), value, matchCase, wholeCell))
+            end
+        elseif command = REPLACE_ALL
+            integer count = sheet:ReplaceAll(value, dialog:GetReplaceText(), matchCase, wholeCell)
+            if count = 1
+                dialog:SetStatus("Replaced 1 cell.")
+            else
+                dialog:SetStatus("Replaced " + count + " cells.")
+            end
+        end
+    end
+
+    private action Report(Spreadsheet sheet, boolean found)
+        if found
+            dialog:SetStatus("Found in " + CurrentName(sheet) + ".")
+        else
+            dialog:SetStatus("Not found.")
+        end
+    end
+
+    private action CurrentName(Spreadsheet sheet) returns text
+        return sheet:GetCellName(sheet:GetSelection():GetRow(), sheet:GetSelection():GetColumn())
+    end
+end
