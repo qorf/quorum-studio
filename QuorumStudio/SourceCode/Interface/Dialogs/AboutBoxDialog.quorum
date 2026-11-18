@@ -1,22 +1,21 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Dialog
-use Libraries.Interface.Views.LabelBoxView
-use Libraries.Game.Graphics.Color
-use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Game.Graphics.Label
-use Libraries.Interface.Controls.Button
-use Libraries.Development.Environment.Studio.Behaviors.SaveChangesBehavior
-use Libraries.Development.Environment.Studio.Behaviors.DiscardChangesBehavior
-use Libraries.Development.Environment.Studio.Behaviors.CancelExitBehavior
 use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
-use Libraries.Interface.Accessibility
 use Libraries.Interface.Controls.Icon
 use Libraries.Interface.Layouts.LayoutProperties
+use Libraries.Interface.Layouts.FlowLayout
+use Libraries.Interface.Layouts.ManualLayout
 use Libraries.Interface.Views.ControlShaderView
-use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
 
+/*
+    Quorum Studio's About box: the logo on the left, and on the right the
+    program's name with the credits below it. It is laid out the same way as
+    the Check for Updates dialog: two regions side by side, each as tall as a
+    share of its own width, with the items placed inside them by percentages.
+*/
 class AboutBoxDialog is Dialog
     GameStateManager manager
     QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
@@ -24,7 +23,13 @@ class AboutBoxDialog is Dialog
     boolean initialized = false
     Icon logo
     Label studioLabel
+    Label creditsLabel
     text name = ""
+    text credits = "Invented by Andreas Stefik, William Allee, and Gabriel Contreras, amongst other people that really just want the world to be more accessible."
+
+    // The dialog's width, and the space between the text and its edges.
+    constant number DIALOG_WIDTH = 460
+    constant number TEXT_PADDING = 20
 
     action OnShow()
         studioLabel:Focus()
@@ -34,40 +39,104 @@ class AboutBoxDialog is Dialog
         initialized = true
         name = studio:GetDisplayName()
         SetName("About " + name)
-        SetPixelWidth(400)
-        SetVerticalLayoutMode(parent:Libraries.Interface.Controls.Control:FIT_CONTENTS)
+        SetPixelWidth(DIALOG_WIDTH)
+        LayoutProperties properties
+        SetVerticalLayoutMode(properties:FIT_CONTENTS)
+
+        // The body holds the two regions side by side and is as tall as they are.
+        Control panel
+        FlowLayout panelLayout
+        panel:SetLayout(panelLayout)
+        panel:SetInterfaceOptionsKey("Dialog")
+        panel:SetPercentageWidth(1.0)
+        panel:SetVerticalLayoutMode(properties:FIT_CONTENTS)
+
+        // The bar draws the top of the dialog's outline, so the body draws
+        // its sides and bottom, rounded like the bar's top corners.
+        panel:SetBorderStyle(properties:LEFT + properties:RIGHT + properties:BOTTOM)
+        panel:SetBorderThickness(GetBorderThickness())
+        if GetBorderColor() not= undefined
+            panel:SetBorderColor(GetBorderColor())
+        end
+        // Bottom left, bottom right, top left, top right.
+        panel:SetCornerPixelRounding(8, 8, 0, 0)
+
+        // The logo's region: a quarter of the width, and as tall as the
+        // text's region (1.2 times its own width), with the logo centered.
+        Control logoRegion
+        logoRegion:SetPercentageWidth(0.25)
+        logoRegion:SetPercentageHeight(1.2)
+        logoRegion:SetVerticalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        ManualLayout logoLayout
+        logoRegion:SetLayout(logoLayout)
+        panel:Add(logoRegion)
+
+        logo:Load("Resources/Graphics/Interface/QuorumLogo.png")
+        logo:SetPercentageWidth(0.75)
+        logo:SetPercentageHeight(0.75)
+        logo:SetHorizontalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        LayoutProperties logoProperties = logo:GetDefaultLayoutProperties()
+        logoProperties:SetPercentageOriginX(0.5)
+        logoProperties:SetPercentageOriginY(0.5)
+        logo:SetPercentageX(0.5)
+        logo:SetPercentageY(0.5)
+        logoRegion:Add(logo)
+
+        // The text's region: the other three quarters of the width, and 0.4
+        // times its own width tall, which is the same height as the logo's.
+        Control textRegion
+        ManualLayout textLayout
+        textRegion:SetLayout(textLayout)
+        textRegion:SetPercentageWidth(0.75)
+        textRegion:SetPercentageHeight(0.4)
+        textRegion:SetVerticalLayoutMode(properties:MAINTAIN_ASPECT_RATIO)
+        panel:Add(textRegion)
+
+        // The name, near the top of the region.
+        studioLabel:SetText(name)
+        studioLabel:SetFontSize(18)
+        LayoutProperties studioProperties = studioLabel:GetDefaultLayoutProperties()
+        studioProperties:SetPercentageOriginX(0)
+        studioProperties:SetPercentageOriginY(1.0)
+        studioLabel:SetPercentageX(0)
+        studioLabel:SetPercentageY(0.88)
+        // A screen reader reads the name with the credits when the box opens.
+        studioLabel:SetDescription(credits)
+        studioLabel:SetAccessibilityCode(studioLabel:parent:Item:ITEM)
+        studioLabel:SetFocusable(true)
+        textRegion:Add(studioLabel)
+
+        // The credits below the name, wrapped to the region's width.
+        creditsLabel:SetText(credits)
+        creditsLabel:SetFontSize(14)
+        // Justified, and wrapped to about the width of the name above it. The
+        // name's width is measured at its own size, so it is scaled to match
+        // the interface scale the labels are drawn at.
+        creditsLabel:SetJustifyAlignment()
+        number creditsWidth = studioLabel:GetWidth() * manager:GetGame():GetInterfaceScale()
+        if creditsWidth <= 0
+            creditsWidth = DIALOG_WIDTH * 0.75 - TEXT_PADDING
+        end
+        creditsLabel:SetMaximumWidth(creditsWidth)
+        // By default a Label's extra lines hang below its position, outside
+        // the box the layout places. Stacking them upward from the last line
+        // keeps every line inside that box, so the paragraph stays where it
+        // is placed below.
+        creditsLabel:SetDescendingLines(false)
+        LayoutProperties creditsProperties = creditsLabel:GetDefaultLayoutProperties()
+        creditsProperties:SetPercentageOriginX(0)
+        creditsProperties:SetPercentageOriginY(1.0)
+        creditsLabel:SetPercentageX(0)
+        creditsLabel:SetPercentageY(0.64)
+        // The name's description already gives the credits.
+        creditsLabel:SetAccessibilityCode(creditsLabel:parent:Item:NOT_ACCESSIBLE)
+        textRegion:Add(creditsLabel)
 
         ControlShaderView view
         view:Initialize()
-        
-        logo:Load("Resources/Graphics/Interface/QuorumLogo.png")
-SetCornerRounding(0.1,0.1,0.1,0.1)
-        LayoutProperties properties
-        Control panel
-        FlowLayout findLayout
-        logo:SetPercentageHeight(0.75)
-        logo:SetPercentageWidth(logo:GetWidth()/ logo:GetHeight())
-        logo:SetHorizontalLayoutMode (properties:MAINTAIN_ASPECT_RATIO)
-        logo:SetLeftMargin(40)
-        logo:SetTopMargin(50)
-
-        studioLabel:SetText(name)
-        studioLabel:SetFontSize(20)
-        studioLabel:SetTopMargin(85)
-        studioLabel:SetLeftMargin(40)
-        panel:SetInterfaceOptionsKey("Dialog")
-        panel:SetLayout(findLayout)
-        panel:SetPercentageWidth(1.0)
-        panel:SetPixelHeight(140)
-        panel:SetBorderThickness(GetBorderThickness())
-        panel:SetCornerPixelRounding(10,10,0,0)
-        panel:SetBorderColor(GetBorderColor())
-        panel:Add(logo)
-        
-        studioLabel:SetAccessibilityCode(studioLabel:parent:Item:ITEM)
-        studioLabel:SetFocusable(true)
-        panel:Add(studioLabel)
         panel:SetView2D(view)
+
         Add(panel)
+        panel:Resize()
     end
 end
