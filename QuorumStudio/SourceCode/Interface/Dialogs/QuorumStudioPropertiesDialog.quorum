@@ -68,6 +68,7 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener, ComboBoxListen
     Checkbox showCrosshairCheckbox = undefined
     Array<RadioButton> colorButtons
     Array<RadioButton> pulseButtons
+    Checkbox blinkCheckbox = undefined
     TextField glowStrengthField = undefined
     TextField glowWidthField = undefined
     TextField topFadeField = undefined
@@ -221,6 +222,7 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener, ComboBoxListen
             end
             pulseIndex = pulseIndex + 1
         end
+        settings:SetBlinking(blinkCheckbox:GetToggleState())
         settings:SetGlowStrength(ReadWhole(glowStrengthField, settings:GetGlowStrength()))
         settings:SetGlowWidth(ReadWhole(glowWidthField, settings:GetGlowWidth()))
         settings:SetTopFade(ReadWhole(topFadeField, settings:GetTopFade()))
@@ -287,6 +289,7 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener, ComboBoxListen
             RadioButton pulseButton = pulseButtons:Get(pulseIndex)
             pulseButton:SetToggleState(true)
         end
+        blinkCheckbox:SetToggleState(settings:IsBlinking())
         glowStrengthField:SetText("" + settings:GetGlowStrength())
         glowWidthField:SetText("" + settings:GetGlowWidth())
         topFadeField:SetText("" + settings:GetTopFade())
@@ -427,6 +430,9 @@ class QuorumStudioPropertiesDialog is Dialog, MouseWheelListener, ComboBoxListen
             pulseButtons:Add(pulseChoices:AddRadioButton(pulseNames:Get(pulseIndex)))
             pulseIndex = pulseIndex + 1
         end
+        // Off by default: the ring around the cursor stays solid.
+        blinkCheckbox = motionCard:AddCheckbox("Blink the Cursor")
+        blinkCheckbox:SetDescription("Blink the ring around the terrain cursor on and off, like a text cursor")
 
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancelButton = buttonGroup:AddButton("Cancel")

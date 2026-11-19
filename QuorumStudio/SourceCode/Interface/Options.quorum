@@ -78,6 +78,7 @@ class Options is ProjectListener
     constant text TERRAIN_CURSOR_TOP_FADE = "Terrain Cursor Top Fade"
     constant text TERRAIN_CURSOR_CROSSHAIR_OPACITY = "Terrain Cursor Crosshair Opacity"
     constant text TERRAIN_CURSOR_PULSE = "Terrain Cursor Pulse"
+    constant text TERRAIN_CURSOR_BLINK = "Terrain Cursor Blink"
     constant text LOCAL_PASSWORD_ENCRYPTION_KEY = "KbPdSgVkYp3s6v9y$B&E)H@McQfThWmZ"
     public constant text QUORUM_WEBSITE_PASSWORD_KEY = "QUORUM-WEBSITE_3948Y 93F8 34F93 94F8Y3P4F34FOI3U4F&&__"
     text loginCookie = undefined
@@ -761,6 +762,7 @@ action GetBlocksScopeWidthScaling returns number
         notation:Add(TERRAIN_CURSOR_TOP_FADE, terrainCursorSettings:GetTopFade())
         notation:Add(TERRAIN_CURSOR_CROSSHAIR_OPACITY, terrainCursorSettings:GetCrosshairOpacity())
         notation:Add(TERRAIN_CURSOR_PULSE, terrainCursorSettings:GetPulseName())
+        notation:Add(TERRAIN_CURSOR_BLINK, terrainCursorSettings:IsBlinking())
 
         JavaScriptObjectNotation closedSections
         closedSections:SetArray()
@@ -1063,6 +1065,10 @@ if object:IsNumber()
                     end
                     index = index + 1
                 end
+            end
+        elseif key = TERRAIN_CURSOR_BLINK
+            if object:IsBoolean()
+                terrainCursorSettings:SetBlinking(object:GetBoolean())
             end
         elseif key = TERRAIN_CURSOR_BEAM
             if object:IsBoolean()

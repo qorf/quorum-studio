@@ -1,6 +1,7 @@
 package Libraries.Development.Environment.Studio.Behaviors
 use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Interface.Behaviors.Behavior
+use Libraries.Game.GameStateManager
 
 class QuorumStudioBehavior is Behavior
 
@@ -14,7 +15,19 @@ class QuorumStudioBehavior is Behavior
         me:studio = studio
     end
 
+    /*
+        Returns Quorum Studio. A behavior made outside Behaviors' table, such
+        as each Scenes and Data menu item's, is never given it with
+        SetMainApplication, so it finds the running game instead. Without
+        this, those menu items did nothing.
+    */
     action GetMainApplication returns QuorumStudio
+        if studio = undefined
+            GameStateManager manager
+            if manager:GetGame() is QuorumStudio
+                studio = cast(QuorumStudio, manager:GetGame())
+            end
+        end
         return studio
     end
 end
