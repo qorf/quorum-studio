@@ -31,17 +31,18 @@ use Libraries.Development.Environment.Studio.Behaviors.GitProblemActionBehavior
 use Libraries.Development.Environment.Studio.Behaviors.OpenTeamsTabBehavior
 
 /*
-The Commit dialog (Commit C1 to C4). C1: the staged files (read-only), a
+The Commit dialog. With files staged: the staged files (read-only), a
 line about changes that won't be included, one multi-line Message box,
-who's committing, and "Commit 3 files". C3 (laid out as C3b): nothing
-staged, so a bold first line, a count per group, a muted next step, and
-Cancel, Open Team Tab. C4: no name or email saved, so the main button
-opens Project Properties' Teams tab.
+who's committing, and "Commit 3 files". With nothing staged: a bold first
+line, a count per group, a muted next step, and Cancel, Open Team Tab.
+With no name or email saved, the main button opens Project Properties'
+Teams tab.
 What the dialog says is also its description, so it's read when it opens;
 nothing is announced.
 */
 class CommitDialog is Dialog
-    // C3b's text size, the stage dialog's (StageConfirmDialog), instead of
+    // The text size of the nothing-staged form, the stage dialog's
+    // (StageConfirmDialog), instead of
     // the Forms default 20.
     constant integer TEXT_SIZE = 16
     // The dialog's width, as a share of the window.
@@ -73,7 +74,8 @@ class CommitDialog is Dialog
     /*
     This action builds the dialog for one commit. Call it once, before
     Show. The message is what to start the Message box with (a kept draft,
-    or the message from a failed commit). The problem is C6's sentence, or
+    or the message from a failed commit). The problem is the failed
+    commit's sentence, or
     "".
     */
     action Setup(CommitInterfaceBehavior ownerValue, QuorumProject projectValue, TeamStatus status,
@@ -104,12 +106,12 @@ class CommitDialog is Dialog
     end
 
     /*
-    C3: nothing staged, so the message form isn't shown. With changes
-    (C3b), left-aligned at the dialog's text size: "Nothing is staged yet."
+    Nothing staged, so the message form isn't shown. With changes,
+    left-aligned at the dialog's text size: "Nothing is staged yet."
     in bold, then a small box (a List, as the Team tab and the stage dialog
     show rows) with one row per group that has files, the count then its
     group muted ("48 changed" then "not staged"), then the next step,
-    muted. With none: C3's one sentence and Close. The dialog is as tall as
+    muted. With none: one sentence and Close. The dialog is as tall as
     what it shows, and its description says the same words, so they're
     read when it opens.
     */
@@ -276,12 +278,13 @@ class CommitDialog is Dialog
         return many
     end
 
-    // C1, with C4's line when no name or email is saved, and C6's problem.
+    // The form for staged files, with the line about a missing name or
+    // email when none is saved, and a failed commit's problem.
     private action SetupCommit(Page page, Array<TeamFileChange> staged, integer otherCount, text message, text problem)
         SetPixelHeight(380)
         // Left-aligned with the Message box. The staged files themselves
-        // are in the Team tab; the dialog only says how many (the user,
-        // 2026-11-04), and nothing about files that aren't staged.
+        // are in the Team tab; the dialog only says how many, and nothing
+        // about files that aren't staged.
         page:LeftAlignContent()
         text summary = Words(stagedCount, "staged file", "staged files") + " will be committed."
         Label stagedLabel = page:AddLabel("Staged Heading", summary)
@@ -292,7 +295,8 @@ class CommitDialog is Dialog
         page:AddLabel("Message Label", "Message")
         messageBox = page:AddTextBox("Message")
         messageBox:SetText(message)
-        // C2's line; empty until Commit is pressed with no message.
+        // The line under the message; empty until Commit is pressed with no
+        // message.
         messageProblemLabel = page:AddLabel("Message Problem", "")
 
         if problem not= ""
@@ -352,14 +356,14 @@ class CommitDialog is Dialog
         end
     end
 
-    // What was typed is kept unless the commit went ahead (C6).
+    // What was typed is kept unless the commit went ahead.
     action OnHide
         if keepDraft and owner not= undefined and messageBox not= undefined
             owner:KeepDraft(project, messageBox:GetText())
         end
     end
 
-    // C2: no message. The line under the box, and the box's description.
+    // No message. The line under the box, and the box's description.
     action ShowMessageProblem
         text problem = "Write a short summary of what changed."
         messageProblemLabel:SetText(problem)

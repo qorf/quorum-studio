@@ -29,8 +29,7 @@ use Libraries.Development.Environment.Studio.Behaviors.BranchNameListener
 use Libraries.Development.Environment.Studio.Behaviors.StartFromChoiceBehavior
 
 /*
-New Branch (B4, laid out as N1): "Name" above its field (checked as you
-type, B5), "Start from" with two choices (where you are now, or another
+New Branch: "Name" above its field (checked as you type), "Start from" with two choices (where you are now, or another
 branch picked from a short list that is dimmed until that choice is
 made), "Switch to it now", two muted lines, and Cancel, Create Branch.
 Tab goes Name, the choices, the list (only while it can be used), the
@@ -56,7 +55,8 @@ class NewBranchDialog is Dialog
     boolean otherListEnabled = false
     ColorGroup mutedColor = undefined
 
-    // B5's fix: none, use the suggested name, or switch to the server's branch.
+    // The fix offered for a name: none, use the suggested name, or switch
+    // to the server's branch.
     constant integer FIX_NONE = 0
     constant integer FIX_RENAME = 1
     constant integer FIX_SWITCH = 2
@@ -297,7 +297,7 @@ class NewBranchDialog is Dialog
         return options:GetFontColor("FieldCaption")
     end
 
-    // As you type (B5): the message under the field, which is also the
+    // As you type: the message under the field, which is also the
     // field's description, and the fix button when there is one.
     action NameChanged
         text message = CheckName()
@@ -315,7 +315,7 @@ class NewBranchDialog is Dialog
         UpdateFocusOrder()
     end
 
-    // B5's checks. Returns "" when the name is fine.
+    // Checks the name as it is typed. Returns "" when the name is fine.
     private action CheckName returns text
         text typed = nameField:GetText():Trim()
         fixMode = FIX_NONE

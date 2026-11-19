@@ -32,7 +32,7 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
     Resources resources = undefined
     QuorumStudio studio = undefined
     HashTable<text, text> opened
-    // The last git status of each project, by its folder (Tree R2 and L2).
+    // The last git status of each project, by its folder.
     HashTable<text, TeamStatus> gitStatuses
     ProjectTreeGitMarks gitMarks
     // A status from another thread, applied on the next Update, as the
@@ -189,7 +189,7 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
     end
 
     /*
-    This action shows a project's git status as marks on its rows (Tree R2 and L2)
+    This action shows a project's git status as marks on its rows
     and keeps it for the project. Call it on the main thread; other threads
     use PostGitStatus. A status with no project folder (no project, or a
     project not in Git) is ignored, and so is one for a project that isn't
@@ -248,7 +248,7 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
         runner:Add(reader)
     end
 
-    // The last status read for a project, or undefined (step 13's menus).
+    // The last status read for a project, or undefined, for its menus.
     action GetGitStatus(QuorumProject project) returns TeamStatus
         if project = undefined
             return undefined
@@ -359,7 +359,7 @@ class ProjectTree is Tree, SelectionListener, ProjectListener, TreeChangeListene
         behave:SetMainApplication(studio)
         behave:SetThread(runner)
         AddBehavior(behave)
-        // Files changed outside Studio are noticed (01c).
+        // Files changed outside Studio are noticed.
         if studio not= undefined
             studio:WatchProjectFolder(project:GetLocation())
         end

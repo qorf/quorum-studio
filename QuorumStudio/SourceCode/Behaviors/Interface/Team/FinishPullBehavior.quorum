@@ -32,11 +32,12 @@ use Libraries.Development.Versioning.GitProblem
 What happens after a pull, on the main thread (PullRequestBehavior adds it
 to the output pane from the git thread). In order:
 - the Team tab gets the new status;
-- a problem opens step 3's dialog (L5, L8, P6), and nothing else changes;
+- a problem opens the git problem dialog (GitProblemDialog), and nothing
+  else changes;
 - open tabs reload, tabs for deleted files close, the Project Tree
   refreshes (ProjectFilesRefresher);
-- the Team tab's "From the last pull" groups are filled (L9);
-- conflicts open the L7 dialog;
+- the Team tab's "From the last pull" groups are filled;
+- conflicts open the pull conflicts dialog;
 - the result is reported (one Console line when the Team tab isn't
   showing).
 Nothing is announced to the screen reader.
@@ -54,7 +55,8 @@ class FinishPullBehavior is Behavior
     // What the editor work did, for the sentence (ProjectFilesRefresher's).
     text editorWords = ""
 
-    // L9's groups, above git's (step 10's To push uses lower numbers).
+    // The pull's groups in the Team tab, above git's (To push uses lower
+    // numbers).
     constant text PULL_COMMITS_KEY = "From the last pull"
     constant text PULL_FILES_KEY = "Changed by the last pull"
     constant integer PULL_COMMITS_ORDER = 20
@@ -86,7 +88,7 @@ class FinishPullBehavior is Behavior
         TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
         teamTab:SetStatus(afterStatus)
         // SetStatus doesn't go through PostStatus, so the Project Tree's
-        // marks (Tree T2) get the status here, before the tree is rebuilt.
+        // marks get the status here, before the tree is rebuilt.
         ProjectTree projectTree = studio:GetProjectTree()
         if projectTree not= undefined
             projectTree:ApplyGitStatus(afterStatus)
@@ -106,7 +108,7 @@ class FinishPullBehavior is Behavior
             return now
         end
 
-        // L6: the branch isn't on the server.
+        // The branch isn't on the server.
         if result:HasNoUpstream()
             text branch = GetBranch()
             SetCommitsSection(teamTab, branch + " isn't on the server yet")
@@ -115,13 +117,13 @@ class FinishPullBehavior is Behavior
             return now
         end
 
-        // L8 and P6: the server problems, in step 3's dialog.
+        // The server problems, in the git problem dialog.
         if result:GetErrorKind() not= constants:ERROR_NONE
             ReportServerProblem(title)
             return now
         end
 
-        // L5: files changed here that the pull would also change.
+        // Files changed here that the pull would also change.
         if result:GetMergeStatus() = constants:PULL_MERGE_FAILED
             ReportFilesInTheWay(title)
             return now
@@ -156,7 +158,7 @@ class FinishPullBehavior is Behavior
             return now
         end
 
-        // L3: a fast-forward.
+        // A fast-forward.
         SetCommitsSection(teamTab, "")
         text pulled = "Pulled " + teamTab:CountWords(result:GetCommitCount(), "commit", "commits") + " from " + upstream + AuthorWords() + ". "
         pulled = pulled + teamTab:CountWords(fileCount, "file", "files") + " changed."
@@ -229,7 +231,7 @@ class FinishPullBehavior is Behavior
     end
 
     /*
-    L9's commits group: "From the last pull, 10:58", what happened in
+    The pull's commits group: "From the last pull, 10:58", what happened in
     the explanation, and a row per commit that came in.
     */
     private action SetCommitsSection(TeamTab teamTab, text explanation)
@@ -259,7 +261,7 @@ class FinishPullBehavior is Behavior
     end
 
     /*
-    L9's files group: a row per file the pull changed in the project.
+    The pull's files group: a row per file the pull changed in the project.
     Enter opens the file. Returns how many there are; with none, the group
     is taken away.
     */
@@ -311,7 +313,7 @@ class FinishPullBehavior is Behavior
         return changeConstants:MODIFIED
     end
 
-    // "From the last pull, 10:58" (the fetch's time, from step 1).
+    // "From the last pull, 10:58" (the fetch's time).
     private action PullTitle returns text
         StatusResult value = afterStatus:GetResult()
         if value not= undefined and value:GetLastFetchTime() not= ""
@@ -345,7 +347,8 @@ class FinishPullBehavior is Behavior
         return " (from " + names:Get(0) + ", " + names:Get(1) + " and " + (count - 2) + " others)"
     end
 
-    // P5 and P6, through step 3's and step 4's TeamReporter.
+    // A problem with the server, through the git problem dialog and
+    // TeamReporter.
     private action ReportServerProblem(text title)
         GitErrorWording wording
         TeamReporter reporter
@@ -361,7 +364,7 @@ class FinishPullBehavior is Behavior
         reporter:ReportProblem(problem)
     end
 
-    // L5: nothing was changed; commit first, then pull again.
+    // Nothing was changed; commit first, then pull again.
     private action ReportFilesInTheWay(text title)
         text workTree = GetWorkTree()
         Array<text> paths = result:GetFailingPaths()

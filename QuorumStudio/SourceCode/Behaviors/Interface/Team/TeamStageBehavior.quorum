@@ -16,14 +16,14 @@ use Libraries.Development.Environment.Studio.Interface.TeamFileItem
 use Libraries.Development.Environment.Studio.Interface.TeamGroupItem
 
 /*
-Stages or unstages Team tab rows (Add A1 to A5), on the main thread: works
+Stages or unstages Team tab rows, on the main thread: works
 out which rows and hands them to StageGate, which stages them now (saving
 open editors, moving focus to the next row, StageWorkBehavior on the git
-thread) or asks first (Add A5b: many files, media, Build and Run).
+thread) or asks first (many files, media, Build and Run).
 - TOGGLE (Space, [+] and [-], a group's Stage all): stages a row that
   isn't staged, unstages one that is. On a group's row, the whole group.
 - STAGE and UNSTAGE (the menu): only that way.
-The rows are the picked rows when the row is one of them (A3), else the
+The rows are the picked rows when the row is one of them, else the
 row it's run on, else the selected row.
 */
 class TeamStageBehavior is Behavior
@@ -83,7 +83,7 @@ class TeamStageBehavior is Behavior
         end
     end
 
-    // Stage all or Unstage all (A5). Sections such as To push aren't git's
+    // Stage all or Unstage all. Sections such as To push aren't git's
     // groups, and the Conflicts group is staged a file at a time.
     private action RunOnGroup(TeamGroupItem group)
         text key = group:GetKey()
@@ -106,7 +106,7 @@ class TeamStageBehavior is Behavior
         RunOnRows(rows)
     end
 
-    // Hands the rows to StageGate (Add A5b), which stages now or asks first.
+    // Hands the rows to StageGate, which stages now or asks first.
     private action RunOnRows(Array<TeamFileItem> rows)
         if rows:IsEmpty()
             return now

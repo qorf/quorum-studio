@@ -56,7 +56,7 @@ use Libraries.Interface.Views.ControlShaderView
 use Libraries.Game.Graphics.Color
 
 /*
-The Team tab (Status A1): the selected project's git status.
+The Team tab: the selected project's git status.
 - A header: the branch and the server, a Refresh button, and the counts.
 - Then a List, read as a tree: fold rows for git's groups, with a row per
   changed file under each.
@@ -72,20 +72,20 @@ class TeamTab is Tab
     Control headerRow
     Label branchLabel
     Button refreshButton
-    // P9: "Push 3 commits", shown only when there's something to push.
+    // "Push 3 commits", shown only when there's something to push.
     Button pushButton
     TeamPushBehavior pushBehavior
-    // B6: Switch Branch... (Switch Branch, or New Branch from its dialog).
+    // Switch Branch... (Switch Branch, or New Branch from its dialog).
     Button switchBranchButton
     SwitchBranchInterfaceBehavior switchBranchBehavior
     Control countsRow
     Label countsLabel
     // After "109 changes", a part for each group with a colored mark before
-    // its words (P4): conflicts, staged, not staged, untracked, in that
+    // its words: conflicts, staged, not staged, untracked, in that
     // order. The words say it all; the marks are a second cue.
     Array<Control> countMarks
     Array<Label> countLabels
-    // P9's progress row, hidden between pushes and pulls.
+    // The push's progress row, hidden between pushes and pulls.
     Control progressRow
     Label progressLabel
     ProgressBar progressBar
@@ -101,7 +101,7 @@ class TeamTab is Tab
     // The status shown, and one waiting to be shown (from the git thread).
     TeamStatus status = undefined
     TeamStatus pendingStatus = undefined
-    // A8: a status has been asked for and hasn't come back.
+    // A status has been asked for and hasn't come back.
     boolean checking = false
     // A refresh is queued on the git thread already.
     boolean refreshQueued = false
@@ -109,14 +109,14 @@ class TeamTab is Tab
     boolean refreshSoon = false
     number refreshWait = 0
     // Something changed while the tab wasn't showing, so its status is old.
-    // A status is read only while the tab shows, or on Refresh (Studio plan
-    // FileWatching.md, 2026-11-06); this one is read when it is next shown.
+    // A status is read only while the tab shows, or on Refresh; this one is
+    // read when it is next shown.
     boolean outOfDate = false
     // Whether the tab was showing on the last Update, to notice it being
     // brought to the front.
     boolean wasShowing = false
-    // Rows kept across rebuilds, by what they show (Studio plan
-    // TeamTabSpeed.md, fix 1): a row whose file and state didn't change is
+    // Rows kept across rebuilds, by what they show: a row whose file and
+    // state didn't change is
     // put back as it is, already laid out. rowsShown are this rebuild's;
     // rowsBefore the last one's, which AddChangeGroup takes from.
     HashTable<text, TeamFileItem> rowsShown
@@ -128,7 +128,7 @@ class TeamTab is Tab
     // Groups other steps add above git's, in order.
     Array<TeamGroupItem> sections
 
-    // P9: the last push's result, waiting to be shown (from the git thread).
+    // The last push's result, waiting to be shown (from the git thread).
     boolean pushResultPending = false
     text pendingPushTitle = ""
     text pendingPushExplanation = ""
@@ -141,7 +141,7 @@ class TeamTab is Tab
     Array<text> collapsedKeys
 
     boolean rowInputReady = false
-    // A click on a row: the fold arrow, [+] and [-], Stage all (step 8).
+    // A click on a row: the fold arrow, [+] and [-], Stage all.
     TeamRowClickBehavior rowClickBehavior
     TeamTabPopupMenu menu
     TeamOpenFileBehavior openFileBehavior
@@ -158,19 +158,19 @@ class TeamTab is Tab
     TeamStatus statusConstants
     TeamFileChange changeConstants
 
-    // Staging (Add A1 to A5).
+    // Staging.
     TeamStageBehavior stageToggleBehavior
     TeamStageBehavior stageBehavior
     TeamStageBehavior unstageBehavior
     TeamPickBehavior pickDownBehavior
     TeamPickBehavior pickUpBehavior
     TeamPickBehavior pickToggleBehavior
-    // A3: picked rows, all in one group; where Shift picking began; and the
+    // Picked rows, all in one group; where Shift picking began; and the
     // row that was selected when they were picked (moving off it unpicks).
     Array<TeamFileItem> picked
     integer pickAnchor = -1
     text pickSelectionKey = ""
-    // A1: rows just staged or unstaged, by project path, and how long
+    // Rows just staged or unstaged, by project path, and how long
     // "just staged" has shown.
     Array<text> recentPaths
     boolean recentStaged = true
@@ -182,7 +182,7 @@ class TeamTab is Tab
     public constant text GROUP_STAGED = "Staged"
     public constant text GROUP_NOT_STAGED = "Not staged"
     public constant text GROUP_UNTRACKED = "Untracked"
-    // Push P9's groups, above git's and above the last pull's (20 and 21).
+    // The push's groups, above git's and above the last pull's (20 and 21).
     public constant text GROUP_TO_PUSH = "To push"
     public constant text GROUP_LAST_PUSH = "Last push"
     constant integer TO_PUSH_ORDER = 10
@@ -262,7 +262,7 @@ class TeamTab is Tab
         switchBranchButton:SetLeftMargin(8)
         switchBranchButton:SetBehavior(switchBranchBehavior)
         headerRow:Add(switchBranchButton)
-        // The header's buttons are the size of the header's text (T1), not
+        // The header's buttons are the size of the header's text, not
         // the larger default button size.
         MakeCompact(refreshButton)
         MakeCompact(pushButton)
@@ -419,7 +419,7 @@ class TeamTab is Tab
         leftSet:SetKeyboardInput(keys:LEFT)
         listTable:Add(leftSet, collapseBehavior)
 
-        // Space stages or unstages (A1, A2); in a List it would activate
+        // Space stages or unstages; in a List it would activate
         // the row, which Return still does.
         InputSet spaceSet
         spaceSet:SetKeyboardInput(keys:SPACE)
@@ -468,7 +468,7 @@ class TeamTab is Tab
     */
     action PostStatus(TeamStatus value)
         pendingStatus = value
-        // The Project Tree's marks follow every status (Tree T2), even when
+        // The Project Tree's marks follow every status, even when
         // this tab is closed. The tree only keeps it in a field, so this is
         // still safe from any thread.
         GameStateManager treeManager
@@ -487,8 +487,8 @@ class TeamTab is Tab
     */
     action SetStatus(TeamStatus value)
         // A status for another project: the last push's and the last
-        // pull's groups were about the old one, so they go (the user,
-        // 2026-11-04). To push is worked out again from the new status.
+        // pull's groups were about the old one, so they go. To push is
+        // worked out again from the new status.
         if ProjectPath(status) not= ProjectPath(value)
             integer index = sections:GetSize() - 1
             repeat while index >= 0
@@ -506,7 +506,7 @@ class TeamTab is Tab
         UpdateToPushSection()
         UpdatePushButton()
         // A status with the same rows as the one shown changes only the
-        // header (TeamTabSpeed.md, fix 1).
+        // header.
         text signature = GetStatusSignature()
         if signature not= "" and signature = shownSignature
             UpdateHeader()
@@ -516,7 +516,7 @@ class TeamTab is Tab
     end
 
     /*
-    This action shows what a push did, in a group above git's (Push P9):
+    This action shows what a push did, in a group above git's:
     "Sent in the last push, 11:07" with the commits sent, or "Nothing to
     push" with a line saying why. It stays until the next push or Hide.
     It's safe to call from any thread: the tab shows it on its next
@@ -588,7 +588,7 @@ class TeamTab is Tab
     end
 
     /*
-    The To push group (Push P9): the commits not on the server yet, from
+    The To push group: the commits not on the server yet, from
     the status. Left out when there are none, when there's no server, and
     when no branch is checked out. Doesn't rebuild; SetStatus does.
     */
@@ -714,7 +714,7 @@ class TeamTab is Tab
 
     /*
     This action asks for a new status on the git thread. The tab says
-    "Checking for changes..." until it comes back (A8). Call it on the main
+    "Checking for changes..." until it comes back. Call it on the main
     thread.
     */
     action RequestRefresh
@@ -740,7 +740,7 @@ class TeamTab is Tab
     /*
     This action notes that the project may have changed while the tab isn't
     showing. No status is read now; one is read when the tab is next brought
-    to the front (Studio plan FileWatching.md). Call it on the main thread.
+    to the front. Call it on the main thread.
     */
     action MarkOutOfDate
         outOfDate = true
@@ -843,7 +843,7 @@ class TeamTab is Tab
             pendingStatus = undefined
             SetStatus(value)
         end
-        // Brought to the front: read a status if it is old (FileWatching.md).
+        // Brought to the front: read a status if it is old.
         boolean showing = IsShowingNow()
         if showing and not wasShowing
             Shown()
@@ -881,7 +881,7 @@ class TeamTab is Tab
 
     /*
     This action adds or replaces a group above git's groups, such as "To
-    push" (Push P9) or "From the last pull" (Pull L9). The group's rows must
+    push" or "From the last pull". The group's rows must
     have been through PrepareRow. Groups are shown by their order, lowest
     first. Call it on the main thread.
     */
@@ -943,7 +943,7 @@ class TeamTab is Tab
             InputSet leftClick
             leftClick:SetMouseInput(mouse:LEFT)
             rowTable:Add(leftClick, rowClickBehavior)
-            // A3: Cmd+click picks a row (Ctrl+click opens the menu, above).
+            // Cmd+click picks a row (Ctrl+click opens the menu, above).
             InputSet metaClick
             metaClick:SetMouseInput(mouse:LEFT)
             metaClick:AddModifier(metaClick:META)
@@ -1048,7 +1048,7 @@ class TeamTab is Tab
     end
 
     // The header's two lines, and the list's description with the same
-    // words (A2).
+    // words.
     private action UpdateHeader
         text branchLine = BranchText()
         text countsLine = CountsText()
@@ -1161,7 +1161,7 @@ class TeamTab is Tab
         picked:Empty()
         pickAnchor = -1
         pickSelectionKey = ""
-        // Kept rows (fix 1): last time's are taken from; unused ones go.
+        // Kept rows: last time's are taken from; unused ones go.
         HashTable<text, TeamFileItem> previous = rowsBefore
         rowsBefore = rowsShown
         rowsShown = previous
@@ -1204,7 +1204,7 @@ class TeamTab is Tab
 
         // Every row is one line, so the list needn't lay out all of them to
         // know its height: only the rows on screen are laid out, as they're
-        // drawn (Studio plan TeamTabSpeed.md, fix 2).
+        // drawn.
         changesList:SetFixedLineHeight(MeasureRowHeight())
         // One layout for all the rows, as the Search Results tab does.
         changesList:Resize()
@@ -1217,7 +1217,7 @@ class TeamTab is Tab
         end
     end
 
-    // A5: nothing to commit, and what that means for pushing.
+    // Nothing to commit, and what that means for pushing.
     private action AddNothingToCommit(ColorGroup mutedColor)
         StatusResult result = status:GetResult()
         integer ahead = result:GetAheadCount()
@@ -1251,13 +1251,13 @@ class TeamTab is Tab
         group:Setup(key, title, explanation, "file", "files", mutedColor)
         if key = GROUP_STAGED
             group:SetActionWords("Unstage all")
-            // Commit C7: the Staged group's Commit...
+            // The Staged group's Commit...
             group:SetCommitShown(true)
         elseif key = GROUP_NOT_STAGED or key = GROUP_UNTRACKED
             group:SetActionWords("Stage all")
         end
         // A row that just arrived here gets "just staged" or "just
-        // unstaged" (A1) until the timer in Update runs out.
+        // unstaged" until the timer in Update runs out.
         boolean arrivedHere = (recentStaged and key = GROUP_STAGED) or (not recentStaged and key not= GROUP_STAGED)
         text noteWords = "just staged"
         if not recentStaged
@@ -1269,7 +1269,7 @@ class TeamTab is Tab
             text rowKey = GetShownKey(key, change)
             TeamFileItem row = undefined
             if rowsBefore:HasKey(rowKey)
-                // Shows the same: kept as it is, already laid out (fix 1).
+                // Shows the same: kept as it is, already laid out.
                 row = rowsBefore:RemoveKey(rowKey)
                 row:Reuse(change, group)
             else
@@ -1316,7 +1316,7 @@ class TeamTab is Tab
     end
 
     /*
-    This action returns a row's key for keeping it (TeamTabSpeed.md, fix 1):
+    This action returns a row's key for keeping it:
     its group, path, and everything it shows. A row with the same key looks
     the same, so it can be put back as it is.
     */
@@ -1328,8 +1328,8 @@ class TeamTab is Tab
     /*
     This action returns what the rows would be made from: every change's
     shown key, the number of sections, the folded groups, the "just staged"
-    paths and the push counts, or "" if the status isn't ready. Two equal signatures make the same rows
-    (TeamTabSpeed.md, fix 1).
+    paths and the push counts, or "" if the status isn't ready. Two equal
+    signatures make the same rows.
     */
     private action GetStatusSignature returns text
         if status = undefined or not status:IsReady()
@@ -1374,7 +1374,7 @@ class TeamTab is Tab
     This action returns the height of the tallest kind of row in the list:
     the first group row, file row, message row and commit row are laid out
     (they're near the top, so they would be laid out to be drawn anyway) and
-    the tallest is used (TeamTabSpeed.md, fix 2). It returns 0, which makes
+    the tallest is used. It returns 0, which makes
     the list measure every row as before, if none could be measured, such as
     before the display is ready.
     */
@@ -1490,7 +1490,7 @@ class TeamTab is Tab
         return changesList
     end
 
-    // A3: the picked rows (in one group), or none.
+    // The picked rows (in one group), or none.
     action GetPickedRows returns Array<TeamFileItem>
         return picked
     end
@@ -1509,7 +1509,7 @@ class TeamTab is Tab
     end
 
     /*
-    Shift+Down or Shift+Up (A3): moves the selection one row, within the
+    Shift+Down or Shift+Up: moves the selection one row, within the
     group, and picks every row from where Shift picking began to here.
     */
     action PickMove(boolean down)
@@ -1579,7 +1579,7 @@ class TeamTab is Tab
     end
 
     /*
-    Cmd+click (A3): picks or unpicks one row. A row in another group starts
+    Cmd+click: picks or unpicks one row. A row in another group starts
     the picked rows over.
     */
     action TogglePicked(TeamFileItem row)
@@ -1608,7 +1608,7 @@ class TeamTab is Tab
     end
 
     /*
-    Moves the selection off rows about to be staged or unstaged (A1): to
+    Moves the selection off rows about to be staged or unstaged: to
     the next row in the same group that isn't one of them, else the one
     before, else the row after the group. Focus stays in the group, so
     Space again stages the next file.
@@ -1684,7 +1684,7 @@ class TeamTab is Tab
 
     /*
     Rows just staged (or unstaged), by project path: when they show in
-    their new group, they say "just staged" for a few seconds (A1).
+    their new group, they say "just staged" for a few seconds.
     */
     action MarkRecent(Array<text> paths, boolean staged)
         recentPaths:Empty()
@@ -1709,7 +1709,8 @@ class TeamTab is Tab
         end
     end
 
-    // A row's key, for finding it again (public for step 8's behaviors).
+    // A row's key, for finding it again (public for the Team tab's row
+    // behaviors).
     action GetRowKey(ListItem row) returns text
         if row is TeamGroupItem
             TeamGroupItem group = cast(TeamGroupItem, row)
@@ -1759,7 +1760,7 @@ class TeamTab is Tab
     end
 
     /*
-    Commit C7: the Commit dialog's behavior (Behaviors:GetCommitInterfaceBehavior),
+    The Commit dialog's behavior (Behaviors:GetCommitInterfaceBehavior),
     for the Staged group's Commit... button and menu item. Main thread.
     */
     action GetCommitBehavior returns Behavior
@@ -1792,7 +1793,7 @@ class TeamTab is Tab
     action Dispose
     end
 
-    // A header button at the header's text size, with tight padding (T1).
+    // A header button at the header's text size, with tight padding.
     private action MakeCompact(Button button)
         button:SetFontSize(branchLabel:GetSize())
         button:SetTopPadding(2)

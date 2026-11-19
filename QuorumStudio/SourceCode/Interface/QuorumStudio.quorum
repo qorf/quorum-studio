@@ -154,7 +154,7 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     // Used to unilaterally enable/disable 3D scene features during development
     public boolean enabledScenes3D = true
 
-    // Files changed on disk outside Studio (01c): the watcher on every open
+    // Files changed on disk outside Studio: the watcher on every open
     // project's folder, what it reported, and the checker that reloads or
     // asks about open tabs.
     FileWatcher projectWatcher
@@ -521,7 +521,7 @@ SetScreenSize(width, height)
     end
 
     /*
-    The project watcher (01c): Build, Run and .git are never watched; the
+    The project watcher: Build, Run and .git are never watched; the
     Game hands its changes to projectChanges on the main thread each frame.
     The window regaining focus is a check too (DiskChangeChecker), so a
     platform with no watcher still notices changes.
@@ -535,8 +535,8 @@ SetScreenSize(width, height)
         projectWatcher:ExcludeFolderName("Run")
         projectWatcher:ExcludeFolderName(".git")
         // The QuorumStudio project's bundled JDKs and installer files, and
-        // YourKit's snapshots: large, and never edited in Studio (Studio
-        // plan FileWatching.md, 2026-11-06). A folder with one of these
+        // YourKit's snapshots: large, and never edited in Studio. A folder
+        // with one of these
         // names in any project is skipped too.
         projectWatcher:ExcludeFolderName("Java")
         projectWatcher:ExcludeFolderName("Java-INTEL")
@@ -770,7 +770,7 @@ editorPartitionTable:Add(dragContinueSet, editorDrag)
         editorPartitionTable:Add(partitionMouseOff, partitionOffBehavior)
         AddInputTable(editorPartitionTable)
 
-        // The drag bar between a scene and its Properties panel (step 4).
+        // The drag bar between a scene and its Properties panel.
         InputTable propertiesPartitionTable
         propertiesPartitionTable:SetIdentifier("PropertiesPartition")
         PropertiesPartitionDragBehavior propertiesDrag
@@ -781,7 +781,7 @@ editorPartitionTable:Add(dragContinueSet, editorDrag)
         AddInputTable(propertiesPartitionTable)
 
         // The scene editor's keys come from Studio's key map, so a user's key
-        // map file can change them (step 6). The key map is loaded by now.
+        // map file can change them. The key map is loaded by now.
         StudioSceneEditorKeys sceneKeys
         sceneKeys:SetKeyMap(resources:GetKeyMap())
         ReplaceSceneEditorInput(sceneKeys)

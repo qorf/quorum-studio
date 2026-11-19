@@ -17,12 +17,12 @@ use Libraries.Development.Versioning.GitProblem
 
 /*
 Team > Pull, on the main thread. Open files in the project with unsaved
-changes are saved first, after asking (Pull L1). Then the Team tab opens,
+changes are saved first, after asking. Then the Team tab opens,
 for the progress and the result, and the pull runs on the git thread
 (PullRequestBehavior).
 */
 class TeamPullBehavior is QuorumStudioBehavior
-    // Push P4's "Pull, then Push": run on the git thread after a clean pull.
+    // "Pull, then Push": run on the git thread after a clean pull.
     QuorumStudioBehavior afterCleanPull = undefined
 
     /*
@@ -55,7 +55,7 @@ class TeamPullBehavior is QuorumStudioBehavior
             return now
         end
 
-        // L1: ask first. Save and Pull saves them, then pulls.
+        // Ask first. Save and Pull saves them, then pulls.
         SaveAndPullBehavior saveAndPull
         saveAndPull:Setup(me, quorumProject, unsaved)
         GitProblem problem
@@ -77,7 +77,7 @@ class TeamPullBehavior is QuorumStudioBehavior
             return now
         end
 
-        // The progress (L2) and the result (L9) show in the Team tab.
+        // The progress and the result show in the Team tab.
         OutputEditorTabPane outPane = studio:GetOutputPane()
         outPane:GetTeamTab()
 

@@ -15,7 +15,7 @@ use Libraries.Development.Versioning.TeamStatus
 use Libraries.Development.Versioning.TeamFileChange
 
 /*
-The Project Tree's Git section (Tree M1 to M4), last in a row's menu, only
+The Project Tree's Git section, last in a row's menu, only
 for a project in Git, and only the items that fit the row's state; nothing
 is greyed out. It's built each time the menu opens, from the tree's last
 status. Before the tree has a status for the project, only Commit... on
@@ -64,7 +64,7 @@ class ProjectTreeGitMenu
         return added
     end
 
-    // M1 and M4.
+    // Stage and Reset to Last Commit.
     private action AddFileItems(PopupMenu menu, Array<MenuItem> added, ProjectTreeItem row, TeamStatus status)
         File file = row:GetFile()
         TreeStageBehavior counter
@@ -90,7 +90,7 @@ class ProjectTreeGitMenu
             AddItem(menu, added, "Unstage (keeps your changes)", unstage)
         end
 
-        // M4: only a file in the last commit that has changes.
+        // Only a file in the last commit that has changes.
         TreeResetBehavior reset
         if reset:CanReset(status:GetChanges(file))
             reset:SetItem(row)
@@ -98,7 +98,7 @@ class ProjectTreeGitMenu
         end
     end
 
-    // M2.
+    // Unstage.
     private action AddFolderItems(PopupMenu menu, Array<MenuItem> added, ProjectTreeItem row, TeamStatus status)
         TreeStageBehavior counter
         integer unstaged = counter:CountUnder(status, row:GetFile(), false)
@@ -117,7 +117,7 @@ class ProjectTreeGitMenu
         end
     end
 
-    // M3. Commit... is there whether or not the status is known yet.
+    // Commit... is there whether or not the status is known yet.
     private action AddProjectItems(PopupMenu menu, Array<MenuItem> added, ProjectTreeItem row, TeamStatus status, boolean known)
         QuorumProject project = row:GetProject()
         if known

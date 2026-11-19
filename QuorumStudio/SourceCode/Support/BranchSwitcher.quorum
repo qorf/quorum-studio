@@ -18,8 +18,8 @@ use Libraries.Development.Versioning.GitProblem
 
 /*
 One Switch Branch or New Branch session: it opens the dialogs, checks for
-unsaved editor text before a switch (B3), queues the switch on the git
-thread, and finishes on the main thread (B2). Main thread only, except
+unsaved editor text before a switch, queues the switch on the git
+thread, and finishes on the main thread. Main thread only, except
 where it says.
 */
 class BranchSwitcher
@@ -53,7 +53,7 @@ class BranchSwitcher
         return changeCount
     end
 
-    // B1.
+    // Opens Switch Branch.
     action OpenSwitchDialog
         if switchDialog = undefined
             SwitchBranchDialog dialog
@@ -63,7 +63,8 @@ class BranchSwitcher
         switchDialog:Show()
     end
 
-    // B4, from Team > New Branch... or from B1's New Branch... button.
+    // Opens New Branch, from Team > New Branch... or from Switch Branch's
+    // New Branch... button.
     action OpenNewBranchDialog
         if switchDialog not= undefined and switchDialog:IsShowing()
             switchDialog:Hide()
@@ -78,7 +79,7 @@ class BranchSwitcher
 
     /*
     This action starts a switch (or a new branch) from either dialog. With
-    unsaved editor text in the project, it asks first (B3).
+    unsaved editor text in the project, it asks first.
     */
     action Begin(SwitchBranchRequest request)
         pending = request
@@ -96,7 +97,7 @@ class BranchSwitcher
         Queue()
     end
 
-    // B3's Save and Switch.
+    // Save and Switch, in the Save Before Switch dialog.
     action SaveAndSwitch
         integer counter = 0
         repeat while counter < dirtyTabs:GetSize()
@@ -107,12 +108,14 @@ class BranchSwitcher
         Queue()
     end
 
-    // B3's Don't Save: switch; the unsaved text stays in its tab.
+    // Don't Save, in the Save Before Switch dialog: switch; the unsaved
+    // text stays in its tab.
     action SwitchWithoutSaving
         Queue()
     end
 
-    // B3's Cancel: back to the dialog the request came from.
+    // Cancel, in the Save Before Switch dialog: back to the dialog the
+    // request came from.
     action CancelSwitch
         pending = undefined
         ShowOrigin()
@@ -167,7 +170,7 @@ class BranchSwitcher
         reporter:ReportProblem(problem)
     end
 
-    // B2: "Switched to level-two." / "Created level-three and switched to it."
+    // "Switched to level-two." / "Created level-three and switched to it."
     private action SuccessSentence(SwitchBranchRequest request, SwitchBranchResult result) returns text
         text name = result:GetBranchName()
         if request not= undefined and request:IsFromNewBranch()
@@ -179,7 +182,7 @@ class BranchSwitcher
         return "Switched to " + name + "."
     end
 
-    // B3: "Can't switch to level-two. These files have changes that the
+    // "Can't switch to level-two. These files have changes that the
     // other branch would overwrite: Hero.quorum. Commit them first (Team >
     // Commit), then switch."
     private action ConflictSentence(SwitchBranchResult result) returns text

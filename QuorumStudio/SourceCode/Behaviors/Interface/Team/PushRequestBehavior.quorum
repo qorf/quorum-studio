@@ -23,14 +23,14 @@ use Libraries.Development.Versioning.GitErrorWording
 use Libraries.Development.Versioning.GitProblem
 
 /*
-Pushes the selected project's branch, on the git thread (Push P1 to P7,
-P9). TeamPushBehavior queues it after bringing the Team tab to the front.
+Pushes the selected project's branch, on the git thread. TeamPushBehavior queues it after bringing the Team tab to the front.
 The Team tab shows what happened; problems open a dialog. Nothing is
 announced to the screen reader, and the Console isn't cleared.
 */
 class PushRequestBehavior is QuorumStudioBehavior
     GitConstants constants
-    // P7 was answered: this push may make the branch on the server.
+    // The new branch question was answered: this push may make the branch
+    // on the server.
     boolean newBranchConfirmed = false
 
     action SetNewBranchConfirmed(boolean value)
@@ -88,13 +88,13 @@ class PushRequestBehavior is QuorumStudioBehavior
         integer count = status:GetCommitsToPushCount()
         integer changes = before:GetChangeCount()
 
-        // P7: a branch's first push asks first.
+        // A branch's first push asks first.
         if not status:HasUpstream() and not newBranchConfirmed
             AskAboutNewBranch(teamTab, branch, remote, count)
             return false
         end
 
-        // P3: nothing to send.
+        // Nothing to send.
         if status:HasUpstream() and count = 0
             ReportNothingToPush(teamTab, status:GetUpstreamBranch(), changes)
             return false
@@ -107,7 +107,7 @@ class PushRequestBehavior is QuorumStudioBehavior
             title = "Pushing " + branch + " to " + remote
         end
 
-        // P1 and P9: progress in the Team tab.
+        // Progress in the Team tab.
         TeamProgressMonitor monitor
         monitor:SetTitle(title)
         teamTab:ShowProgress(monitor)
@@ -144,7 +144,7 @@ class PushRequestBehavior is QuorumStudioBehavior
         return pushed
     end
 
-    // P2: "Sent in the last push, 11:07", with the commits.
+    // "Sent in the last push, 11:07", with the commits.
     private action ReportPushed(TeamTab teamTab, PushResult result, Array<CommitSummary> commits, integer count, integer changes, text branch)
         TeamReporter reporter
         text notSent = UncommittedWords(changes)
@@ -170,7 +170,7 @@ class PushRequestBehavior is QuorumStudioBehavior
         reporter:Report(sentence)
     end
 
-    // P3, in the Team tab's last push group.
+    // Nothing to send, in the Team tab's last push group.
     private action ReportNothingToPush(TeamTab teamTab, text upstream, integer changes)
         TeamReporter reporter
         text sentence = "Nothing to push. " + upstream + " already has all your commits."
@@ -183,7 +183,7 @@ class PushRequestBehavior is QuorumStudioBehavior
         reporter:Report(sentence)
     end
 
-    // P7: the branch isn't on the server yet. Asks before making it there.
+    // The branch isn't on the server yet. Asks before making it there.
     private action AskAboutNewBranch(TeamTab teamTab, text branch, text remote, integer count)
         text commitWords = "with no new commits"
         if count > 0
@@ -200,7 +200,7 @@ class PushRequestBehavior is QuorumStudioBehavior
         reporter:ReportProblem(problem)
     end
 
-    // P4: a teammate pushed first. Nothing was sent.
+    // A teammate pushed first. Nothing was sent.
     private action ReportServerHasNewer(TeamTab teamTab, text target, integer count, text details)
         text notSent = "Your " + teamTab:CountWords(count, "commit", "commits") + " weren't sent."
         if count = 1
@@ -218,7 +218,7 @@ class PushRequestBehavior is QuorumStudioBehavior
         reporter:ReportProblem(problem)
     end
 
-    // P5 and P6.
+    // A problem with the server, or its username and password.
     private action ReportFailure(QuorumProject project, PushResult result, text target)
         integer kind = result:GetErrorKind()
         if kind = constants:ERROR_NONE

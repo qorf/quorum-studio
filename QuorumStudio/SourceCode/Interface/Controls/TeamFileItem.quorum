@@ -10,7 +10,7 @@ use Libraries.Development.Versioning.TeamFileChange
 A changed file's row in the Team tab, under its group: the mark (+ ~ - ?
 !), the file's name, and, muted, its folder and what happened to it. The
 mark is for scanning; the words say the same, and the spoken name says it
-first (A2): "Main.quorum, modified, staged. In Source."
+first: "Main.quorum, modified, staged. In Source."
 */
 class TeamFileItem is ListItem
     TeamFileChange change = undefined
@@ -18,11 +18,11 @@ class TeamFileItem is ListItem
     Label mark
     Label folderDetail
     Label stateDetail
-    // A3: shown when the row is picked.
+    // Shown when the row is picked.
     Label pickMark
-    // A1: "just staged", for a few seconds.
+    // "just staged", for a few seconds.
     Label note
-    // A1: [+] or [-], on the selected or hovered row only.
+    // [+] or [-], on the selected or hovered row only.
     Label stageButton
     boolean picked = false
     boolean selectedNow = false
@@ -50,7 +50,7 @@ class TeamFileItem is ListItem
         mark:SetLeftMargin(28)
         Add(0, mark)
 
-        // Before the mark when the row is picked (A3).
+        // Before the mark when the row is picked.
         pickMark:SetAccessibilityCode(pickMark:parent:Item:NOT_ACCESSIBLE)
         pickMark:SetAcceptsMouseInput(false)
         pickMark:SetPositionOnBaseLine(false)
@@ -126,7 +126,7 @@ class TeamFileItem is ListItem
     end
 
     /*
-    This action marks the row as picked (A3) or not. The name says it, so
+    This action marks the row as picked or not. The name says it, so
     a screen reader reads it with the row.
     */
     action SetPicked(boolean value)
@@ -145,8 +145,8 @@ class TeamFileItem is ListItem
         return picked
     end
 
-    // "just staged" (A1), or "" to hide it. The same note again changes
-    // nothing, so a kept row isn't laid out again (TeamTabSpeed.md, fix 1).
+    // "just staged", or "" to hide it. The same note again changes
+    // nothing, so a kept row isn't laid out again.
     action SetNote(text value)
         if note:GetText() = value
             return now
@@ -161,7 +161,7 @@ class TeamFileItem is ListItem
     end
 
     /*
-    This action gives a kept row (Studio plan TeamTabSpeed.md, fix 1) this
+    This action gives a kept row (one kept across the Team tab's rebuilds) this
     rebuild's change and group. What it shows is the same, so nothing is
     laid out again. A kept row is never picked: the picked rows are emptied
     on a rebuild.
