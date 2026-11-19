@@ -1,12 +1,14 @@
 package Libraries.Development.Versioning
 
 use Libraries.Interface.Behaviors.Behavior
+use Libraries.Containers.Array
 
 /*
 What a problem dialog shows: a title such as "Push to
 origin/main", one plain sentence, JGit's own words for Show Details, and
 an optional main action with its button's name, such as "Pull, then
-Push".
+Push". It can also list lines under the sentence, such as the files in the
+way of a pull, and have a second action, beside the main one.
 */
 class GitProblem
     text title = "Team"
@@ -15,6 +17,9 @@ class GitProblem
     text actionName = ""
     // Not "action": that's a Quorum keyword.
     Behavior mainAction = undefined
+    text secondActionName = ""
+    Behavior secondAction = undefined
+    Array<text> lines
 
     action GetTitle returns text
         return title
@@ -52,5 +57,28 @@ class GitProblem
     action SetAction(text name, Behavior value)
         actionName = name
         mainAction = value
+    end
+
+    action GetSecondActionName returns text
+        return secondActionName
+    end
+
+    action GetSecondAction returns Behavior
+        return secondAction
+    end
+
+    // A second button, before the main one, such as "Commit...".
+    action SetSecondAction(text name, Behavior value)
+        secondActionName = name
+        secondAction = value
+    end
+
+    // A line shown under the sentence, one per label, such as a file.
+    action AddLine(text value)
+        lines:Add(value)
+    end
+
+    action GetLines returns Array<text>
+        return lines
     end
 end

@@ -1,0 +1,102 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.TeamReporter
+use Libraries.Development.Environment.Studio.ProjectFilesRefresher
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.StashResult
+use Libraries.Development.Versioning.GitProblem
+
+/*
+Main thread, after Stash Changes or Restore Stashed Changes: the files on
+disk changed, so open tabs are reloaded (tabs with unsaved text are left
+alone), the Project Tree and its Git marks are refreshed, and the result is
+reported, or the problem dialog opens.
+*/
+class StashDoneBehavior is Behavior
+    QuorumProject project = undefined
+    StashResult result = undefined
+    // True after a restore, false after a stash.
+    boolean restoring = false
+    boolean finished = false
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action Setup(QuorumProject projectValue, StashResult value, boolean restoringValue)
+        project = projectValue
+        result = value
+        restoring = restoringValue
+    end
+
+    action Run(BehaviorEvent event)
+        finished = true
+        if project = undefined or result = undefined
+            return now
+        end
+        TeamReporter reporter
+
+        if result:IsNothingToStash()
+            reporter:Report(result:GetMessage())
+            return now
+        end
+
+        if result:IsKept()
+            Refresh()
+            GitProblem problem
+            problem:SetTitle("Restore Stashed Changes")
+            problem:SetMessage("Couldn't put your stashed changes back cleanly, because they collide with changes made since. Your stashed changes are still saved. Commit or undo the changes in the way, then choose Restore Stashed Changes again.")
+            problem:SetDetails(result:GetMessage())
+            reporter:ReportProblem(problem)
+            return now
+        end
+
+        if not result:IsSuccessful()
+            GitProblem problem
+            if restoring
+                problem:SetTitle("Restore Stashed Changes")
+                problem:SetMessage("Couldn't restore your stashed changes. They're still saved.")
+            else
+                problem:SetTitle("Stash Changes")
+                problem:SetMessage("Couldn't stash your changes. Nothing was changed.")
+            end
+            problem:SetDetails(result:GetMessage())
+            reporter:ReportProblem(problem)
+            return now
+        end
+
+        text more = Refresh()
+        if restoring
+            reporter:Report("Your stashed changes were restored." + more)
+        else
+            reporter:Report("Your changes were stashed, and your files match the last commit. Restore Stashed Changes brings them back." + more)
+        end
+    end
+
+    // Reloads open tabs and the Project Tree; returns the sentence about
+    // the tabs, which starts with a space, or "".
+    private action Refresh returns text
+        ProjectFilesRefresher refresher
+        if not restoring
+            refresher:SetClosedWords("was set aside in the stash, so its tab was closed.", "files were set aside in the stash, so their tabs were closed.")
+        end
+        text more = refresher:Refresh(project)
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        ProjectTree tree = studio:GetProjectTree()
+        if tree not= undefined
+            tree:RefreshGitMarks(project)
+        end
+        return more
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+end

@@ -1,6 +1,7 @@
 package Libraries.Development.Environment.Studio.Interface
 
 use Libraries.Interface.Controls.Dialog
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Controls.TabPane
 use Libraries.Interface.Controls.Tab
@@ -144,6 +145,8 @@ class ProjectPropertiesDialog is Dialog, MouseWheelListener
     TextField passwordTeams
     TextField nameTeams
     TextField emailTeams
+    // The Changes card: whether the Team tab lists the whole repository.
+    Checkbox wholeRepositoryTeams
     
     //variables for the SPIKE tab
 TextField spikeProgramSlot
@@ -436,6 +439,8 @@ TextField spikeProgramSlot
         integer spikeSlot = project:GetPythonSpikeProgramSlot()
         spikeProgramSlot:SetText("" + spikeSlot)
 
+        wholeRepositoryTeams:SetToggleState(project:IsShowingWholeRepository())
+
         if project:HasGitSupport() 
             Credentials credentials = options:GetPassword(project:GetLocation():GetAbsolutePath())
             if credentials not= undefined
@@ -712,7 +717,22 @@ integer slot = cast(integer, value)
         detect error
         end
 
+        boolean wholeRepositoryChanged = (project:IsShowingWholeRepository() not= wholeRepositoryTeams:GetToggleState())
+        project:SetShowWholeRepository(wholeRepositoryTeams:GetToggleState())
+
         project:Save()
+
+        // The Team tab lists the changes again, with or without the ones
+        // outside the project.
+        if wholeRepositoryChanged
+            GameStateManager manager
+            QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+            OutputEditorTabPane outPane = studio:GetOutputPane()
+            TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+            if teamTab not= undefined
+                teamTab:RequestRefresh()
+            end
+        end
 
         if project:HasGitSupport() 
             text user = me:usernameTeams:GetText()
@@ -1128,6 +1148,12 @@ private action CreateSpikeTab returns Tab
         nameTeams = authorCard:AddTextField("Name")
         authorCard:AddLabel("Email")
         emailTeams = authorCard:AddTextField("Email")
+
+        Grouping changesCard = page:AddGrouping("Changes")
+        changesCard:SetTitle("Changes")
+        wholeRepositoryTeams = changesCard:AddCheckbox("Show changes from the whole repository")
+        wholeRepositoryTeams:SetDescription("The Team tab also lists changes outside this project's folder, by their path from the top of the repository.")
+        changesCard:AddLabel("Whole Repository Note", "The Team tab also lists changes outside this project's folder, by their path from the top of the repository.")
 
         Grouping buttonGroup = page:AddGrouping("Confirm")
         Button cancel = buttonGroup:AddButton("Cancel")

@@ -84,10 +84,12 @@ class TeamStageBehavior is Behavior
     end
 
     // Stage all or Unstage all. Sections such as To push aren't git's
-    // groups, and the Conflicts group is staged a file at a time.
+    // groups, and the Conflicts group is staged a file at a time. The
+    // Outside group's Stage all stages only its files not staged yet.
     private action RunOnGroup(TeamGroupItem group)
         text key = group:GetKey()
-        boolean isGitGroup = (key = teamTab:GROUP_STAGED) or (key = teamTab:GROUP_NOT_STAGED) or (key = teamTab:GROUP_UNTRACKED)
+        boolean isOutside = (key = teamTab:GROUP_OUTSIDE)
+        boolean isGitGroup = (key = teamTab:GROUP_STAGED) or (key = teamTab:GROUP_NOT_STAGED) or (key = teamTab:GROUP_UNTRACKED) or isOutside
         if not isGitGroup
             return now
         end
@@ -99,7 +101,16 @@ class TeamStageBehavior is Behavior
             ListItem item = groupRows:Get(index)
             if item is TeamFileItem
                 TeamFileItem fileRow = cast(TeamFileItem, item)
-                rows:Add(fileRow)
+                boolean include = true
+                if isOutside
+                    TeamFileChange rowChange = fileRow:GetChange()
+                    if rowChange:GetGroup() = constants:STAGED
+                        include = false
+                    end
+                end
+                if include
+                    rows:Add(fileRow)
+                end
             end
             index = index + 1
         end

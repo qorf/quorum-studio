@@ -5,15 +5,18 @@ use Libraries.Interface.Controls.Button
 use Libraries.Interface.Forms.Page
 use Libraries.Interface.Forms.Grouping
 use Libraries.Game.Graphics.Label
+use Libraries.Containers.Array
 use Libraries.Development.Versioning.GitProblem
 use Libraries.Development.Environment.Studio.Behaviors.DialogCancelBehavior
 use Libraries.Development.Environment.Studio.Behaviors.GitProblemActionBehavior
 use Libraries.Development.Environment.Studio.Behaviors.GitProblemDetailsBehavior
 
 /*
-A git problem: one plain sentence, Show Details for JGit's own
-words, Close, and an optional main action such as "Pull, then Push" or
-"Open Project Properties". Focus starts on the main action, or on Close.
+A git problem: one plain sentence, any lines under it (such as the files
+in the way of a pull), Show Details for JGit's own words, Close, an
+optional second action, and an optional main action such as "Pull, then
+Push" or "Open Project Properties". Focus starts on the main action, or on
+Close.
 It's made in the Forms style, as ErrorDialog is.
 */
 class GitProblemDialog is Dialog
@@ -22,10 +25,12 @@ class GitProblemDialog is Dialog
     Button closeButton = undefined
     Button detailsButton = undefined
     Button mainButton = undefined
+    Button secondButton = undefined
     text details = ""
 
     DialogCancelBehavior closeBehavior
     GitProblemActionBehavior actionBehavior
+    GitProblemActionBehavior secondBehavior
     GitProblemDetailsBehavior detailsBehavior
 
     on create
@@ -36,12 +41,18 @@ class GitProblemDialog is Dialog
     action Setup(GitProblem problem)
         SetName(problem:GetTitle())
         SetPercentageWidth(0.5)
-        SetPixelHeight(220)
+        Array<text> lines = problem:GetLines()
+        SetPixelHeight(220 + 24 * lines:GetSize())
         closeBehavior:SetDialog(me)
         details = problem:GetDetails()
 
         Page page = InitializeDefaultPage()
         messageLabel = page:AddLabel("Problem", problem:GetMessage())
+        integer lineIndex = 0
+        repeat while lineIndex < lines:GetSize()
+            page:AddLabel("Line " + (lineIndex + 1), lines:Get(lineIndex))
+            lineIndex = lineIndex + 1
+        end
         if details not= ""
             // Empty until Show Details; then JGit's words.
             detailsLabel = page:AddLabel("Details", "")
@@ -58,6 +69,13 @@ class GitProblemDialog is Dialog
         end
         closeButton = buttonGroup:AddButton("Close")
         closeButton:SetBehavior(closeBehavior)
+
+        if problem:GetSecondActionName() not= "" and problem:GetSecondAction() not= undefined
+            secondButton = buttonGroup:AddButton(problem:GetSecondActionName())
+            secondBehavior:SetDialog(me)
+            secondBehavior:SetAction(problem:GetSecondAction())
+            secondButton:SetBehavior(secondBehavior)
+        end
 
         if problem:GetActionName() not= "" and problem:GetAction() not= undefined
             mainButton = buttonGroup:AddButton(problem:GetActionName())

@@ -10,6 +10,7 @@ use Libraries.Containers.Array
 use Libraries.Game.GameStateManager
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Interface.Layouts.LayoutProperties
 
 /*
 A group's row in the Team tab, such as "Staged: in the next commit (2)":
@@ -39,6 +40,10 @@ class TeamGroupItem is ListItem, FoldClickRow
     Label actionHint
     // "Stage all", "Unstage all" or "", for the description.
     text actionWords = ""
+    // How many files Stage all or Unstage all changes, when that isn't
+    // every row (the Outside group stages only its unstaged files); -1
+    // for every row.
+    integer actionCount = -1
     // "Commit..." on the Staged group, a link for the mouse; the
     // group's menu has Commit... too, and Team > Commit's key works anywhere.
     Label commitButton
@@ -156,6 +161,34 @@ class TeamGroupItem is ListItem, FoldClickRow
         RequestLayout()
     end
 
+    /*
+    This action sets how many files Stage all or Unstage all changes, for
+    the row's description, when that isn't every row: the Outside group
+    stages only the files that aren't staged yet. -1 means every row.
+    */
+    action SetActionCount(integer value)
+        actionCount = value
+        Refresh()
+    end
+
+    /*
+    The row sits on the theme's group band, so the groups stand apart from
+    the files under them. A selected row still shows the selection, which
+    is drawn instead of the band.
+    */
+    action LoadGraphics(LayoutProperties properties)
+        parent:ListItem:LoadGraphics(properties)
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options not= undefined
+            OptionsConstants optionsConstants
+            ColorGroup band = options:GetColorProperty(optionsConstants:TEAM_GROUP_BAND_COLOR)
+            if band not= undefined
+                SetBackgroundColor(band)
+            end
+        end
+    end
+
     action IsOnActionButton(number x, number y) returns boolean
         if not actionButton:IsShowing()
             return false
@@ -176,8 +209,21 @@ class TeamGroupItem is ListItem, FoldClickRow
         explanation = explanationValue
         unitOne = one
         unitMany = many
-        if mutedColor not= undefined
-            detail:SetColor(mutedColor)
+        // The count is on the band, where the tabs' muted color is too
+        // faint (3.6 to 1 in the dark theme); the quiet word color keeps
+        // at least 4.5 to 1 on it.
+        ColorGroup countColor = mutedColor
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options not= undefined
+            OptionsConstants optionsConstants
+            ColorGroup wordColor = options:GetColorProperty(optionsConstants:GIT_TREE_WORD_COLOR)
+            if wordColor not= undefined
+                countColor = wordColor
+            end
+        end
+        if countColor not= undefined
+            detail:SetColor(countColor)
         end
 
         ListChevronView view
@@ -297,8 +343,18 @@ class TeamGroupItem is ListItem, FoldClickRow
 
         // What Space does to the group, since its Stage all label is drawn
         // for the mouse and isn't read. Groups without one have none.
-        text fileWords = "all " + count + " " + unitMany
-        if count = 1
+        integer actionFiles = count
+        if actionCount >= 0
+            actionFiles = actionCount
+        end
+        text fileWords = "all " + actionFiles + " " + unitMany
+        if actionCount >= 0 and actionCount < count
+            // Only some of the group's files: "the 2 files not staged yet".
+            fileWords = "the " + actionFiles + " " + unitMany + " not staged yet"
+            if actionFiles = 1
+                fileWords = "the 1 " + unitOne + " not staged yet"
+            end
+        elseif actionFiles = 1
             fileWords = "1 " + unitOne
         end
         if actionWords = "Stage all"

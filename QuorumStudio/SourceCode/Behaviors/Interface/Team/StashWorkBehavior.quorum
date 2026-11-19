@@ -1,0 +1,61 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.StashResult
+use Libraries.Development.Versioning.TeamStatus
+
+/*
+Git thread: Stash Changes. It puts every change in the repository aside,
+reads the status again and posts it to the Team tab, and hands the result
+to the main thread (StashDoneBehavior), which reloads open tabs and
+reports. Stash and Pull keeps this behavior, so the restore after the
+pull puts back the stash this one made (GetResult).
+*/
+class StashWorkBehavior is QuorumStudioBehavior
+    QuorumProject project = undefined
+    text message = ""
+    StashResult result = undefined
+
+    action Setup(QuorumProject projectValue, text messageValue)
+        project = projectValue
+        message = messageValue
+    end
+
+    // What the stash did, once it has run; undefined before.
+    action GetResult returns StashResult
+        return result
+    end
+
+    action Run(BehaviorEvent event)
+        result = undefined
+        if project = undefined
+            return now
+        end
+        if not project:HasGitSupport()
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+
+        Git git
+        result = git:Stash(project:GetGitRepository(), message)
+
+        StatusRequestBehavior reader
+        TeamStatus after = reader:GetStatus(project)
+        TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+        if teamTab not= undefined
+            teamTab:PostStatus(after)
+        end
+
+        StashDoneBehavior done
+        done:Setup(project, result, false)
+        outPane:AddBehavior(done)
+    end
+end

@@ -17,4 +17,21 @@ class Git
     system action IsValidBranchName(text value) returns boolean
     system action OpenRepository(File file) returns Repository
     system action FindRepository(File file) returns Repository
+
+    // Ignoring a file or folder in the .gitignore at the top of the
+    // repository (the Project Tree's Git menu). GetIgnoreLine gives the line
+    // Ignore adds, such as "/Games/Pong/Build/", or "" outside the
+    // repository. IsTracked says whether git tracks it, or anything in it;
+    // Ignore's stopTracking also takes it out of git, keeping it on disk.
+    system action GetIgnoreLine(Repository repo, File file) returns text
+    system action IsIgnored(Repository repo, File file) returns boolean
+    system action IsTracked(Repository repo, File file) returns boolean
+    system action Ignore(Repository repo, File file, boolean stopTracking) returns IgnoreResult
+
+    // Stash puts every change in the repository aside (JGit 5.6.1 can't
+    // stash only some paths). RestoreStash puts a stash back and deletes it,
+    // or keeps it when the changes collide; "" means the newest stash.
+    system action Stash(Repository repo, text message) returns StashResult
+    system action RestoreStash(Repository repo, text stashId) returns StashResult
+    system action CountStashes(Repository repo) returns integer
 end

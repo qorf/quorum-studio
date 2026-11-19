@@ -17,8 +17,11 @@ import java.io.PrintWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -27,6 +30,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.Calendar;
 import java.util.Date;
 import java.text.DateFormat;
@@ -47,6 +51,7 @@ import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.StatusCommand;
 import org.eclipse.jgit.api.errors.CanceledException;
 import org.eclipse.jgit.api.errors.CheckoutConflictException;
+import org.eclipse.jgit.api.errors.StashApplyFailureException;
 import org.eclipse.jgit.api.errors.ConcurrentRefUpdateException;
 import org.eclipse.jgit.api.errors.EmptyCommitException;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -89,6 +94,7 @@ import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.treewalk.WorkingTreeIterator;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
 import quorum.Libraries.Containers.Array_;
 import quorum.Libraries.Development.Versioning.CommitRequest_;
@@ -133,6 +139,10 @@ import quorum.Libraries.Development.Versioning.UnstageResult;
 import quorum.Libraries.Development.Versioning.UnstageResult_;
 import quorum.Libraries.Development.Versioning.ResetResult;
 import quorum.Libraries.Development.Versioning.ResetResult_;
+import quorum.Libraries.Development.Versioning.IgnoreResult;
+import quorum.Libraries.Development.Versioning.IgnoreResult_;
+import quorum.Libraries.Development.Versioning.StashResult;
+import quorum.Libraries.Development.Versioning.StashResult_;
 import quorum.Libraries.Language.Object_;
 import quorum.Libraries.System.File_;
 /**
@@ -382,6 +392,174 @@ public class Git {
             result.message = ex.getMessage();
         }
         return result;
+    }
+
+    /*
+     * The .gitignore line that ignores one file or folder, for the .gitignore
+     * at the top of the repository: its path from the repository's folder,
+     * starting with / so it matches only that path and not the same name
+     * elsewhere, and ending with / for a folder. Empty when the file isn't
+     * inside the repository's folder.
+     */
+    public String GetIgnoreLine(Repository_ quorumRepository, File_ file) {
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            String path = GetRepositoryPath(repository, file);
+            if(path == null) {
+                return "";
+            }
+            return BuildIgnoreLine(path, file.IsDirectory());
+        } catch (NoWorkTreeException ex) {
+            return "";
+        }
+    }
+
+    /*
+     * Whether git already ignores a file or folder, by any rule it reads:
+     * the .gitignore files in its folders, .git/info/exclude, or the user's
+     * global excludes file. A file inside an ignored folder is ignored too.
+     */
+    public boolean IsIgnored(Repository_ quorumRepository, File_ file) {
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            String path = GetRepositoryPath(repository, file);
+            if(path == null) {
+                return false;
+            }
+            // Walks down the folders to the path, one level at a time, and
+            // stops at the first ignored one.
+            try (TreeWalk walk = new TreeWalk(repository)) {
+                walk.addTree(new FileTreeIterator(repository));
+                walk.setFilter(PathFilter.create(path));
+                while(walk.next()) {
+                    WorkingTreeIterator tree = walk.getTree(0, WorkingTreeIterator.class);
+                    if(tree != null && tree.isEntryIgnored()) {
+                        return true;
+                    }
+                    if(walk.getPathString().equals(path)) {
+                        return false;
+                    }
+                    if(walk.isSubtree()) {
+                        walk.enterSubtree();
+                    }
+                }
+            }
+        } catch (IOException | NoWorkTreeException ex) {
+        }
+        return false;
+    }
+
+    /*
+     * Whether git tracks a file, or anything in a folder: it's in the index.
+     * Ignoring something git tracks doesn't stop git tracking it.
+     */
+    public boolean IsTracked(Repository_ quorumRepository, File_ file) {
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            String path = GetRepositoryPath(repository, file);
+            if(path == null) {
+                return false;
+            }
+            DirCache cache = repository.readDirCache();
+            if(file.IsDirectory()) {
+                return cache.getEntriesWithin(path).length > 0;
+            }
+            return cache.findEntry(path) >= 0;
+        } catch (IOException | NoWorkTreeException ex) {
+            return false;
+        }
+    }
+
+    /*
+     * Ignores a file or folder: adds its line (GetIgnoreLine) to the
+     * .gitignore at the top of the repository, making the file if there
+     * isn't one, on a line of its own. With stopTracking, it's also taken
+     * out of the index (git rm --cached), so it leaves the repository in the
+     * next commit; the file stays on disk.
+     */
+    public IgnoreResult_ Ignore(Repository_ quorumRepository, File_ file, boolean stopTracking) {
+        IgnoreResult result = new IgnoreResult();
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            String path = GetRepositoryPath(repository, file);
+            if(path == null) {
+                result.message = "It isn't inside the repository's folder.";
+                return result;
+            }
+            String line = BuildIgnoreLine(path, file.IsDirectory());
+
+            File ignoreFile = new File(repository.getWorkTree(), ".gitignore");
+            String existing = "";
+            if(ignoreFile.exists()) {
+                existing = new String(Files.readAllBytes(ignoreFile.toPath()), StandardCharsets.UTF_8);
+            }
+            // The file's own line endings, so the new line matches.
+            String newline = existing.contains("\r\n") ? "\r\n" : "\n";
+            StringBuilder added = new StringBuilder();
+            if(existing.length() > 0 && !existing.endsWith("\n")) {
+                added.append(newline);
+            }
+            added.append(line).append(newline);
+            Files.write(ignoreFile.toPath(), added.toString().getBytes(StandardCharsets.UTF_8),
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            result.line = line;
+
+            if(stopTracking) {
+                org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+                git.rm().addFilepattern(path).setCached(true).call();
+            }
+            result.successful = true;
+        } catch (GitAPIException | IOException | NoWorkTreeException ex) {
+            result.message = ex.getMessage();
+        }
+        return result;
+    }
+
+    /*
+     * A file's or folder's path from the repository's folder, with / between
+     * folders, or null when it's outside the repository or is its folder.
+     */
+    private String GetRepositoryPath(org.eclipse.jgit.lib.Repository repository, File_ file) {
+        String workTree = repository.getWorkTree().getAbsolutePath().replace('\\', '/');
+        String filePath = file.GetAbsolutePath().replace('\\', '/');
+        if(filePath.startsWith(workTree + "/")) {
+            return filePath.substring(workTree.length() + 1);
+        }
+        return null;
+    }
+
+    /*
+     * A .gitignore line for one path. It starts with /, so # and ! are never
+     * first and need no escape. The characters gitignore reads as patterns
+     * (* ? [ and the backslash) are escaped, as are spaces at the end, which
+     * git would otherwise drop. A folder's line ends with /.
+     */
+    private String BuildIgnoreLine(String path, boolean directory) {
+        StringBuilder line = new StringBuilder("/");
+        for(int i = 0; i < path.length(); i++) {
+            char character = path.charAt(i);
+            if(character == '*' || character == '?' || character == '[' || character == '\\') {
+                line.append('\\');
+            }
+            line.append(character);
+        }
+        String value = line.toString();
+        int end = value.length();
+        while(end > 1 && value.charAt(end - 1) == ' ') {
+            end--;
+        }
+        StringBuilder result = new StringBuilder(value.substring(0, end));
+        for(int i = end; i < value.length(); i++) {
+            result.append("\\ ");
+        }
+        if(directory) {
+            result.append('/');
+        }
+        return result.toString();
     }
 
     /*
@@ -652,6 +830,10 @@ public class Git {
     public PullResult_ Pull(Repository_ quorumRepository, PullRequest_ request) {
         PullResult result = new PullResult();
         Array_ referenceUpdates = result.Get_Libraries_Development_Versioning_PullResult__updates_();
+        // For the list of files in the way, when JGit stops the pull with
+        // an exception.
+        org.eclipse.jgit.lib.Repository pullRepository = null;
+        String pullTracking = null;
         try {
             quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
             org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
@@ -671,6 +853,8 @@ public class Git {
                 return result;
             }
             result.upstreamBranch = Repository.shortenRefName(tracking);
+            pullRepository = repository;
+            pullTracking = tracking;
 
             ObjectId oldHeadTree = repository.resolve(HEAD);
             ObjectId oldHeadCommit = repository.resolve(Constants.HEAD);
@@ -727,6 +911,10 @@ public class Git {
                 }
             }
 
+            if(result.mergeStatus == 4) {
+                AddBlockingPaths(repository, tracking, result);
+            }
+
             // The files the pull changed, for reloading tabs and for L9.
             ObjectId newHeadTree = repository.resolve(HEAD);
             if(oldHeadTree != null && newHeadTree != null && !oldHeadTree.equals(newHeadTree)) {
@@ -743,6 +931,9 @@ public class Git {
             result.mergeStatus = 4;
             if(ex.getConflictingPaths() != null) {
                 ConvertSetToQuorumArray(new java.util.HashSet<String>(ex.getConflictingPaths()), result.failingPaths);
+            }
+            if(pullRepository != null && pullTracking != null) {
+                AddBlockingPaths(pullRepository, pullTracking, result);
             }
         } catch (GitAPIException ex) {
             result.errorKind = GitErrors.Classify(ex, request.HasCredentials());
@@ -1171,6 +1362,167 @@ public class Git {
         return null;
     }
     
+    /*
+     * L5: every file that stops a pull, not only the ones JGit names. A
+     * file is in the way when it's changed here, staged or not, or new, and
+     * the server's commits change it too. The pull already fetched the
+     * server's branch, so this compares trees in the repository; nothing is
+     * contacted. The list is sorted, and keeps JGit's own paths. If the
+     * trees can't be read, JGit's list stays as it is.
+     */
+    private void AddBlockingPaths(org.eclipse.jgit.lib.Repository repository, String tracking, PullResult result) {
+        try {
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+            ObjectId ours = repository.resolve(HEAD);
+            ObjectId theirs = repository.resolve(tracking + "^{tree}");
+            if(ours == null || theirs == null) {
+                return;
+            }
+            Set<String> incoming = new HashSet<>();
+            List<DiffEntry> diffs = GetDifferenceBetweenIDs(git, repository, ours, theirs);
+            if(diffs != null) {
+                for(DiffEntry entry : diffs) {
+                    if(!DiffEntry.DEV_NULL.equals(entry.getOldPath())) {
+                        incoming.add(entry.getOldPath());
+                    }
+                    if(!DiffEntry.DEV_NULL.equals(entry.getNewPath())) {
+                        incoming.add(entry.getNewPath());
+                    }
+                }
+            }
+
+            org.eclipse.jgit.api.Status status = git.status().call();
+            Set<String> local = new HashSet<>();
+            local.addAll(status.getAdded());
+            local.addAll(status.getChanged());
+            local.addAll(status.getRemoved());
+            local.addAll(status.getModified());
+            local.addAll(status.getMissing());
+            local.addAll(status.getUntracked());
+            local.addAll(status.getConflicting());
+
+            Set<String> blocking = new TreeSet<>();
+            Array_ failing = result.failingPaths;
+            for(int i = 0; i < failing.GetSize(); i++) {
+                Object value = failing.Get(i);
+                if(value instanceof quorum.Libraries.Language.Types.Text_) {
+                    blocking.add(((quorum.Libraries.Language.Types.Text_) value).GetValue());
+                }
+            }
+            for(String path : local) {
+                if(incoming.contains(path)) {
+                    blocking.add(path);
+                }
+            }
+            failing.Empty();
+            ConvertSetToQuorumArray(blocking, failing);
+        } catch (IOException | GitAPIException ex) {
+        }
+    }
+
+    /*
+     * Stash: puts every change in the repository aside, staged or not, and
+     * new files too, and returns the files to the last commit (git stash
+     * --include-untracked). JGit 5.6.1 can't stash only some paths. With
+     * nothing to stash, the result says so and nothing changes.
+     */
+    public StashResult_ Stash(Repository_ quorumRepository, String message) {
+        StashResult result = new StashResult();
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+            org.eclipse.jgit.api.StashCreateCommand stash = git.stashCreate();
+            stash.setIncludeUntracked(true);
+            if(message != null && message.length() > 0) {
+                stash.setWorkingDirectoryMessage(message);
+            }
+            RevCommit commit = stash.call();
+            if(commit == null) {
+                result.nothingToStash = true;
+                result.message = "There are no changes to stash.";
+                return result;
+            }
+            result.stashId = commit.getName();
+            result.successful = true;
+        } catch (GitAPIException ex) {
+            result.message = ex.getMessage();
+        }
+        return result;
+    }
+
+    /*
+     * Restore Stashed Changes: puts a stash's changes back into the files
+     * (git stash pop). The stash is the one with stashId, or the newest
+     * when stashId is "". It's deleted only when its changes go back
+     * cleanly; when they collide with changes made since, it's kept and
+     * the result says so.
+     */
+    /*
+     * How many stashes the repository has, so the Git menu offers Restore
+     * Stashed Changes only when there's one. 0 when they can't be read.
+     */
+    public int CountStashes(Repository_ quorumRepository) {
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+            return git.stashList().call().size();
+        } catch (GitAPIException ex) {
+            return 0;
+        }
+    }
+
+    public StashResult_ RestoreStash(Repository_ quorumRepository, String stashId) {
+        StashResult result = new StashResult();
+        try {
+            quorum.Libraries.Development.Versioning.Repository repo = (quorum.Libraries.Development.Versioning.Repository) quorumRepository;
+            org.eclipse.jgit.lib.Repository repository = repo.plugin_.getRepository();
+            org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repository);
+
+            Collection<RevCommit> stashes = git.stashList().call();
+            int index = -1;
+            RevCommit found = null;
+            int position = 0;
+            for(RevCommit stash : stashes) {
+                boolean wanted;
+                if(stashId == null || stashId.length() == 0) {
+                    wanted = (position == 0);
+                } else {
+                    wanted = stash.getName().equals(stashId);
+                }
+                if(wanted) {
+                    index = position;
+                    found = stash;
+                    break;
+                }
+                position++;
+            }
+            if(found == null) {
+                result.nothingToStash = true;
+                result.message = "There are no stashed changes to restore.";
+                return result;
+            }
+            result.stashId = found.getName();
+
+            org.eclipse.jgit.api.StashApplyCommand apply = git.stashApply();
+            apply.setStashRef(found.getName());
+            apply.setRestoreUntracked(true);
+            try {
+                apply.call();
+            } catch (StashApplyFailureException ex) {
+                result.kept = true;
+                result.message = ex.getMessage();
+                return result;
+            }
+            git.stashDrop().setStashRef(index).call();
+            result.successful = true;
+        } catch (GitAPIException ex) {
+            result.message = ex.getMessage();
+        }
+        return result;
+    }
+
     private void ConvertSetToQuorumArray(Set<String> items, Array_ array) {
         if(items == null || array == null) {
             return;

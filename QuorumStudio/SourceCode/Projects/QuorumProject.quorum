@@ -88,6 +88,9 @@ public constant text PYTHON_SPIKE_PROGRAM_SLOT = "PythonSpikeProgramSlot"
     public constant text IMAGE_SHEET_BUILD_PATH = "ImageSheetBuildPath"
     /* This property stores the data for the image sheets themselves. */
     public constant text IMAGE_SHEETS = "ImageSheets"
+    /* This flag tells the Team tab to also list changes elsewhere in the
+        project's Git repository, outside the project's folder. */
+    public constant text GIT_SHOW_WHOLE_REPOSITORY = "GitShowWholeRepository"
 
     /* This property stores the location of any mobile assets. */
     
@@ -552,6 +555,24 @@ public constant text PYTHON_SPIKE_PROGRAM_SLOT = "PythonSpikeProgramSlot"
     /* This action asks whether image sheets are enabled on the project. */
     action IsImageSheetsEnabled returns boolean
         ProjectProperty property = GetProperty(IMAGE_SHEET_ENABLED)
+        return GetBooleanPropertyFirstValue(property)
+    end
+
+    /*
+        This action sets whether the Team tab also lists changes elsewhere in
+        the project's Git repository, outside the project's folder. It's off
+        unless it was turned on.
+    */
+    action SetShowWholeRepository(boolean value)
+        AddProperty(GIT_SHOW_WHOLE_REPOSITORY, "" + value)
+    end
+
+    /*
+        This action returns whether the Team tab also lists changes elsewhere
+        in the project's Git repository, outside the project's folder.
+    */
+    action IsShowingWholeRepository returns boolean
+        ProjectProperty property = GetProperty(GIT_SHOW_WHOLE_REPOSITORY)
         return GetBooleanPropertyFirstValue(property)
     end
 

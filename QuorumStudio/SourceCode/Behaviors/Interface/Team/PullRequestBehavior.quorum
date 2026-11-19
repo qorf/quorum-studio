@@ -25,6 +25,9 @@ behavior TeamPullBehavior was given (Push, for "Pull, then Push").
 class PullRequestBehavior is QuorumStudioBehavior
     QuorumProject project = undefined
     QuorumStudioBehavior afterCleanPull = undefined
+    // Stash and Pull: run on the git thread after any pull, clean or not,
+    // to put the stashed changes back.
+    QuorumStudioBehavior afterEveryPull = undefined
     boolean pulling = false
     GitConstants constants
 
@@ -35,6 +38,15 @@ class PullRequestBehavior is QuorumStudioBehavior
         pulling = true
     end
 
+    /*
+    This action sets a behavior to run on the git thread right after the
+    next pull, however it ended (Stash and Pull puts the stashed changes
+    back). Call it on the main thread, after Prepare.
+    */
+    action SetAfterEveryPull(QuorumStudioBehavior value)
+        afterEveryPull = value
+    end
+
     // A pull is queued or running.
     action IsPulling returns boolean
         return pulling
@@ -43,6 +55,8 @@ class PullRequestBehavior is QuorumStudioBehavior
     action Run(BehaviorEvent event)
         QuorumProject pullProject = project
         QuorumStudioBehavior afterPull = afterCleanPull
+        QuorumStudioBehavior afterAny = afterEveryPull
+        afterEveryPull = undefined
         project = undefined
         afterCleanPull = undefined
         if pullProject = undefined
@@ -90,6 +104,9 @@ class PullRequestBehavior is QuorumStudioBehavior
         outPane:AddBehavior(finish)
         pulling = false
 
+        if afterAny not= undefined
+            afterAny:Run(event)
+        end
         if afterPull not= undefined and IsClean(result)
             afterPull:Run(event)
         end

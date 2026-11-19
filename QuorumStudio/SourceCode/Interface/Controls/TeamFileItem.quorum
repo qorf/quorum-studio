@@ -5,6 +5,9 @@ use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Game.Graphics.Label
 use Libraries.Game.Graphics.ColorGroup
 use Libraries.Development.Versioning.TeamFileChange
+use Libraries.Game.GameStateManager
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Development.Environment.Configuration.OptionsConstants
 
 /*
 A changed file's row in the Team tab, under its group: the mark (+ ~ - ?
@@ -32,6 +35,9 @@ class TeamFileItem is ListItem
     boolean stageable = false
     // The spoken name without "Selected."
     text spokenName = ""
+    // The mark's color for its state (git's added, modified or deleted),
+    // put back when the row stops being selected.
+    ColorGroup markColor = undefined
     TeamFileChange constants
     constant number BUTTON_SLACK = 4
 
@@ -107,8 +113,15 @@ class TeamFileItem is ListItem
 
         mark:SetText(value:GetMark())
         SetText(value:GetFileName())
+        LoadColors(value)
         folderDetail:SetText(value:GetFolder())
-        stateDetail:SetText(value:GetStateWords())
+        // A row outside the project sits in one group with every state,
+        // so it says its group too: "staged, modified".
+        if value:IsOutside()
+            stateDetail:SetText(value:GetGroupWords() + ", " + value:GetStateWords())
+        else
+            stateDetail:SetText(value:GetStateWords())
+        end
 
         // The state comes before the folder, so arrowing through says what
         // matters first.
@@ -123,6 +136,55 @@ class TeamFileItem is ListItem
         spokenName = spoken
         SetName(spoken)
         UpdateDescription()
+    end
+
+    /*
+    The file's name a step softer than the group rows, so the groups stand
+    out, and the mark in its state's color, as in the Project Tree: new and
+    untracked in git's added color, modified in its modified color, deleted
+    and conflicts in its deleted color.
+    */
+    private action LoadColors(TeamFileChange value)
+        GameStateManager gameState
+        InterfaceOptions options = gameState:GetInterfaceOptions()
+        if options = undefined
+            return now
+        end
+        OptionsConstants optionsConstants
+        ColorGroup fileColor = options:GetColorProperty(optionsConstants:TEAM_FILE_COLOR)
+        if fileColor not= undefined
+            SetFontColor(fileColor)
+            if not selectedNow
+                parent:ListItem:label:SetColor(fileColor)
+            end
+        end
+
+        text colorKey = optionsConstants:GIT_MODIFIED_COLOR
+        if value:GetGroup() = constants:CONFLICT or value:GetKind() = constants:DELETED
+            colorKey = optionsConstants:GIT_DELETED_COLOR
+        elseif value:GetGroup() = constants:UNTRACKED or value:GetKind() = constants:NEW_FILE
+            colorKey = optionsConstants:GIT_ADDED_COLOR
+        end
+        markColor = options:GetColorProperty(colorKey)
+        UpdateMarkColor()
+    end
+
+    /*
+    The mark takes the name's color while the row is selected, so it keeps
+    its contrast on the selection; otherwise its state's color.
+    */
+    private action UpdateMarkColor
+        if selectedNow
+            mark:SetColor(parent:ListItem:label:GetFontColor())
+        elseif markColor not= undefined
+            mark:SetColor(markColor)
+        end
+    end
+
+    // The name's color changes with the List's focus; the mark follows it.
+    action RefreshSelectionText
+        parent:ListItem:RefreshSelectionText()
+        UpdateMarkColor()
     end
 
     /*
@@ -216,14 +278,16 @@ class TeamFileItem is ListItem
     end
 
     action GainedSelection
-        parent:ListItem:GainedSelection()
         selectedNow = true
+        parent:ListItem:GainedSelection()
+        UpdateMarkColor()
         UpdateStageButton()
     end
 
     action LostSelection
         parent:ListItem:LostSelection()
         selectedNow = false
+        UpdateMarkColor()
         UpdateStageButton()
     end
 
@@ -267,7 +331,9 @@ class TeamFileItem is ListItem
         if group not= undefined
             groupKey = group:GetKey()
         end
-        return groupKey + ":" + change:GetProjectPath()
+        // The file's own group too: a file outside the project can be in
+        // the Outside group twice, staged and changed again.
+        return groupKey + ":" + change:GetGroup() + ":" + change:GetProjectPath()
     end
 
     // Screen readers count a row among the rows at its depth.

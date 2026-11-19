@@ -11,8 +11,8 @@ use Libraries.Development.Versioning.TeamFileChange
 The Team tab's menu (A4). It's made again each time it opens, for the
 selected row:
 - a file's row: Stage (or Unstage, keeps your changes), then Open, Show in
-  Project Tree, Copy Path and Refresh. With several rows picked, "Stage 2
-  files".
+  Project Tree, Copy Path, Ignore File... and Refresh. With several rows
+  picked, "Stage 2 files" and no Ignore File....
 - a group's row: Stage all (or Unstage all), and Refresh. The Staged
   group's row also has Commit....
 - a row the last pull changed: Open, Show in Project Tree, Copy Path and
@@ -25,6 +25,7 @@ class TeamTabPopupMenu is PopupMenu
     MenuItem openItem
     MenuItem showInTreeItem
     MenuItem copyPathItem
+    MenuItem ignoreItem
     MenuItem refreshItem
     Behavior openBehavior = undefined
     Behavior showInTreeBehavior = undefined
@@ -32,6 +33,7 @@ class TeamTabPopupMenu is PopupMenu
     Behavior refreshBehavior = undefined
     Behavior stageBehavior = undefined
     Behavior unstageBehavior = undefined
+    Behavior ignoreBehavior = undefined
     TeamTab teamTab = undefined
     TeamFileChange constants
     boolean built = false
@@ -50,6 +52,11 @@ class TeamTabPopupMenu is PopupMenu
         unstageBehavior = unstageValue
     end
 
+    // Ignore File... (TeamIgnoreBehavior).
+    action SetIgnore(Behavior value)
+        ignoreBehavior = value
+    end
+
     private action Build
         if not built
             stageItem:SetShortcut("Space")
@@ -66,6 +73,9 @@ class TeamTabPopupMenu is PopupMenu
 
             copyPathItem:SetName("Copy Path")
             copyPathItem:SetBehavior(copyBehavior)
+
+            ignoreItem:SetName("Ignore File...")
+            ignoreItem:SetBehavior(ignoreBehavior)
 
             refreshItem:SetName("Refresh")
             refreshItem:SetBehavior(refreshBehavior)
@@ -127,6 +137,20 @@ class TeamTabPopupMenu is PopupMenu
             Add(openItem)
             Add(showInTreeItem)
             Add(copyPathItem)
+            // One file of git's groups that's still on disk; not a
+            // conflict, and not .gitignore itself.
+            if stageable and count = 1 and ignoreBehavior not= undefined
+                boolean canIgnore = change:GetGroup() not= constants:CONFLICT
+                if canIgnore
+                    canIgnore = change:GetKind() not= constants:DELETED
+                end
+                if canIgnore
+                    canIgnore = change:GetFileName() not= ".gitignore"
+                end
+                if canIgnore
+                    Add(ignoreItem)
+                end
+            end
         end
         Add(refreshItem)
     end

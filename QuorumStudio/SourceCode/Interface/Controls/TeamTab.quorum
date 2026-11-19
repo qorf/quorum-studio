@@ -47,6 +47,7 @@ use Libraries.Development.Environment.Studio.Behaviors.TeamCopyPathBehavior
 use Libraries.Development.Environment.Studio.Behaviors.TeamMenuBehavior
 use Libraries.Development.Environment.Studio.Behaviors.TeamRefreshBehavior
 use Libraries.Development.Environment.Studio.Behaviors.TeamShowInTreeBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TeamIgnoreBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SwitchBranchInterfaceBehavior
 use Libraries.Development.Environment.Studio.Behaviors.TeamStageBehavior
 use Libraries.Development.Environment.Studio.Behaviors.TeamRowClickBehavior
@@ -152,6 +153,7 @@ class TeamTab is Tab
     TeamMenuBehavior menuBehavior
     TeamRefreshBehavior refreshBehavior
     TeamShowInTreeBehavior showInTreeBehavior
+    TeamIgnoreBehavior ignoreBehavior
     OpenPopupMenuBehavior openMenuBehavior
 
     // For TeamStatus's and TeamFileChange's constants.
@@ -182,6 +184,9 @@ class TeamTab is Tab
     public constant text GROUP_STAGED = "Staged"
     public constant text GROUP_NOT_STAGED = "Not staged"
     public constant text GROUP_UNTRACKED = "Untracked"
+    // Changes elsewhere in the repository, outside the project's folder,
+    // listed when the project shows the whole repository.
+    public constant text GROUP_OUTSIDE = "Outside"
     // The push's groups, above git's and above the last pull's (20 and 21).
     public constant text GROUP_TO_PUSH = "To push"
     public constant text GROUP_LAST_PUSH = "Last push"
@@ -386,6 +391,8 @@ class TeamTab is Tab
         pickToggleBehavior:SetTeamTab(me)
         pickToggleBehavior:SetMode(pickToggleBehavior:PICK_TOGGLE)
         menu:SetStaging(me, stageBehavior, unstageBehavior)
+        ignoreBehavior:SetTeamTab(me)
+        menu:SetIgnore(ignoreBehavior)
 
         SetRelatedItem(teamPanel)
         SetFocusTarget(changesList)
@@ -1192,13 +1199,33 @@ class TeamTab is Tab
                 index = index + 1
             end
 
-            if status:GetChangeCount() = 0
+            Array<TeamFileChange> outsideChanges = status:GetOutside()
+            boolean showOutside = false
+            if status:IsShowingWholeRepository()
+                showOutside = not outsideChanges:IsEmpty()
+            end
+
+            if status:GetChangeCount() = 0 and not showOutside
                 AddNothingToCommit(mutedColor)
             else
                 AddChangeGroup(GROUP_CONFLICTS, "Conflicts", "fix, then stage", status:GetConflicts(), mutedColor)
                 AddChangeGroup(GROUP_STAGED, "Staged", "in the next commit", status:GetStaged(), mutedColor)
                 AddChangeGroup(GROUP_NOT_STAGED, "Not staged", "changed, not in the next commit", status:GetNotStaged(), mutedColor)
                 AddChangeGroup(GROUP_UNTRACKED, "Untracked", "new, git isn't saving these", status:GetUntracked(), mutedColor)
+                if showOutside
+                    AddChangeGroup(GROUP_OUTSIDE, "Outside " + status:GetProjectName(), "elsewhere in the repository", outsideChanges, mutedColor)
+                end
+            end
+
+            // With the option off, the changes outside aren't hidden
+            // silently: one line says how many there are.
+            if not status:IsShowingWholeRepository()
+                integer outsideSize = outsideChanges:GetSize()
+                if outsideSize = 1
+                    AddMessage("1 more change is outside " + status:GetProjectName() + ", elsewhere in the repository. To list it, turn on Show changes from the whole repository in Project Properties, on the Teams tab.", mutedColor)
+                elseif outsideSize > 1
+                    AddMessage("" + outsideSize + " more changes are outside " + status:GetProjectName() + ", elsewhere in the repository. To list them, turn on Show changes from the whole repository in Project Properties, on the Teams tab.", mutedColor)
+                end
             end
         end
 
@@ -1255,6 +1282,23 @@ class TeamTab is Tab
             group:SetCommitShown(true)
         elseif key = GROUP_NOT_STAGED or key = GROUP_UNTRACKED
             group:SetActionWords("Stage all")
+        elseif key = GROUP_OUTSIDE
+            // Outside the project, staged and unstaged files share one
+            // group: Stage all stages the ones not staged yet, and shows
+            // only when there are some.
+            integer unstagedCount = 0
+            integer outsideIndex = 0
+            repeat while outsideIndex < changes:GetSize()
+                TeamFileChange outsideChange = changes:Get(outsideIndex)
+                if outsideChange:GetGroup() not= changeConstants:STAGED
+                    unstagedCount = unstagedCount + 1
+                end
+                outsideIndex = outsideIndex + 1
+            end
+            if unstagedCount > 0
+                group:SetActionWords("Stage all")
+                group:SetActionCount(unstagedCount)
+            end
         end
         // A row that just arrived here gets "just staged" or "just
         // unstaged" until the timer in Update runs out.
@@ -1323,6 +1367,7 @@ class TeamTab is Tab
     private action GetShownKey(text groupKey, TeamFileChange change) returns text
         return groupKey + "|" + change:GetProjectPath() + "|" + change:GetMark() + "|"
             + change:GetStateWords() + "|" + change:GetFolder() + "|" + change:IsChangedAgain()
+            + "|" + change:GetGroup()
     end
 
     /*
@@ -1356,6 +1401,8 @@ class TeamTab is Tab
         result = result + AddSignature(GROUP_STAGED, status:GetStaged())
         result = result + AddSignature(GROUP_NOT_STAGED, status:GetNotStaged())
         result = result + AddSignature(GROUP_UNTRACKED, status:GetUntracked())
+        result = result + "|w:" + status:IsShowingWholeRepository()
+        result = result + AddSignature(GROUP_OUTSIDE, status:GetOutside())
         return result
     end
 

@@ -78,6 +78,16 @@ def macIntelJdk = "OpenJDK21U-jdk_x64_mac_hotspot_${bundledJdkFileVersion}.tar.g
 def macArmJdk = "OpenJDK21U-jdk_aarch64_mac_hotspot_${bundledJdkFileVersion}.tar.gz"
 def windowsJdk = "OpenJDK21U-jdk_x64_windows_hotspot_${bundledJdkFileVersion}.zip"
 
+// Gradle's file and archive operations, for use while a task runs (instead of
+// the project's delete, copy, tarTree and zipTree, which can't be used then).
+interface FileOperations {
+    @javax.inject.Inject
+    FileSystemOperations getFiles()
+
+    @javax.inject.Inject
+    ArchiveOperations getArchives()
+}
+
 task downloadJDKsAndCopyToQuorumStudio(type: Download) {
     //download JDKs for Mac aarch64, x86_64 and Windows x86_64
     src ([
@@ -87,35 +97,49 @@ task downloadJDKsAndCopyToQuorumStudio(type: Download) {
     ])
     dest jdkFolder
     overwrite false
+
+    // Everything the task needs is read now, while the build is set up: using
+    // the project while the task runs (in doLast) is deprecated, and fails in
+    // Gradle 10.
+    def operations = project.objects.newInstance(FileOperations)
+    def projectFolder = project.projectDir
+    // A path as a file: absolute ones as they are, others from this folder,
+    // as the project's file() did.
+    def resolve = { String path ->
+        def given = new File(path)
+        return given.isAbsolute() ? given : new File(projectFolder, path)
+    }
+
     doLast {
         println "Cleaning up old files"
-        delete "${jdkFolder}/mac"
-        delete "${jdkFolder}/windows"
+        operations.files.delete {
+            delete resolve("${jdkFolder}/mac"), resolve("${jdkFolder}/windows")
+        }
 
         boolean M1 = true
         println "Deflating jdks"
-        copy {
-            from tarTree(resources.gzip("${jdkFolder}/${macIntelJdk}"))
-            into jdkFolder + "/mac/x64/"
+        operations.files.copy {
+            from operations.archives.tarTree(operations.archives.gzip(resolve("${jdkFolder}/${macIntelJdk}")))
+            into resolve(jdkFolder + "/mac/x64/")
         }
-        copy {
-            from tarTree(resources.gzip("${jdkFolder}/${macArmJdk}"))
-            into jdkFolder + "/mac/aarch64/"
+        operations.files.copy {
+            from operations.archives.tarTree(operations.archives.gzip(resolve("${jdkFolder}/${macArmJdk}")))
+            into resolve(jdkFolder + "/mac/aarch64/")
         }
-        copy {
-            from zipTree("${jdkFolder}/${windowsJdk}")
-            into jdkFolder + "/windows/x64/"
+        operations.files.copy {
+            from operations.archives.zipTree(resolve("${jdkFolder}/${windowsJdk}"))
+            into resolve(jdkFolder + "/windows/x64/")
         }
         print "Copying from Quorum Studio"
-        copy {
-            from 'build/classes/java/main'
-            into 'build/classes'
+        operations.files.copy {
+            from resolve('build/classes/java/main')
+            into resolve('build/classes')
         }
 
         // The JAVA_VERSION in a JDK folder's release file (Contents/Home/release on a Mac,
         // release on Windows), or null if there's no JDK there.
         def installedVersion = { String folder ->
-            def release = [file("${folder}/Contents/Home/release"), file("${folder}/release")].find { it.exists() }
+            def release = [resolve("${folder}/Contents/Home/release"), resolve("${folder}/release")].find { it.exists() }
             def line = release?.readLines()?.find { it.startsWith("JAVA_VERSION=") }
             return line?.substring("JAVA_VERSION=".length())?.replace('"', '')
         }
@@ -130,11 +154,13 @@ task downloadJDKsAndCopyToQuorumStudio(type: Download) {
             }
             if (found != null)
                 println "Replacing JDK ${found} in ${destPath} with ${bundledJdkVersion}."
-            delete destPath
-            mkdir destPath
-            copy {
-                from homePath
-                into destPath
+            operations.files.delete {
+                delete resolve(destPath)
+            }
+            resolve(destPath).mkdirs()
+            operations.files.copy {
+                from resolve(homePath)
+                into resolve(destPath)
             }
             println "Copied JDK ${bundledJdkVersion} into ${destPath}."
         }

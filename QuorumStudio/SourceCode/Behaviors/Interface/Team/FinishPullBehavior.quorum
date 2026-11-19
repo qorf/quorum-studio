@@ -364,31 +364,63 @@ class FinishPullBehavior is Behavior
         reporter:ReportProblem(problem)
     end
 
-    // Nothing was changed; commit first, then pull again.
+    /*
+    Nothing was changed: the server changed files you've also changed but
+    haven't committed. The dialog lists every one of them, by name and
+    folder, and offers Stash and Pull (put your changes aside, pull, put
+    them back) or Commit....
+    */
     private action ReportFilesInTheWay(text title)
         text workTree = GetWorkTree()
         Array<text> paths = result:GetFailingPaths()
-        text names = ""
-        integer index = 0
-        repeat while index < paths:GetSize()
-            File file
-            file:SetAbsolutePath(workTree + "/" + paths:Get(index))
-            if index > 0
-                names = names + ", "
-            end
-            names = names + file:GetFileName()
-            index = index + 1
-        end
 
         GameStateManager manager
         QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
         Behaviors behaviors = studio:GetBehaviors()
         GitProblem problem
         problem:SetTitle(title)
-        problem:SetMessage("Couldn't pull. The server changed files that you've also changed but haven't committed: " + names + ". Commit your changes first, then pull again. Git will combine your work and theirs. Nothing was changed.")
-        problem:SetAction("Commit...", behaviors:GetCommitInterfaceBehavior())
+
+        integer count = paths:GetSize()
+        text countWords = "files"
+        if count = 1
+            countWords = "1 file"
+        elseif count > 1
+            countWords = "" + count + " files"
+        end
+        problem:SetMessage("Couldn't pull. The server changed " + countWords + " that you've also changed but haven't committed. Nothing was changed. Stash and Pull puts your changes aside, pulls, then puts them back. Or commit them first, then pull again.")
+
+        integer index = 0
+        repeat while index < paths:GetSize()
+            text path = paths:Get(index)
+            File file
+            file:SetAbsolutePath(workTree + "/" + path)
+            text line = file:GetFileName()
+            integer slash = LastSlash(path)
+            if slash > 0
+                line = line + ", in " + path:GetSubtext(0, slash)
+            end
+            problem:AddLine(line)
+            index = index + 1
+        end
+
+        StashAndPullBehavior stashAndPull
+        stashAndPull:Setup(project)
+        problem:SetAction("Stash and Pull", stashAndPull)
+        problem:SetSecondAction("Commit...", behaviors:GetCommitInterfaceBehavior())
         TeamReporter reporter
         reporter:ReportProblem(problem)
+    end
+
+    // Where the last / is in a path, or -1.
+    private action LastSlash(text value) returns integer
+        integer index = value:GetSize() - 1
+        repeat while index >= 0
+            if value:GetCharacter(index) = "/"
+                return index
+            end
+            index = index - 1
+        end
+        return -1
     end
 
     /*

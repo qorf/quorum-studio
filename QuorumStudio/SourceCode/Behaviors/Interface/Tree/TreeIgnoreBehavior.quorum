@@ -1,0 +1,85 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Containers.Array
+use Libraries.System.File
+use Libraries.Concurrency.ThreadRunner
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.TeamReporter
+use Libraries.Development.Environment.Studio.Interface.TreeGitConfirmDialog
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.TeamStatus
+
+/*
+Ignore File... and Ignore Folder... in the Project Tree's Git menu. It
+shows the line it will add to the .gitignore at the top of the repository
+and asks first. When git tracks the file, or something in the folder,
+ignoring it alone wouldn't stop git tracking it, so it also stops tracking
+it, keeping it on disk, and the dialog says so. Ignore queues the work on
+the git thread (TreeIgnoreWorkBehavior). The Team tab's Ignore File...
+(TeamIgnoreBehavior) shows the same dialog through Confirm.
+*/
+class TreeIgnoreBehavior is TreeGitBehavior
+
+    action Continue(TeamStatus status)
+        ProjectTreeItem row = GetItem()
+        if row = undefined
+            return now
+        end
+        Confirm(row:GetProject(), row:GetFile())
+    end
+
+    /*
+    This action shows the line it will add to the .gitignore at the top of
+    the repository, and asks first. Main thread.
+    */
+    action Confirm(QuorumProject project, File file)
+        if project = undefined or file = undefined
+            return now
+        end
+
+        text name = file:GetFileName()
+        boolean folder = file:IsDirectory()
+        Git git
+        text line = git:GetIgnoreLine(project:GetGitRepository(), file)
+        TeamReporter reporter
+        if line = ""
+            reporter:Report("Couldn't ignore " + name + ". It isn't inside the repository's folder.")
+            return now
+        end
+        boolean tracked = git:IsTracked(project:GetGitRepository(), file)
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        TreeIgnoreWorkBehavior work
+        work:Setup(project, file, tracked)
+        Behaviors behaviors = studio:GetBehaviors()
+        ThreadRunner runner = behaviors:GetGitRunner()
+        ThreadedBehavior threaded
+        threaded:SetNestedBehavior(work)
+        threaded:SetThreadRunner(runner)
+
+        text kind = "file"
+        text confirmName = "Ignore File"
+        if folder
+            kind = "folder"
+            confirmName = "Ignore Folder"
+        end
+
+        Array<text> lines
+        lines:Add(line)
+        if tracked
+            if folder
+                lines:Add("Git tracks files in " + name + ", so it will also stop tracking them. They leave the repository in your next commit and stay on this computer.")
+            else
+                lines:Add("Git tracks " + name + ", so it will also stop tracking it. It leaves the repository in your next commit and stays on this computer.")
+            end
+        end
+
+        TreeGitConfirmDialog dialog
+        dialog:Setup("Ignore " + name, "Ignore the " + kind + " " + name + "? This line will be added to the .gitignore at the top of the repository:", lines, confirmName, threaded)
+        dialog:Show()
+    end
+end

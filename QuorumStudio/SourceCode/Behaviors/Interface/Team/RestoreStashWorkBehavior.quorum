@@ -1,0 +1,72 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.StashResult
+use Libraries.Development.Versioning.TeamStatus
+
+/*
+Git thread: Restore Stashed Changes. It puts the newest stash back and
+deletes it, or keeps it when its changes collide with changes made since.
+After Stash and Pull it puts back the stash that StashWorkBehavior made,
+and does nothing if that stash wasn't made. Then it reads the status
+again, posts it to the Team tab, and hands the result to the main thread
+(StashDoneBehavior).
+*/
+class RestoreStashWorkBehavior is QuorumStudioBehavior
+    QuorumProject project = undefined
+    StashWorkBehavior source = undefined
+
+    action Setup(QuorumProject projectValue)
+        project = projectValue
+    end
+
+    // Stash and Pull: the stash to put back is the one this one made.
+    action SetSource(StashWorkBehavior value)
+        source = value
+    end
+
+    action Run(BehaviorEvent event)
+        if project = undefined
+            return now
+        end
+        if not project:HasGitSupport()
+            return now
+        end
+
+        text stashId = ""
+        if source not= undefined
+            StashResult made = source:GetResult()
+            if made = undefined
+                return now
+            end
+            if not made:IsSuccessful()
+                return now
+            end
+            stashId = made:GetStashId()
+        end
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+
+        Git git
+        StashResult result = git:RestoreStash(project:GetGitRepository(), stashId)
+
+        StatusRequestBehavior reader
+        TeamStatus after = reader:GetStatus(project)
+        TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+        if teamTab not= undefined
+            teamTab:PostStatus(after)
+        end
+
+        StashDoneBehavior done
+        done:Setup(project, result, true)
+        outPane:AddBehavior(done)
+    end
+end

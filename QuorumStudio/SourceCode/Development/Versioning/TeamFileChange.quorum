@@ -31,6 +31,9 @@ class TeamFileChange
     integer kind = 0
     // On a Not staged row: the file is also staged, and changed since.
     boolean changedAgain = false
+    // Outside the project's folder, elsewhere in the repository. Its
+    // project path is then its path from the top of the repository.
+    boolean outside = false
     File file = undefined
 
     action Setup(text repoPath, text pathInProject, integer groupValue, integer kindValue, File fileValue)
@@ -84,6 +87,14 @@ class TeamFileChange
 
     action SetChangedAgain(boolean value)
         changedAgain = value
+    end
+
+    action IsOutside returns boolean
+        return outside
+    end
+
+    action SetOutside(boolean value)
+        outside = value
     end
 
     // The mark the Team tab shows: + new, ~ modified, - deleted, ? untracked,

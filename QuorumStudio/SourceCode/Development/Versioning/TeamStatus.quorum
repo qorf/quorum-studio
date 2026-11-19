@@ -16,6 +16,11 @@ JGit's lists map to the groups this way:
 - Conflicts: Conflicting. A conflicting file isn't repeated in the other
   groups.
 UncommittedChanges and IgnoredNotInIndex aren't shown.
+
+Changes elsewhere in the repository, outside the project's folder, are kept
+apart (GetOutside), by their path from the top of the repository. The Team
+tab lists them when the project shows the whole repository; the Project
+Tree never uses them.
 */
 class TeamStatus
     // What kind of answer this is.
@@ -44,8 +49,12 @@ class TeamStatus
     // How many changed rows are in each project-relative folder and the
     // folders under it. The project's own folder is "".
     HashTable<text, integer> folderCounts
-    // Changed files elsewhere in the repository, left out.
+    // Changed files elsewhere in the repository, left out of the groups.
     integer outsideCount = 0
+    // Those changes, in every group, for the Team tab.
+    Array<TeamFileChange> outside
+    // Whether the project lists the whole repository in the Team tab.
+    boolean showWholeRepository = false
 
     action SetNoProject
         state = NO_PROJECT
@@ -95,6 +104,50 @@ class TeamStatus
             end
             index = index + 1
         end
+
+        // The same, for the changes outside the project.
+        index = 0
+        repeat while index < outside:GetSize()
+            TeamFileChange change = outside:Get(index)
+            if change:GetGroup() = constants:NOT_STAGED
+                if IsOutsideInGroup(change:GetRepositoryPath(), constants:STAGED)
+                    change:SetChangedAgain(true)
+                end
+            end
+            index = index + 1
+        end
+    end
+
+    /*
+    A change outside the project's folder, kept apart by its path from the
+    top of the repository. A conflicting file is shown once, as a conflict.
+    */
+    private action AddOutside(text repositoryPath, integer group, integer kind)
+        if group not= constants:CONFLICT
+            if IsOutsideInGroup(repositoryPath, constants:CONFLICT)
+                return now
+            end
+        end
+        File file
+        file:SetAbsolutePath(result:GetWorkTreePath() + "/" + repositoryPath)
+        TeamFileChange change
+        change:Setup(repositoryPath, repositoryPath, group, kind, file)
+        change:SetOutside(true)
+        outside:Add(change)
+    end
+
+    private action IsOutsideInGroup(text repositoryPath, integer group) returns boolean
+        integer index = 0
+        repeat while index < outside:GetSize()
+            TeamFileChange change = outside:Get(index)
+            if change:GetGroup() = group
+                if change:GetRepositoryPath() = repositoryPath
+                    return true
+                end
+            end
+            index = index + 1
+        end
+        return false
     end
 
     private action AddAll(Array<text> paths, integer group, integer kind)
@@ -104,6 +157,7 @@ class TeamStatus
             index = index + 1
             if not repositoryPath:StartsWith(prefix)
                 outsideCount = outsideCount + 1
+                AddOutside(repositoryPath, group, kind)
             elseif group not= constants:CONFLICT and IsInGroup(repositoryPath:GetSubtext(prefix:GetSize()), constants:CONFLICT)
                 // Shown once, as a conflict.
             else
@@ -233,6 +287,27 @@ class TeamStatus
 
     action GetOutsideCount returns integer
         return outsideCount
+    end
+
+    /*
+    This action returns the changes elsewhere in the repository, outside the
+    project's folder, in every group. Their project paths are their paths
+    from the top of the repository.
+    */
+    action GetOutside returns Array<TeamFileChange>
+        return outside
+    end
+
+    /*
+    This action sets whether the Team tab lists the changes outside the
+    project (the project's Show changes from the whole repository).
+    */
+    action SetShowWholeRepository(boolean value)
+        showWholeRepository = value
+    end
+
+    action IsShowingWholeRepository returns boolean
+        return showWholeRepository
     end
 
     /*

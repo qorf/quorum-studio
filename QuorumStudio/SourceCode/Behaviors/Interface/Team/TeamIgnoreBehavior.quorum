@@ -1,0 +1,53 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.System.File
+use Libraries.Development.Versioning.TeamFileChange
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.StudioFocusManager
+use Libraries.Development.Environment.Projects.Project
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+
+/*
+Ignore File... in the Team tab's menu, for the selected file. It shows the
+same dialog as the Project Tree's Ignore File... (TreeIgnoreBehavior): the
+line it will add to the .gitignore at the top of the repository, and, when
+git tracks the file, that git will stop tracking it too.
+*/
+class TeamIgnoreBehavior is Behavior
+    TeamTab teamTab = undefined
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action SetTeamTab(TeamTab tab)
+        teamTab = tab
+    end
+
+    action Run(BehaviorEvent event)
+        if teamTab = undefined
+            return now
+        end
+        TeamFileChange change = teamTab:GetSelectedChange()
+        if change = undefined or change:GetFile() = undefined
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        StudioFocusManager focus = studio:GetStudioFocusManager()
+        Project project = focus:GetProjectFocus()
+        if not (project is QuorumProject)
+            return now
+        end
+        QuorumProject quorumProject = cast(QuorumProject, project)
+        if not quorumProject:HasGitSupport()
+            return now
+        end
+        TreeIgnoreBehavior ignore
+        ignore:Confirm(quorumProject, change:GetFile())
+    end
+end

@@ -1,0 +1,55 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Concurrency.ThreadRunner
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+
+/*
+Stash and Pull, from the dialog for a pull your uncommitted changes are in
+the way of. Main thread. Three steps go on the git thread, which runs them
+in order: stash every change (StashWorkBehavior), pull (PullRequestBehavior,
+as Team > Pull does), then put the stash back (RestoreStashWorkBehavior),
+however the pull ended. The restore puts back only the stash this made, and
+does nothing if the stash wasn't made.
+*/
+class StashAndPullBehavior is Behavior
+    QuorumProject project = undefined
+
+    action Setup(QuorumProject value)
+        project = value
+    end
+
+    action Run(BehaviorEvent event)
+        if project = undefined
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        Behaviors behaviors = studio:GetBehaviors()
+        PullRequestBehavior pullRequest = behaviors:GetPullRequestBehavior()
+        if pullRequest:IsPulling()
+            return now
+        end
+
+        StashWorkBehavior stash
+        stash:Setup(project, "Stashed before pulling")
+        RestoreStashWorkBehavior restore
+        restore:Setup(project)
+        restore:SetSource(stash)
+
+        ThreadRunner runner = behaviors:GetGitRunner()
+        runner:Add(stash)
+
+        // The progress and the result show in the Team tab.
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+        outPane:GetTeamTab()
+        pullRequest:Prepare(project, undefined)
+        pullRequest:SetAfterEveryPull(restore)
+        ThreadedBehavior threaded = behaviors:GetThreadedPullRequestBehavior()
+        threaded:Run(event)
+    end
+end

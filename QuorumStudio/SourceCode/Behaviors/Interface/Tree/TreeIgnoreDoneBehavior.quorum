@@ -1,0 +1,70 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.System.File
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.TeamReporter
+use Libraries.Development.Environment.Projects.ProjectTree
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.IgnoreResult
+use Libraries.Development.Versioning.GitProblem
+
+/*
+Main thread, after Ignore File or Ignore Folder: refreshes the tree's Git
+marks and reports "Build is now ignored." (one Console line when the Team
+tab isn't showing), or opens the problem dialog when it couldn't be done.
+*/
+class TreeIgnoreDoneBehavior is Behavior
+    QuorumProject project = undefined
+    File file = undefined
+    boolean stoppedTracking = false
+    IgnoreResult result = undefined
+    boolean finished = false
+
+    on create
+        SetRunOnUpdate(true)
+    end
+
+    action Setup(QuorumProject projectValue, File fileValue, boolean stoppedTrackingValue, IgnoreResult value)
+        project = projectValue
+        file = fileValue
+        stoppedTracking = stoppedTrackingValue
+        result = value
+    end
+
+    action Run(BehaviorEvent event)
+        finished = true
+        if project = undefined or file = undefined
+            return now
+        end
+        text name = file:GetFileName()
+        TeamReporter reporter
+        if result = undefined or not result:IsSuccessful()
+            GitProblem problem
+            problem:SetTitle("Ignore")
+            problem:SetMessage("Couldn't ignore " + name + ".")
+            if result not= undefined
+                problem:SetDetails(result:GetMessage())
+            end
+            reporter:ReportProblem(problem)
+            return now
+        end
+
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        ProjectTree tree = studio:GetProjectTree()
+        tree:RefreshGitMarks(project)
+
+        if stoppedTracking
+            reporter:Report(name + " is now ignored, and git stops tracking it in your next commit.")
+        else
+            reporter:Report(name + " is now ignored.")
+        end
+    end
+
+    action IsFinished returns boolean
+        return finished
+    end
+end

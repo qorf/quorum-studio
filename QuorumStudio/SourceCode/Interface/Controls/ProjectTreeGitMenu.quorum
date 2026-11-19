@@ -11,22 +11,27 @@ use Libraries.Development.Environment.Studio.QuorumStudio
 use Libraries.Development.Environment.Studio.Behaviors.TreeStageBehavior
 use Libraries.Development.Environment.Studio.Behaviors.TreeResetBehavior
 use Libraries.Development.Environment.Studio.Behaviors.TreeCommitBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TreeIgnoreBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TreeStashBehavior
+use Libraries.Development.Environment.Studio.Behaviors.TreeRestoreStashBehavior
+use Libraries.Development.Versioning.Git
 use Libraries.Development.Versioning.TeamStatus
 use Libraries.Development.Versioning.TeamFileChange
 
 /*
-The Project Tree's Git section, last in a row's menu, only
-for a project in Git, and only the items that fit the row's state; nothing
-is greyed out. It's built each time the menu opens, from the tree's last
-status. Before the tree has a status for the project, only Commit... on
-the project's row is offered, and a status is asked for, so the next time
-the menu opens it has the rest.
+The Project Tree's Git submenu, last in a row's menu, only for a project
+in Git, and only the items that fit the row's state; nothing is greyed
+out. With nothing to offer, there's no Git item at all. It's built each
+time the menu opens, from the tree's last status. Before the tree has a
+status for the project, only Commit... on the project's row and Ignore
+File... or Ignore Folder... are offered, and a status is asked for, so
+the next time the menu opens it has the rest.
 */
 class ProjectTreeGitMenu
     /*
-    This action adds the Git items for a row to a menu, and returns them so
-    a kept menu (the project's row) can take them off next time. A row
-    whose project isn't in Git gets none.
+    This action adds the Git submenu for a row to a menu, and returns it so
+    a kept menu (the project's row) can take it off next time. A row whose
+    project isn't in Git, or with nothing to offer, gets none.
     */
     action AddItems(PopupMenu menu, ProjectTreeItem row) returns Array<MenuItem>
         Array<MenuItem> added
@@ -51,21 +56,37 @@ class ProjectTreeGitMenu
             tree:RefreshGitMarks(project)
         end
 
+        // The submenu goes on the menu before its items: a submenu shows its
+        // arrow only if it has a parent menu when its first item is added.
+        MenuItem gitItem
+        gitItem:SetName("Git")
+        menu:Add(gitItem)
+
         boolean isProjectRow = (row:GetParentTreeItem() = undefined)
         if isProjectRow
-            AddProjectItems(menu, added, row, status, known)
+            AddProjectItems(gitItem, row, status, known)
         elseif file:IsDirectory()
             if known
-                AddFolderItems(menu, added, row, status)
+                AddFolderItems(gitItem, row, status)
             end
-        elseif known
-            AddFileItems(menu, added, row, status)
+            AddIgnoreItem(gitItem, row)
+        else
+            if known
+                AddFileItems(gitItem, row, status)
+            end
+            AddIgnoreItem(gitItem, row)
+        end
+
+        if gitItem:IsEmpty()
+            menu:Remove(gitItem)
+        else
+            added:Add(gitItem)
         end
         return added
     end
 
     // Stage and Reset to Last Commit.
-    private action AddFileItems(PopupMenu menu, Array<MenuItem> added, ProjectTreeItem row, TeamStatus status)
+    private action AddFileItems(MenuItem gitItem, ProjectTreeItem row, TeamStatus status)
         File file = row:GetFile()
         TreeStageBehavior counter
         Array<TeamFileChange> unstagedRows = counter:GetFileChanges(status, file, false)
@@ -78,28 +99,28 @@ class ProjectTreeGitMenu
             stage:SetItem(row)
             stage:SetUnstage(false)
             if hasStaged
-                AddItem(menu, added, "Stage Changes Since", stage)
+                AddItem(gitItem, "Stage Changes Since", stage)
             else
-                AddItem(menu, added, "Stage", stage)
+                AddItem(gitItem, "Stage", stage)
             end
         end
         if hasStaged
             TreeStageBehavior unstage
             unstage:SetItem(row)
             unstage:SetUnstage(true)
-            AddItem(menu, added, "Unstage (keeps your changes)", unstage)
+            AddItem(gitItem, "Unstage (keeps your changes)", unstage)
         end
 
         // Only a file in the last commit that has changes.
         TreeResetBehavior reset
         if reset:CanReset(status:GetChanges(file))
             reset:SetItem(row)
-            AddItem(menu, added, "Reset to Last Commit...", reset)
+            AddItem(gitItem, "Reset to Last Commit...", reset)
         end
     end
 
     // Unstage.
-    private action AddFolderItems(PopupMenu menu, Array<MenuItem> added, ProjectTreeItem row, TeamStatus status)
+    private action AddFolderItems(MenuItem gitItem, ProjectTreeItem row, TeamStatus status)
         TreeStageBehavior counter
         integer unstaged = counter:CountUnder(status, row:GetFile(), false)
         integer staged = counter:CountUnder(status, row:GetFile(), true)
@@ -107,18 +128,18 @@ class ProjectTreeGitMenu
             TreeStageBehavior stage
             stage:SetItem(row)
             stage:SetUnstage(false)
-            AddItem(menu, added, "Stage Folder (" + CountWords(unstaged, "change", "changes") + ")", stage)
+            AddItem(gitItem, "Stage Folder (" + CountWords(unstaged, "change", "changes") + ")", stage)
         end
         if staged > 0
             TreeStageBehavior unstage
             unstage:SetItem(row)
             unstage:SetUnstage(true)
-            AddItem(menu, added, "Unstage Folder (" + staged + " staged)", unstage)
+            AddItem(gitItem, "Unstage Folder (" + staged + " staged)", unstage)
         end
     end
 
     // Commit... is there whether or not the status is known yet.
-    private action AddProjectItems(PopupMenu menu, Array<MenuItem> added, ProjectTreeItem row, TeamStatus status, boolean known)
+    private action AddProjectItems(MenuItem gitItem, ProjectTreeItem row, TeamStatus status, boolean known)
         QuorumProject project = row:GetProject()
         if known
             TreeStageBehavior counter
@@ -127,20 +148,60 @@ class ProjectTreeGitMenu
                 TreeStageBehavior stage
                 stage:SetItem(row)
                 stage:SetUnstage(false)
-                AddItem(menu, added, "Stage All Changes (" + unstaged + ")", stage)
+                AddItem(gitItem, "Stage All Changes (" + unstaged + ")", stage)
             end
         end
         TreeCommitBehavior commitBehavior
         commitBehavior:SetProject(project)
-        AddItem(menu, added, "Commit...", commitBehavior)
+        AddItem(gitItem, "Commit...", commitBehavior)
+
+        // Stash Changes... when there's anything to stash, in the project
+        // or elsewhere in the repository (git stashes all of it).
+        if known
+            integer changes = status:GetChangeCount() + status:GetOutside():GetSize()
+            if changes > 0
+                TreeStashBehavior stash
+                stash:SetItem(row)
+                AddItem(gitItem, "Stash Changes...", stash)
+            end
+        end
+        // Restore Stashed Changes when there's a stash.
+        Git git
+        if git:CountStashes(project:GetGitRepository()) > 0
+            TreeRestoreStashBehavior restore
+            restore:SetItem(row)
+            AddItem(gitItem, "Restore Stashed Changes", restore)
+        end
     end
 
-    private action AddItem(PopupMenu menu, Array<MenuItem> added, text name, Behavior behavior)
+    /*
+    Ignore File... or Ignore Folder...: for any file or folder git doesn't
+    already ignore, whether or not it has changes. Not for .gitignore itself.
+    */
+    private action AddIgnoreItem(MenuItem gitItem, ProjectTreeItem row)
+        QuorumProject project = row:GetProject()
+        File file = row:GetFile()
+        if file:GetFileName() = ".gitignore"
+            return now
+        end
+        Git git
+        if git:IsIgnored(project:GetGitRepository(), file)
+            return now
+        end
+        TreeIgnoreBehavior ignore
+        ignore:SetItem(row)
+        if file:IsDirectory()
+            AddItem(gitItem, "Ignore Folder...", ignore)
+        else
+            AddItem(gitItem, "Ignore File...", ignore)
+        end
+    end
+
+    private action AddItem(MenuItem gitItem, text name, Behavior behavior)
         MenuItem item
         item:SetName(name)
         item:SetBehavior(behavior)
-        menu:Add(item)
-        added:Add(item)
+        gitItem:Add(item)
     end
 
     private action CountWords(integer count, text one, text many) returns text

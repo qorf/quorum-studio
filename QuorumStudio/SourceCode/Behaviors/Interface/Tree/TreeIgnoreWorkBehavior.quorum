@@ -1,0 +1,57 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.System.File
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.OutputEditorTabPane
+use Libraries.Development.Environment.Studio.Interface.TeamTab
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.Git
+use Libraries.Development.Versioning.IgnoreResult
+use Libraries.Development.Versioning.TeamStatus
+
+/*
+Git thread: Ignore File or Ignore Folder, after the user said yes. It adds
+the line to the .gitignore at the top of the repository, and stops git
+tracking the file when it did. Then it reads the status again and posts it
+to the Team tab, and hands the result to the main thread
+(TreeIgnoreDoneBehavior), which refreshes the tree's marks and reports.
+*/
+class TreeIgnoreWorkBehavior is QuorumStudioBehavior
+    QuorumProject project = undefined
+    File file = undefined
+    boolean stopTracking = false
+
+    action Setup(QuorumProject projectValue, File fileValue, boolean stopTrackingValue)
+        project = projectValue
+        file = fileValue
+        stopTracking = stopTrackingValue
+    end
+
+    action Run(BehaviorEvent event)
+        if project = undefined or file = undefined
+            return now
+        end
+        if not project:HasGitSupport()
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        OutputEditorTabPane outPane = studio:GetOutputPane()
+
+        Git git
+        IgnoreResult result = git:Ignore(project:GetGitRepository(), file, stopTracking)
+
+        StatusRequestBehavior reader
+        TeamStatus after = reader:GetStatus(project)
+        TeamTab teamTab = outPane:GetTeamTabWithoutOpening()
+        if teamTab not= undefined
+            teamTab:PostStatus(after)
+        end
+
+        TreeIgnoreDoneBehavior done
+        done:Setup(project, file, stopTracking, result)
+        outPane:AddBehavior(done)
+    end
+end

@@ -1,0 +1,36 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Concurrency.ThreadRunner
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Projects.ProjectTreeItem
+use Libraries.Development.Environment.Projects.Quorum.QuorumProject
+use Libraries.Development.Versioning.TeamStatus
+
+/*
+Restore Stashed Changes on the project's row in the Project Tree's Git
+menu. It puts the newest stash back and deletes it, or keeps it when its
+changes collide with changes made since. Nothing is lost either way, so it
+doesn't ask first; the work goes on the git thread
+(RestoreStashWorkBehavior).
+*/
+class TreeRestoreStashBehavior is TreeGitBehavior
+
+    action Continue(TeamStatus status)
+        ProjectTreeItem row = GetItem()
+        if row = undefined
+            return now
+        end
+        QuorumProject project = row:GetProject()
+        if project = undefined
+            return now
+        end
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        RestoreStashWorkBehavior work
+        work:Setup(project)
+        Behaviors behaviors = studio:GetBehaviors()
+        ThreadRunner runner = behaviors:GetGitRunner()
+        runner:Add(work)
+    end
+end
