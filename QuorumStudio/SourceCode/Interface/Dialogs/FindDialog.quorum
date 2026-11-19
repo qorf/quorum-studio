@@ -481,7 +481,14 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
                     if blockSelection not= undefined
                         Block block = blockSelection:GetBlock()
                         selectedBlock = block
-                        selectedLine = block:GetStartLine()
+                        // At the very top of the file the selection has no
+                        // block (CodeEditorSelection:SetToTopOfFile), so
+                        // there's no line to return to; -1 means none.
+                        if block not= undefined
+                            selectedLine = block:GetStartLine()
+                        else
+                            selectedLine = -1
+                        end
                     end
                 end
             elseif event:GetSelection() is TabPaneSelection
