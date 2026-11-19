@@ -494,6 +494,12 @@ class FindDialog is Dialog, TextChangeListener, SelectionListener, TabChangeList
             elseif event:GetSelection() is TabPaneSelection
 TabPaneSelection selection = tabPane:GetSelection()
             Tab tab = selection:GetTab()
+            // A tab that isn't code, such as a scene, has nothing to search,
+            // and a scene's view would draw over the dialog, so it closes.
+            if tab not= undefined and not (tab is EditorTab)
+                Hide()
+                return now
+            end
             if tab not= undefined and tab is EditorTab
                 EditorTab t = cast(EditorTab, tab)
                 TextBox box = t:GetTextBox()
