@@ -1,5 +1,6 @@
 package Libraries.Development.Environment.Studio.Interface
 
+use Libraries.Interface.Controls.PopupMenu
 use Libraries.Interface.Controls.Tab
 use Libraries.System.File
 use Libraries.Containers.Array
@@ -269,5 +270,18 @@ class VisualEditorTab is Tab
     action GetSceneEditor returns SceneEditor
         // The related item is now the container around the editor.
         return editor
+    end
+
+    /*
+        Returns the tab's right-click menu: Close, Close All and Close Other.
+
+        Attribute: Returns The menu.
+    */
+    action GetPopupMenu returns PopupMenu
+        if parent:Control:contextMenu not= undefined
+            return parent:Control:contextMenu
+        end
+        EditorTabMenu menu
+        return menu:Make(me)
     end
 end

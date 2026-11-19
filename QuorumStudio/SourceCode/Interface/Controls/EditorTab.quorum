@@ -202,34 +202,17 @@ GameStateManager manager
         timeSinceDirty = timeSinceDirty + seconds
     end
 
-   action GetPopupMenu returns PopupMenu
+    /*
+        Returns the tab's right-click menu: Close, Close All and Close Other.
+
+        Attribute: Returns The menu.
+    */
+    action GetPopupMenu returns PopupMenu
         if parent:Control:contextMenu not= undefined
             return parent:Control:contextMenu
         end
-
-        PopupMenu tabContextMenu
-        TabCloseBehavior tabCloseBehavior
-        MenuItem closeTabMenuItem
-        tabCloseBehavior:SetTab(me)
-        closeTabMenuItem:SetName("Close")
-        closeTabMenuItem:SetBehavior(tabCloseBehavior)
-        tabContextMenu:Add(closeTabMenuItem)
-
-        CloseAllEditorTabsBehavior closeAllTabsBehavior
-        MenuItem closeAllTabsMenuItem
-        closeAllTabsBehavior:SetEditorTab(me)
-        closeAllTabsMenuItem:SetName("Close All")
-        closeAllTabsMenuItem:SetBehavior(closeAllTabsBehavior)
-        tabContextMenu:Add(closeAllTabsMenuItem)
-
-        CloseAllOtherEditorTabsBehavior closeAllOtherTabsBehavior
-        MenuItem closeAllOtherTabsMenuItem
-        closeAllOtherTabsBehavior:SetTab(me)
-        closeAllOtherTabsMenuItem:SetName("Close Other")
-        closeAllOtherTabsMenuItem:SetBehavior(closeAllOtherTabsBehavior)
-        tabContextMenu:Add(closeAllOtherTabsMenuItem)
-
-        return tabContextMenu
+        EditorTabMenu menu
+        return menu:Make(me)
     end
 
     action SetExitFlag(integer exitFlag)

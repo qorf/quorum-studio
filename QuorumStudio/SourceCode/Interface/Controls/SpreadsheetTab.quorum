@@ -1,5 +1,6 @@
 package Libraries.Development.Environment.Studio.Interface
 
+use Libraries.Interface.Controls.PopupMenu
 use Libraries.Interface.Controls.Tab
 use Libraries.Interface.Controls.Spreadsheet
 use Libraries.Interface.Controls.Support.SpreadsheetFileProblem
@@ -144,5 +145,18 @@ class SpreadsheetTab is Tab, SpreadsheetListener
             return studio:GetDiskChangeChecker()
         end
         return undefined
+    end
+
+    /*
+        Returns the tab's right-click menu: Close, Close All and Close Other.
+
+        Attribute: Returns The menu.
+    */
+    action GetPopupMenu returns PopupMenu
+        if parent:Control:contextMenu not= undefined
+            return parent:Control:contextMenu
+        end
+        EditorTabMenu menu
+        return menu:Make(me)
     end
 end

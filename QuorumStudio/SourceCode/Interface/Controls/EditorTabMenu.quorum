@@ -1,0 +1,49 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.Tab
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Interface.Behaviors.Controls.TabCloseBehavior
+use Libraries.Interface.Behaviors.Controls.CloseAllEditorTabsBehavior
+use Libraries.Interface.Behaviors.Controls.CloseAllOtherEditorTabsBehavior
+
+/*
+    The EditorTabMenu makes the right-click menu of a tab in the editor area:
+    Close, Close All and Close Other. Code, scene, model preview and
+    spreadsheet tabs all use it, so they all have the same menu.
+*/
+class EditorTabMenu
+
+    /*
+        Makes the right-click menu for a tab.
+
+        Attribute: Parameter tab The tab the menu belongs to.
+        Attribute: Returns The menu, with Close, Close All and Close Other.
+    */
+    action Make(Tab tab) returns PopupMenu
+        PopupMenu tabContextMenu
+
+        TabCloseBehavior tabCloseBehavior
+        MenuItem closeTabMenuItem
+        tabCloseBehavior:SetTab(tab)
+        closeTabMenuItem:SetName("Close")
+        closeTabMenuItem:SetBehavior(tabCloseBehavior)
+        tabContextMenu:Add(closeTabMenuItem)
+
+        CloseAllEditorTabsBehavior closeAllTabsBehavior
+        MenuItem closeAllTabsMenuItem
+        closeAllTabsBehavior:SetTab(tab)
+        closeAllTabsMenuItem:SetName("Close All")
+        closeAllTabsMenuItem:SetBehavior(closeAllTabsBehavior)
+        tabContextMenu:Add(closeAllTabsMenuItem)
+
+        CloseAllOtherEditorTabsBehavior closeAllOtherTabsBehavior
+        MenuItem closeAllOtherTabsMenuItem
+        closeAllOtherTabsBehavior:SetTab(tab)
+        closeAllOtherTabsMenuItem:SetName("Close Other")
+        closeAllOtherTabsMenuItem:SetBehavior(closeAllOtherTabsBehavior)
+        tabContextMenu:Add(closeAllOtherTabsMenuItem)
+
+        return tabContextMenu
+    end
+end
