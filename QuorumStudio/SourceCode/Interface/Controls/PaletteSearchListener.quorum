@@ -1,0 +1,48 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Events.TextChangeListener
+use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Scenes.ScenePalette
+
+/*
+    The PaletteSearchListener hears the palette's search field change and
+    asks the scene palette to show only the items that match its words.
+*/
+class PaletteSearchListener is TextChangeListener
+    TextField field = undefined
+    ScenePalette palette = undefined
+
+    /*
+        Sets the search field whose words are searched for.
+
+        Attribute: Parameter searchField The palette's search field.
+    */
+    action SetField(TextField searchField)
+        field = searchField
+    end
+
+    /*
+        Sets the palette that is searched.
+
+        Attribute: Parameter scenePalette The palette to search.
+    */
+    action SetPalette(ScenePalette scenePalette)
+        palette = scenePalette
+    end
+
+    /*
+        Returns the palette that is searched.
+
+        Attribute: Returns The palette, or undefined if none is set.
+    */
+    action GetPalette returns ScenePalette
+        return palette
+    end
+
+    action TextChanged(TextChangeEvent event)
+        if palette not= undefined and field not= undefined
+            palette:Filter(field:GetText())
+        end
+    end
+end

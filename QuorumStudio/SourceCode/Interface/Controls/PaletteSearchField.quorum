@@ -1,0 +1,55 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Scenes.ScenePalette
+use Libraries.Interface.Events.FocusEvent
+
+/*
+    The PaletteSearchField is the search field above the scene palette. As
+    the words in it change, the palette shows only the items whose names
+    hold them; an empty field shows every item.
+*/
+class PaletteSearchField is TextField
+    PaletteSearchListener searchListener
+
+    on create
+        SetName("Search the palette")
+        SetDescription("Type part of an item's name to show only the items that match.")
+        searchListener:SetField(me)
+        AddTextChangeListener(searchListener)
+    end
+
+    /*
+        Sets the palette this field searches.
+
+        Attribute: Parameter scenePalette The palette to search.
+    */
+    action SetPalette(ScenePalette scenePalette)
+        searchListener:SetPalette(scenePalette)
+    end
+
+    /*
+        Returns the palette this field searches.
+
+        Attribute: Returns The palette, or undefined if none is set.
+    */
+    action GetPalette returns ScenePalette
+        return searchListener:GetPalette()
+    end
+
+    /*
+        Does what a text field does on gaining the focus. TextField is both a
+        Control and a FocusListener, so a class made from it says which
+        action it means.
+    */
+    action GainedFocus(FocusEvent event)
+        parent:TextField:GainedFocus(event)
+    end
+
+    /*
+        Does what a text field does on losing the focus.
+    */
+    action LostFocus(FocusEvent event)
+        parent:TextField:LostFocus(event)
+    end
+end

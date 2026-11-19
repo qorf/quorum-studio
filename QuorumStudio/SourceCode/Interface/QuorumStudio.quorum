@@ -83,6 +83,7 @@ use Libraries.Development.Environment.Studio.Behaviors.EditorPartitionDragBehavi
 use Libraries.Development.Environment.Studio.Behaviors.PropertiesPartitionDragBehavior
 use Libraries.Interface.Controls.Blocks.Palette.BlockPalette
 use Libraries.Development.Environment.Studio.Interface.EditorTab
+use Libraries.Development.Environment.Studio.Interface.PaletteSearchField
 use Libraries.Development.Environment.Studio.Interface.StudioSceneEditorKeys
 use Libraries.Game.Graphics.Font
 use Libraries.Development.Environment.Configuration.IconConstants
@@ -103,6 +104,10 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
     ProjectTree projectTree
     SceneTree sceneTree
     ScenePalette scenePalette
+    // Above the scene palette: its search field, and a line saying what a
+    // click in the scene places, shown only while copies are being placed.
+    PaletteSearchField paletteSearch
+    Label paletteStatus
     BlockPalette blockPalette
     CodeEditorTabPane codeTabs
     OutputEditorTabPane outputWindow
@@ -342,6 +347,15 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     action GetScenePalette returns ScenePalette
         return scenePalette
+    end
+
+    /*
+        Returns the line above the scene palette that says what a click in
+        the scene places, such as "Placing copies of Rock · Esc to stop".
+        It is hidden while nothing is being placed.
+    */
+    action GetPaletteStatusLabel returns Label
+        return paletteStatus
     end
     
     action GetBlockPalette returns BlockPalette
@@ -964,7 +978,40 @@ editorPartitionTable:Add(dragContinueSet, editorDrag)
         scenePalette:SetAudio3DTexture(resources:GetAudioTexture())
         scenePalette:LoadDefaultAssets()
         
-        paletteTab:SetRelatedItem(palettePane)
+        // The palette's column: the search field, the status line (hidden
+        // until copies are being placed), then the palette filling the rest.
+        Control paletteColumn
+        paletteColumn:SetName("Palette Column")
+        FlowLayout paletteColumnLayout
+        paletteColumnLayout:SetIgnoreHidden(true)
+        paletteColumn:SetLayout(paletteColumnLayout)
+        LayoutProperties paletteColumnProperties = paletteColumn:GetDefaultLayoutProperties()
+        paletteColumnProperties:SetHorizontalLayoutMode(paletteColumnProperties:FILL)
+        paletteColumnProperties:SetVerticalLayoutMode(paletteColumnProperties:FILL)
+
+        paletteSearch:SetPalette(scenePalette)
+        paletteSearch:SetPercentageWidth(1.0)
+        paletteSearch:SetLeftMargin(6)
+        paletteSearch:SetRightMargin(6)
+        paletteSearch:SetTopMargin(6)
+        paletteSearch:SetBottomMargin(4)
+        paletteColumn:Add(paletteSearch)
+
+        paletteStatus:SetName("Palette Status")
+        paletteStatus:SetFontSize(12)
+        paletteStatus:SetLeftMargin(8)
+        paletteStatus:SetBottomMargin(4)
+        paletteStatus:SetPercentageWidth(1.0)
+        paletteStatus:SetText("")
+        paletteStatus:Hide()
+        paletteColumn:Add(paletteStatus)
+
+        LayoutProperties palettePaneProperties = palettePane:GetDefaultLayoutProperties()
+        palettePaneProperties:SetVerticalLayoutMode(palettePaneProperties:FILL)
+        palettePane:SetPercentageHeight(0)
+        paletteColumn:Add(palettePane)
+
+        paletteTab:SetRelatedItem(paletteColumn)
         paletteTab:SetFocusTarget(scenePalette)
         treeTabPane:Add(paletteTab)
 
