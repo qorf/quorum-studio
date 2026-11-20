@@ -1,0 +1,41 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Scenes.SceneTree
+
+/*
+The Scene tab's filter field's keys. Escape clears the filter, showing every
+item again. Down Arrow moves to the results: the first item or group the
+filter found is selected, and the focus goes to the tree.
+*/
+class SceneFilterKeyBehavior is Behavior
+    public constant integer CLEAR = 0
+    public constant integer TO_RESULTS = 1
+
+    SceneTree tree = undefined
+    TextField field = undefined
+    integer kind = CLEAR
+
+    action Setup(SceneTree treeValue, TextField fieldValue, integer kindValue)
+        tree = treeValue
+        field = fieldValue
+        kind = kindValue
+    end
+
+    action Run(BehaviorEvent event)
+        if tree = undefined or field = undefined
+            return now
+        end
+        if kind = CLEAR
+            field:SetText("")
+            tree:SetFilter("")
+            field:SetDescription("")
+        elseif kind = TO_RESULTS
+            if tree:SelectFirstResult()
+                tree:Focus()
+            end
+        end
+    end
+end

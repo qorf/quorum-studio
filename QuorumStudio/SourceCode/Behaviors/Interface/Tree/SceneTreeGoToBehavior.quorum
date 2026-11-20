@@ -1,0 +1,33 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Interface.Controls.Scenes.SceneTree
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Selections.TreeSelection
+
+/*
+Go To in the Scene tab's menu: the same as Return on the selected row. An
+item's focus moves to it in the scene editor, turning the camera to it when
+it's off the screen; a group opens or closes; a layer is selected.
+*/
+class SceneTreeGoToBehavior is QuorumStudioBehavior
+
+    action Run(BehaviorEvent event)
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        SceneTree tree = studio:GetSceneTree()
+        if tree = undefined
+            return now
+        end
+        TreeSelection selection = tree:GetSelection()
+        if selection:IsEmpty()
+            return now
+        end
+        TreeItem row = selection:GetTreeItem()
+        if row not= undefined
+            row:Activate()
+        end
+    end
+end

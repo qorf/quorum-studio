@@ -1,0 +1,45 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Controls.PopupMenu
+use Libraries.Interface.Controls.MenuItem
+use Libraries.Development.Environment.Studio.Behaviors.SceneTreeGoToBehavior
+use Libraries.Development.Environment.Studio.Behaviors.SceneTreeDeleteBehavior
+
+/*
+The Scene tab's menu for an item or a group: Go To and Delete.... Each acts
+on the tree's selected row.
+*/
+class SceneTreePopupMenu is PopupMenu
+    MenuItem goToItem
+    MenuItem deleteItem
+    SceneTreeGoToBehavior goToBehavior
+    SceneTreeDeleteBehavior deleteBehavior
+    boolean built = false
+
+    private action Build
+        if built
+            return now
+        end
+        goToItem:SetName("Go To")
+        goToItem:SetShortcut("Return")
+        goToItem:SetBehavior(goToBehavior)
+
+        deleteItem:SetName("Delete...")
+        deleteItem:SetShortcut("Delete")
+        deleteItem:SetBehavior(deleteBehavior)
+
+        Add(goToItem)
+        Add(deleteItem)
+        built = true
+    end
+
+    action OpenAtCursor
+        Build()
+        parent:PopupMenu:OpenAtCursor()
+    end
+
+    action OpenAt(number x, number y)
+        Build()
+        parent:PopupMenu:OpenAt(x, y)
+    end
+end

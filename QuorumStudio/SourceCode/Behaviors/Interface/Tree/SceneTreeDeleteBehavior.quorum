@@ -1,0 +1,60 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Events.BehaviorEvent
+use Libraries.Containers.Array
+use Libraries.Game.GameStateManager
+use Libraries.Development.Environment.Studio.QuorumStudio
+use Libraries.Development.Environment.Studio.Interface.TreeGitConfirmDialog
+use Libraries.Interface.Controls.Scenes.SceneTree
+use Libraries.Interface.Controls.Scenes.SceneTreeItem
+use Libraries.Interface.Controls.Scenes.SceneEditor
+use Libraries.Interface.Controls.TreeItem
+use Libraries.Interface.Selections.TreeSelection
+use Libraries.Interface.Item
+
+/*
+Delete for the Scene tab's selected row, from its menu or Edit > Delete. An
+item is deleted from the scene, as before. A group of items with one name
+asks first, then deletes them all (SceneTreeDeleteItemsBehavior). Layers,
+sections and the editor camera aren't deleted.
+*/
+class SceneTreeDeleteBehavior is QuorumStudioBehavior
+
+    action Run(BehaviorEvent event)
+        GameStateManager manager
+        QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
+        SceneTree tree = studio:GetSceneTree()
+        if tree = undefined
+            return now
+        end
+        SceneEditor controller = tree:GetSceneEditor()
+        if controller = undefined
+            return now
+        end
+        TreeSelection selection = tree:GetSelection()
+        if selection:IsEmpty()
+            return now
+        end
+        TreeItem row = selection:GetTreeItem()
+        if not (row is SceneTreeItem)
+            return now
+        end
+        SceneTreeItem sceneRow = cast(SceneTreeItem, row)
+
+        if sceneRow:IsGroup()
+            Array<Item> items = sceneRow:GetGroupItems()
+            SceneTreeDeleteItemsBehavior deleteAll
+            deleteAll:Setup(controller, items)
+            Array<text> lines
+            TreeGitConfirmDialog dialog
+            dialog:Setup("Delete " + sceneRow:GetName(), "Delete all " + items:GetSize() + " items named " + sceneRow:GetName() + " from the scene?", lines, "Delete", deleteAll)
+            dialog:Show()
+            return now
+        end
+
+        Item item = sceneRow:GetSceneItem()
+        if item not= undefined
+            controller:Delete(item)
+        end
+    end
+end

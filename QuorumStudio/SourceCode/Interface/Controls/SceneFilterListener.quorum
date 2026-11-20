@@ -1,0 +1,33 @@
+package Libraries.Development.Environment.Studio.Interface
+
+use Libraries.Interface.Events.TextChangeListener
+use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Interface.Controls.TextField
+use Libraries.Interface.Controls.Scenes.SceneTree
+
+/*
+The Scene tab's filter field: as its text changes, the tree shows only the
+items whose names contain it. The field's description says how many match,
+such as "14 of 34 items match", so a screen reader reads it with the field.
+*/
+class SceneFilterListener is TextChangeListener
+    SceneTree tree = undefined
+    TextField field = undefined
+
+    action Setup(SceneTree treeValue, TextField fieldValue)
+        tree = treeValue
+        field = fieldValue
+    end
+
+    action TextChanged(TextChangeEvent event)
+        if tree = undefined or field = undefined
+            return now
+        end
+        tree:SetFilter(field:GetText())
+        if tree:GetFilter() = ""
+            field:SetDescription("")
+        else
+            field:SetDescription("" + tree:GetShownItemCount() + " of " + tree:GetTotalItemCount() + " items match")
+        end
+    end
+end

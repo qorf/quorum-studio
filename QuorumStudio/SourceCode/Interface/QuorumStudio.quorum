@@ -34,6 +34,14 @@ use Libraries.Concurrency.ThreadRunner
 use Libraries.System.SystemHelper
 use Libraries.Interface.Layouts.LayoutProperties
 use Libraries.Interface.Controls.Control
+use Libraries.Interface.Controls.TextField
+use Libraries.Development.Environment.Studio.Behaviors.SceneFilterKeyBehavior
+use Libraries.Interface.Controls.Scenes.SceneTreeItem
+use Libraries.Interface.Options.InterfaceOptions
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Development.Environment.Configuration.OptionsConstants
+use Libraries.Development.Environment.Studio.Interface.SceneTreePopupMenu
+use Libraries.Development.Environment.Studio.Interface.SceneFilterListener
 use Libraries.Interface.Layouts.FlowLayout
 use Libraries.Interface.Layouts.ManualLayout
 use Libraries.Game.InputMonitor
@@ -339,6 +347,40 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
 
     action GetProjectTree returns ProjectTree
         return projectTree
+    end
+
+    /*
+    The Scene tab's icons, from Font Awesome, in the theme's colors, and the
+    menu its items and groups open.
+    */
+    private action SetupSceneTreeLook
+        Font sceneIconFont
+        File sceneIconFile
+        sceneIconFile:SetPath("Resources/Fonts/Font Awesome 6 Free-Solid-900.otf")
+        sceneIconFont:LoadFont(sceneIconFile)
+        sceneIconFont:SetSize(32)
+
+        GameStateManager themeState
+        InterfaceOptions options = themeState:GetInterfaceOptions()
+        if options not= undefined
+            OptionsConstants optionsConstants
+            SceneTreeItem kinds
+            ColorGroup cameraColor = options:GetColorProperty(optionsConstants:SCENE_TREE_CAMERA_COLOR)
+            ColorGroup modelColor = options:GetColorProperty(optionsConstants:SCENE_TREE_MODEL_COLOR)
+            ColorGroup terrainColor = options:GetColorProperty(optionsConstants:SCENE_TREE_TERRAIN_COLOR)
+            ColorGroup lightColor = options:GetColorProperty(optionsConstants:SCENE_TREE_LIGHT_COLOR)
+            sceneTree:SetKindColor(kinds:KIND_LAYER, cameraColor)
+            sceneTree:SetKindColor(kinds:KIND_CAMERA, cameraColor)
+            sceneTree:SetKindColor(kinds:KIND_MODEL, modelColor)
+            sceneTree:SetKindColor(kinds:KIND_IMAGE, modelColor)
+            sceneTree:SetKindColor(kinds:KIND_TERRAIN, terrainColor)
+            sceneTree:SetKindColor(kinds:KIND_LIGHT, lightColor)
+            sceneTree:SetKindColor(kinds:KIND_SOUND, lightColor)
+        end
+        sceneTree:SetIconFont(sceneIconFont)
+
+        SceneTreePopupMenu sceneRowMenu
+        sceneTree:SetRowPopupMenu(sceneRowMenu)
     end
 
     action GetSceneTree returns SceneTree
@@ -942,14 +984,67 @@ editorPartitionTable:Add(dragContinueSet, editorDrag)
         sceneTab:DisplayCloseButton(false)
         ScrollPane scenePane
 
+        // The filter field sits above the tree, and the tree scrolls below
+        // it.
+        constant number SCENE_FILTER_HEIGHT = 36
+        Control sceneArea
+        ManualLayout sceneAreaLayout
+        sceneArea:SetLayout(sceneAreaLayout)
+        sceneArea:SetName("Scene Area")
+        sceneArea:SetPercentageWidth(1.0)
+        sceneArea:SetPercentageHeight(1.0)
+
+        TextField sceneFilter
+        sceneFilter:SetName("Filter the scene")
+        sceneFilter:SetPercentageX(0)
+        sceneFilter:SetPercentageY(1)
+        sceneFilter:SetPercentageOriginY(1)
+        sceneFilter:SetPixelY(-6)
+        sceneFilter:SetPixelX(8)
+        sceneFilter:SetPercentageWidth(1.0)
+        sceneFilter:SetPixelWidth(-16)
+        sceneFilter:SetPixelHeight(SCENE_FILTER_HEIGHT - 12)
+        SceneFilterListener filterListener
+        filterListener:Setup(sceneTree, sceneFilter)
+        sceneFilter:AddTextChangeListener(filterListener)
+        sceneArea:Add(sceneFilter)
+
+        // Escape clears the filter, and Down Arrow moves to its results.
+        KeyboardEvent filterKeys
+        InputTable filterTable = sceneFilter:CopyAndActivateInputTable("SceneFilter")
+        InputSet filterEscape
+        filterEscape:SetKeyboardInput(filterKeys:ESCAPE)
+        SceneFilterKeyBehavior clearFilter
+        clearFilter:Setup(sceneTree, sceneFilter, clearFilter:CLEAR)
+        filterTable:Add(filterEscape, clearFilter)
+        InputSet filterDown
+        filterDown:SetKeyboardInput(filterKeys:DOWN)
+        SceneFilterKeyBehavior toResults
+        toResults:Setup(sceneTree, sceneFilter, toResults:TO_RESULTS)
+        filterTable:Add(filterDown, toResults)
+
         //scenePane:SetBackgroundColor(resources:GetBackgroundColor())
         scenePane:SetName("Scene Pane")
+        scenePane:SetPercentageX(0)
+        scenePane:SetPercentageY(0)
         scenePane:SetPercentageWidth(1.0)
         scenePane:SetPercentageHeight(1.0)
+        scenePane:SetPixelHeight(-SCENE_FILTER_HEIGHT)
         scenePane:Add(sceneTree)
-        sceneTree:SetSceneEditor(undefined)
+        sceneArea:Add(scenePane)
+        // A scene reopened at startup (Load) already gave the tree its
+        // editor, before this pane was made; only an empty tree says "No
+        // scene selected".
+        if sceneTree:GetSceneEditor() = undefined
+            sceneTree:SetSceneEditor(undefined)
+        end
+        SetupSceneTreeLook()
 
-        sceneTab:SetRelatedItem(scenePane)
+        // Tab from the filter goes to the tree, and Shift+Tab back.
+        sceneFilter:SetNextFocus(sceneTree)
+        sceneTree:SetPreviousFocus(sceneFilter)
+
+        sceneTab:SetRelatedItem(sceneArea)
         sceneTab:SetFocusTarget(sceneTree)
         treeTabPane:Add(sceneTab)
 
