@@ -39,9 +39,22 @@ use Libraries.Interface.Views.ControlShaderView
 use Libraries.Interface.Options.InterfaceOptions
 use Libraries.Interface.Forms.Page
 use Libraries.Interface.Forms.Grouping
+use Libraries.Interface.Forms.FormConstants
+use Libraries.Interface.Controls.RadioButton
+use Libraries.Interface.Events.TextChangeListener
+use Libraries.Interface.Events.TextChangeEvent
+use Libraries.Game.Graphics.ColorGroup
+use Libraries.Development.Environment.Studio.Behaviors.NewFileTypeBehavior
 
 
-class NewFileDialog is Dialog
+/*
+New File and New Folder. New File makes a Quorum file or a scene (the Type
+choice). Each type has its own folder, SourceCode or Scenes: the location
+starts there, or in the folder chosen in the Project Tree, and follows the
+type while it's still one of those two folders. The line under the location
+says what will be made, and warns when a file is in the other type's folder.
+*/
+class NewFileDialog is Dialog, TextChangeListener
 
     boolean initialized = false 
 
@@ -67,10 +80,25 @@ class NewFileDialog is Dialog
     OpenBrowseFoldersBehavior browseBehavior
     boolean isFolder = false
 
+    // The Type choice (New File only), and the line under the location.
+    RadioButton quorumTypeButton = undefined
+    RadioButton sceneTypeButton = undefined
+    Label hintLabel = undefined
+    NewFileTypeBehavior typeBehavior
+    boolean sceneType = false
+
+    constant text SCENES_FOLDER = "Scenes"
+    constant text SCENE_EXTENSION = "qs"
+    constant text QUORUM_EXTENSION = "quorum"
+    // An empty scene, copied for each new one. The path is from Studio's
+    // folder, where its templates are.
+    constant text BLANK_SCENE = "Templates/Scenes/Blank/Scenes/Scene.qs"
+
     on create
         cancelBehavior:SetDialog(me)
         okayBehavior:SetDialog(me)
         browseBehavior:SetDialog(me) 
+        typeBehavior:SetDialog(me)
         SetBehavior(okayBehavior)
     end
 
@@ -96,14 +124,139 @@ class NewFileDialog is Dialog
     action SetProperties(QuorumProject project, text displayText)//TreeSelection selection)
         me:project = project
         projectName = project:GetName()
-        if displayText = "" 
-            if os:Contains("OS X")
-                displayText = project:PROJECT_SOURCES + "/"
-            else
-                displayText = project:PROJECT_SOURCES + "\"
+        // Made from the Scenes folder, or a folder in it, it's a scene.
+        sceneType = false
+        if not IsFolder()
+            sceneType = IsInFolder(displayText, SCENES_FOLDER)
+            if quorumTypeButton not= undefined
+                quorumTypeButton:SetToggleState(not sceneType)
+                sceneTypeButton:SetToggleState(sceneType)
             end
         end
+        if displayText = "" 
+            displayText = DefaultFolder()
+        end
         locationNameField:SetText(displayText)
+        UpdateHint()
+    end
+
+    // The folder the chosen type goes in, with a separator after it.
+    private action DefaultFolder returns text
+        if sceneType
+            return SCENES_FOLDER + Separator()
+        end
+        return project:PROJECT_SOURCES + Separator()
+    end
+
+    // The separator the rest of this dialog uses.
+    private action Separator returns text
+        if os:Contains("OS X")
+            return "/"
+        end
+        return "\"
+    end
+
+    // Whether a location is the folder, or a folder in it.
+    private action IsInFolder(text location, text folder) returns boolean
+        text value = location:Trim()
+        if value:EqualsIgnoringCase(folder)
+            return true
+        end
+        text lower = value:ToLowerCase()
+        text start = folder:ToLowerCase()
+        return lower:StartsWith(start + "/") or lower:StartsWith(start + "\")
+    end
+
+    // Whether a location is still one of the two types' folders, or empty,
+    // so it may follow the type.
+    private action IsDefaultLocation(text location) returns boolean
+        text value = location:Trim()
+        if value = "" or value = projectName
+            return true
+        end
+        text sources = project:PROJECT_SOURCES
+        if value:EqualsIgnoringCase(sources) or value:EqualsIgnoringCase(sources + "/") or value:EqualsIgnoringCase(sources + "\")
+            return true
+        end
+        if value:EqualsIgnoringCase(SCENES_FOLDER) or value:EqualsIgnoringCase(SCENES_FOLDER + "/") or value:EqualsIgnoringCase(SCENES_FOLDER + "\")
+            return true
+        end
+        return false
+    end
+
+    /*
+    This action is called when Quorum File or Scene is chosen. A location
+    that's still one of the two types' folders moves to the chosen type's
+    folder; one picked by hand stays.
+    */
+    action TypeChanged
+        if sceneTypeButton = undefined
+            return now
+        end
+        sceneType = sceneTypeButton:GetToggleState()
+        if project not= undefined and IsDefaultLocation(locationNameField:GetText())
+            locationNameField:SetText(DefaultFolder())
+        end
+        UpdateHint()
+    end
+
+    // The name or the location changed: the line under the location follows.
+    action TextChanged(TextChangeEvent event)
+        UpdateHint()
+    end
+
+    /*
+    The line under the location: the file that will be made, how to load a
+    scene, and a warning when the file is in the other type's folder. It is
+    also the location field's description, read when the field is reached.
+    */
+    private action UpdateHint
+        if hintLabel = undefined or project = undefined
+            return now
+        end
+        text name = fileNameField:GetText():Trim()
+        text location = locationNameField:GetText():Trim()
+        if location = projectName
+            location = DefaultFolder()
+        end
+        if location not= "" and not location:EndsWith("/") and not location:EndsWith("\")
+            location = location + Separator()
+        end
+
+        text message = ""
+        if name = ""
+            message = "Type a name for the file."
+        else
+            text fileName = name
+            if not name:Contains(".")
+                if sceneType
+                    fileName = name + "." + SCENE_EXTENSION
+                else
+                    fileName = name + "." + QUORUM_EXTENSION
+                end
+            end
+            text madePath = location + fileName
+            if sceneType
+                text loadPath = madePath:Replace("\", "/")
+                message = "Makes " + madePath + ", an empty scene. Load it with LoadScene(" + DoubleQuote() + loadPath + DoubleQuote() + ")."
+            else
+                message = "Makes " + madePath + "."
+            end
+        end
+
+        if sceneType and IsInFolder(location, project:PROJECT_SOURCES)
+            message = message + " Scenes usually go in " + SCENES_FOLDER + Separator() + "."
+        elseif not sceneType and IsInFolder(location, SCENES_FOLDER)
+            message = message + " Quorum files usually go in " + project:PROJECT_SOURCES + Separator() + "."
+        end
+
+        hintLabel:SetText(message)
+        locationNameField:SetDescription(message)
+    end
+
+    private action DoubleQuote returns text
+        text quote = ""
+        return quote:GetDoubleQuote()
     end
 
     action IsInitialized returns boolean
@@ -113,6 +266,28 @@ class NewFileDialog is Dialog
     action CreateNewFileControl()
         Page createNewFileContainer = InitializeDefaultPage()
         createNewFileContainer:SetSkipLabelsInFocus(true)
+
+        // Quorum File or Scene; New Folder has no type.
+        if not IsFolder()
+            Label typeLabel = createNewFileContainer:AddLabel("Type")
+            // A label before choices isn't made a caption by the page, so
+            // it's styled like the others here.
+            FormConstants formConstants
+            typeLabel:SetFontSize(formConstants:SMALL_FONT_SIZE)
+            ColorGroup mutedColor = GetMutedColor()
+            if mutedColor not= undefined
+                typeLabel:SetFontColor(mutedColor)
+            end
+            Grouping typeChoices = createNewFileContainer:AddGrouping("File Type")
+            typeChoices:SetColumns(2)
+            quorumTypeButton = typeChoices:AddRadioButton("Quorum File")
+            quorumTypeButton:SetDescription("A file of Quorum code, in SourceCode.")
+            quorumTypeButton:SetToggleState(true)
+            quorumTypeButton:SetBehavior(typeBehavior)
+            sceneTypeButton = typeChoices:AddRadioButton("Scene")
+            sceneTypeButton:SetDescription("An empty scene, such as a level, in Scenes. It opens in the scene editor.")
+            sceneTypeButton:SetBehavior(typeBehavior)
+        end
 
         createNewFileContainer:AddLabel("Name")
         fileNameField = createNewFileContainer:AddTextField("New File")
@@ -131,6 +306,17 @@ class NewFileDialog is Dialog
         browseButton = locationGroup:AddButton("Browse...")
         browseButton:SetBehavior(browseBehavior)
 
+        // What will be made, as the name and location change (UpdateHint).
+        if not IsFolder()
+            hintLabel = createNewFileContainer:AddLabel("New File Result", "")
+            ColorGroup hintColor = GetMutedColor()
+            if hintColor not= undefined
+                hintLabel:SetFontColor(hintColor)
+            end
+            fileNameField:AddTextChangeListener(me)
+            locationNameField:AddTextChangeListener(me)
+        end
+
         // The footer: Cancel, then the main action at the right.
         Grouping closingButtons = createNewFileContainer:AddGrouping("Closing Buttons")
         closingButtons:PositionFromBottom()
@@ -144,6 +330,16 @@ class NewFileDialog is Dialog
         okayButton:SetBehavior(okayBehavior)
     end
     
+    // The muted color of captions and notes.
+    private action GetMutedColor returns ColorGroup
+        GameStateManager themeState
+        InterfaceOptions options = themeState:GetInterfaceOptions()
+        if options = undefined
+            return undefined
+        end
+        return options:GetFontColor("FieldCaption")
+    end
+
     //returns the current QuorumProject that the NewFile is being added to
     //used by the OpenBrowseFoldersBehavior
     action GetProject returns QuorumProject
@@ -173,9 +369,9 @@ class NewFileDialog is Dialog
         the currently selected folder */
         if project:GetName():Equals(locationNameField:GetText():Trim())
             if os:Contains("OS X")
-                path = path + "/" + project:PROJECT_SOURCES + "/" + fileNameField:GetText():Trim()
+                path = path + "/" + DefaultFolder() + fileNameField:GetText():Trim()
             else
-                path = path + "\" + project:PROJECT_SOURCES + "\" + fileNameField:GetText():Trim()
+                path = path + "\" + DefaultFolder() + fileNameField:GetText():Trim()
             end
         else
             if os:Contains("OS X")
@@ -195,8 +391,21 @@ class NewFileDialog is Dialog
             end
             AppendToProjectTree(file) 
         else
-            if file:GetFileExtension() = ""
-                file:SetAbsolutePath(path + ".quorum")
+            text contents = ""
+            if sceneType
+                // An empty scene, from Studio's blank scene.
+                File blank
+                blank:SetPath(BLANK_SCENE)
+                if not blank:Exists()
+                    hintLabel:SetText("Quorum Studio's empty scene is missing, so no scene was made. Reinstalling Quorum Studio should fix this.")
+                    return now
+                end
+                contents = blank:Read()
+                if file:GetFileExtension() = ""
+                    file:SetAbsolutePath(path + "." + SCENE_EXTENSION)
+                end
+            elseif file:GetFileExtension() = ""
+                file:SetAbsolutePath(path + "." + QUORUM_EXTENSION)
             end
 
             File mom = file:GetParentDirectory()
@@ -207,7 +416,7 @@ class NewFileDialog is Dialog
                 mom:CreateDirectories()
             end
     
-            file:Write("")
+            file:Write(contents)
             file:Close()
             AppendToProjectTree(file)  
         end
