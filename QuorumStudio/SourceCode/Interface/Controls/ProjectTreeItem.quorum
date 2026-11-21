@@ -197,6 +197,9 @@ class ProjectTreeItem is TreeItem
             findInProjectMenuItem:SetBehavior(GetFindInProjectBehavior())
             exampleContextMenu:Add(findInProjectMenuItem)
 
+            // Only in a Git project; above Set Program Start, which stays last.
+            gitMenu:AddItems(exampleContextMenu, me)
+
             SetProgramStartBehavior startBehavior
             MenuItem setMainFileMenuItem
             setMainFileMenuItem:SetBehavior(startBehavior)
@@ -206,9 +209,6 @@ class ProjectTreeItem is TreeItem
             QuorumStudio studio = cast(QuorumStudio, manager:GetGame())
             openTabBehavior:SetMainApplication(studio)
             //openTabBehavior:SetFile(file)
-
-            // Only in a Git project.
-            gitMenu:AddItems(exampleContextMenu, me)
         end
         return exampleContextMenu
     end
