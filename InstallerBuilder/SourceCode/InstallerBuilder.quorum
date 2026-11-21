@@ -43,6 +43,9 @@ use Libraries.Data.Formats.JavaScriptObjectNotation
        app inside it, the loose natives, the JDK, and then the app itself.
        Notarization looks inside jars, and LWJGL copies its natives out of
        its jars when a game runs, so each native carries its own signature.
+       Signing changes a native's bytes, so LWJGL's hash files for them
+       (META-INF/<native>.sha1) are rewritten to match, or LWJGL would report
+       "Incompatible Java and native library versions" on a new computer.
        Programs get Java's entitlements (Installer/Mac/QuorumStudio.entitlements);
        libraries can't take entitlements.
     4. Packages builds the installer from Installer/Mac/QuorumStudio.pkgproj,
@@ -122,6 +125,7 @@ class InstallerBuilder is ProcessListener
     constant text REMOVE = "/bin/rm"
     constant text RSYNC = "/usr/bin/rsync"
     constant text SECURITY = "/usr/bin/security"
+    constant text SHASUM = "/usr/bin/shasum"
     constant text SPCTL = "/usr/sbin/spctl"
     constant text UNZIP = "/usr/bin/unzip"
     constant text VTOOL = "/usr/bin/vtool"
@@ -176,6 +180,13 @@ class InstallerBuilder is ProcessListener
     // process ends and its last output and ProcessStopped have arrived.
     integer lastExit = -1
     Array<text> lastOutput
+
+    // The SHA-1 of each native signed in a jar, by the jar's folder and the
+    // native's path in the jar, such as ".../libraries|macos/arm64/org/lwjgl/liblwjgl.dylib".
+    // LWJGL checks each native it loads against a .sha1 file in its jars, so
+    // those are rewritten to match (UpdateNativeHashes).
+    HashTable<text, text> signedHashes
+
     // When true, each line a tool prints also goes to the log as it comes.
     boolean echoOutput = false
 
@@ -631,6 +642,8 @@ class InstallerBuilder is ProcessListener
 
     action SignNativesInJars returns boolean
         Step("Signing the natives inside jars", 32)
+        // Each installer signs its own copies, so their hashes start fresh.
+        signedHashes:Empty()
         RunTool(FIND, Parameters(appFiles, "-name", "*.jar", "-type", "f", "-not", "-path", appFiles + "/Java/*", "-print"))
         Array<text> jars = Copied(lastOutput)
         integer i = 0
@@ -641,7 +654,7 @@ class InstallerBuilder is ProcessListener
             ReportProgress(32 + 26 * (i + 1) / jars:GetSize())
             i = i + 1
         end
-        return true
+        return UpdateNativeHashes(jars)
     end
 
     /*
@@ -712,6 +725,9 @@ class InstallerBuilder is ProcessListener
             if not SignFiles(programs, true) or not SignFiles(libraries, false)
                 return false
             end
+            if not RememberHashes(jar, work, signed)
+                return false
+            end
             Array<text> repack = Parameters("-q", "-X", jar)
             AddAll(repack, signed)
             if not RunTool(ZIP, repack, work)
@@ -721,6 +737,125 @@ class InstallerBuilder is ProcessListener
         end
         RunTool(REMOVE, Parameters("-rf", work))
         return true
+    end
+
+    /*
+        Keeps the SHA-1 of each native just signed in a jar, for
+        UpdateNativeHashes. Signing changes a native's bytes, so the hashes
+        LWJGL ships no longer match.
+    */
+    action RememberHashes(text jar, text work, Array<text> signed) returns boolean
+        Array<text> paths
+        integer i = 0
+        repeat while i < signed:GetSize()
+            paths:Add(work + "/" + signed:Get(i))
+            i = i + 1
+        end
+        if not RunTool(SHASUM, paths)
+            return ToolFailed("Could not find the hashes of the signed natives in " + jar)
+        end
+        // One line for each file: the 40-digit hash, two spaces, the path.
+        Array<text> lines = Copied(lastOutput)
+        text folder = ParentFolder(jar)
+        i = 0
+        repeat while i < lines:GetSize()
+            text line = lines:Get(i):Trim()
+            if line:GetSize() > 42
+                text hash = line:GetSubtext(0, 40)
+                text path = line:GetSubtext(42)
+                text prefix = work + "/"
+                if path:StartsWith(prefix)
+                    text entry = path:GetSubtext(prefix:GetSize())
+                    signedHashes:Set(folder + "|" + entry, hash)
+                end
+            end
+            i = i + 1
+        end
+        return true
+    end
+
+    /*
+        Rewrites LWJGL's hash files to match the signed natives. LWJGL checks
+        each native it loads against META-INF/<the native's path>.sha1, found
+        in its Java jar and its natives jar. Signing changed the natives, so
+        without this every native would be reported as "Incompatible Java and
+        native library versions" on a computer that hasn't run LWJGL yet. Only
+        jars in the same folder as the signed native are changed, since each
+        folder's natives were signed on their own.
+    */
+    action UpdateNativeHashes(Array<text> jars) returns boolean
+        integer updatedJars = 0
+        integer i = 0
+        repeat while i < jars:GetSize()
+            text jar = jars:Get(i)
+            text folder = ParentFolder(jar)
+            RunTool(UNZIP, Parameters("-Z1", jar))
+            Array<text> entries = Copied(lastOutput)
+            Array<text> hashEntries
+            Array<text> hashes
+            boolean javaSigned = false
+            integer e = 0
+            repeat while e < entries:GetSize()
+                text entry = entries:Get(e)
+                if IsJarSignature(entry)
+                    javaSigned = true
+                end
+                if entry:StartsWith("META-INF/") and entry:EndsWith(".sha1")
+                    text nativePath = entry:GetSubtext(9, entry:GetSize() - 5)
+                    text key = folder + "|" + nativePath
+                    if signedHashes:HasKey(key)
+                        hashEntries:Add(entry)
+                        hashes:Add(signedHashes:GetValue(key))
+                    end
+                end
+                e = e + 1
+            end
+
+            if hashEntries:GetSize() > 0
+                if javaSigned
+                    return Fail(jar + " is a signed jar. Changing its hash files would break its Java signature.")
+                end
+                text work = workFolder + "/jar-hashes"
+                RunTool(REMOVE, Parameters("-rf", work))
+                integer h = 0
+                repeat while h < hashEntries:GetSize()
+                    text entryPath = work + "/" + hashEntries:Get(h)
+                    CreateFolder(ParentFolder(entryPath))
+                    File hashFile
+                    hashFile:SetAbsolutePath(entryPath)
+                    hashFile:Write(hashes:Get(h) + Newline())
+                    h = h + 1
+                end
+                Array<text> repack = Parameters("-q", "-X", jar)
+                AddAll(repack, hashEntries)
+                if not RunTool(ZIP, repack, work)
+                    return ToolFailed("Could not put the natives' new hashes in " + jar)
+                end
+                RunTool(REMOVE, Parameters("-rf", work))
+                updatedJars = updatedJars + 1
+            end
+            i = i + 1
+        end
+        Log("  updated the natives' hashes in " + updatedJars + " jars")
+        return true
+    end
+
+    // The folder a path is in: everything before its last slash.
+    action ParentFolder(text path) returns text
+        integer index = path:GetSize() - 1
+        repeat while index >= 0
+            if path:GetUnicodeInteger(index) = 47
+                return path:GetSubtext(0, index)
+            end
+            index = index - 1
+        end
+        return ""
+    end
+
+    // A line feed, as LWJGL's hash files end with one.
+    action Newline returns text
+        text value = ""
+        return value:GetLineFeed()
     end
 
     // True for a Java signature's files: META-INF/<name>.SF, .RSA, .DSA or .EC.
