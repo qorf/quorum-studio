@@ -8,8 +8,6 @@ package plugins.quorum.Libraries.Development.Environment.Projects.Quorum;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import quorum.Libraries.Containers.Array_;
 import quorum.Libraries.Containers.Iterator_;
 import quorum.Libraries.Language.Object_;
@@ -24,7 +22,7 @@ import quorum.Libraries.System.File_;
 public class ImageSheet {
     public java.lang.Object me_ = null;
     
-    public void NativeSave(File_ path) {
+    public String NativeSave(File_ path) {
         quorum.Libraries.Development.Environment.Projects.Quorum.ImageSheet sheet = (quorum.Libraries.Development.Environment.Projects.Quorum.ImageSheet) me_;
         Array_ array = sheet.Get_Libraries_Development_Environment_Projects_Quorum_ImageSheet__values_();
         Iterator_ it = array.GetIterator();
@@ -51,22 +49,26 @@ public class ImageSheet {
         args[3] = outputPath;
         args[4] = sheetName;
         
-        args[0] = "java";
+        args[0] = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
         args[1] = "-jar";
         args[2] = sheet.GetImageSheetCreator().GetAbsolutePath();
-        
+
         ProcessBuilder pb = new ProcessBuilder(args);
-        Process p;
+        File log = new File("log");
         try {
-            File log = new File("log");
             pb.redirectErrorStream(true);
             pb.redirectOutput(Redirect.appendTo(log));
-            p = pb.start();
-            assert pb.redirectInput() == Redirect.PIPE;
-            assert pb.redirectOutput().file() == log;
-            assert p.getInputStream().read() == -1;
+            Process p = pb.start();
+            int exit = p.waitFor();
+            if (exit != 0) {
+                return "The image sheet " + sheetName + " couldn't be built (exit code " + exit + "). Details are in " + log.getAbsolutePath() + ".";
+            }
+            return "";
         } catch (IOException ex) {
-            Logger.getLogger(ImageSheet.class.getName()).log(Level.SEVERE, null, ex);
+            return "The image sheet " + sheetName + " couldn't be built: " + ex.getMessage();
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            return "Building the image sheet " + sheetName + " was interrupted.";
         }
     }
 }

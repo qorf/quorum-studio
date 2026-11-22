@@ -85,10 +85,13 @@ class CommitDialog is Dialog
         credentials = credentialsValue
         cancelBehavior:SetDialog(me)
 
-        Array<TeamFileChange> staged = status:GetStaged()
         Array<TeamFileChange> notStaged = status:GetNotStaged()
         Array<TeamFileChange> untracked = status:GetUntracked()
-        stagedCount = staged:GetSize()
+        // Files staged elsewhere in the repository count too: git commits
+        // everything staged, so they're in this commit. Counting only the
+        // project's said "Nothing is staged yet" when only they were staged.
+        stagedCount = status:GetAllStagedCount()
+        integer outsideStaged = status:GetOutsideStagedCount()
         integer otherCount = notStaged:GetSize() + untracked:GetSize()
 
         StatusResult result = status:GetResult()
@@ -101,7 +104,7 @@ class CommitDialog is Dialog
         if stagedCount = 0
             SetupNothingStaged(page, notStaged:GetSize(), untracked:GetSize(), status:GetConflicts():GetSize(), problem)
         else
-            SetupCommit(page, staged, otherCount, message, problem)
+            SetupCommit(page, outsideStaged, status:GetProjectName(), message, problem)
         end
     end
 
@@ -280,13 +283,28 @@ class CommitDialog is Dialog
 
     // The form for staged files, with the line about a missing name or
     // email when none is saved, and a failed commit's problem.
-    private action SetupCommit(Page page, Array<TeamFileChange> staged, integer otherCount, text message, text problem)
+    private action SetupCommit(Page page, integer outsideStaged, text projectName, text message, text problem)
         SetPixelHeight(380)
         // Left-aligned with the Message box. The staged files themselves
         // are in the Team tab; the dialog only says how many, and nothing
-        // about files that aren't staged.
+        // about files that aren't staged. Files staged outside the project
+        // are named as such, since the Team tab may not list them.
         page:LeftAlignContent()
         text summary = Words(stagedCount, "staged file", "staged files") + " will be committed."
+        // "1 staged file will be committed. It's outside Hero."
+        // "3 staged files will be committed. All are outside Hero."
+        // "3 staged files will be committed. 1 is outside Hero."
+        if outsideStaged > 0
+            text outsideWords = outsideStaged + " are"
+            if stagedCount = 1
+                outsideWords = "It's"
+            elseif outsideStaged = stagedCount
+                outsideWords = "All are"
+            elseif outsideStaged = 1
+                outsideWords = "1 is"
+            end
+            summary = summary + " " + outsideWords + " outside " + projectName + "."
+        end
         Label stagedLabel = page:AddLabel("Staged Heading", summary)
         stagedLabel:SetFontSize(TEXT_SIZE)
         // Off the baseline, so the line isn't cut off at the top.

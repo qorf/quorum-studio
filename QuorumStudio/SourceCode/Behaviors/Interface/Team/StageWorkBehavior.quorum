@@ -148,7 +148,9 @@ class StageWorkBehavior is Behavior
         if not after:IsReady()
             return first
         end
-        integer staged = after:GetStaged():GetSize()
+        // Every staged file in the repository, as the next commit takes
+        // them all: staging an outside file used to say "Nothing is staged now."
+        integer staged = after:GetAllStagedCount()
         if staged = 0
             return first + " Nothing is staged now."
         elseif staged = 1

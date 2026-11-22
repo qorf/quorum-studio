@@ -267,6 +267,32 @@ class TeamStatus
         return staged
     end
 
+    /*
+    This action returns how many files are staged outside the project's
+    folder, elsewhere in the repository. A commit includes them: git
+    commits everything staged in the repository, not only the project.
+    */
+    action GetOutsideStagedCount returns integer
+        integer count = 0
+        integer index = 0
+        repeat while index < outside:GetSize()
+            TeamFileChange change = outside:Get(index)
+            if change:GetGroup() = constants:STAGED
+                count = count + 1
+            end
+            index = index + 1
+        end
+        return count
+    end
+
+    /*
+    This action returns how many files the next commit includes: the ones
+    staged in the project and the ones staged elsewhere in the repository.
+    */
+    action GetAllStagedCount returns integer
+        return staged:GetSize() + GetOutsideStagedCount()
+    end
+
     action GetNotStaged returns Array<TeamFileChange>
         return notStaged
     end
