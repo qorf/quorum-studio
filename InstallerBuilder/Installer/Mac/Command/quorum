@@ -1,0 +1,81 @@
+#!/bin/sh
+# The quorum command: Quorum's command-line compiler, run on the Java that
+# Quorum's installer carries. The Mac installer puts this in
+# /Library/Quorum/bin, and /etc/paths.d/quorum puts that folder on every
+# user's PATH.
+#
+#   quorum Hello.quorum         compiles, as the compiler always has
+#   quorum -run Hello.quorum    compiles, then runs the program if it built
+#
+# Every other flag goes to the compiler as it is (quorum -help lists them).
+# -run compiles to Java bytecode and runs Run/<name>.jar on that Java, so
+# it can't be used with -javascript, -python or -errors.
+#
+# /Library/Quorum holds Quorum.jar, the library jars beside it, Library/ and
+# Java/jdk/.
+
+# Quorum's files are the folder above this script's. Follow links first, in
+# case someone links to this script from elsewhere.
+script="$0"
+while [ -L "$script" ]; do
+    link=$(readlink "$script")
+    case "$link" in
+        /*) script="$link" ;;
+        *) script="$(dirname "$script")/$link" ;;
+    esac
+done
+app=$(cd "$(dirname "$script")/.." && pwd -P)
+java="$app/Java/jdk/Contents/Home/bin/java"
+compiler="$app/Quorum.jar"
+
+if [ ! -x "$java" ] || [ ! -f "$compiler" ]; then
+    echo "quorum: Quorum's files aren't where they should be ($app). Reinstall Quorum." >&2
+    exit 1
+fi
+
+# Take -run out, and note the program's name (-name) and any flag -run can't
+# be used with. The for loop goes over the original arguments while set
+# rebuilds the list without -run.
+run=no
+name=Default
+previous=""
+other=""
+for argument do
+    shift
+    if [ "$argument" = "-run" ]; then
+        run=yes
+        continue
+    fi
+    if [ "$previous" = "-name" ]; then
+        name="$argument"
+    fi
+    case "$argument" in
+        -javascript|-python|-errors) other="$argument" ;;
+    esac
+    set -- "$@" "$argument"
+    previous="$argument"
+done
+
+if [ "$run" = "no" ]; then
+    exec "$java" -jar "$compiler" -library "$app/Library" "$@"
+fi
+
+if [ -n "$other" ]; then
+    echo "quorum: -run runs the program on Java, so it can't be used with $other." >&2
+    exit 2
+fi
+
+# The old program goes first, so a build that fails can't leave it behind to
+# run. The compiler also exits with a non-zero code when the build fails.
+program="Run/$name.jar"
+rm -f "$program"
+"$java" -jar "$compiler" -library "$app/Library" "$@" || exit $?
+
+if [ ! -f "$program" ]; then
+    echo "quorum: there's no $program to run." >&2
+    exit 1
+fi
+
+# Games need Java's first thread on a Mac. exec keeps the program attached to
+# this terminal, so it can read what's typed.
+exec "$java" -XstartOnFirstThread -jar "$program"

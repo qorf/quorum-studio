@@ -89,6 +89,21 @@ use Libraries.Data.Formats.JavaScriptObjectNotation
     only on Windows, so a Windows installer made on a Mac is local only, and
     unsigned.
 
+    Quorum:
+
+    Quorum's own installers carry the command-line compiler with no Studio,
+    from quorum-language beside quorum-studio (Quorum/Run/Default.jar, built
+    with Main.quorum as its start, as Quorum.jar; the library jars beside
+    it; and Quorum/Library), the same JDKs as Studio's, and the quorum
+    command, which their installers put on the system PATH. On a Mac,
+    BuildQuorumMac builds the folder /Library/Quorum installs, signs it with
+    the steps Studio's app uses, builds the package with pkgbuild, and
+    notarizes it. On Windows, BuildQuorumWindows runs NSIS on
+    Installer/Windows/Command/Quorum.nsi. Quorum's version is its own
+    (quorumVersion, in Settings.json), and its installers go in
+    Installer/Build/Quorum <version>, beside Studio's in
+    Installer/Build/Quorum Studio <version>.
+
     Settings are kept in Settings.json in this project, so a build can also
     run without the window. Progress is written as
     lines like "Progress: 42", and the last line says how it finished.
@@ -127,6 +142,10 @@ class InstallerBuilder is ProcessListener
     constant text SECURITY = "/usr/bin/security"
     constant text SHASUM = "/usr/bin/shasum"
     constant text SPCTL = "/usr/sbin/spctl"
+    // bsdtar, which reads zip files too, so it can read a jar's manifest.
+    // Windows 10 and later have it as well (WINDOWS_TAR).
+    constant text TAR = "/usr/bin/tar"
+    constant text WINDOWS_TAR = "C:/Windows/System32/tar.exe"
     constant text UNZIP = "/usr/bin/unzip"
     constant text VTOOL = "/usr/bin/vtool"
     constant text XATTR = "/usr/bin/xattr"
@@ -137,10 +156,16 @@ class InstallerBuilder is ProcessListener
     // keeps a signature valid after the certificate expires.
     constant text WINDOWS_TIMESTAMP_SERVER = "http://ts.ssl.com"
 
-    // Which installers to make.
+    // Which of Quorum Studio's installers to make.
     public boolean buildAppleSilicon = true
     public boolean buildIntel = false
     public boolean buildWindows = false
+
+    // Which of Quorum's installers to make: the command-line compiler on
+    // its own, with the quorum command, a JDK and the library, but no Studio.
+    public boolean quorumAppleSilicon = false
+    public boolean quorumIntel = false
+    public boolean quorumWindows = false
 
     // True for an installer for our own machines, made with no certificates.
     public boolean localOnly = true
@@ -156,6 +181,26 @@ class InstallerBuilder is ProcessListener
     // The Windows certificate's subject name. Blank lets signtool pick it.
     public text windowsCertificate = ""
 
+    // Quorum's own version, apart from Studio's, kept in Settings.json.
+    // Quorum's installers go in Installer/Build/Quorum <quorumVersion>, beside
+    // Studio's in Installer/Build/Quorum Studio <version>.
+    public text quorumVersion = "14.5.0"
+
+    // Quorum's installers, by kind of computer.
+    public constant text QUORUM_APPLE_SILICON = "QuorumAppleSilicon"
+    public constant text QUORUM_INTEL = "QuorumIntel"
+    public constant text QUORUM_WINDOWS = "QuorumWindows"
+
+    // The main class the command-line compiler's jar must start at.
+    constant text COMPILER_MAIN_CLASS = "quorum.Libraries.Language.Compile.Main"
+
+    // Quorum's Mac installer: where it installs, its package identifier, and
+    // Apple's tool that builds it. It installs a folder, not an app, so it
+    // needs neither Packages nor a launcher.
+    constant text QUORUM_MAC_LOCATION = "/Library/Quorum"
+    constant text QUORUM_PACKAGE_IDENTIFIER = "org.quorumlanguage.quorum"
+    constant text PKGBUILD = "/usr/bin/pkgbuild"
+
     // Where things are. Set in on create, from the working directory, which
     // is this project's folder when Quorum Studio runs it.
     text studio = ""
@@ -168,9 +213,26 @@ class InstallerBuilder is ProcessListener
     text appFiles = ""
     text packagesProject = ""
     text entitlements = ""
+    // quorum-language's Quorum folder, beside quorum-studio, which Quorum's
+    // installers are made from: the command-line compiler (Run/Default.jar,
+    // carried as Quorum.jar), the library jars beside it, and Library.
+    text quorumFolder = ""
+    text quorumJar = ""
+    // Where Quorum's installers are made from: Installer/Mac/Command and
+    // Installer/Windows/Command, and the folder Quorum's Mac installer
+    // installs, built in Installer/Build/Work.
+    text macCommandFolder = ""
+    text windowsCommandFolder = ""
+    text quorumRoot = ""
 
     // Read from the Packages project when a Mac installer is made.
     text version = ""
+
+    // What a Windows installer needs, found by PrepareWindows.
+    text windowsMakensis = ""
+    text windowsJdk = ""
+    Array<text> windowsSigning
+    HashTable<text, text> windowsEnvironment
 
     // Which installer is being made, of how many, for the progress.
     integer installerIndex = 0
@@ -207,6 +269,12 @@ class InstallerBuilder is ProcessListener
         appFiles = contents + "/app"
         packagesProject = macFolder + "/QuorumStudio.pkgproj"
         entitlements = macFolder + "/QuorumStudio.entitlements"
+        File repositories = projectFolder:GetParentDirectory():GetParentDirectory()
+        quorumFolder = repositories:GetAbsolutePath() + "/quorum-language/Quorum"
+        quorumJar = quorumFolder + "/Run/Default.jar"
+        macCommandFolder = macFolder + "/Command"
+        windowsCommandFolder = windowsFolder + "/Command"
+        quorumRoot = workFolder + "/Quorum"
     end
 
     /*
@@ -224,6 +292,15 @@ class InstallerBuilder is ProcessListener
         if buildWindows
             installers:Add(WINDOWS)
         end
+        if quorumAppleSilicon
+            installers:Add(QUORUM_APPLE_SILICON)
+        end
+        if quorumIntel
+            installers:Add(QUORUM_INTEL)
+        end
+        if quorumWindows
+            installers:Add(QUORUM_WINDOWS)
+        end
 
         if installers:GetSize() = 0
             Log("No installers were chosen.")
@@ -232,10 +309,27 @@ class InstallerBuilder is ProcessListener
         end
 
         Properties properties
-        if buildWindows and not properties:IsWindows() and not localOnly
+        if (buildWindows or quorumWindows) and not properties:IsWindows() and not localOnly
             Log("A Windows installer can only be signed on Windows. Make it on Windows, or check Local only to make an unsigned one here.")
             Log(FINISHED_PREFIX + FAILED)
             return false
+        end
+
+        // Quorum's installers need its version and the command-line compiler,
+        // so those are checked before any installer is made.
+        if quorumAppleSilicon or quorumIntel or quorumWindows
+            quorumVersion = quorumVersion:Trim()
+            if quorumVersion = ""
+                Log("Set the Quorum version first, such as 14.5.0.")
+                Log(FINISHED_PREFIX + FAILED)
+                return false
+            end
+            Log("Quorum version: " + quorumVersion)
+
+            if not CheckQuorumJar()
+                Log(FINISHED_PREFIX + FAILED)
+                return false
+            end
         end
 
         installerCount = installers:GetSize()
@@ -245,6 +339,10 @@ class InstallerBuilder is ProcessListener
             text kind = installers:Get(installerIndex)
             if kind = WINDOWS
                 succeeded = BuildWindows()
+            elseif kind = QUORUM_WINDOWS
+                succeeded = BuildQuorumWindows()
+            elseif kind = QUORUM_APPLE_SILICON or kind = QUORUM_INTEL
+                succeeded = BuildQuorumMac(kind)
             else
                 succeeded = BuildMac(kind)
             end
@@ -258,6 +356,50 @@ class InstallerBuilder is ProcessListener
             Log(FINISHED_PREFIX + FAILED)
         end
         return succeeded
+    end
+
+    /*
+        Checks the command-line compiler's jar, which the quorum command
+        runs: quorum-language/Quorum/Run/Default.jar, beside quorum-studio.
+        Building it is up to the person making the installers: set
+        SourceCode/Main.quorum as the Quorum project's program start and
+        build. This only catches the obvious mistakes: no jar, or a jar that
+        starts somewhere else, most likely at RunLibrary, the project's
+        usual start, since both write Run/Default.jar.
+    */
+    action CheckQuorumJar returns boolean
+        text fix = "Open quorum-language's Quorum project in Quorum Studio, set SourceCode/Main.quorum as the program start, and build it."
+        if not Exists(quorumJar)
+            return Fail("There's no command-line compiler at " + quorumJar + ". " + fix)
+        end
+
+        Properties properties
+        text tar = TAR
+        if properties:IsWindows()
+            tar = WINDOWS_TAR
+        end
+        if not RunTool(tar, Parameters("-xOf", quorumJar, "META-INF/MANIFEST.MF"))
+            return ToolFailed("Could not read the manifest of " + quorumJar)
+        end
+
+        text mainClass = ""
+        text createdBy = ""
+        integer i = 0
+        repeat while i < lastOutput:GetSize()
+            text line = lastOutput:Get(i):Trim()
+            if line:StartsWith("Main-Class:")
+                mainClass = line:GetSubtext(11):Trim()
+            elseif line:StartsWith("Created-By:")
+                createdBy = line:GetSubtext(11):Trim()
+            end
+            i = i + 1
+        end
+
+        if mainClass not= COMPILER_MAIN_CLASS
+            return Fail(quorumJar + " starts at " + Quoted(mainClass) + ", not " + COMPILER_MAIN_CLASS + ", so it isn't the command-line compiler. " + fix)
+        end
+        Log("Command-line compiler: " + quorumJar + " (built by " + createdBy + ")")
+        return true
     end
 
     /*
@@ -309,6 +451,200 @@ class InstallerBuilder is ProcessListener
         end
         Log("Installer: " + installer)
         return true
+    end
+
+    /*
+        Makes one of Quorum's Mac installers: QUORUM_APPLE_SILICON or
+        QUORUM_INTEL. It installs the command-line compiler on its own in
+        /Library/Quorum, with no Studio:
+
+            bin/quorum            the quorum command (Installer/Mac/Command/quorum)
+            Quorum.jar            the command-line compiler
+            QuorumStandardLibrary.jar, QuorumStandardPlugins.jar
+            Library/              Standard and Compiled
+            Java/jdk/             the same JDK Studio's installer carries
+
+        The installer's postinstall script (Installer/Mac/Command/postinstall)
+        writes /etc/paths.d/quorum, which puts /Library/Quorum/bin on every
+        user's PATH. The folder is signed with the same steps as Studio's app
+        (the natives in jars, loose natives, the JDK), built into a package
+        with Apple's pkgbuild, signed, and notarized.
+    */
+    action BuildQuorumMac(text kind) returns boolean
+        text architecture = "arm64"
+        text jdk = studio + "/Java/jdk"
+        text name = "Quorum-Mac-ARM.pkg"
+        if kind = QUORUM_INTEL
+            architecture = "x86_64"
+            jdk = studio + "/Java-INTEL/jdk"
+            name = "Quorum-Mac-INTEL.pkg"
+        end
+
+        Log("")
+        Log("Making Quorum's " + kind + " installer")
+        Step("Checking what the build needs", 0)
+        if not CheckMacJdk(architecture, jdk)
+            return false
+        end
+        if not CheckMacSigning()
+            return false
+        end
+        if not MakeQuorumFolder(jdk)
+            return false
+        end
+
+        // The signing steps work on appFiles, Studio's files inside its app.
+        // Here they work on Quorum's folder, and appFiles goes back after.
+        text studioFiles = appFiles
+        appFiles = quorumRoot
+        RemoveOldGameNatives()
+        boolean signed = CheckMinimumMacOS()
+        if signed
+            signed = SignNativesInJars()
+        end
+        if signed
+            signed = SignAppsInside()
+        end
+        if signed
+            signed = SignLooseNatives()
+        end
+        if signed
+            signed = SignJdk()
+        end
+        appFiles = studioFiles
+        if not signed
+            return false
+        end
+
+        text installer = BuildQuorumPackage(name)
+        if installer = ""
+            return false
+        end
+        if not localOnly
+            if not Notarize(installer)
+                return false
+            end
+        end
+        Log("Installer: " + installer)
+        return true
+    end
+
+    // Builds the folder Quorum's Mac installer installs, in the build folder.
+    action MakeQuorumFolder(text jdk) returns boolean
+        Step("Building Quorum's folder", 5)
+        RunTool(REMOVE, Parameters("-rf", quorumRoot))
+        CreateFolder(quorumRoot + "/bin")
+        CreateFolder(quorumRoot + "/Java")
+
+        if not RunTool(COPY, Parameters("-p", quorumJar, quorumRoot + "/Quorum.jar"))
+            return ToolFailed("Could not copy " + quorumJar)
+        end
+        // The jars the compiler's manifest names, from beside it.
+        if not CopyPath(quorumFolder + "/Run/QuorumStandardLibrary.jar", quorumRoot + "/QuorumStandardLibrary.jar")
+            return false
+        end
+        if not CopyPath(quorumFolder + "/Run/QuorumStandardPlugins.jar", quorumRoot + "/QuorumStandardPlugins.jar")
+            return false
+        end
+        // The jars QuorumStandardPlugins.jar's manifest names, such as ASM,
+        // which the compiler writes bytecode with.
+        if not CopyPath(quorumFolder + "/Run/libraries", quorumRoot + "/libraries")
+            return false
+        end
+        if not CopyPath(quorumFolder + "/Library", quorumRoot + "/Library")
+            return false
+        end
+
+        if not RunTool(COPY, Parameters(macCommandFolder + "/quorum", quorumRoot + "/bin/quorum"))
+            return ToolFailed("Could not copy the quorum command from " + macCommandFolder)
+        end
+        if not RunTool(CHMOD, Parameters("755", quorumRoot + "/bin/quorum"))
+            return ToolFailed("Could not make the quorum command executable")
+        end
+
+        // ditto keeps the JDK's symbolic links and permissions as they are.
+        if not RunTool(DITTO, Parameters(jdk, quorumRoot + "/Java/jdk"))
+            return ToolFailed("Could not copy the JDK")
+        end
+
+        // As for the app: read-only files can't be signed, and extended
+        // attributes make codesign fail.
+        RunTool(CHMOD, Parameters("-R", "u+w", quorumRoot))
+        RunTool(XATTR, Parameters("-cr", quorumRoot))
+        Log("Built " + quorumRoot)
+        return true
+    end
+
+    /*
+        Builds Quorum's Mac installer with pkgbuild, and signs it for a
+        release. Returns its path, or "" if it failed. Nothing it installs is
+        allowed to move: by default the macOS installer moves a bundle it
+        finds already installed somewhere else, so every bundle pkgbuild finds
+        is marked not relocatable.
+    */
+    action BuildQuorumPackage(text name) returns text
+        Step("Building the installer with pkgbuild", 80)
+        text scripts = workFolder + "/QuorumScripts"
+        RunTool(REMOVE, Parameters("-rf", scripts))
+        CreateFolder(scripts)
+        if not RunTool(COPY, Parameters("-p", macCommandFolder + "/postinstall", scripts + "/postinstall"))
+            ToolFailed("Could not copy the postinstall script from " + macCommandFolder)
+            return ""
+        end
+        RunTool(CHMOD, Parameters("755", scripts + "/postinstall"))
+        // Extended attributes would go into the package as ._ files.
+        RunTool(XATTR, Parameters("-cr", scripts))
+
+        text components = workFolder + "/QuorumComponents.plist"
+        RunTool(REMOVE, Parameters("-f", components))
+        if not RunTool(PKGBUILD, Parameters("--analyze", "--root", quorumRoot, components))
+            ToolFailed("pkgbuild couldn't list what the installer installs")
+            return ""
+        end
+        // pkgbuild usually leaves BundleIsRelocatable out, which counts as
+        // relocatable, so it's added where it's missing (the JDK is one).
+        integer i = 0
+        repeat while RunTool(PLIST_BUDDY, Parameters("-c", "Print :" + i + ":RootRelativeBundlePath", components))
+            if not RunTool(PLIST_BUDDY, Parameters("-c", "Set :" + i + ":BundleIsRelocatable false", components))
+                if not RunTool(PLIST_BUDDY, Parameters("-c", "Add :" + i + ":BundleIsRelocatable bool false", components))
+                    ToolFailed("Could not mark a bundle in " + components + " as not relocatable")
+                    return ""
+                end
+            end
+            i = i + 1
+        end
+
+        text installer = QuorumVersionFolder() + "/" + name
+        File old
+        old:SetAbsolutePath(installer)
+        if old:Exists()
+            old:Delete()
+        end
+
+        Array<text> parameters = Parameters("--root", quorumRoot, "--install-location", QUORUM_MAC_LOCATION, "--identifier", QUORUM_PACKAGE_IDENTIFIER)
+        parameters:Add("--version")
+        parameters:Add(quorumVersion)
+        parameters:Add("--scripts")
+        parameters:Add(scripts)
+        parameters:Add("--component-plist")
+        parameters:Add(components)
+        if not localOnly
+            parameters:Add("--sign")
+            parameters:Add(installerIdentity)
+        end
+        parameters:Add(installer)
+        if not RunTool(PKGBUILD, parameters)
+            ToolFailed("pkgbuild couldn't build the installer")
+            return ""
+        end
+
+        if not localOnly
+            if not RunTool(PKGUTIL, Parameters("--check-signature", installer))
+                ToolFailed("The installer isn't signed")
+                return ""
+            end
+        end
+        return installer
     end
 
     /*
@@ -373,6 +709,22 @@ class InstallerBuilder is ProcessListener
         end
         Log("Version: " + version + " (this project's version)")
 
+        if not CheckMacJdk(architecture, jdk)
+            return false
+        end
+
+        // /usr/bin/clang is always there, but only works with Xcode or its
+        // Command Line Tools installed.
+        if not RunTool(XCRUN, Parameters("--find", "clang"))
+            return Fail("There's no C compiler to build the app's launcher. Install Xcode, or run: xcode-select --install")
+        end
+
+        return CheckMacSigning()
+    end
+
+    // Checks that the JDK for a Mac installer is there, and is for the
+    // installer's kind of Mac.
+    action CheckMacJdk(text architecture, text jdk) returns boolean
         text java = jdk + "/Contents/Home/bin/java"
         if not Exists(java)
             return Fail("There's no JDK at " + jdk + ". It isn't in git, so copy one there by hand.")
@@ -384,13 +736,11 @@ class InstallerBuilder is ProcessListener
             return Fail("The JDK at " + jdk + " is for " + architectures + ", not " + architecture + ".")
         end
         Log("JDK: " + jdk + " (" + architectures + ")")
+        return true
+    end
 
-        // /usr/bin/clang is always there, but only works with Xcode or its
-        // Command Line Tools installed.
-        if not RunTool(XCRUN, Parameters("--find", "clang"))
-            return Fail("There's no C compiler to build the app's launcher. Install Xcode, or run: xcode-select --install")
-        end
-
+    // For a release, checks the Mac certificates and the notary profile.
+    action CheckMacSigning returns boolean
         if localOnly
             Log("Local only: signed with no certificate, and not notarized.")
             return true
@@ -522,8 +872,11 @@ class InstallerBuilder is ProcessListener
         ones: they predate the 10.9 SDK, and one is PowerPC.
     */
     action CopyIn(text from, text into) returns boolean
-        text source = studio + "/" + from
-        text destination = appFiles + "/" + into
+        return CopyPath(studio + "/" + from, appFiles + "/" + into)
+    end
+
+    // Copies a file or folder, leaving out what CopyIn leaves out.
+    action CopyPath(text source, text destination) returns boolean
         File sourceFile
         sourceFile:SetAbsolutePath(source)
         if not sourceFile:Exists()
@@ -586,9 +939,11 @@ class InstallerBuilder is ProcessListener
     */
     action CheckMinimumMacOS returns boolean
         Step("Checking each native's minimum macOS", 28)
-        RunTool(PLIST_BUDDY, Parameters("-c", "Print :LSMinimumSystemVersion", contents + "/Info.plist"))
+        // Installer/Mac/Info.plist, which the app's Info.plist is copied from;
+        // Quorum's installers have no app, and use the same minimum.
+        RunTool(PLIST_BUDDY, Parameters("-c", "Print :LSMinimumSystemVersion", macFolder + "/Info.plist"))
         text minimum = Joined(lastOutput)
-        Log("The app says it needs macOS " + minimum + " (LSMinimumSystemVersion in Info.plist).")
+        Log("The app says it needs macOS " + minimum + " (LSMinimumSystemVersion in Installer/Mac/Info.plist).")
 
         Array<text> programs
         Array<text> libraries
@@ -1234,8 +1589,6 @@ class InstallerBuilder is ProcessListener
         Log("")
         Log("Making the Windows installer")
         Step("Checking what the build needs", 0)
-        Properties properties
-        boolean onWindows = properties:IsWindows()
 
         version = ReadVersion()
         if version = ""
@@ -1243,46 +1596,13 @@ class InstallerBuilder is ProcessListener
         end
         Log("Version: " + version + " (this project's version)")
 
-        text makensis = FindMakensis()
-        if makensis = ""
-            if onWindows
-                return Fail("NSIS isn't installed. Install it from https://nsis.sourceforge.io")
-            end
-            return Fail("NSIS isn't installed. Install it with: brew install makensis")
+        if not PrepareWindows()
+            return false
         end
-
-        // On Windows, Studio's own Java is the Windows JDK. A Mac has the Mac
-        // JDK there, so the Windows one comes from elsewhere.
-        text jdk = studio + "/Java/jdk"
-        if not onWindows
-            jdk = FindWindowsJdk()
-        end
-        if jdk = "" or not Exists(jdk + "/bin/javaw.exe")
-            if onWindows
-                return Fail("There's no Windows JDK at " + studio + "/Java/jdk.")
-            end
-            return Fail("There's no Windows JDK. Copy one to " + studio + "/Java-WINDOWS/jdk, or run AutoBuild with Windows checked, which downloads one.")
-        end
-        Log("Windows JDK: " + jdk)
-
-        Array<text> signing
-        if localOnly
-            Log("Local only: not signed.")
-        else
-            text signtool = FindSigntool()
-            if signtool = ""
-                return Fail("Could not find signtool. Install the Windows SDK.")
-            end
-            Log("Signing with: " + signtool)
-            signing:Add("-DSIGN=" + WindowsSignCommand(signtool))
-        end
-
-        // makensis stops at once on a Mac when no locale is set, as when
-        // Quorum Studio starts a program.
-        HashTable<text, text> environment
-        if not onWindows
-            environment:Add("LC_ALL", "en_US.UTF-8")
-        end
+        text makensis = windowsMakensis
+        text jdk = windowsJdk
+        Array<text> signing = windowsSigning
+        HashTable<text, text> environment = windowsEnvironment
 
         // makensis takes options after "-" everywhere; "/" works only on Windows.
         CreateFolder(workFolder)
@@ -1311,6 +1631,95 @@ class InstallerBuilder is ProcessListener
         echoOutput = false
         if not installerMade
             return ToolFailed("NSIS couldn't make the installer")
+        end
+        Log("Installer: " + installer)
+        return true
+    end
+
+    /*
+        Finds what a Windows installer needs, for Studio's or Quorum's: NSIS,
+        the Windows JDK and, unless the installer is local, signtool. Sets
+        windowsMakensis, windowsJdk, windowsSigning (the makensis option that
+        signs) and windowsEnvironment. Returns false, saying why, if
+        something is missing.
+    */
+    action PrepareWindows returns boolean
+        Properties properties
+        boolean onWindows = properties:IsWindows()
+
+        windowsMakensis = FindMakensis()
+        if windowsMakensis = ""
+            if onWindows
+                return Fail("NSIS isn't installed. Install it from https://nsis.sourceforge.io")
+            end
+            return Fail("NSIS isn't installed. Install it with: brew install makensis")
+        end
+
+        // On Windows, Studio's own Java is the Windows JDK. A Mac has the Mac
+        // JDK there, so the Windows one comes from elsewhere.
+        windowsJdk = studio + "/Java/jdk"
+        if not onWindows
+            windowsJdk = FindWindowsJdk()
+        end
+        if windowsJdk = "" or not Exists(windowsJdk + "/bin/javaw.exe")
+            if onWindows
+                return Fail("There's no Windows JDK at " + studio + "/Java/jdk.")
+            end
+            return Fail("There's no Windows JDK. Copy one to " + studio + "/Java-WINDOWS/jdk, or run AutoBuild with Windows checked, which downloads one.")
+        end
+        Log("Windows JDK: " + windowsJdk)
+
+        Array<text> signing
+        windowsSigning = signing
+        if localOnly
+            Log("Local only: not signed.")
+        else
+            text signtool = FindSigntool()
+            if signtool = ""
+                return Fail("Could not find signtool. Install the Windows SDK.")
+            end
+            Log("Signing with: " + signtool)
+            windowsSigning:Add("-DSIGN=" + WindowsSignCommand(signtool))
+        end
+
+        // makensis stops at once on a Mac when no locale is set, as when
+        // Quorum Studio starts a program.
+        HashTable<text, text> environment
+        windowsEnvironment = environment
+        if not onWindows
+            windowsEnvironment:Add("LC_ALL", "en_US.UTF-8")
+        end
+        return true
+    end
+
+    /*
+        Makes Quorum's Windows installer, Quorum-Windows.exe, with NSIS, from
+        Installer/Windows/Command/Quorum.nsi. It installs the command-line
+        compiler on its own, with no Studio, in Program Files\Quorum: the
+        quorum command (bin\quorum.cmd), Quorum.jar and the library jars
+        beside it, Library, and the Windows JDK in Java\jdk. It puts bin on
+        the system PATH (QuorumPath.ps1), and its uninstaller takes it off.
+    */
+    action BuildQuorumWindows returns boolean
+        Log("")
+        Log("Making Quorum's Windows installer")
+        Step("Checking what the build needs", 0)
+        if not PrepareWindows()
+            return false
+        end
+
+        Step("Making the installer (Quorum.nsi); this takes a few minutes", 15)
+        text installer = QuorumVersionFolder() + "/Quorum-Windows.exe"
+        Array<text> parameters = Parameters("-V3", "-DQUORUM=" + NsisPath(quorumFolder), "-DQUORUM_JAR=" + NsisPath(quorumJar), "-DJDK=" + NsisPath(windowsJdk), "-DOUTPUT=" + NsisPath(installer))
+        parameters:Add("-DVERSION=" + quorumVersion)
+        parameters:Add("-DPRODUCT_VERSION=" + FourPartVersion(quorumVersion))
+        AddAll(parameters, windowsSigning)
+        parameters:Add("Quorum.nsi")
+        echoOutput = true
+        boolean installerMade = RunTool(windowsMakensis, parameters, windowsCommandFolder, windowsEnvironment)
+        echoOutput = false
+        if not installerMade
+            return ToolFailed("NSIS couldn't make Quorum's installer")
         end
         Log("Installer: " + installer)
         return true
@@ -1382,9 +1791,18 @@ class InstallerBuilder is ProcessListener
         return result
     end
 
-    // The folder for this version's installers, ready to upload: build/<version>.
+    // The folder for Studio's installers, ready to upload:
+    // build/Quorum Studio <Studio's version>.
     action VersionFolder returns text
-        text folder = buildFolder + "/" + version
+        text folder = buildFolder + "/Quorum Studio " + version
+        CreateFolder(folder)
+        return folder
+    end
+
+    // The folder for Quorum's installers, beside Studio's:
+    // build/Quorum <Quorum's version>.
+    action QuorumVersionFolder returns text
+        text folder = buildFolder + "/Quorum " + quorumVersion
         CreateFolder(folder)
         return folder
     end
@@ -1482,6 +1900,47 @@ class InstallerBuilder is ProcessListener
     end
 
     /*
+        Sets this project's version, Studio's version: the value of the
+        "Project Version" line in Project/Project.qp, which ReadVersion
+        reads. Only that value changes; the rest of the file stays as it is.
+        Returns false if the file or the line isn't there, or the file
+        can't be written.
+    */
+    action WriteVersion(text value) returns boolean
+        File projectFile
+        projectFile:SetPath("Project/Project.qp")
+        if not projectFile:Exists()
+            return false
+        end
+        text contents = projectFile:Read()
+        text key = DoubleQuote() + "Project Version" + DoubleQuote()
+        integer keyStart = contents:IndexOf(key)
+        if keyStart < 0
+            return false
+        end
+        // The value is the quoted text after the key's colon.
+        integer colon = contents:IndexOf(":", keyStart + key:GetSize())
+        if colon < 0
+            return false
+        end
+        integer valueStart = contents:IndexOf(DoubleQuote(), colon + 1)
+        if valueStart < 0
+            return false
+        end
+        integer valueEnd = contents:IndexOf(DoubleQuote(), valueStart + 1)
+        if valueEnd < 0
+            return false
+        end
+        text changed = contents:GetSubtext(0, valueStart + 1) + value + contents:GetSubtext(valueEnd)
+        check
+            projectFile:Write(changed)
+        detect e
+            return false
+        end
+        return true
+    end
+
+    /*
         The names of the certificates of one kind in the keychain, such as
         "Developer ID Application". policy is codesigning for the app's
         certificate and basic for the installer's.
@@ -1535,6 +1994,10 @@ class InstallerBuilder is ProcessListener
         installerIdentity = TextSetting(json, "installerIdentity", installerIdentity)
         notaryProfile = TextSetting(json, "notaryProfile", notaryProfile)
         windowsCertificate = TextSetting(json, "windowsCertificate", windowsCertificate)
+        quorumVersion = TextSetting(json, "quorumVersion", quorumVersion)
+        quorumAppleSilicon = BooleanSetting(json, "quorumAppleSilicon", quorumAppleSilicon)
+        quorumIntel = BooleanSetting(json, "quorumIntel", quorumIntel)
+        quorumWindows = BooleanSetting(json, "quorumWindows", quorumWindows)
     end
 
     action BooleanSetting(JavaScriptObjectNotation json, text key, boolean default) returns boolean
@@ -1565,6 +2028,10 @@ class InstallerBuilder is ProcessListener
         json:Add("installerIdentity", installerIdentity)
         json:Add("notaryProfile", notaryProfile)
         json:Add("windowsCertificate", windowsCertificate)
+        json:Add("quorumVersion", quorumVersion)
+        json:Add("quorumAppleSilicon", quorumAppleSilicon)
+        json:Add("quorumIntel", quorumIntel)
+        json:Add("quorumWindows", quorumWindows)
         json:SetPrettyPrint(true)
         File settings
         settings:SetPath(SETTINGS_FILE)

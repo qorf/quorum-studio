@@ -1,33 +1,41 @@
 # InstallerBuilder
 
-InstallerBuilder makes Quorum Studio's installers:
+InstallerBuilder makes two sets of installers, each for three kinds of computer:
 
 | Installer | Made on | File |
 |---|---|---|
-| Mac, Apple Silicon | a Mac | `Installer/Build/<version>/Quorum-Studio-Mac-ARM.pkg` |
-| Mac, Intel | a Mac | `Installer/Build/<version>/Quorum-Studio-Mac-INTEL.pkg` |
-| Windows | Windows (signed or not), or a Mac (not signed) | `Installer/Build/<version>/Quorum-Studio-Windows.exe` |
+| Quorum Studio, Mac, Apple Silicon | a Mac | `Installer/Build/Quorum Studio <Studio version>/Quorum-Studio-Mac-ARM.pkg` |
+| Quorum Studio, Mac, Intel | a Mac | `Installer/Build/Quorum Studio <Studio version>/Quorum-Studio-Mac-INTEL.pkg` |
+| Quorum Studio, Windows | Windows (signed or not), or a Mac (not signed) | `Installer/Build/Quorum Studio <Studio version>/Quorum-Studio-Windows.exe` |
+| Quorum, Mac, Apple Silicon | a Mac | `Installer/Build/Quorum <Quorum version>/Quorum-Mac-ARM.pkg` |
+| Quorum, Mac, Intel | a Mac | `Installer/Build/Quorum <Quorum version>/Quorum-Mac-INTEL.pkg` |
+| Quorum, Windows | Windows (signed or not), or a Mac (not signed) | `Installer/Build/Quorum <Quorum version>/Quorum-Windows.exe` |
 
-Every installer for a version ends up in one folder, ready to upload.
+**Quorum Studio's** installers install the development environment. **Quorum's** install the command-line compiler on its own, with no Studio: the `quorum` command on the system PATH, the compiler, the standard library and a JDK (see "Quorum's installers" below). Each set ends up in its own folder, ready to upload, and all six can be made in one build.
 
-It is a Quorum project. Open it in Quorum Studio and run it, and a window opens. In the window, choose the installers, choose whether they're for release (signed) or only for our own computers (**Local only**), and press **Build installers**. The window shows the progress and the end of the log. The whole log is in `InstallerBuilder.log` in this folder.
+It is a Quorum project. Open it in Quorum Studio and run it, and a window opens. In the window, check the installers to make in the **Quorum Studio** and **Quorum** cards, choose whether they're for release (signed) or only for our own computers (**Local only**), and press **Build installers**. The window shows the progress and the end of the log. The whole log is in `InstallerBuilder.log` in this folder.
 
 ## Folders
 
 | Folder | What's in it |
 |---|---|
 | `SourceCode` | The program. `InstallerBuilder.quorum` makes the installers; `Main.quorum` is the window. |
-| `Installer/Mac` | What the Mac installers are made from: the Packages project (`QuorumStudio.pkgproj`), the app's `Info.plist`, the launcher's C source (`Launcher.c`), Java's entitlements (`QuorumStudio.entitlements`), and the license the installer shows (`License.txt`, the same as Windows'). |
-| `Installer/Windows` | What the Windows installer is made from: the NSIS scripts (`Run.nsi` for the `QuorumStudio.exe` launcher, `Installer.nsi` for the installer), the icon and the license. |
-| `Installer/Build` | What's made. Git ignores it. `Build/<version>` has the finished installers; `Build/Work` has what's made on the way (the Mac app, the Windows launcher). |
+| `Installer/Mac` | What Studio's Mac installers are made from: the Packages project (`QuorumStudio.pkgproj`), the app's `Info.plist` (whose minimum macOS both sets use), the launcher's C source (`Launcher.c`), Java's entitlements (`QuorumStudio.entitlements`), and the license the installer shows (`License.txt`, the same as Windows'). |
+| `Installer/Mac/Command` | What Quorum's Mac installers add: the `quorum` command (`quorum`) and the `postinstall` script that puts it on the PATH. |
+| `Installer/Windows` | What Studio's Windows installer is made from: the NSIS scripts (`Run.nsi` for the `QuorumStudio.exe` launcher, `Installer.nsi` for the installer), the icon and the license. |
+| `Installer/Windows/Command` | Quorum's Windows installer: its NSIS script (`Quorum.nsi`), the `quorum` command (`quorum.cmd`), and `QuorumPath.ps1`, which adds it to the PATH and removes it. It uses the icon and license in `Installer/Windows`. |
+| `Installer/Build` | What's made. Git ignores it. `Build/Quorum Studio <version>` and `Build/Quorum <version>` have the finished installers; `Build/Work` has what's made on the way (the Mac app, Quorum's Mac folder, the Windows launcher). |
 
 Quorum Studio itself is built from the `QuorumStudio` folder beside this one. Its own `QuorumStudio/Installer` folder has the files these were copied from, and the old instructions; this README replaces them.
 
-## The version
+## The versions
 
-The version is this project's own version: **Project Version** in Quorum Studio's project properties for InstallerBuilder (saved in `Project/Project.qp`). Set it before each release. The window shows it at the top.
+Each set has its own version, a field in its card that you can change before you build:
 
-It's the only place the version is set. The build writes it into the Mac app (`Info.plist`), the Packages project, and the Windows installer's version information, and names the `Build/<version>` folder after it.
+- **Quorum Studio's version** is the Quorum Studio card's field. It's kept in one place, this project's own version (**Project Version**, saved in `Project/Project.qp`): the field shows it, and a changed field is written back there when you press **Build installers**. It can also still be changed in Quorum Studio's project properties; if InstallerBuilder's project properties are open in Studio while you build, close them first so Studio doesn't save the old value over it. The build writes it into the Mac app (`Info.plist`), the Packages project, and the Windows installer's version information.
+- **Quorum's version** is the Quorum card's **Quorum version** field, saved in `Settings.json` as `quorumVersion` (14.5.0 unless changed). The build writes it into Quorum's packages and the Windows installer's version information.
+
+Set the ones you need before a release. Studio's installers go in `Installer/Build/Quorum Studio <Studio version>` and Quorum's in `Installer/Build/Quorum <Quorum version>`, such as `Installer/Build/Quorum Studio 8.5.0` and `Installer/Build/Quorum 14.5.0`.
 
 ## 1. Build Quorum Studio (all computers)
 
@@ -46,11 +54,34 @@ The installers are made from Quorum Studio's `Run` and `Library` folders, so bui
 
 The Mac build checks that the library copy is current: if Studio's `Run/jni` or `Library/Compiled/Run/jni` has no `Mac.so`, it stops and says to copy the library and build again.
 
+For Quorum's installers, also build the **command-line compiler**:
+
+11. In quorum-language's Quorum project, set `SourceCode/Main.quorum` as the program start (Set Program Start) and build. This writes `quorum-language/Quorum/Run/Default.jar`, which Quorum's installers carry as `Quorum.jar`.
+
+`RunLibrary` (step 2) writes the same `Run/Default.jar`, so do step 11 after it, and set the start back to `RunLibrary` when you next rebuild the library. Before making any of Quorum's installers, the build checks that the jar is there and that its manifest's `Main-Class` is `quorum.Libraries.Language.Compile.Main` (Main.quorum is in package `Libraries.Language.Compile`); if not, it stops and says to do step 11. It only catches those mistakes: building the jar from the right code is up to you.
+
+## Quorum's installers
+
+They're made from quorum-language, beside quorum-studio: `Quorum/Run/Default.jar` (as `Quorum.jar`), `Quorum/Run/QuorumStandardLibrary.jar` and `QuorumStandardPlugins.jar` (the jars the compiler's manifest names), and `Quorum/Library` (`Standard` and `Compiled`). They carry the same JDKs as Studio's.
+
+| | Mac | Windows |
+|---|---|---|
+| Installs into | `/Library/Quorum` | `Program Files\Quorum` (can be changed) |
+| The command | `bin/quorum` (from `Installer/Mac/Command/quorum`) | `bin\quorum.cmd` (from `Installer/Windows/Command/quorum.cmd`) |
+| The JDK | `Java/jdk` | `Java\jdk` |
+| On the PATH by | `/etc/paths.d/quorum`, written by the package's `postinstall` script. macOS adds `/Library/Quorum/bin` to every user's PATH in new Terminal windows (zsh and bash); shells that skip `path_helper`, such as fish, don't see it | `QuorumPath.ps1`, run by the installer, which adds `<install>\bin` to the system PATH; the uninstaller removes it. New consoles see it |
+| Built with | Apple's `pkgbuild` (no Packages project). Every bundle in it is marked not relocatable, so the macOS installer never moves the JDK elsewhere | NSIS, `Installer/Windows/Command/Quorum.nsi` |
+| Signed | As Studio's app is: the natives in jars, loose natives and the JDK, then the package with the Developer ID Installer certificate, then notarized. Local only: ad hoc, not notarized | As Studio's installer is: the uninstaller and the installer, with signtool |
+
+`quorum Hello.quorum` compiles, as the compiler always has, with the installed library (`-library`). `quorum -run Hello.quorum` compiles to Java bytecode and, if it built, runs `Run/<name>.jar` on the installed Java (with `-XstartOnFirstThread` on a Mac, for games). Every other flag goes to the compiler unchanged. The compiler exits with 1 when a build fails, and `-run` removes the old `Run/<name>.jar` before compiling, so a failed build never runs an old program.
+
+macOS packages have no uninstaller. To remove Quorum from a Mac, delete `/Library/Quorum` and `/etc/paths.d/quorum`.
+
 ## 2. Set up the computer (once)
 
 ### The JDKs
 
-Each installer carries its own JDK. None of them are in git, so they're copied onto the building computer by hand.
+Each installer carries its own JDK; Quorum's use the same ones as Studio's. None of them are in git, so they're copied onto the building computer by hand.
 
 | Installer | JDK folder |
 |---|---|
@@ -74,9 +105,9 @@ The JDKs come from the OpenJDK builds: `git clone https://YourUserName@bitbucket
 
 ## 3. Make the installers
 
-1. Set the version (above).
+1. Set the versions (above).
 2. Open InstallerBuilder in Quorum Studio and run it.
-3. Check the installers to make. A Mac shows both Mac installers and Windows; Windows shows Windows.
+3. Check the installers to make, in the **Quorum Studio** card and the **Quorum** card. On a Mac each card shows both Mac installers and Windows; on Windows, Windows.
 4. Check **Local only** for installers for our own computers, or leave it unchecked for a release (see Signing).
 5. For a release, fill in the certificates, or leave them blank to have them found (see Signing).
 6. Press **Build installers**.

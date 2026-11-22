@@ -18,13 +18,15 @@ use Libraries.Containers.Array
 use Libraries.Containers.HashTable
 
 /*
-    Main opens a window for making Quorum Studio's installers. It is a form:
-    a banner with the version, then a grouping for the installers this
-    computer can make, one for the certificates to sign them with, and one
+    Main opens a window for making Quorum Studio's installers and Quorum's
+    (the command-line compiler on its own). It is a form: a banner, a card
+    for Studio (its version and which installers to make) and one for Quorum
+    (its version and which installers to make), one for signing, and one
     for the build's progress and log, with the Build installers button at the
     bottom. How each installer is made is described in InstallerBuilder.
 
-    Build Studio as usual first, then run this project.
+    Build Studio as usual first, and for Quorum's installers, quorum-language's
+    Quorum project with Main.quorum as its start; then run this project.
 
     On a Mac, a build runs as a second copy of this program, so the window
     keeps responding: a build can take a few minutes, and notarizing a few
@@ -41,7 +43,7 @@ use Libraries.Containers.HashTable
 */
 class Main is Form, ProcessListener
     constant integer WIDTH = 960
-    constant integer HEIGHT = 940
+    constant integer HEIGHT = 1000
     constant text LOG_FILE = "InstallerBuilder.log"
     // On Windows the second copy's errors go here; the window reads both.
     constant text ERRORS_FILE = "InstallerBuilderErrors.log"
@@ -51,17 +53,23 @@ class Main is Form, ProcessListener
     // The log shows its last lines. Few enough that the whole form fits in the
     // window: a form taller than its window scrolls, and its groupings move
     // around while it does.
-    constant integer LOG_LINES = 6
+    constant integer LOG_LINES = 4
 
     InstallerBuilder builder
     Properties properties
     boolean onMac = false
     boolean onWindows = false
 
+    // Studio's installers, and Quorum's.
     Checkbox appleSiliconBox
     Checkbox intelBox
     Checkbox windowsBox
+    Checkbox quorumAppleSiliconBox
+    Checkbox quorumIntelBox
+    Checkbox quorumWindowsBox
     Checkbox localOnlyBox
+    TextField studioVersionField
+    TextField quorumVersionField
     TextField appIdentityField
     TextField installerIdentityField
     TextField notaryProfileField
@@ -94,23 +102,41 @@ class Main is Form, ProcessListener
         builder:LoadSettings()
 
         Page page = GetMainPage()
-        page:AddBanner("Quorum Studio Installers", VersionMessage() + " Build Studio as usual first.")
+        page:AddBanner("Quorum Installers", "Quorum Studio's installers, and Quorum's: the command-line compiler on its own, with the quorum command. A Windows installer made on a Mac can only be local only.")
 
-        Grouping installers = page:AddGrouping("Installers")
-        installers:SetTitle("Which installers to make")
+        // Studio's installers: the version from the project, and which to make.
+        Grouping studioCard = page:AddGrouping("Quorum Studio")
+        studioCard:SetTitle("Quorum Studio")
+        studioVersionField = AddField(studioCard, "Quorum Studio version, such as 8.5.0 (saved as this project's version; build Studio as usual first)")
+        Grouping studioRow = studioCard:AddGrouping("Quorum Studio installers")
         if onMac
-            appleSiliconBox = installers:AddCheckbox("Mac, Apple Silicon")
-            intelBox = installers:AddCheckbox("Mac, Intel")
-            windowsBox = installers:AddCheckbox("Windows (made on a Mac, it can only be local only)")
+            appleSiliconBox = studioRow:AddCheckbox("Studio: Mac, Apple Silicon")
+            intelBox = studioRow:AddCheckbox("Studio: Mac, Intel")
+            windowsBox = studioRow:AddCheckbox("Studio: Windows")
         elseif onWindows
-            windowsBox = installers:AddCheckbox("Windows")
+            windowsBox = studioRow:AddCheckbox("Studio: Windows")
         else
-            installers:AddLabel("Where", "Installers are made on a Mac or on Windows.")
+            studioRow:AddLabel("Where", "Installers are made on a Mac or on Windows.")
         end
-        localOnlyBox = installers:AddCheckbox("Local only: for our own computers, with no certificates")
+
+        // Quorum's installers: its own version, and which to make.
+        Grouping quorumCard = page:AddGrouping("Quorum")
+        quorumCard:SetTitle("Quorum, the command-line compiler")
+        quorumVersionField = AddField(quorumCard, "Quorum version, such as 14.5.0 (needs quorum-language's Quorum project built with Main.quorum as its start)")
+        Grouping quorumRow = quorumCard:AddGrouping("Quorum installers")
+        if onMac
+            quorumAppleSiliconBox = quorumRow:AddCheckbox("Quorum: Mac, Apple Silicon")
+            quorumIntelBox = quorumRow:AddCheckbox("Quorum: Mac, Intel")
+            quorumWindowsBox = quorumRow:AddCheckbox("Quorum: Windows")
+        elseif onWindows
+            quorumWindowsBox = quorumRow:AddCheckbox("Quorum: Windows")
+        else
+            quorumRow:AddLabel("Where", "Installers are made on a Mac or on Windows.")
+        end
 
         Grouping certificates = page:AddGrouping("Certificates")
-        certificates:SetTitle("Certificates, for a release")
+        certificates:SetTitle("Signing, for all the installers")
+        localOnlyBox = certificates:AddCheckbox("Local only: for our own computers, with no certificates")
         if onMac
             certificates:AddLabel("Keychain", CertificatesMessage())
             appIdentityField = AddField(certificates, "Developer ID Application certificate (blank finds it)")
@@ -139,7 +165,7 @@ class Main is Form, ProcessListener
         buttons:PositionFromBottom()
 
         DesktopConfiguration desktop = GetDesktopConfiguration()
-        desktop:title = "Quorum Studio Installers"
+        desktop:title = "Quorum Installers"
         desktop:resizable = true
         Display(WIDTH, HEIGHT)
     end
@@ -158,25 +184,27 @@ class Main is Form, ProcessListener
         if onMac
             appleSiliconBox:SetToggleState(builder:buildAppleSilicon)
             intelBox:SetToggleState(builder:buildIntel)
+            windowsBox:SetToggleState(builder:buildWindows)
+            quorumAppleSiliconBox:SetToggleState(builder:quorumAppleSilicon)
+            quorumIntelBox:SetToggleState(builder:quorumIntel)
+            quorumWindowsBox:SetToggleState(builder:quorumWindows)
             appIdentityField:SetText(builder:appIdentity)
             installerIdentityField:SetText(builder:installerIdentity)
             notaryProfileField:SetText(builder:notaryProfile)
-            windowsBox:SetToggleState(builder:buildWindows)
         elseif onWindows
-            windowsBox:SetToggleState(true)
+            windowsBox:SetToggleState(builder:buildWindows)
+            quorumWindowsBox:SetToggleState(builder:quorumWindows)
             windowsCertificateField:SetText(builder:windowsCertificate)
         end
         localOnlyBox:SetToggleState(builder:localOnly)
+        studioVersionField:SetText(builder:ReadVersion())
+        quorumVersionField:SetText(builder:quorumVersion)
     end
 
     // A text field with its label, which the form shows as the field's caption.
     action AddField(Grouping group, text name) returns TextField
         group:AddLabel(name + " label", name)
         return group:AddTextField(name)
-    end
-
-    action VersionMessage returns text
-        return "Version " + builder:ReadVersion() + ", this project's version. Change it in the project's properties."
     end
 
     // Which Developer ID certificates are in this Mac's keychain.
@@ -202,7 +230,11 @@ class Main is Form, ProcessListener
         builder:buildAppleSilicon = onMac and appleSiliconBox:GetToggleState()
         builder:buildIntel = onMac and intelBox:GetToggleState()
         builder:buildWindows = (onMac or onWindows) and windowsBox:GetToggleState()
+        builder:quorumAppleSilicon = onMac and quorumAppleSiliconBox:GetToggleState()
+        builder:quorumIntel = onMac and quorumIntelBox:GetToggleState()
+        builder:quorumWindows = (onMac or onWindows) and quorumWindowsBox:GetToggleState()
         builder:localOnly = localOnlyBox:GetToggleState()
+        builder:quorumVersion = quorumVersionField:GetText():Trim()
         if onMac
             builder:appIdentity = appIdentityField:GetText():Trim()
             builder:installerIdentity = installerIdentityField:GetText():Trim()
@@ -211,9 +243,30 @@ class Main is Form, ProcessListener
             builder:windowsCertificate = windowsCertificateField:GetText():Trim()
         end
 
-        if not builder:buildAppleSilicon and not builder:buildIntel and not builder:buildWindows
+        boolean anyStudio = builder:buildAppleSilicon or builder:buildIntel or builder:buildWindows
+        boolean anyQuorum = builder:quorumAppleSilicon or builder:quorumIntel or builder:quorumWindows
+        if not anyStudio and not anyQuorum
             statusLabel:SetText("Choose at least one installer.")
             return now
+        end
+        if anyQuorum and builder:quorumVersion = ""
+            statusLabel:SetText("Set the Quorum version, such as 14.5.0.")
+            return now
+        end
+
+        // Studio's version is kept in one place, this project's version in
+        // Project/Project.qp, so a changed field is written back there before
+        // the build reads it.
+        text studioVersion = studioVersionField:GetText():Trim()
+        if anyStudio and studioVersion = ""
+            statusLabel:SetText("Set the Quorum Studio version, such as 8.5.0.")
+            return now
+        end
+        if studioVersion not= "" and studioVersion not= builder:ReadVersion()
+            if not builder:WriteVersion(studioVersion)
+                statusLabel:SetText("Could not save the Quorum Studio version in Project/Project.qp.")
+                return now
+            end
         end
         builder:SaveSettings()
 

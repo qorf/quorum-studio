@@ -1,0 +1,13 @@
+#!/bin/sh
+# Runs as root after Quorum's Mac installer puts its files in /Library/Quorum.
+# It puts the quorum command's folder on every user's PATH: macOS's
+# path_helper adds each folder named in /etc/paths.d to the PATH of new
+# Terminal windows, in zsh and bash.
+#
+# The installer passes the volume it installed onto as $3 ("/" for the
+# startup disk).
+volume="${3%/}"
+mkdir -p "$volume/etc/paths.d"
+echo "/Library/Quorum/bin" > "$volume/etc/paths.d/quorum"
+chmod 644 "$volume/etc/paths.d/quorum"
+exit 0
