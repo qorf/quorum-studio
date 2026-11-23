@@ -547,7 +547,6 @@ action GetBlocksScopeWidthScaling returns number
             return now
         end
         text value = file:Read()
-        value = value:Replace("\\", "\")
         JavaScriptObjectNotation notation
         notation:Read(value)
 
@@ -708,7 +707,7 @@ action GetBlocksScopeWidthScaling returns number
         else
             check
                 text contents = file:Read()
-                count = contents:Split(contents:GetLineFeed()):GetSize()
+                count = contents:SplitIntoLines():GetSize()
             detect error
                 count = 0
             end
@@ -832,10 +831,9 @@ action GetBlocksScopeWidthScaling returns number
         if select not= undefined
             notation:Add(TREE_SELECT, select:GetFile():GetAbsolutePath())
         end
+        //ToText escapes backslashes and quotes itself, so the file is
+        //valid JSON and reads back as written.
         text value = notation:ToText()
-        //write to disk once this is fixed
-        //sanitize the input first
-        value = value:Replace("\", "\\")
         file:Write(value)
         WritePasswords()
     end

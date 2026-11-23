@@ -1498,7 +1498,7 @@ detect error
         end
         text dq = space:GetDoubleQuote()
         text line = space:GetCarriageReturn()
-        text result = space + dq + property:GetKey() + dq + " : "
+        text result = space + Quote(property:GetKey()) + " : "
         
         result = result
         if property:GetSize() = 1 and not property:IsArray()
@@ -1506,7 +1506,7 @@ detect error
             if next = "true" or next = "false"
                 result = result + next
             else 
-                result = result + dq + next + dq
+                result = result + Quote(next)
             end
         elseif property:GetNestedPropertiesSize() > 0
             i = 0
@@ -1527,7 +1527,7 @@ detect error
             text array = "["
             repeat while i < property:GetSize()
                 text value = property:Get(i)
-                array = array + dq + value + dq
+                array = array + Quote(value)
                 if i not= property:GetSize() - 1
                     array = array + ", "
                 end
@@ -1538,6 +1538,39 @@ detect error
         end
         return result
     end
+    /*
+        Returns the text as a JSON string: in double quotes, with a double
+        quote, backslash, line feed, carriage return or tab escaped, so a
+        value such as a Windows path reads back as written.
+    */
+    private action Quote(text value) returns text
+        text dq = ""
+        dq = dq:GetDoubleQuote()
+        text backslash = "\"
+        if value = undefined
+            return dq + dq
+        end
+        text result = dq
+        integer index = 0
+        repeat while index < value:GetSize()
+            text character = value:GetCharacter(index)
+            integer code = value:GetUnicodeInteger(index)
+            if character = dq or character = backslash
+                result = result + backslash + character
+            elseif code = 10
+                result = result + backslash + "n"
+            elseif code = 13
+                result = result + backslash + "r"
+            elseif code = 9
+                result = result + backslash + "t"
+            else
+                result = result + character
+            end
+            index = index + 1
+        end
+        return result + dq
+    end
+
     /*
         This action saves the project properties to disk. If a file already 
         exists for this project, the system overrides it.
