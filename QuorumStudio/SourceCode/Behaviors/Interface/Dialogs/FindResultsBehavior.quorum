@@ -1,0 +1,58 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Interface.Behaviors.Behavior
+use Libraries.Development.Environment.Studio.Interface.SearchResultsTab
+
+/*
+    This behavior shows the results of one Find in Project search. It is
+    added to the search results tab, so the game's frame loop calls its
+    Update every frame on the thread that draws, which is the only thread
+    that may change what's on screen.
+
+    It waits for its Libraries.Development.Environment.Studio.Behaviors.FindInProjectTask
+    to finish without blocking (IsFinished), then adds the results to the
+    tab a few rows per frame (SearchResultsTab:AddPendingRows), so even a
+    large search doesn't freeze the window. If a newer search started in
+    the meantime, it stops and shows nothing.
+*/
+class FindResultsBehavior is Behavior
+    FindInProjectTask task = undefined
+    SearchResultsTab tab = undefined
+    boolean started = false
+    boolean done = false
+
+    action Setup(FindInProjectTask task, SearchResultsTab tab)
+        me:task = task
+        me:tab = tab
+    end
+
+    action Update(number seconds)
+        if done
+            return now
+        end
+        if tab:GetCurrentSearch() not= task
+            done = true
+            return now
+        end
+
+        if not started
+            if not task:IsFinished()
+                return now
+            end
+            started = true
+            tab:ClearSearchResults()
+            if task:HasError()
+                tab:ShowSearchProblem()
+                done = true
+                return now
+            end
+            tab:SetSearchResults(task:GetFiles(), task:GetFileIndices(), task:GetTotalFinds(), task:GetTotalFiles(), task:IsLimitReached())
+        end
+
+        done = tab:AddPendingRows()
+    end
+
+    action IsFinished returns boolean
+        return done
+    end
+end

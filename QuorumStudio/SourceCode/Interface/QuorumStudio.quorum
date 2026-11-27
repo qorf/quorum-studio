@@ -544,13 +544,16 @@ class QuorumStudio is Game, FocusListener, ScanListener, ResizeListener
         networkRunner:Add(refreshDevices)
         FocusWindow()
 
+        // Studio uses no collisions. Left on, every frame walks every item in
+        // the window, hidden ones included, looking for collidable ones.
+        SetColliding(false)
+
         if options:IsShowingFramesPerSecondCounter()
             FramesPerSecondLabel fps
             fps:SetSize(50)
 
             //get the current Layer2D and turn off depth buffer sorting for Quorum Studio
             Layer2D currentLayer2 = GetCurrentLayer2D()
-            SetColliding(false)
 
             Layer2D fpsLayerOfAwesome
             fpsLayerOfAwesome:Add(fps)

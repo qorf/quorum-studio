@@ -1,0 +1,209 @@
+package Libraries.Development.Environment.Studio.Behaviors
+
+use Libraries.Multitasking.Task
+use Libraries.Containers.Array
+use Libraries.Containers.HashTable
+use Libraries.Containers.MultipleLineText
+use Libraries.Containers.Support.Pair
+use Libraries.System.File
+
+/*
+    The search behind Find in Project, as a task, so the window keeps
+    responding while it runs. It reads the files and finds the query in
+    each, and touches nothing on screen: Libraries.Development.Environment.Studio.Behaviors.FindResultsBehavior
+    shows the results once the task is done.
+
+    It keeps its own copies of what it searches for, since the dialog's
+    file list is emptied when the dialog hides. An error, such as a file
+    that can't be read, ends the search, and HasError reports it.
+*/
+class FindInProjectTask is Task
+    // More matches than this end the search early; the results say so.
+    constant integer MOST_FINDS = 5000
+
+    text query = ""
+    Array<File> files = undefined
+    boolean isMatchCase = false
+    boolean isWholeWord = false
+
+    // Each file with matches, and where they are in it.
+    HashTable<File, Array<Pair<integer>>> fileIndices
+    integer totalFinds = 0
+    integer totalFiles = 0
+
+    /*
+        This action sets what to search for and where, before the task is
+        lined up.
+
+        Attribute: Parameter query The text to find.
+        Attribute: Parameter files The files to search, a copy the task keeps.
+        Attribute: Parameter isMatchCase Whether case must match.
+        Attribute: Parameter isWholeWord Whether a match must be a whole word.
+    */
+    action Setup(text query, Array<File> files, boolean isMatchCase, boolean isWholeWord)
+        me:query = query
+        me:files = files
+        me:isMatchCase = isMatchCase
+        me:isWholeWord = isWholeWord
+    end
+
+    action Run
+        integer i = 0
+        repeat while i < files:GetSize() and totalFinds <= MOST_FINDS
+            File file = files:Get(i)
+            Array<Pair<integer>> found = FindQuery(query, file, isMatchCase, isWholeWord)
+            if not found:IsEmpty()
+                fileIndices:Add(file, found)
+                totalFinds = totalFinds + found:GetSize()
+                totalFiles = totalFiles + 1
+            end
+            i = i + 1
+        end
+    end
+
+    action GetQuery returns text
+        return query
+    end
+
+    action GetFiles returns Array<File>
+        return files
+    end
+
+    action GetFileIndices returns HashTable<File, Array<Pair<integer>>>
+        return fileIndices
+    end
+
+    action GetTotalFinds returns integer
+        return totalFinds
+    end
+
+    action GetTotalFiles returns integer
+        return totalFiles
+    end
+
+    action IsLimitReached returns boolean
+        return totalFinds > MOST_FINDS
+    end
+
+    /*
+        This action finds every place the query is in the file, as pairs of
+        start and end indexes into the file's text with this system's line
+        separators, so they match the editor's text. Matches don't overlap:
+        after one, the search goes on after it.
+
+        Attribute: Parameter query The text to find.
+        Attribute: Parameter file The file to search.
+        Attribute: Parameter isMatchCase Whether case must match.
+        Attribute: Parameter isWholeWord Whether a match must be a whole word.
+        Attribute: Returns The start and end of each match, in order.
+    */
+    action FindQuery(text query, File file, boolean isMatchCase, boolean isWholeWord) returns Array<Pair<integer>>
+        Array<Pair<integer>> indices
+        text textValue = file:Read()
+        text carriageReturn = textValue:GetCarriageReturn()
+        text lineFeed = textValue:GetLineFeed()
+        MultipleLineText value
+        text lineSeparator = value:GetLineSeparator()
+
+        // This system's line separators. Windows: each line feed gets one
+        // carriage return before it.
+        if lineSeparator = (carriageReturn + lineFeed)
+            textValue = textValue:Replace(carriageReturn + lineFeed, lineFeed)
+            textValue = textValue:Replace(lineFeed, carriageReturn + lineFeed)
+        elseif lineSeparator = lineFeed
+            textValue = textValue:Replace(carriageReturn + lineFeed, lineFeed)
+        end
+
+        integer querySize = query:GetSize()
+        if querySize = 0
+            return indices
+        end
+
+        // Ignoring case, both are lowercased once and searched as they are.
+        // If lowercasing changed a length (rare), the indexes wouldn't match
+        // the text, so then the slower search compares character by
+        // character instead.
+        text searched = textValue
+        text sought = query
+        if not isMatchCase
+            searched = textValue:ToLowerCase()
+            sought = query:ToLowerCase()
+            if searched:GetSize() not= textValue:GetSize() or sought:GetSize() not= querySize
+                return FindIgnoringCaseSlowly(query, textValue, isWholeWord)
+            end
+        end
+
+        integer index = searched:IndexOf(sought, 0)
+        repeat while index >= 0
+            if not isWholeWord or IsWholeWord(textValue, index, index + querySize)
+                Pair<integer> found
+                found:Set(index, index + querySize)
+                indices:Add(found)
+            end
+            index = searched:IndexOf(sought, index + querySize)
+        end
+        return indices
+    end
+
+    /*
+        This action is the search that compares each place with the query
+        ignoring case, used only when lowercasing would change the text's
+        length.
+    */
+    private action FindIgnoringCaseSlowly(text query, text textValue, boolean isWholeWord) returns Array<Pair<integer>>
+        Array<Pair<integer>> indices
+        integer querySize = query:GetSize()
+        integer index = 0
+        repeat while index <= textValue:GetSize() - querySize
+            if query:EqualsIgnoringCase(textValue:GetSubtext(index, index + querySize))
+                if not isWholeWord or IsWholeWord(textValue, index, index + querySize)
+                    Pair<integer> found
+                    found:Set(index, index + querySize)
+                    indices:Add(found)
+                end
+                index = index + querySize
+            else
+                index = index + 1
+            end
+        end
+        return indices
+    end
+
+    /*
+        This action returns whether the text from start to end stands alone:
+        the character before it and the one after it are each whitespace, a
+        special character, or the edge of the text.
+    */
+    private action IsWholeWord(text textValue, integer startIndex, integer endIndex) returns boolean
+        text previousCharacter = " "
+        text nextCharacter = " "
+        if startIndex > 0
+            previousCharacter = textValue:GetCharacter(startIndex - 1)
+        end
+        if endIndex < textValue:GetSize()
+            nextCharacter = textValue:GetCharacter(endIndex)
+        end
+        boolean before = IsSpecialCharacter(previousCharacter) or IsWhiteSpace(previousCharacter)
+        boolean after = IsSpecialCharacter(nextCharacter) or IsWhiteSpace(nextCharacter)
+        return before and after
+    end
+
+    private action IsSpecialCharacter(text value) returns boolean
+        boolean isSpecialCharacter = false
+        if value = "." or value = "/" or value = "*" or value = "-" or value = "+"
+        or value = "(" or value = ")" or value = ":" or value = "<" or value = ">"
+        or value = ";" or value = "," or value = value:GetDoubleQuote()
+            isSpecialCharacter = true
+        end
+        return isSpecialCharacter
+    end
+
+    private action IsWhiteSpace(text value) returns boolean
+        boolean isWhiteSpace = false
+        if value = " " or value = value:GetCarriageReturn() or value = value:GetLineFeed() or
+        value = value:GetTab()
+            isWhiteSpace = true
+        end
+        return isWhiteSpace
+    end
+end

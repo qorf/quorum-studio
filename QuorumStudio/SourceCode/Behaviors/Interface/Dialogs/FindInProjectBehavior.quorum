@@ -5,28 +5,23 @@ use Libraries.Interface.Events.BehaviorEvent
 use Libraries.Containers.Array
 use Libraries.System.File
 use Libraries.Development.Environment.Studio.Interface.FindInProjectDialog
-use Libraries.Containers.Support.Pair
-use Libraries.Containers.HashTable
-use Libraries.Containers.Iterator
-use Libraries.System.FileReader
-use Libraries.Containers.MultipleLineText
 use Libraries.Development.Environment.Studio.Interface.SearchResultsTab
 use Libraries.Development.Environment.Studio.OutputEditorTabPane
 use Libraries.Game.GameStateManager
 use Libraries.Development.Environment.Studio.QuorumStudio
-use Libraries.Development.Environment.Studio.CodeEditorTabPane
 use Libraries.Concurrency.ThreadRunner
+use Libraries.Multitasking.Lines
 
+/*
+    The Find button's behavior in the Find in Project dialog. It reads the
+    query and options, and starts the search as a
+    Libraries.Development.Environment.Studio.Behaviors.FindInProjectTask, so
+    the window keeps responding while it runs. A
+    Libraries.Development.Environment.Studio.Behaviors.FindResultsBehavior
+    on the search results tab shows the results once the task is done.
+*/
 class FindInProjectBehavior is QuorumStudioBehavior
-    text find = ""
-    Array<File> files
-    HashTable<File, Array<Pair<integer>>> fileIndices       //each file has an array of find indices
     FindInProjectDialog dialog = undefined
-    boolean isMatchCase = false
-    boolean isWholeWord = false
-    integer totalFinds = 0
-    integer totalFiles = 0
-    SearchResultsTab searchResultsTab = undefined
     ThreadRunner runner = undefined
 
     action SetDialog(FindInProjectDialog dialog)
@@ -42,194 +37,30 @@ class FindInProjectBehavior is QuorumStudioBehavior
     end
     
     action Run(BehaviorEvent event)
-        ResetQuery()
-
         if dialog not= undefined
             GameStateManager gameManager
             QuorumStudio studio = cast(QuorumStudio, gameManager:GetGame())
             OutputEditorTabPane tabPane = studio:GetOutputPane()
 
-            searchResultsTab = tabPane:GetSearchResultsTab()           
-            find = dialog:GetQuery()
+            SearchResultsTab searchResultsTab = tabPane:GetSearchResultsTab()
+            text find = dialog:GetQuery()
             searchResultsTab:SetQuery(find)
-            files = dialog:GetSearchFiles()
-            isMatchCase = dialog:GetIsMatchCase()
-            isWholeWord = dialog:GetIsWholeWord()
-            /* If there is a find word and files for searching, then go through each file in the array of 
-            search files and call FindQuery() on each file. This will return an array of indices for each
-            instance of find in the file. If there are no instances of find in the file then we skip the
-            file and move on to the next one. Otherwise we increment the count of files by one, we increment 
-            the count of totalFinds by the size of the array of indices returned and we add the File and its 
-            associated array of indices to the hash table fileIndices.*/
-            if ((find not= "") and (not files:IsEmpty()))   
-                integer i = 0
-                repeat while i < files:GetSize() and totalFinds < 5001                 
-                    Array<Pair<integer>> temp = FindQuery(find, files:Get(i), isMatchCase, isWholeWord)
-                    if not temp:IsEmpty()
-                        fileIndices:Add(files:Get(i), temp)
-                        totalFinds = totalFinds + temp:GetSize()    //counter for the total number of find instances in all of the files
-                        totalFiles = totalFiles + 1                 //counter for the total number of files which contain instances of find
-                    end
-                    i = i + 1
-                end
+            Array<File> files = dialog:GetSearchFiles()
+            if find not= "" and not files:IsEmpty()
+                // The task keeps its own copy of the files: the dialog
+                // empties its list when it hides.
+                FindInProjectTask task
+                task:Setup(find, files:CopyToArray(), dialog:GetIsMatchCase(), dialog:GetIsWholeWord())
+                searchResultsTab:SetCurrentSearch(task)
+                Lines lines
+                lines:LineUp(task)
 
-                // The tab builds its rows from these, in the files' order.
-                if searchResultsTab not= undefined
-                    searchResultsTab:ClearSearchResults()
-                    searchResultsTab:SetSearchResults(files, fileIndices, totalFinds, totalFiles, totalFinds > 5000)
-                end
+                FindResultsBehavior results
+                results:Setup(task, searchResultsTab)
+                searchResultsTab:AddBehavior(results)
             end
             dialog:Hide()
             searchResultsTab:Activate()
         end
     end
-
-    action ResetQuery()
-        totalFinds = 0
-        totalFiles = 0
-        fileIndices:Empty()
-    end
-
-    /* Find the query in the file and return an array of Pair<Integer>'s representing 
-    the indices for each instance in the current file. This array of Pair<integer> 
-    will need to be stored in a hash table with the file name as the key and the
-    indices array as the associated value. Only store the array of indices if there
-    is at least one instance of the find query in the file. */
-    action FindQuery(text query, File file, boolean isMatchCase, boolean isWholeWord) returns Array<Pair<integer>>
-        Array<Pair<integer>> indices
-        text textValue = file:Read()
-        text carriageReturn = textValue:GetCarriageReturn()
-        text lineFeed = textValue:GetLineFeed()
-        MultipleLineText value
-        value:Initialize(textValue)
-        text lineSeparator = value:GetLineSeparator()
-
-        /* Reusing the code from SanitizeLines in the TextBox class to swap the line separator to the current OS's
-        line separator style. */
-        //Windows style separators
-        if textValue not= ""
-            if lineSeparator = (carriageReturn + lineFeed)
-                integer readIndex = 0
-                integer index = textValue:IndexOf(lineFeed, readIndex)
-                repeat while index >= 0
-                    if index > 0 and textValue:GetCharacter(index - 1) = carriageReturn
-                        readIndex = index + 1
-                    else
-                        if index = 0
-                            textValue = carriageReturn + textValue
-                        else
-                            text preText = textValue:GetSubtext(0, index) + carriageReturn
-                            text postText = textValue:GetSubtext(index)
-                            textValue = preText + postText
-                        end
-                    end
-                    readIndex = index + 2
-
-                    if readIndex >= textValue:GetSize()
-                        index = -1
-                    else
-                        index = textValue:IndexOf(lineFeed, readIndex)
-                    end
-                end
-
-            //UNIX style separators
-            elseif lineSeparator = lineFeed
-                textValue = textValue:Replace(carriageReturn + lineFeed, lineFeed)
-            end 
-        end
-
-        //text textValue = value:GetText()
-        integer querySize = query:GetSize()
-        integer fileSize = textValue:GetSize()
-        integer index = 0
-
-        /* Go through the text character by character until a substring is reached that
-        matches the query. If the isMatchCase flag is set then the substring will need to 
-        match the query with case sensitivity, else the substring will be matched ignoring 
-        the case. All matches are added to the indices array as a Pair which includes the 
-        start and end index of the match in the file. */
-        if isMatchCase
-            repeat while index <= (fileSize - querySize)
-                if(query:Equals(textValue:GetSubtext(index, (index + querySize))))
-                    Pair<integer> i
-                    i:Set(index, (index + querySize))
-                    indices:Add(i)
-                    index = index + querySize
-                else 
-                    index = index + 1
-                end
-            end
-        else
-            repeat while index <= (fileSize - querySize)
-                //text temp = textValue:GetText(index, (index + querySize))
-                if(query:EqualsIgnoringCase(textValue:GetSubtext(index, (index + querySize))))
-                    Pair<integer> i
-                    i:Set(index, (index + querySize))
-                    indices:Add(i)
-                    index = index + querySize
-                else
-                    index = index + 1
-                end
-            end
-        end
-
-        /* Get the word, check the character before and the character after the word to 
-        see if it is either a special character or whitespace if not then remove the 
-        Pair from the indices array. */
-        if isWholeWord
-            integer startIndex = 0
-            integer endIndex = 0
-            integer previousIndex = 0
-            integer nextIndex = 0
-            integer i = 0
-            text previousCharacter = ""
-            text nextCharacter = ""
-            repeat while i < indices:GetSize()
-                Pair<integer> w = indices:Get(i)
-                startIndex = w:GetFirstValue()
-                endIndex = w:GetSecondValue()
-                previousIndex = startIndex - 1
-                nextIndex = endIndex
-                if previousIndex < 0
-                    previousCharacter = " "
-                else
-                    previousCharacter = textValue:GetCharacter(previousIndex)
-                end
-                if nextIndex > textValue:GetSize() - 1
-                    nextCharacter = " "
-                else
-                    nextCharacter = textValue:GetCharacter(nextIndex)
-                end
-                if (not(IsSpecialCharacter(previousCharacter) or IsWhiteSpace(previousCharacter)) or (not(IsSpecialCharacter(nextCharacter) or IsWhiteSpace(nextCharacter))))
-                    // The next match slides into this place, so check this
-                    // place again rather than moving on.
-                    indices:RemoveAt(i)
-                else
-                    i = i + 1
-                end
-            end 
-        end
-        
-        return indices
-    end
-
-    private action IsSpecialCharacter(text value) returns boolean
-        boolean isSpecialCharacter = false
-        if value = "." or value = "/" or value = "*" or value = "-" or value = "+"
-        or value = "(" or value = ")" or value = ":" or value = "<" or value = ">"
-        or value = ";" or value = "," or value = value:GetDoubleQuote()
-            isSpecialCharacter = true
-        end
-        return isSpecialCharacter
-    end
-
-    private action IsWhiteSpace(text value) returns boolean
-        boolean isWhiteSpace = false
-        if value = " " or value = value:GetCarriageReturn() or value = value:GetLineFeed() or 
-        value = value:GetTab()
-            isWhiteSpace = true
-        end
-        return isWhiteSpace
-    end
-    
 end

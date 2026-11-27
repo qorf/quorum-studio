@@ -30,6 +30,7 @@ use Libraries.Development.Environment.Studio.Behaviors.OpenFindInProjectFileBeha
 use Libraries.Development.Environment.Studio.Behaviors.SearchFoldBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SearchCopyBehavior
 use Libraries.Development.Environment.Studio.Behaviors.SearchMenuBehavior
+use Libraries.Development.Environment.Studio.Behaviors.FindInProjectTask
 
 /*
 The Search Results tab: the results of Find in Project as a List.
@@ -68,6 +69,26 @@ class SearchResultsTab is Tab
     constant integer CONTEXT_BEFORE = 50
     // And at most this many characters in all.
     constant integer MOST_SHOWN = 240
+    // How many rows AddPendingRows adds at a time (once a frame), so a large
+    // search doesn't freeze the window while its rows are made.
+    constant integer ROWS_PER_FRAME = 100
+
+    // The search whose results belong here: a newer one replaces it, and an
+    // older one's results are then dropped (FindResultsBehavior).
+    FindInProjectTask currentSearch = undefined
+
+    // The rows SetSearchResults started and AddPendingRows hasn't added yet:
+    // the files still to go through, the file whose line rows are being
+    // added, its text, and the next of its matches.
+    Array<File> pendingFiles = undefined
+    HashTable<File, Array<Pair<integer>>> pendingIndices = undefined
+    integer pendingFile = 0
+    SearchFileItem pendingItem = undefined
+    MultipleLineText pendingText = undefined
+    integer pendingMatch = 0
+    integer pendingDigits = 0
+    ColorGroup pendingMutedColor = undefined
+    ColorGroup pendingOutlineColor = undefined
 
     on create
         openFileBehavior:SetSearchResultsTab(me)
@@ -159,8 +180,19 @@ class SearchResultsTab is Tab
         me:query = query
     end
 
-    // Removes every row, from the end, which is quick for a List.
+    action SetCurrentSearch(FindInProjectTask search)
+        currentSearch = search
+    end
+
+    action GetCurrentSearch returns FindInProjectTask
+        return currentSearch
+    end
+
+    // Removes every row, from the end, which is quick for a List, and any
+    // rows still waiting to be added.
     action ClearSearchResults
+        pendingFiles = undefined
+        pendingItem = undefined
         resultsList:Deselect()
         repeat while resultsList:GetSize() > 0
             resultsList:Remove(resultsList:GetSize() - 1)
@@ -170,7 +202,8 @@ class SearchResultsTab is Tab
     end
 
     /*
-    This action shows a search's results:
+    This action starts showing a search's results: it adds the summary row,
+    and AddPendingRows adds the rest a few at a time.
     - files: the searched files, in the order the search went through them;
     - fileIndices: each matching file's matches;
     - totalFinds and totalFiles: the counts for the summary;
@@ -178,61 +211,115 @@ class SearchResultsTab is Tab
     */
     action SetSearchResults(Array<File> files, HashTable<File, Array<Pair<integer>>> fileIndices, integer totalFinds, integer totalFiles, boolean limitReached)
         LoadCodeFont()
-        ColorGroup mutedColor = GetMutedColor()
-        ColorGroup outlineColor = GetOutlineColor()
+        pendingMutedColor = GetMutedColor()
+        pendingOutlineColor = GetOutlineColor()
 
         SearchSummaryItem summary
-        summary:Setup(SummaryText(totalFinds, totalFiles, limitReached), mutedColor)
+        summary:Setup(SummaryText(totalFinds, totalFiles, limitReached), pendingMutedColor)
         Prepare(summary)
         resultsList:Add(summary)
 
-        integer index = 0
-        repeat while index < files:GetSize()
-            File file = files:Get(index)
-            Array<Pair<integer>> found = fileIndices:GetValue(file)
-            if found not= undefined and not found:IsEmpty()
-                AddFile(file, found, mutedColor, outlineColor)
-            end
-            index = index + 1
-        end
+        pendingFiles = files
+        pendingIndices = fileIndices
+        pendingFile = 0
+        pendingItem = undefined
 
-        // One layout for all the rows, from the top. List:Add doesn't
-        // lay out, so building stays linear in the number of rows.
         resultsList:Resize()
         resultsList:SetScrollPercentageY(0)
     end
 
-    // A file's row, then a row for each line with matches.
-    private action AddFile(File file, Array<Pair<integer>> found, ColorGroup mutedColor, ColorGroup outlineColor)
+    /*
+    This action adds up to ROWS_PER_FRAME more of the rows SetSearchResults
+    started: each file with matches as a row, then a row for each of its
+    lines with matches. It is called once a frame, so a large search fills
+    in over a few frames instead of freezing the window.
+
+    Attribute: Returns True once every row is in.
+    */
+    action AddPendingRows returns boolean
+        if pendingFiles = undefined
+            return true
+        end
+
+        integer added = 0
+        repeat while added < ROWS_PER_FRAME
+            if pendingItem = undefined
+                // On to the next file with matches.
+                repeat while pendingFile < pendingFiles:GetSize() and not HasMatches(pendingFiles:Get(pendingFile))
+                    pendingFile = pendingFile + 1
+                end
+                if pendingFile >= pendingFiles:GetSize()
+                    pendingFiles = undefined
+                    resultsList:Resize()
+                    return true
+                end
+                StartFile(pendingFiles:Get(pendingFile))
+                added = added + 1
+            else
+                Array<Pair<integer>> found = pendingIndices:GetValue(pendingFiles:Get(pendingFile))
+                if pendingMatch >= found:GetSize()
+                    pendingItem:Refresh()
+                    pendingItem = undefined
+                    pendingFile = pendingFile + 1
+                else
+                    // Matches on the same line make one row.
+                    integer lineIndex = pendingText:LineIndexFromCharacterIndex(found:Get(pendingMatch):GetFirstValue())
+                    Array<Pair<integer>> onLine
+                    repeat while pendingMatch < found:GetSize() and pendingText:LineIndexFromCharacterIndex(found:Get(pendingMatch):GetFirstValue()) = lineIndex
+                        onLine:Add(found:Get(pendingMatch))
+                        pendingMatch = pendingMatch + 1
+                    end
+                    AddLine(pendingItem, pendingText, lineIndex, onLine, pendingDigits, pendingMutedColor, pendingOutlineColor)
+                    added = added + 1
+                end
+            end
+        end
+
+        // List:Add doesn't lay out, so lay out once for this frame's rows.
+        resultsList:Resize()
+        return false
+    end
+
+    private action HasMatches(File file) returns boolean
+        Array<Pair<integer>> found = pendingIndices:GetValue(file)
+        return found not= undefined and not found:IsEmpty()
+    end
+
+    // A file's row. AddPendingRows then adds a row for each of its lines
+    // with matches.
+    private action StartFile(File file)
         MultipleLineText value
         value:Initialize(ReadWithSystemLineSeparators(file))
 
         SearchFileItem fileItem
-        fileItem:Setup(file, mutedColor)
+        fileItem:Setup(file, pendingMutedColor)
         Prepare(fileItem)
         fileItem:SetActivationBehavior(toggleBehavior)
         resultsList:Add(fileItem)
 
         // The line numbers are padded to the widest one in this file. The
         // matches are in order, so that's the last match's line.
+        Array<Pair<integer>> found = pendingIndices:GetValue(file)
         integer lastLine = value:LineIndexFromCharacterIndex(found:Get(found:GetSize() - 1):GetFirstValue()) + 1
         text widest = "" + lastLine
-        integer digits = widest:GetSize()
+        pendingDigits = widest:GetSize()
 
-        // Matches on the same line make one row.
-        integer index = 0
-        repeat while index < found:GetSize()
-            integer lineIndex = value:LineIndexFromCharacterIndex(found:Get(index):GetFirstValue())
-            Array<Pair<integer>> onLine
-            onLine:Add(found:Get(index))
-            index = index + 1
-            repeat while index < found:GetSize() and value:LineIndexFromCharacterIndex(found:Get(index):GetFirstValue()) = lineIndex
-                onLine:Add(found:Get(index))
-                index = index + 1
-            end
-            AddLine(fileItem, value, lineIndex, onLine, digits, mutedColor, outlineColor)
-        end
-        fileItem:Refresh()
+        pendingItem = fileItem
+        pendingText = value
+        pendingMatch = 0
+    end
+
+    /*
+    This action shows, in place of results, that the search stopped with an
+    error, such as a file that couldn't be read.
+    */
+    action ShowSearchProblem
+        SearchSummaryItem summary
+        summary:Setup("The search for " + query + " stopped because of an error.", GetMutedColor())
+        Prepare(summary)
+        resultsList:Add(summary)
+        resultsList:Resize()
+        resultsList:SetScrollPercentageY(0)
     end
 
     // One row for one line, with every match on it.
@@ -507,7 +594,9 @@ class SearchResultsTab is Tab
     /*
     This action reads a file with its line separators swapped to the
     system's, so character indexes match the editor's text. It's the code
-    the old SetupSearchTree used, and the same as FindQuery's.
+    the old SetupSearchTree used, and the same as
+    Libraries.Development.Environment.Studio.Behaviors.FindInProjectTask's
+    FindQuery, so the match indexes fit this text.
     */
     private action ReadWithSystemLineSeparators(File file) returns text
         text textValue = file:Read()
@@ -516,30 +605,11 @@ class SearchResultsTab is Tab
         MultipleLineText value
         text lineSeparator = value:GetLineSeparator()
 
-        // Windows style separators
+        // Windows style separators: each line feed gets one carriage return
+        // before it.
         if lineSeparator = (carriageReturn + lineFeed)
-            integer readIndex = 0
-            integer index = textValue:IndexOf(lineFeed, readIndex)
-            repeat while index >= 0
-                if index > 0 and textValue:GetCharacter(index - 1) = carriageReturn
-                    readIndex = index + 1
-                else
-                    if index = 0
-                        textValue = carriageReturn + textValue
-                    else
-                        text preText = textValue:GetSubtext(0, index) + carriageReturn
-                        text postText = textValue:GetSubtext(index)
-                        textValue = preText + postText
-                    end
-                end
-                readIndex = index + 2
-
-                if readIndex >= textValue:GetSize()
-                    index = -1
-                else
-                    index = textValue:IndexOf(lineFeed, readIndex)
-                end
-            end
+            textValue = textValue:Replace(carriageReturn + lineFeed, lineFeed)
+            textValue = textValue:Replace(lineFeed, carriageReturn + lineFeed)
         // UNIX style separators
         elseif lineSeparator = lineFeed
             textValue = textValue:Replace(carriageReturn + lineFeed, lineFeed)
